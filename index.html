@@ -4238,7 +4238,7 @@ function programarSyncNube() {
       marcarEstadoNube('☁️ Sincronizado');
     }).catch(err => {
       console.warn('Error subiendo a la nube:', err);
-      marcarEstadoNube('⚠️ Sin conexión a la nube (guardado solo en este dispositivo)');
+      marcarEstadoNube('⚠️ Nube: ' + (err && err.code ? err.code : (err && err.message) || 'error desconocido'));
     });
   }, 900);
 }
@@ -4297,7 +4297,7 @@ if (firebaseDisponible) {
     arrancarAppLocal();
   }).catch(err => {
     console.warn('No se pudo conectar a la nube, usando datos guardados en este dispositivo:', err);
-    marcarEstadoNube('⚠️ Sin conexión a la nube (datos solo en este dispositivo)');
+    marcarEstadoNube('⚠️ Nube: ' + (err && err.code ? err.code : (err && err.message) || 'error desconocido'));
     arrancarAppLocal();
   });
 } else {

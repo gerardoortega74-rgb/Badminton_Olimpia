@@ -3393,6 +3393,25 @@ function importarLicencias2026() {
 }
 
 
+function redimensionarImagen(file, maxAncho, callback) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      let w = img.width, h = img.height;
+      if (w > maxAncho) { h = Math.round(h * maxAncho / w); w = maxAncho; }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      callback(canvas.toDataURL('image/jpeg', 0.72));
+    };
+    img.onerror = () => callback(e.target.result);
+    img.src = e.target.result;
+  };
+  reader.onerror = () => callback('');
+  reader.readAsDataURL(file);
+}
 function normalizarNombre(str) {
   return String(str || '').trim().split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
 }
@@ -3477,9 +3496,7 @@ function fichaFederativaJugador(j) {
   fotoFile.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => { j.foto = ev.target.result; saveJugadoresGlobal(); renderJugadores(); };
-    reader.readAsDataURL(file);
+    redimensionarImagen(file, 300, (dataUrl) => { j.foto = dataUrl; saveJugadoresGlobal(); renderJugadores(); });
   });
   wrap.appendChild(el('div', { class: 'row', style: 'align-items:flex-start;margin:10px 0;' }, fotoPreview, fotoDrop, fotoFile));
   const federadoLabel = el('label', { style: 'display:flex;align-items:center;gap:8px;cursor:pointer;margin:0;text-transform:none;' },
@@ -3743,14 +3760,12 @@ function clubForm(onSave, saveLabel) {
   fileInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      clubGlobal.logo = ev.target.result;
+    redimensionarImagen(file, 300, (dataUrl) => {
+      clubGlobal.logo = dataUrl;
       preview.src = clubGlobal.logo;
       preview.style.display = '';
       dropZone.textContent = 'Cambiar logo…';
-    };
-    reader.readAsDataURL(file);
+    });
   });
   logoRow.appendChild(preview);
   logoRow.appendChild(dropZone);
@@ -3928,14 +3943,12 @@ function renderJugadores() {
   fotoFileNuevo.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      nuevaFotoData = ev.target.result;
+    redimensionarImagen(file, 300, (dataUrl) => {
+      nuevaFotoData = dataUrl;
       fotoPreviewNuevo.src = nuevaFotoData;
       fotoPreviewNuevo.style.display = '';
       fotoDropNuevo.textContent = 'Cambiar foto…';
-    };
-    reader.readAsDataURL(file);
+    });
   });
   panel.appendChild(el('label', {}, 'Foto del jugador'));
   panel.appendChild(el('div', { class: 'row', style: 'align-items:flex-start;margin-bottom:14px;' }, fotoPreviewNuevo, fotoDropNuevo, fotoFileNuevo));
@@ -4255,6 +4268,11 @@ function programarSyncNube() {
   clearTimeout(nubeSyncTimer);
   nubeSyncTimer = setTimeout(() => {
     const payloadLimpio = envolverArraysAnidados(JSON.parse(JSON.stringify(estadoCompletoParaNube())));
+    const tamanoAprox = JSON.stringify(payloadLimpio).length;
+    if (tamanoAprox > 900000) {
+      marcarEstadoNube('⚠️ Nube: los datos pesan demasiado (' + Math.round(tamanoAprox / 1024) + ' KB, máximo ~900 KB). Revisa si algún jugador tiene una foto muy pesada.');
+      return;
+    }
     docNube().set(payloadLimpio).then(() => {
       marcarEstadoNube('☁️ Sincronizado');
     }).catch(err => {

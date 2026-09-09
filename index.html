@@ -186,6 +186,8 @@ header.app-header::before{display:none !important;}
 
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
@@ -195,6 +197,7 @@ header.app-header::before{display:none !important;}
     <div>
       <h1 id="shellTitle">Bádminton · Club</h1>
       <small id="shellSubtitle">Menú principal</small>
+      <small id="nubeIndicador" style="display:block;opacity:0.75;"></small>
     </div>
   </div>
   <div class="row no-print">
@@ -289,6 +292,7 @@ function enabledCategories() { return state.categories.filter(c => c.enabled); }
 
 function saveLocal() {
   try { localStorage.setItem('badmintonTorneoState', JSON.stringify(state)); } catch (e) { }
+  if (typeof programarSyncNube === 'function') programarSyncNube();
 }
 function tryLoadLocal() {
   try {
@@ -2123,6 +2127,7 @@ function uid(prefix) { return prefix + '_' + (uidCounter++) + '_' + Math.random(
 
 function saveLocal() {
   try { localStorage.setItem('badmintonPlanState', JSON.stringify(state)); } catch (e) { }
+  if (typeof programarSyncNube === 'function') programarSyncNube();
 }
 function tryLoadLocal() {
   try {
@@ -2672,7 +2677,7 @@ let activeTab = 'cuotas';
 let uidCounter = 1;
 function uid(prefix) { return prefix + '_' + (uidCounter++) + '_' + Math.random().toString(36).slice(2, 7); }
 
-function saveLocal() { try { localStorage.setItem('badmintonPagosState', JSON.stringify(state)); } catch (e) { } }
+function saveLocal() { try { localStorage.setItem('badmintonPagosState', JSON.stringify(state)); } catch (e) { } if (typeof programarSyncNube === 'function') programarSyncNube(); }
 function tryLoadLocal() {
   try {
     const raw = localStorage.getItem('badmintonPagosState');
@@ -2999,7 +3004,7 @@ function calcularCategoria(fechaNacimiento) {
 }
 
 let clubGlobal = { nombre: '', localidad: '', temporadaInicio: '', temporadaFin: '', logo: '', tecnicos: [] };
-function saveClubGlobal() { try { localStorage.setItem('badmintonClubGlobal', JSON.stringify(clubGlobal)); } catch (e) {} }
+function saveClubGlobal() { try { localStorage.setItem('badmintonClubGlobal', JSON.stringify(clubGlobal)); } catch (e) {} if (typeof programarSyncNube === 'function') programarSyncNube(); }
 function loadClubGlobal() {
   try {
     const raw = localStorage.getItem('badmintonClubGlobal');
@@ -3009,7 +3014,7 @@ function loadClubGlobal() {
 }
 
 let jugadoresGlobal = [];
-function saveJugadoresGlobal() { try { localStorage.setItem('badmintonJugadoresGlobal', JSON.stringify(jugadoresGlobal)); } catch (e) {} }
+function saveJugadoresGlobal() { try { localStorage.setItem('badmintonJugadoresGlobal', JSON.stringify(jugadoresGlobal)); } catch (e) {} if (typeof programarSyncNube === 'function') programarSyncNube(); }
 function loadJugadoresGlobal() {
   try { const raw = localStorage.getItem('badmintonJugadoresGlobal'); if (raw) jugadoresGlobal = JSON.parse(raw); } catch (e) {}
 }
@@ -3533,7 +3538,7 @@ let accessControl = { usuarios: [], permisos: {
   usuario: { torneo: true, planificacion: true, jugadores: true, pagos: false, club: false },
   lectura: { torneo: true, planificacion: true, jugadores: true, pagos: false, club: false },
 } };
-function saveAccessControl() { try { localStorage.setItem('badmintonAccessControl', JSON.stringify(accessControl)); } catch (e) {} }
+function saveAccessControl() { try { localStorage.setItem('badmintonAccessControl', JSON.stringify(accessControl)); } catch (e) {} if (typeof programarSyncNube === 'function') programarSyncNube(); }
 function loadAccessControl() {
   try {
     const raw = localStorage.getItem('badmintonAccessControl');
@@ -4187,6 +4192,82 @@ function syncClubIntoModules() {
   if (!p.meta.temporadaFin && clubGlobal.temporadaFin) p.meta.temporadaFin = clubGlobal.temporadaFin;
 }
 
+const firebaseConfig = {
+  apiKey: "AIzaSyD2g3TsDq2Q7sABWLT4Aham5F324LxtAP0",
+  authDomain: "badminton-olimpia.firebaseapp.com",
+  projectId: "badminton-olimpia",
+  storageBucket: "badminton-olimpia.firebasestorage.app",
+  messagingSenderId: "494835736183",
+  appId: "1:494835736183:web:b64890641ecf6891803072"
+};
+let firebaseDb = null;
+let firebaseDisponible = false;
+let nubeSyncTimer = null;
+
+function inicializarFirebase() {
+  try {
+    if (typeof firebase !== 'undefined' && firebase.initializeApp) {
+      firebase.initializeApp(firebaseConfig);
+      firebaseDb = firebase.firestore();
+      firebaseDisponible = true;
+    }
+  } catch (e) { console.warn('Firebase no disponible:', e); firebaseDisponible = false; }
+}
+function docNube() { return firebaseDb.collection('club').doc('datos'); }
+function marcarEstadoNube(texto) {
+  const ind = document.getElementById('nubeIndicador');
+  if (ind) ind.textContent = texto;
+}
+function estadoCompletoParaNube() {
+  return {
+    club: clubGlobal,
+    jugadoresGlobal: jugadoresGlobal,
+    torneo: TorneoApp.getState(),
+    planificacion: PlanApp.getState(),
+    pagos: PagosApp.getState(),
+    accessControl: accessControl,
+    actualizadoEn: Date.now(),
+  };
+}
+function programarSyncNube() {
+  if (!firebaseDisponible) return;
+  marcarEstadoNube('☁️ Guardando en la nube…');
+  clearTimeout(nubeSyncTimer);
+  nubeSyncTimer = setTimeout(() => {
+    docNube().set(estadoCompletoParaNube()).then(() => {
+      marcarEstadoNube('☁️ Sincronizado');
+    }).catch(err => {
+      console.warn('Error subiendo a la nube:', err);
+      marcarEstadoNube('⚠️ Sin conexión a la nube (guardado solo en este dispositivo)');
+    });
+  }, 900);
+}
+function aplicarDatosDeNube(data) {
+  if (!data) return;
+  clubGlobal = Object.assign({ nombre: '', localidad: '', temporadaInicio: '', temporadaFin: '', logo: '', tecnicos: [] }, data.club || {});
+  jugadoresGlobal = data.jugadoresGlobal || [];
+  saveClubGlobal();
+  saveJugadoresGlobal();
+  if (data.torneo) TorneoApp.setState(data.torneo);
+  if (data.planificacion) PlanApp.setState(data.planificacion);
+  if (data.pagos) PagosApp.setState(data.pagos);
+  if (data.accessControl) { accessControl = data.accessControl; saveAccessControl(); }
+}
+function arrancarAppLocal() {
+  const hadClubAhora = !!clubGlobal.nombre;
+  syncClubIntoModules();
+  if (accesoActivo() && !sesionActual) {
+    mostrarLogin();
+  } else if (!hadClubAhora) {
+    currentSection = 'onboarding';
+    renderOnboarding();
+    document.getElementById('onboardingScreen').style.display = 'block';
+    renderShellHeader();
+  } else {
+    showSection('home');
+  }
+}
+
 document.getElementById('shellBrand').addEventListener('click', () => showSection('home'));
 document.getElementById('btnMenu').addEventListener('click', () => showSection('home'));
 document.getElementById('btnExport').addEventListener('click', exportAll);
@@ -4194,24 +4275,33 @@ document.getElementById('btnImport').addEventListener('click', () => document.ge
 document.getElementById('fileImport').addEventListener('change', (e) => { if (e.target.files[0]) importAll(e.target.files[0]); e.target.value = ''; });
 document.getElementById('btnLogout').addEventListener('click', () => { if (confirm('¿Cerrar sesión?')) cerrarSesion(); });
 
-const hadClub = loadClubGlobal();
+loadClubGlobal();
 loadJugadoresGlobal();
 loadAccessControl();
 loadSesion();
 TorneoApp.mount();
 PlanApp.mount();
 PagosApp.mount();
-syncClubIntoModules();
 
-if (accesoActivo() && !sesionActual) {
-  mostrarLogin();
-} else if (!hadClub) {
-  currentSection = 'onboarding';
-  renderOnboarding();
-  document.getElementById('onboardingScreen').style.display = 'block';
-  renderShellHeader();
+inicializarFirebase();
+if (firebaseDisponible) {
+  marcarEstadoNube('☁️ Conectando…');
+  docNube().get().then(doc => {
+    if (doc.exists) {
+      aplicarDatosDeNube(doc.data());
+      marcarEstadoNube('☁️ Sincronizado');
+    } else {
+      marcarEstadoNube('☁️ Sincronizado');
+      if (clubGlobal.nombre) programarSyncNube();
+    }
+    arrancarAppLocal();
+  }).catch(err => {
+    console.warn('No se pudo conectar a la nube, usando datos guardados en este dispositivo:', err);
+    marcarEstadoNube('⚠️ Sin conexión a la nube (datos solo en este dispositivo)');
+    arrancarAppLocal();
+  });
 } else {
-  showSection('home');
+  arrancarAppLocal();
 }
 </script>
 </body>

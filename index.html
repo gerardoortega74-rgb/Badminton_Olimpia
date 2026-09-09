@@ -23,7 +23,7 @@ header.app-header::after{content:"";position:absolute;left:0;right:0;bottom:0;he
 .brand-badge{width:40px;height:40px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
 .brand h1{font-size:18px;margin:0;letter-spacing:.3px;font-weight:700;}
 .brand small{display:block;color:#CFE8DA;font-weight:400;font-size:12px;}
-nav.tabs{display:flex;gap:4px;background:var(--court-dark);padding:6px 14px;overflow-x:auto;}
+nav.tabs{display:flex;gap:4px;background:var(--court-dark) linear-gradient(to left, rgba(0,0,0,0.4), rgba(0,0,0,0) 28px) right center no-repeat;background-size:34px 100%;padding:6px 14px;overflow-x:auto;}
 nav.tabs button{border:none;background:transparent;color:#CFE8DA;padding:10px 13px;font-size:12.5px;font-weight:600;border-radius:8px 8px 0 0;cursor:pointer;white-space:nowrap;}
 nav.tabs button.active{background:var(--bg);color:var(--court-dark);}
 main{max-width:1100px;margin:0 auto;padding:20px 16px 60px;}
@@ -50,6 +50,12 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--gold);outline-of
 .btn:disabled{opacity:.45;cursor:not-allowed;}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
 table{width:100%;border-collapse:collapse;font-size:13px;display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;white-space:nowrap;max-width:100%;}
+body.solo-lectura input:not([type=file]), body.solo-lectura select, body.solo-lectura textarea{pointer-events:none;background:#ECE9DE;opacity:0.75;}
+body.solo-lectura .btn-danger{display:none !important;}
+.lectura-banner{background:#7A5B00;color:#fff;text-align:center;padding:8px;font-size:12.5px;font-weight:700;}
+.login-card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:24px;max-width:360px;margin:40px auto;}
+.login-userbtn{display:block;width:100%;text-align:left;padding:12px 14px;margin-bottom:8px;border-radius:8px;border:1px solid #E4E1D6;background:#FBFAF7;font-size:14px;font-weight:700;color:var(--court-dark);cursor:pointer;}
+.login-userbtn:hover{border-color:var(--gold);}
 th,td{padding:7px 8px;border-bottom:1px solid #ECE9DE;text-align:left;vertical-align:top;}
 th{background:#F5F3EB;color:var(--court-dark);font-size:11px;text-transform:uppercase;letter-spacing:.3px;}
 .chip{display:inline-block;background:var(--court);color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:6px;}
@@ -192,6 +198,7 @@ header.app-header::before{display:none !important;}
     </div>
   </div>
   <div class="row no-print">
+    <button class="btn btn-ghost btn-sm" id="btnLogout" style="display:none;">🔒 Salir</button>
     <button class="btn btn-primary btn-sm" id="btnMenu" style="display:none;">🏠 Menú</button>
     <button class="btn btn-gold btn-sm" id="btnExport">⬇ Exportar todo</button>
     <button class="btn btn-ghost btn-sm" id="btnImport">⬆ Importar todo</button>
@@ -200,6 +207,8 @@ header.app-header::before{display:none !important;}
 </header>
 
 <main id="shellMain">
+
+  <div id="loginScreen" style="display:none;"></div>
 
   <div id="onboardingScreen" style="display:none;"></div>
 
@@ -213,6 +222,7 @@ header.app-header::before{display:none !important;}
       <nav class="tabs" id="pagosTabsNav" style="margin:-20px -16px 20px;"></nav>
       <div id="pagosMainArea"></div>
     </div>
+    <div id="accesoScreen" style="display:none;"></div>
   </div>
 
   <div id="torneoScreen" style="display:none;">
@@ -754,12 +764,25 @@ function viewParticipants() {
   );
   const cat = getCategory(activeCatTab.participants);
   if (cat) {
+    const sexoDeCategoria = (c) => (c.id === 'IM' || c.id === 'DM') ? 'M' : (c.id === 'IF' || c.id === 'DF') ? 'F' : null;
+    const catSexo = sexoDeCategoria(cat);
+    const yaUsadosEnCategoria = new Set();
+    cat.players.forEach(p => { if (p.jugadorId) yaUsadosEnCategoria.add(p.jugadorId); if (p.jugador1Id) yaUsadosEnCategoria.add(p.jugador1Id); if (p.jugador2Id) yaUsadosEnCategoria.add(p.jugador2Id); });
     if (cat.kind === 'double') {
-      const roster = (window.JugadoresGlobal ? window.JugadoresGlobal.list() : []);
-      if (roster.length >= 2) {
-        const p1Select = el('select', { style: 'min-width:160px;' }, roster.map(j => el('option', { value: j.id }, j.nombre)));
-        const p2Select = el('select', { style: 'min-width:160px;' }, roster.map(j => el('option', { value: j.id }, j.nombre)));
-        if (roster.length > 1) p2Select.selectedIndex = 1;
+      const rosterAll = (window.JugadoresGlobal ? window.JugadoresGlobal.list() : []);
+      let roster1, roster2, avisoSexo;
+      if (cat.id === 'DX') {
+        roster1 = rosterAll.filter(j => j.sexo === 'M' && !yaUsadosEnCategoria.has(j.id));
+        roster2 = rosterAll.filter(j => j.sexo === 'F' && !yaUsadosEnCategoria.has(j.id));
+        avisoSexo = 'Dobles mixto: Jugador 1 debe ser chico y Jugador 2 chica.';
+      } else {
+        const base = rosterAll.filter(j => (!catSexo || j.sexo === catSexo) && !yaUsadosEnCategoria.has(j.id));
+        roster1 = base; roster2 = base;
+        avisoSexo = catSexo ? `Solo se muestran jugadores de sexo ${catSexo === 'M' ? 'masculino' : 'femenino'} para esta categoría, y ya no aparece quien ya esté apuntado aquí.` : 'Ya no aparece en la lista quién esté apuntado en esta categoría.';
+      }
+      if (roster1.length >= 1 && roster2.length >= 1) {
+        const p1Select = el('select', { style: 'min-width:160px;' }, roster1.map(j => el('option', { value: j.id }, j.nombre)));
+        const p2Select = el('select', { style: 'min-width:160px;' }, roster2.map(j => el('option', { value: j.id }, j.nombre)));
         const seedLabel2 = el('label', { style: 'display:flex;align-items:center;gap:6px;text-transform:none;margin:0;' },
           el('input', { type: 'checkbox', style: 'width:auto;' }), 'Cabeza de serie');
         const seedCheck2 = seedLabel2.querySelector('input');
@@ -773,8 +796,8 @@ function viewParticipants() {
             class: 'btn btn-primary',
             onclick: () => {
               if (p1Select.value === p2Select.value) { alert('Elige dos jugadores distintos para formar la pareja.'); return; }
-              const j1 = roster.find(j => j.id === p1Select.value);
-              const j2 = roster.find(j => j.id === p2Select.value);
+              const j1 = roster1.find(j => j.id === p1Select.value);
+              const j2 = roster2.find(j => j.id === p2Select.value);
               if (!j1 || !j2) return;
               cat.players.push({ id: uid('pl'), name: j1.nombre + ' / ' + j2.nombre, seed: seedCheck2.checked, jugador1Id: j1.id, jugador2Id: j2.id });
               render();
@@ -782,9 +805,11 @@ function viewParticipants() {
           }, '+ Añadir pareja'),
         );
         panel.appendChild(pairRow);
-        panel.appendChild(el('div', { class: 'sub', style: 'margin-bottom:14px;' }, 'Elige a los dos integrantes desde la lista de Jugadores del club para formar la pareja automáticamente y montar mejor el cuadro.'));
-      } else {
+        panel.appendChild(el('div', { class: 'sub', style: 'margin-bottom:14px;' }, avisoSexo));
+      } else if (rosterAll.length < 2) {
         panel.appendChild(el('div', { class: 'msg msg-warn' }, 'Añade al menos 2 jugadores en la sección "Jugadores" del menú principal para poder formar parejas desde aquí.'));
+      } else {
+        panel.appendChild(el('div', { class: 'msg msg-warn' }, 'No quedan jugadores disponibles del sexo necesario para formar más parejas en esta categoría (o ya están todos apuntados).'));
       }
       const manualRow = el('div', { class: 'row', style: 'margin-bottom:14px;' });
       const manualInput = el('input', { type: 'text', placeholder: 'O escribe el nombre de la pareja a mano (ej: "Ana / Laura")', style: 'flex:1;min-width:220px;' });
@@ -825,21 +850,23 @@ function viewParticipants() {
       panel.appendChild(addRow);
 
       if (window.JugadoresGlobal) {
-        const roster = window.JugadoresGlobal.list().filter(j => !cat.players.some(p => p.name.toLowerCase() === j.nombre.toLowerCase()));
+        const roster = window.JugadoresGlobal.list().filter(j => (!catSexo || j.sexo === catSexo) && !yaUsadosEnCategoria.has(j.id));
         if (roster.length) {
           const rosterRow = el('div', { class: 'row', style: 'margin-bottom:18px;padding:10px;background:#F5F3EB;border-radius:8px;' });
           const rosterSelect = el('select', { style: 'flex:1;min-width:200px;' },
             roster.map(j => { const c2 = window.calcularCategoria ? window.calcularCategoria(j.fechaNacimiento) : ''; const catLabel = c2 && window.nombreCategoria ? window.nombreCategoria(c2) : ''; return el('option', { value: j.id }, j.nombre + (catLabel ? ' · ' + catLabel : '')); }));
-          rosterRow.appendChild(el('span', { style: 'font-size:12px;font-weight:700;color:var(--court-dark);white-space:nowrap;' }, '👥 Desde Jugadores:'));
+          rosterRow.appendChild(el('span', { style: 'font-size:12px;font-weight:700;color:var(--court-dark);white-space:nowrap;' }, '👥 Desde Jugadores' + (catSexo ? ' (' + (catSexo === 'M' ? 'chicos' : 'chicas') + ')' : '') + ':'));
           rosterRow.appendChild(rosterSelect);
           rosterRow.appendChild(el('button', {
             class: 'btn btn-ghost btn-sm',
             onclick: () => {
               const chosen = window.JugadoresGlobal.list().find(j => j.id === rosterSelect.value);
-              if (chosen) { cat.players.push({ id: uid('pl'), name: chosen.nombre, seed: false }); render(); }
+              if (chosen) { cat.players.push({ id: uid('pl'), name: chosen.nombre, seed: false, jugadorId: chosen.id }); render(); }
             },
           }, '+ Añadir'));
           panel.appendChild(rosterRow);
+        } else if (catSexo) {
+          panel.appendChild(el('div', { class: 'sub', style: 'margin-bottom:14px;' }, `No quedan jugadores ${catSexo === 'M' ? 'chicos' : 'chicas'} disponibles para añadir desde la lista (o ya están todos apuntados en esta categoría).`));
         }
       }
     }
@@ -3502,15 +3529,113 @@ window.JugadoresGlobal = {
   remove: (id) => { jugadoresGlobal = jugadoresGlobal.filter(j => j.id !== id); saveJugadoresGlobal(); },
 };
 
+let accessControl = { usuarios: [], permisos: {
+  usuario: { torneo: true, planificacion: true, jugadores: true, pagos: false, club: false },
+  lectura: { torneo: true, planificacion: true, jugadores: true, pagos: false, club: false },
+} };
+function saveAccessControl() { try { localStorage.setItem('badmintonAccessControl', JSON.stringify(accessControl)); } catch (e) {} }
+function loadAccessControl() {
+  try {
+    const raw = localStorage.getItem('badmintonAccessControl');
+    if (raw) accessControl = Object.assign({ usuarios: [], permisos: { usuario: {}, lectura: {} } }, JSON.parse(raw));
+  } catch (e) {}
+}
+let sesionActual = null;
+function saveSesion() { try { if (sesionActual) localStorage.setItem('badmintonSesion', JSON.stringify(sesionActual)); else localStorage.removeItem('badmintonSesion'); } catch (e) {} }
+function loadSesion() { try { const raw = localStorage.getItem('badmintonSesion'); if (raw) sesionActual = JSON.parse(raw); } catch (e) {} }
+function accesoActivo() { return accessControl.usuarios.length > 0; }
+function rolActual() { return (accesoActivo() && sesionActual) ? sesionActual.rol : 'admin'; }
+function esAdmin() { return rolActual() === 'admin'; }
+function esSoloLectura() { return rolActual() === 'lectura'; }
+function tienePermiso(seccion) {
+  if (esAdmin()) return true;
+  const perms = accessControl.permisos[rolActual()];
+  return !!(perms && perms[seccion]);
+}
+function aplicarModoLectura() {
+  document.body.classList.toggle('solo-lectura', esSoloLectura());
+  let banner = document.getElementById('lecturaBanner');
+  if (esSoloLectura()) {
+    if (!banner) {
+      banner = el('div', { id: 'lecturaBanner', class: 'lectura-banner' }, '🔒 Estás en modo solo lectura: puedes ver los datos pero no modificarlos.');
+      document.body.insertBefore(banner, document.querySelector('.app-header').nextSibling);
+    }
+  } else if (banner) { banner.remove(); }
+}
+function cerrarSesion() {
+  sesionActual = null;
+  saveSesion();
+  mostrarLogin();
+}
+function mostrarLogin() {
+  SCREENS.concat(['loginScreen']).forEach(id => { const elx = document.getElementById(id); if (elx) elx.style.display = 'none'; });
+  document.getElementById('loginScreen').style.display = 'block';
+  document.getElementById('btnMenu').style.display = 'none';
+  document.getElementById('btnLogout').style.display = 'none';
+  document.getElementById('shellTitle').textContent = 'Bádminton · Club';
+  document.getElementById('shellSubtitle').textContent = 'Iniciar sesión';
+  renderLogin();
+}
+function renderLogin() {
+  const root = document.getElementById('loginScreen');
+  root.innerHTML = '';
+  const card = el('div', { class: 'login-card' }, el('h2', {}, '¿Quién eres?'));
+  accessControl.usuarios.forEach(u => {
+    card.appendChild(el('button', { class: 'login-userbtn', onclick: () => seleccionarUsuarioLogin(u.id) }, u.nombre + ' — ' + (u.rol === 'admin' ? 'Administrador' : u.rol === 'usuario' ? 'Usuario' : 'Solo lectura')));
+  });
+  root.appendChild(card);
+}
+function seleccionarUsuarioLogin(id) {
+  const usuario = accessControl.usuarios.find(u => u.id === id);
+  if (!usuario) return;
+  const root = document.getElementById('loginScreen');
+  root.innerHTML = '';
+  const pinInput = el('input', { type: 'password', inputmode: 'numeric', placeholder: 'PIN', style: 'font-size:20px;text-align:center;letter-spacing:4px;' });
+  const errorMsg = el('div', { class: 'sub', style: 'color:#B3261E;min-height:18px;' });
+  const card = el('div', { class: 'login-card' },
+    el('h2', {}, usuario.nombre),
+    field('Introduce tu PIN', pinInput),
+    errorMsg,
+    el('div', { class: 'toolbar' },
+      el('button', { class: 'btn btn-primary', onclick: () => {
+        if (pinInput.value === usuario.pin) {
+          sesionActual = { id: usuario.id, nombre: usuario.nombre, rol: usuario.rol };
+          saveSesion();
+          iniciarAppTrasLogin();
+        } else {
+          errorMsg.textContent = 'PIN incorrecto.';
+        }
+      } }, 'Entrar'),
+      el('button', { class: 'btn btn-ghost', onclick: () => renderLogin() }, 'Atrás'),
+    ),
+  );
+  root.appendChild(card);
+  pinInput.focus();
+}
+function iniciarAppTrasLogin() {
+  document.getElementById('loginScreen').style.display = 'none';
+  const hadClub = !!clubGlobal.nombre;
+  if (!hadClub) {
+    currentSection = 'onboarding';
+    renderOnboarding();
+    document.getElementById('onboardingScreen').style.display = 'block';
+    renderShellHeader();
+  } else {
+    showSection('home');
+  }
+}
 let currentSection = 'home';
 const SCREENS = ['onboardingScreen', 'homeScreen', 'clubGestionScreen', 'torneoScreen', 'planScreen'];
 let clubGestionTab = 'datos';
 
 function showSection(sec) {
+  const permitido = sec === 'clubgestion' ? (tienePermiso('club') || tienePermiso('jugadores') || tienePermiso('pagos')) : tienePermiso(sec);
+  if (!permitido) { alert('No tienes permiso para ver esta sección.'); sec = 'home'; }
   currentSection = sec;
   SCREENS.forEach(id => { document.getElementById(id).style.display = 'none'; });
   document.getElementById(sec === 'torneo' ? 'torneoScreen' : sec === 'planificacion' ? 'planScreen' : sec === 'clubgestion' ? 'clubGestionScreen' : sec + 'Screen').style.display = 'block';
   renderShellHeader();
+  aplicarModoLectura();
   if (sec === 'home') renderHome();
   else if (sec === 'clubgestion') showClubGestionTab(clubGestionTab);
   else if (sec === 'torneo') TorneoApp.render();
@@ -3527,24 +3652,32 @@ function renderClubGestionTabsNav() {
   const nav = document.getElementById('clubGestionTabsNav');
   nav.innerHTML = '';
   const tabs = [
-    ['datos', '🏛️ Datos del club'],
-    ['jugadores', '👥 Jugadores'],
-    ['pagos', '💶 Pagos y Cuotas'],
-  ];
+    ['datos', '🏛️ Datos del club', 'club'],
+    ['jugadores', '👥 Jugadores', 'jugadores'],
+    ['pagos', '💶 Pagos y Cuotas', 'pagos'],
+  ].filter(([, , permiso]) => tienePermiso(permiso));
+  if (esAdmin()) tabs.push(['acceso', '🔐 Control de acceso']);
   tabs.forEach(([id, label]) => {
     nav.appendChild(el('button', { class: clubGestionTab === id ? 'active' : '', onclick: () => { showClubGestionTab(id); } }, label));
   });
 }
 
 function showClubGestionTab(tab) {
+  if (tab === 'acceso' && !esAdmin()) tab = 'datos';
+  const permisoDeTab = { datos: 'club', jugadores: 'jugadores', pagos: 'pagos', acceso: null };
+  if (tab !== 'acceso' && !tienePermiso(permisoDeTab[tab])) {
+    tab = tienePermiso('club') ? 'datos' : tienePermiso('jugadores') ? 'jugadores' : tienePermiso('pagos') ? 'pagos' : 'datos';
+  }
   clubGestionTab = tab;
   renderClubGestionTabsNav();
   document.getElementById('clubScreen').style.display = tab === 'datos' ? 'block' : 'none';
   document.getElementById('jugadoresScreen').style.display = tab === 'jugadores' ? 'block' : 'none';
   document.getElementById('pagosScreen').style.display = tab === 'pagos' ? 'block' : 'none';
+  document.getElementById('accesoScreen').style.display = tab === 'acceso' ? 'block' : 'none';
   if (tab === 'datos') renderClub();
   else if (tab === 'jugadores') renderJugadores();
   else if (tab === 'pagos') PagosApp.render();
+  else if (tab === 'acceso') renderControlAcceso();
   renderShellHeader();
 }
 
@@ -3559,11 +3692,13 @@ function renderShellHeader() {
     datos: ['Datos del club', 'Se usan en Torneos y en Planificación'],
     jugadores: ['Jugadores', 'Lista compartida entre Torneos y Planificación'],
     pagos: [clubGlobal.nombre ? clubGlobal.nombre + ' · Pagos' : 'Pagos y Cuotas', 'Cuotas del club y competiciones'],
+    acceso: ['Control de acceso', 'Usuarios, roles y permisos'],
   };
   const [title, sub] = currentSection === 'clubgestion' ? (clubGestionTitles[clubGestionTab] || clubGestionTitles.datos) : (titles[currentSection] || titles.home);
   document.getElementById('shellTitle').textContent = title;
   document.getElementById('shellSubtitle').textContent = sub;
   document.getElementById('btnMenu').style.display = (currentSection === 'home' || currentSection === 'onboarding') ? 'none' : 'inline-flex';
+  document.getElementById('btnLogout').style.display = accesoActivo() && sesionActual ? 'inline-flex' : 'none';
   const badge = document.getElementById('shellBrand').querySelector('.brand-badge');
   badge.innerHTML = '';
   if (clubGlobal.logo) badge.appendChild(el('img', { src: clubGlobal.logo }));
@@ -3875,26 +4010,128 @@ function renderJugadores() {
   root.appendChild(rankingsOficialesPanel());
 }
 
+function uidAcceso() { return 'u_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7); }
+function renderControlAcceso() {
+  const root = document.getElementById('accesoScreen');
+  root.innerHTML = '';
+  if (!esAdmin()) { root.appendChild(el('div', { class: 'panel' }, 'No tienes permiso para ver esta sección.')); return; }
+
+  const panel = el('div', { class: 'panel' },
+    el('h2', {}, 'Control de acceso'),
+    el('div', { class: 'sub' }, 'Crea un usuario por cada persona que vaya a entrar en la app, con su PIN y su rol. Aviso importante: esto no es una seguridad técnica fuerte (la app no tiene servidor), pero sí evita que alguien vea o toque por error lo que no debe.'),
+  );
+
+  if (!accessControl.usuarios.length) {
+    panel.appendChild(el('div', { class: 'msg msg-warn' }, 'Aún no has creado ningún usuario, así que la app sigue totalmente abierta (como hasta ahora). En cuanto crees el primero, se activará la pantalla de inicio de sesión para todo el mundo, incluido tú.'));
+  }
+
+  const nombreInput = el('input', { type: 'text', placeholder: 'Nombre de la persona' });
+  const pinInput = el('input', { type: 'text', inputmode: 'numeric', placeholder: 'PIN (4 dígitos)', maxlength: '8' });
+  const rolSelect = selectEl([{ value: 'admin', label: 'Administrador' }, { value: 'usuario', label: 'Usuario' }, { value: 'lectura', label: 'Solo lectura' }], 'usuario', () => {});
+  panel.appendChild(el('div', { class: 'grid' },
+    field('Nombre', nombreInput),
+    field('PIN', pinInput),
+    field('Rol', rolSelect),
+  ));
+  panel.appendChild(el('div', { class: 'toolbar' }, el('button', {
+    class: 'btn btn-primary',
+    onclick: () => {
+      const nombre = nombreInput.value.trim();
+      const pin = pinInput.value.trim();
+      if (!nombre || !pin) return;
+      const eraElPrimero = accessControl.usuarios.length === 0;
+      const nuevo = { id: uidAcceso(), nombre, pin, rol: rolSelect.value };
+      accessControl.usuarios.push(nuevo);
+      saveAccessControl();
+      if (eraElPrimero) { sesionActual = { id: nuevo.id, nombre: nuevo.nombre, rol: nuevo.rol }; saveSesion(); }
+      renderControlAcceso();
+      renderShellHeader();
+    },
+  }, '+ Añadir usuario')));
+
+  if (accessControl.usuarios.length) {
+    const table = el('table', {}, el('thead', {}, el('tr', {},
+      el('th', {}, 'Nombre'), el('th', {}, 'PIN'), el('th', {}, 'Rol'), el('th', {}, ''))));
+    const tbody = el('tbody');
+    accessControl.usuarios.forEach(u => {
+      tbody.appendChild(el('tr', {},
+        el('td', {}, u.nombre),
+        el('td', {}, inputEl('text', u.pin, v => { u.pin = v; saveAccessControl(); }, { style: 'max-width:100px;' })),
+        el('td', {}, selectEl([{ value: 'admin', label: 'Administrador' }, { value: 'usuario', label: 'Usuario' }, { value: 'lectura', label: 'Solo lectura' }], u.rol, v => { u.rol = v; saveAccessControl(); if (sesionActual && sesionActual.id === u.id) { sesionActual.rol = v; saveSesion(); } renderShellHeader(); })),
+        el('td', {}, el('button', { class: 'btn btn-danger btn-sm', onclick: () => {
+          accessControl.usuarios = accessControl.usuarios.filter(x => x.id !== u.id);
+          saveAccessControl();
+          if (sesionActual && sesionActual.id === u.id) { cerrarSesion(); return; }
+          renderControlAcceso();
+        } }, 'Eliminar')),
+      ));
+    });
+    table.appendChild(tbody);
+    panel.appendChild(table);
+  }
+  root.appendChild(panel);
+
+  const permPanel = el('div', { class: 'panel' },
+    el('h2', {}, 'Qué puede ver cada rol'),
+    el('div', { class: 'sub' }, 'El Administrador siempre ve y edita todo. Marca aquí qué secciones puede ver "Usuario" y "Solo lectura" (que además nunca puede editar ni borrar nada, aunque vea la sección).'),
+  );
+  const secciones = [
+    ['torneo', 'Gestor de Torneos'],
+    ['planificacion', 'Planificación Anual'],
+    ['jugadores', 'Jugadores'],
+    ['pagos', 'Pagos y Cuotas'],
+    ['club', 'Datos del club'],
+  ];
+  const permTable = el('table', {}, el('thead', {}, el('tr', {},
+    el('th', {}, 'Sección'), el('th', {}, 'Usuario'), el('th', {}, 'Solo lectura'))));
+  const permTbody = el('tbody');
+  secciones.forEach(([key, label]) => {
+    permTbody.appendChild(el('tr', {},
+      el('td', {}, label),
+      el('td', {}, el('input', { type: 'checkbox', style: 'width:auto;', checked: accessControl.permisos.usuario[key] ? 'checked' : null,
+        onchange: (e) => { accessControl.permisos.usuario[key] = e.target.checked; saveAccessControl(); } })),
+      el('td', {}, el('input', { type: 'checkbox', style: 'width:auto;', checked: accessControl.permisos.lectura[key] ? 'checked' : null,
+        onchange: (e) => { accessControl.permisos.lectura[key] = e.target.checked; saveAccessControl(); } })),
+    ));
+  });
+  permTable.appendChild(permTbody);
+  permPanel.appendChild(permTable);
+  root.appendChild(permPanel);
+}
+
 function renderHome() {
   const root = document.getElementById('homeScreen');
   root.innerHTML = '';
+  if (sesionActual) {
+    root.appendChild(el('div', { class: 'sub', style: 'margin-bottom:10px;' }, `Sesión: ${sesionActual.nombre} (${sesionActual.rol === 'admin' ? 'Administrador' : sesionActual.rol === 'usuario' ? 'Usuario' : 'Solo lectura'})`));
+  }
   if (clubGlobal.nombre) {
     root.appendChild(el('div', { class: 'club-banner' },
       el('div', { class: 'info' },
         clubGlobal.logo ? el('img', { class: 'logo-big', src: clubGlobal.logo }) : el('div', { class: 'logo-big-emoji' }, '🏸'),
         el('div', {}, el('b', {}, clubGlobal.nombre), el('div', {}, clubGlobal.localidad || '')),
       ),
-      el('button', { class: 'btn btn-ghost btn-sm', onclick: () => goToClubGestion('datos') }, 'Editar datos del club')
+      tienePermiso('club') ? el('button', { class: 'btn btn-ghost btn-sm', onclick: () => goToClubGestion('datos') }, 'Editar datos del club') : null
     ));
   }
   const cards = [
-    { icon: '🏆', title: 'Gestor de Torneos', desc: 'Grupos, sorteo, calendario, resultados y eliminatoria.', sec: 'torneo' },
-    { icon: '📅', title: 'Planificación Anual', desc: 'De la iniciación a la tecnificación: macrociclo, microciclo y evaluación.', sec: 'planificacion' },
-    { icon: '🏛️', title: 'Gestión de Club', desc: 'Datos del club, jugadores, y pagos y cuotas.', sec: 'clubgestion' },
+    { icon: '🏆', title: 'Gestor de Torneos', desc: 'Grupos, sorteo, calendario, resultados y eliminatoria.', sec: 'torneo', permiso: 'torneo' },
+    { icon: '📅', title: 'Planificación Anual', desc: 'De la iniciación a la tecnificación: macrociclo, microciclo y evaluación.', sec: 'planificacion', permiso: 'planificacion' },
+    { icon: '🏛️', title: 'Gestión de Club', desc: 'Datos del club, jugadores, y pagos y cuotas.', sec: 'clubgestion', permiso: null },
   ];
+  if (esAdmin()) {
+    cards.unshift({ icon: '🔐', title: 'Control de acceso', desc: 'Usuarios, roles y qué puede ver cada uno.', sec: 'acceso', permiso: null });
+  }
   const grid = el('div', { class: 'home-grid' });
   cards.forEach(c => {
-    grid.appendChild(el('div', { class: 'home-card', onclick: () => c.sec === 'clubgestion' ? goToClubGestion('datos') : showSection(c.sec) },
+    const visible = c.permiso ? tienePermiso(c.permiso) : (c.sec === 'acceso' ? true : (tienePermiso('club') || tienePermiso('jugadores') || tienePermiso('pagos')));
+    if (!visible) return;
+    grid.appendChild(el('div', { class: 'home-card', onclick: () => {
+      if (c.sec === 'acceso') { goToClubGestion('acceso'); return; }
+      if (c.sec !== 'clubgestion') { showSection(c.sec); return; }
+      const primerTab = tienePermiso('club') ? 'datos' : tienePermiso('jugadores') ? 'jugadores' : 'pagos';
+      goToClubGestion(primerTab);
+    } },
       el('div', { class: 'icon' }, c.icon), el('h3', {}, c.title), el('p', {}, c.desc)));
   });
   root.appendChild(grid);
@@ -3955,15 +4192,20 @@ document.getElementById('btnMenu').addEventListener('click', () => showSection('
 document.getElementById('btnExport').addEventListener('click', exportAll);
 document.getElementById('btnImport').addEventListener('click', () => document.getElementById('fileImport').click());
 document.getElementById('fileImport').addEventListener('change', (e) => { if (e.target.files[0]) importAll(e.target.files[0]); e.target.value = ''; });
+document.getElementById('btnLogout').addEventListener('click', () => { if (confirm('¿Cerrar sesión?')) cerrarSesion(); });
 
 const hadClub = loadClubGlobal();
 loadJugadoresGlobal();
+loadAccessControl();
+loadSesion();
 TorneoApp.mount();
 PlanApp.mount();
 PagosApp.mount();
 syncClubIntoModules();
 
-if (!hadClub) {
+if (accesoActivo() && !sesionActual) {
+  mostrarLogin();
+} else if (!hadClub) {
   currentSection = 'onboarding';
   renderOnboarding();
   document.getElementById('onboardingScreen').style.display = 'block';

@@ -4234,7 +4234,8 @@ function programarSyncNube() {
   marcarEstadoNube('☁️ Guardando en la nube…');
   clearTimeout(nubeSyncTimer);
   nubeSyncTimer = setTimeout(() => {
-    docNube().set(estadoCompletoParaNube()).then(() => {
+    const payloadLimpio = JSON.parse(JSON.stringify(estadoCompletoParaNube()));
+    docNube().set(payloadLimpio).then(() => {
       marcarEstadoNube('☁️ Sincronizado');
     }).catch(err => {
       console.warn('Error subiendo a la nube:', err);

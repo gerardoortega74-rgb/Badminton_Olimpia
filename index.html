@@ -4229,21 +4229,42 @@ function estadoCompletoParaNube() {
     actualizadoEn: Date.now(),
   };
 }
+function envolverArraysAnidados(valor) {
+  if (Array.isArray(valor)) {
+    return valor.map(v => Array.isArray(v) ? { __arr: envolverArraysAnidados(v) } : envolverArraysAnidados(v));
+  } else if (valor && typeof valor === 'object') {
+    const out = {};
+    for (const k in valor) { if (Object.prototype.hasOwnProperty.call(valor, k)) out[k] = envolverArraysAnidados(valor[k]); }
+    return out;
+  }
+  return valor;
+}
+function desenvolverArraysAnidados(valor) {
+  if (Array.isArray(valor)) {
+    return valor.map(v => (v && typeof v === 'object' && Array.isArray(v.__arr) && Object.keys(v).length === 1) ? desenvolverArraysAnidados(v.__arr) : desenvolverArraysAnidados(v));
+  } else if (valor && typeof valor === 'object') {
+    const out = {};
+    for (const k in valor) { if (Object.prototype.hasOwnProperty.call(valor, k)) out[k] = desenvolverArraysAnidados(valor[k]); }
+    return out;
+  }
+  return valor;
+}
 function programarSyncNube() {
   if (!firebaseDisponible) return;
   marcarEstadoNube('☁️ Guardando en la nube…');
   clearTimeout(nubeSyncTimer);
   nubeSyncTimer = setTimeout(() => {
-    const payloadLimpio = JSON.parse(JSON.stringify(estadoCompletoParaNube()));
+    const payloadLimpio = envolverArraysAnidados(JSON.parse(JSON.stringify(estadoCompletoParaNube())));
     docNube().set(payloadLimpio).then(() => {
       marcarEstadoNube('☁️ Sincronizado');
     }).catch(err => {
       console.warn('Error subiendo a la nube:', err);
-      marcarEstadoNube('⚠️ Nube: ' + (err && err.code ? err.code : (err && err.message) || 'error desconocido'));
+      marcarEstadoNube('⚠️ Nube: ' + (err && err.code ? err.code : (err && err.message) || 'error desconocido') + (err && err.message ? ' - ' + err.message : ''));
     });
   }, 900);
 }
-function aplicarDatosDeNube(data) {
+function aplicarDatosDeNube(dataOriginal) {
+  const data = desenvolverArraysAnidados(dataOriginal);
   if (!data) return;
   clubGlobal = Object.assign({ nombre: '', localidad: '', temporadaInicio: '', temporadaFin: '', logo: '', tecnicos: [] }, data.club || {});
   jugadoresGlobal = data.jugadoresGlobal || [];

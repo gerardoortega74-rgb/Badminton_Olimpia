@@ -5222,11 +5222,18 @@ if (firebaseDisponible) {
     }
     arrancarAppLocal();
     if (esVistaPublica()) {
+      let timerVistaPublica = null;
       docNube().onSnapshot(snap => {
-        if (snap.exists) {
+        if (!snap.exists) return;
+        clearTimeout(timerVistaPublica);
+        const intentarActualizar = () => {
+          const activo = document.activeElement;
+          const ocupado = activo && (activo.tagName === 'SELECT' || activo.tagName === 'INPUT');
+          if (ocupado) { timerVistaPublica = setTimeout(intentarActualizar, 1500); return; }
           aplicarDatosDeNube(snap.data());
           renderVistaPublica();
-        }
+        };
+        timerVistaPublica = setTimeout(intentarActualizar, 1500);
       });
     }
   }).catch(err => {

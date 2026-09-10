@@ -6,9 +6,9 @@
 <title>Bádminton · Club</title>
 <style>
 :root{
-  --court:#1B4332; --court-dark:#0F2A1E; --line:#F7F5F0; --gold:#E8B924; --gold-dark:#C9971A;
-  --ink:#1C1C1C; --muted:#6B7A72; --panel:#FFFFFF; --bg:#F2F1EA; --danger:#B3261E; --ok:#2D6A4F;
-  --info:#2B6CB0; --info-bg:#E7F0FA; --radius:10px; --shadow:0 2px 8px rgba(15,42,30,0.12);
+  --court:#1B4A6B; --court-dark:#0F2E44; --line:#F7F5F0; --gold:#E8B924; --gold-dark:#C9971A;
+  --ink:#1C1C1C; --muted:#6B7684; --panel:#FFFFFF; --bg:#F0F2F5; --danger:#B3261E; --ok:#2D6A4F;
+  --info:#2B6CB0; --info-bg:#E7F0FA; --radius:10px; --shadow:0 2px 8px rgba(15,46,68,0.12);
 }
 *{box-sizing:border-box;}
 body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink);overflow-x:hidden;}
@@ -2006,19 +2006,19 @@ return { render, mount, getState, setState, getHistorial, setHistorial, trayecto
 <script>
 const DIAGRAMS = {
   grip: `<svg viewBox="0 0 240 220" xmlns="http://www.w3.org/2000/svg">
-    <ellipse cx="165" cy="40" rx="50" ry="36" fill="none" stroke="#1B4332" stroke-width="3"/>
-    <g stroke="#1B4332" stroke-width="0.8" opacity="0.4">
+    <ellipse cx="165" cy="40" rx="50" ry="36" fill="none" stroke="#1B4A6B" stroke-width="3"/>
+    <g stroke="#1B4A6B" stroke-width="0.8" opacity="0.4">
       <line x1="128" y1="20" x2="128" y2="60"/><line x1="145" y1="8" x2="145" y2="72"/>
       <line x1="165" y1="4" x2="165" y2="76"/><line x1="185" y1="8" x2="185" y2="72"/>
       <line x1="202" y1="20" x2="202" y2="60"/>
       <line x1="118" y1="40" x2="212" y2="40"/><line x1="122" y1="25" x2="208" y2="25"/>
       <line x1="122" y1="55" x2="208" y2="55"/>
     </g>
-    <rect x="159" y="74" width="9" height="18" fill="#EDEAE0" stroke="#1B4332" stroke-width="2"/>
+    <rect x="159" y="74" width="9" height="18" fill="#EDEAE0" stroke="#1B4A6B" stroke-width="2"/>
     <path d="M170 210 Q150 195 148 175 Q147 165 152 158 L185 150 Q192 158 190 170 Q188 195 178 212 Z" fill="#E8B57A" stroke="#C98A4B" stroke-width="1.5"/>
     <path d="M148 158 Q140 140 148 118 Q154 100 168 92 L186 96 Q196 108 196 128 Q197 148 186 160 Q168 168 148 158 Z" fill="#F0C48A" stroke="#C98A4B" stroke-width="1.8"/>
-    <rect x="160" y="90" width="14" height="70" rx="4" fill="#EDEAE0" stroke="#1B4332" stroke-width="2"/>
-    <line x1="167" y1="90" x2="167" y2="160" stroke="#1B4332" stroke-width="0.8" opacity="0.5"/>
+    <rect x="160" y="90" width="14" height="70" rx="4" fill="#EDEAE0" stroke="#1B4A6B" stroke-width="2"/>
+    <line x1="167" y1="90" x2="167" y2="160" stroke="#1B4A6B" stroke-width="0.8" opacity="0.5"/>
     <g fill="#F0C48A" stroke="#C98A4B" stroke-width="1.5">
       <path d="M174 98 Q206 100 208 112 Q209 122 197 124 Q180 122 174 112 Z"/>
       <path d="M174 116 Q210 118 212 130 Q213 140 199 142 Q180 140 174 130 Z"/>
@@ -2037,10 +2037,10 @@ const DIAGRAMS = {
     <ellipse cx="126" cy="112" rx="4.5" ry="3" fill="#FBE8D0" transform="rotate(-20 126 112)"/>
     <path d="M144 100 L160 88 L156 106" fill="none" stroke="#B3261E" stroke-width="2.2" stroke-linejoin="round"/>
     <circle cx="154" cy="98" r="2" fill="#B3261E"/>
-    <text x="192" y="14" font-size="12" fill="#1B4332" font-weight="700">Cabeza</text>
-    <line x1="188" y1="17" x2="178" y2="24" stroke="#1B4332" stroke-width="1"/>
-    <text x="4" y="90" font-size="12" fill="#1B4332" font-weight="700">Bisel superior</text>
-    <line x1="76" y1="86" x2="158" y2="98" stroke="#1B4332" stroke-width="1"/>
+    <text x="192" y="14" font-size="12" fill="#1B4A6B" font-weight="700">Cabeza</text>
+    <line x1="188" y1="17" x2="178" y2="24" stroke="#1B4A6B" stroke-width="1"/>
+    <text x="4" y="90" font-size="12" fill="#1B4A6B" font-weight="700">Bisel superior</text>
+    <line x1="76" y1="86" x2="158" y2="98" stroke="#1B4A6B" stroke-width="1"/>
     <text x="2" y="128" font-size="12" fill="#7A5B00" font-weight="700">Pulgar</text>
     <line x1="34" y1="124" x2="122" y2="118" stroke="#7A5B00" stroke-width="1"/>
     <text x="196" y="180" font-size="12" fill="#7A5B00" font-weight="700">Dedos</text>
@@ -2049,201 +2049,201 @@ const DIAGRAMS = {
   </svg>`,
 
   autopase: `<svg viewBox="0 0 220 170" xmlns="http://www.w3.org/2000/svg">
-    <path d="M110 150 Q80 100 110 70 Q140 100 110 40 Q140 20 110 15" fill="none" stroke="#1B4332" stroke-width="2" stroke-dasharray="5 4" opacity="0.7"/>
+    <path d="M110 150 Q80 100 110 70 Q140 100 110 40 Q140 20 110 15" fill="none" stroke="#1B4A6B" stroke-width="2" stroke-dasharray="5 4" opacity="0.7"/>
     <g opacity="0.35">
-      <circle cx="110" cy="70" r="5" fill="#1B4332"/>
-      <path d="M110 70 L100 55 L110 62 L120 55 Z" fill="#1B4332"/>
+      <circle cx="110" cy="70" r="5" fill="#1B4A6B"/>
+      <path d="M110 70 L100 55 L110 62 L120 55 Z" fill="#1B4A6B"/>
     </g>
     <g opacity="0.6">
-      <circle cx="110" cy="40" r="5" fill="#1B4332"/>
-      <path d="M110 40 L100 25 L110 32 L120 25 Z" fill="#1B4332"/>
+      <circle cx="110" cy="40" r="5" fill="#1B4A6B"/>
+      <path d="M110 40 L100 25 L110 32 L120 25 Z" fill="#1B4A6B"/>
     </g>
     <circle cx="110" cy="15" r="7" fill="#E8B924" stroke="#C9971A" stroke-width="1.5"/>
     <path d="M110 15 L96 -5 L110 5 L124 -5 Z" fill="#E8B924" stroke="#C9971A" stroke-width="1"/>
-    <ellipse cx="110" cy="150" rx="42" ry="14" fill="none" stroke="#1B4332" stroke-width="3"/>
-    <line x1="72" y1="150" x2="148" y2="150" stroke="#1B4332" stroke-width="1" opacity="0.4"/>
-    <line x1="80" y1="144" x2="140" y2="156" stroke="#1B4332" stroke-width="1" opacity="0.4"/>
-    <line x1="80" y1="156" x2="140" y2="144" stroke="#1B4332" stroke-width="1" opacity="0.4"/>
-    <rect x="104" y="160" width="12" height="10" rx="2" fill="none" stroke="#1B4332" stroke-width="2.5"/>
+    <ellipse cx="110" cy="150" rx="42" ry="14" fill="none" stroke="#1B4A6B" stroke-width="3"/>
+    <line x1="72" y1="150" x2="148" y2="150" stroke="#1B4A6B" stroke-width="1" opacity="0.4"/>
+    <line x1="80" y1="144" x2="140" y2="156" stroke="#1B4A6B" stroke-width="1" opacity="0.4"/>
+    <line x1="80" y1="156" x2="140" y2="144" stroke="#1B4A6B" stroke-width="1" opacity="0.4"/>
+    <rect x="104" y="160" width="12" height="10" rx="2" fill="none" stroke="#1B4A6B" stroke-width="2.5"/>
     <text x="130" y="14" font-size="12" fill="#7A5B00" font-weight="700">Volante</text>
-    <text x="8" y="145" font-size="12" fill="#1B4332" font-weight="700">Raqueta</text>
-    <text x="8" y="160" font-size="11" fill="#1B4332">(cara hacia arriba)</text>
+    <text x="8" y="145" font-size="12" fill="#1B4A6B" font-weight="700">Raqueta</text>
+    <text x="8" y="160" font-size="11" fill="#1B4A6B">(cara hacia arriba)</text>
   </svg>`,
 
   clear: `<svg viewBox="0 0 220 150" xmlns="http://www.w3.org/2000/svg">
-    <rect x="10" y="40" width="200" height="90" fill="none" stroke="#1B4332" stroke-width="2"/>
-    <line x1="110" y1="40" x2="110" y2="130" stroke="#1B4332" stroke-width="2" stroke-dasharray="4 3"/>
+    <rect x="10" y="40" width="200" height="90" fill="none" stroke="#1B4A6B" stroke-width="2"/>
+    <line x1="110" y1="40" x2="110" y2="130" stroke="#1B4A6B" stroke-width="2" stroke-dasharray="4 3"/>
     <path d="M35 120 Q110 -15 185 120" fill="none" stroke="#C9971A" stroke-width="3"/>
-    <circle cx="35" cy="120" r="5" fill="#1B4332"/>
+    <circle cx="35" cy="120" r="5" fill="#1B4A6B"/>
     <circle cx="185" cy="120" r="5" fill="#E8B924"/>
     <path d="M178 108 L185 120 L170 120" fill="#E8B924"/>
   </svg>`,
 
   lob: `<svg viewBox="0 0 220 150" xmlns="http://www.w3.org/2000/svg">
-    <rect x="10" y="40" width="200" height="90" fill="none" stroke="#1B4332" stroke-width="2"/>
-    <line x1="110" y1="40" x2="110" y2="130" stroke="#1B4332" stroke-width="2" stroke-dasharray="4 3"/>
+    <rect x="10" y="40" width="200" height="90" fill="none" stroke="#1B4A6B" stroke-width="2"/>
+    <line x1="110" y1="40" x2="110" y2="130" stroke="#1B4A6B" stroke-width="2" stroke-dasharray="4 3"/>
     <path d="M95 128 Q145 -10 188 55" fill="none" stroke="#C9971A" stroke-width="3"/>
-    <circle cx="95" cy="128" r="5" fill="#1B4332"/>
+    <circle cx="95" cy="128" r="5" fill="#1B4A6B"/>
     <circle cx="188" cy="55" r="5" fill="#E8B924"/>
     <path d="M178 50 L188 55 L180 65" fill="#E8B924"/>
   </svg>`,
 
   saque: `<svg viewBox="0 0 220 160" xmlns="http://www.w3.org/2000/svg">
-    <rect x="10" y="30" width="200" height="110" fill="none" stroke="#1B4332" stroke-width="2"/>
-    <line x1="110" y1="30" x2="110" y2="140" stroke="#1B4332" stroke-width="2" stroke-dasharray="4 3"/>
-    <line x1="45" y1="30" x2="45" y2="140" stroke="#1B4332" stroke-width="1" opacity="0.3"/>
-    <line x1="10" y1="85" x2="210" y2="85" stroke="#1B4332" stroke-width="1" opacity="0.3"/>
-    <circle cx="65" cy="108" r="7" fill="#1B4332"/>
-    <line x1="65" y1="115" x2="65" y2="132" stroke="#1B4332" stroke-width="3"/>
-    <line x1="65" y1="120" x2="55" y2="128" stroke="#1B4332" stroke-width="3"/>
-    <line x1="65" y1="120" x2="75" y2="112" stroke="#1B4332" stroke-width="3"/>
-    <line x1="65" y1="132" x2="58" y2="140" stroke="#1B4332" stroke-width="3"/>
-    <line x1="65" y1="132" x2="72" y2="140" stroke="#1B4332" stroke-width="3"/>
+    <rect x="10" y="30" width="200" height="110" fill="none" stroke="#1B4A6B" stroke-width="2"/>
+    <line x1="110" y1="30" x2="110" y2="140" stroke="#1B4A6B" stroke-width="2" stroke-dasharray="4 3"/>
+    <line x1="45" y1="30" x2="45" y2="140" stroke="#1B4A6B" stroke-width="1" opacity="0.3"/>
+    <line x1="10" y1="85" x2="210" y2="85" stroke="#1B4A6B" stroke-width="1" opacity="0.3"/>
+    <circle cx="65" cy="108" r="7" fill="#1B4A6B"/>
+    <line x1="65" y1="115" x2="65" y2="132" stroke="#1B4A6B" stroke-width="3"/>
+    <line x1="65" y1="120" x2="55" y2="128" stroke="#1B4A6B" stroke-width="3"/>
+    <line x1="65" y1="120" x2="75" y2="112" stroke="#1B4A6B" stroke-width="3"/>
+    <line x1="65" y1="132" x2="58" y2="140" stroke="#1B4A6B" stroke-width="3"/>
+    <line x1="65" y1="132" x2="72" y2="140" stroke="#1B4A6B" stroke-width="3"/>
     <path d="M75 112 Q120 -10 185 55" fill="none" stroke="#C9971A" stroke-width="3"/>
     <path d="M177 47 L185 55 L172 58" fill="#C9971A"/>
-    <path d="M75 112 Q100 100 140 112" fill="none" stroke="#1B4332" stroke-width="3" stroke-dasharray="6 4"/>
-    <path d="M133 106 L140 112 L131 115" fill="#1B4332"/>
+    <path d="M75 112 Q100 100 140 112" fill="none" stroke="#1B4A6B" stroke-width="3" stroke-dasharray="6 4"/>
+    <path d="M133 106 L140 112 L131 115" fill="#1B4A6B"/>
     <text x="15" y="150" font-size="11" fill="#7A5B00" font-weight="700">— Saque corto (dobles)</text>
     <text x="15" y="20" font-size="11" fill="#C9971A" font-weight="700">— Saque alto (individual)</text>
   </svg>`,
 
   centro: `<svg viewBox="0 0 220 150" xmlns="http://www.w3.org/2000/svg">
-    <rect x="10" y="20" width="200" height="110" fill="none" stroke="#1B4332" stroke-width="2"/>
-    <circle cx="110" cy="75" r="6" fill="#1B4332"/>
+    <rect x="10" y="20" width="200" height="110" fill="none" stroke="#1B4A6B" stroke-width="2"/>
+    <circle cx="110" cy="75" r="6" fill="#1B4A6B"/>
     <path d="M110 75 L40 35 M110 75 L180 35 M110 75 L40 115 M110 75 L180 115" stroke="#C9971A" stroke-width="2.5" stroke-dasharray="5 4"/>
     <circle cx="40" cy="35" r="4" fill="#E8B924"/><circle cx="180" cy="35" r="4" fill="#E8B924"/>
     <circle cx="40" cy="115" r="4" fill="#E8B924"/><circle cx="180" cy="115" r="4" fill="#E8B924"/>
   </svg>`,
 
   circuito: `<svg viewBox="0 0 220 150" xmlns="http://www.w3.org/2000/svg">
-    <rect x="25" y="25" width="170" height="100" rx="40" fill="none" stroke="#1B4332" stroke-width="3" stroke-dasharray="10 6"/>
-    <circle cx="25" cy="75" r="13" fill="#1B4332"/><text x="21" y="80" font-size="13" fill="#fff" font-weight="700">1</text>
-    <circle cx="110" cy="25" r="13" fill="#1B4332"/><text x="106" y="30" font-size="13" fill="#fff" font-weight="700">2</text>
-    <circle cx="195" cy="75" r="13" fill="#1B4332"/><text x="191" y="80" font-size="13" fill="#fff" font-weight="700">3</text>
-    <circle cx="110" cy="125" r="13" fill="#E8B924"/><text x="106" y="130" font-size="13" fill="#1B4332" font-weight="700">4</text>
+    <rect x="25" y="25" width="170" height="100" rx="40" fill="none" stroke="#1B4A6B" stroke-width="3" stroke-dasharray="10 6"/>
+    <circle cx="25" cy="75" r="13" fill="#1B4A6B"/><text x="21" y="80" font-size="13" fill="#fff" font-weight="700">1</text>
+    <circle cx="110" cy="25" r="13" fill="#1B4A6B"/><text x="106" y="30" font-size="13" fill="#fff" font-weight="700">2</text>
+    <circle cx="195" cy="75" r="13" fill="#1B4A6B"/><text x="191" y="80" font-size="13" fill="#fff" font-weight="700">3</text>
+    <circle cx="110" cy="125" r="13" fill="#E8B924"/><text x="106" y="130" font-size="13" fill="#1B4A6B" font-weight="700">4</text>
   </svg>`,
 
   motivacion: `<svg viewBox="0 0 220 150" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="70" cy="75" r="38" fill="none" stroke="#1B4332" stroke-width="3"/>
-    <circle cx="58" cy="65" r="4" fill="#1B4332"/><circle cx="82" cy="65" r="4" fill="#1B4332"/>
-    <path d="M52 88 Q70 105 88 88" fill="none" stroke="#1B4332" stroke-width="3"/>
+    <circle cx="70" cy="75" r="38" fill="none" stroke="#1B4A6B" stroke-width="3"/>
+    <circle cx="58" cy="65" r="4" fill="#1B4A6B"/><circle cx="82" cy="65" r="4" fill="#1B4A6B"/>
+    <path d="M52 88 Q70 105 88 88" fill="none" stroke="#1B4A6B" stroke-width="3"/>
     <path d="M150 45 L158 65 L180 65 L162 78 L169 100 L150 87 L131 100 L138 78 L120 65 L142 65 Z" fill="#E8B924"/>
   </svg>`,
 
   drop: `<svg viewBox="0 0 220 150" xmlns="http://www.w3.org/2000/svg">
-    <rect x="10" y="40" width="200" height="90" fill="none" stroke="#1B4332" stroke-width="2"/>
-    <line x1="110" y1="40" x2="110" y2="130" stroke="#1B4332" stroke-width="2" stroke-dasharray="4 3"/>
+    <rect x="10" y="40" width="200" height="90" fill="none" stroke="#1B4A6B" stroke-width="2"/>
+    <line x1="110" y1="40" x2="110" y2="130" stroke="#1B4A6B" stroke-width="2" stroke-dasharray="4 3"/>
     <path d="M35 65 Q110 15 135 128" fill="none" stroke="#C9971A" stroke-width="3"/>
-    <circle cx="35" cy="65" r="5" fill="#1B4332"/>
+    <circle cx="35" cy="65" r="5" fill="#1B4A6B"/>
     <circle cx="135" cy="128" r="5" fill="#E8B924"/>
   </svg>`,
 
   net: `<svg viewBox="0 0 220 150" xmlns="http://www.w3.org/2000/svg">
-    <rect x="10" y="40" width="200" height="90" fill="none" stroke="#1B4332" stroke-width="2"/>
-    <line x1="110" y1="30" x2="110" y2="130" stroke="#1B4332" stroke-width="3"/>
+    <rect x="10" y="40" width="200" height="90" fill="none" stroke="#1B4A6B" stroke-width="2"/>
+    <line x1="110" y1="30" x2="110" y2="130" stroke="#1B4A6B" stroke-width="3"/>
     <path d="M90 118 Q110 95 132 118" fill="none" stroke="#C9971A" stroke-width="3"/>
-    <circle cx="90" cy="118" r="5" fill="#1B4332"/>
+    <circle cx="90" cy="118" r="5" fill="#1B4A6B"/>
     <circle cx="132" cy="118" r="5" fill="#E8B924"/>
   </svg>`,
 
   drive: `<svg viewBox="0 0 220 150" xmlns="http://www.w3.org/2000/svg">
-    <rect x="10" y="40" width="200" height="90" fill="none" stroke="#1B4332" stroke-width="2"/>
-    <line x1="110" y1="40" x2="110" y2="130" stroke="#1B4332" stroke-width="2" stroke-dasharray="4 3"/>
+    <rect x="10" y="40" width="200" height="90" fill="none" stroke="#1B4A6B" stroke-width="2"/>
+    <line x1="110" y1="40" x2="110" y2="130" stroke="#1B4A6B" stroke-width="2" stroke-dasharray="4 3"/>
     <line x1="25" y1="85" x2="195" y2="85" stroke="#C9971A" stroke-width="3"/>
-    <circle cx="25" cy="85" r="5" fill="#1B4332"/>
+    <circle cx="25" cy="85" r="5" fill="#1B4A6B"/>
     <path d="M186 78 L198 85 L186 92" fill="#E8B924"/>
   </svg>`,
 
   smash: `<svg viewBox="0 0 220 150" xmlns="http://www.w3.org/2000/svg">
-    <rect x="10" y="40" width="200" height="90" fill="none" stroke="#1B4332" stroke-width="2"/>
-    <line x1="110" y1="40" x2="110" y2="130" stroke="#1B4332" stroke-width="2" stroke-dasharray="4 3"/>
+    <rect x="10" y="40" width="200" height="90" fill="none" stroke="#1B4A6B" stroke-width="2"/>
+    <line x1="110" y1="40" x2="110" y2="130" stroke="#1B4A6B" stroke-width="2" stroke-dasharray="4 3"/>
     <path d="M55 45 Q120 60 145 128" fill="none" stroke="#C9971A" stroke-width="3.5"/>
-    <circle cx="55" cy="45" r="5" fill="#1B4332"/>
+    <circle cx="55" cy="45" r="5" fill="#1B4A6B"/>
     <path d="M137 118 L145 128 L128 126" fill="#E8B924"/>
   </svg>`,
 
   netkill: `<svg viewBox="0 0 220 150" xmlns="http://www.w3.org/2000/svg">
-    <rect x="10" y="40" width="200" height="90" fill="none" stroke="#1B4332" stroke-width="2"/>
-    <line x1="110" y1="20" x2="110" y2="130" stroke="#1B4332" stroke-width="3"/>
+    <rect x="10" y="40" width="200" height="90" fill="none" stroke="#1B4A6B" stroke-width="2"/>
+    <line x1="110" y1="20" x2="110" y2="130" stroke="#1B4A6B" stroke-width="3"/>
     <path d="M100 70 Q112 90 128 122" fill="none" stroke="#C9971A" stroke-width="3.5"/>
-    <circle cx="100" cy="70" r="5" fill="#1B4332"/>
+    <circle cx="100" cy="70" r="5" fill="#1B4A6B"/>
     <path d="M120 112 L128 122 L112 120" fill="#E8B924"/>
   </svg>`,
 
   finta: `<svg viewBox="0 0 220 150" xmlns="http://www.w3.org/2000/svg">
-    <rect x="10" y="40" width="200" height="90" fill="none" stroke="#1B4332" stroke-width="2"/>
-    <line x1="110" y1="40" x2="110" y2="130" stroke="#1B4332" stroke-width="2" stroke-dasharray="4 3"/>
+    <rect x="10" y="40" width="200" height="90" fill="none" stroke="#1B4A6B" stroke-width="2"/>
+    <line x1="110" y1="40" x2="110" y2="130" stroke="#1B4A6B" stroke-width="2" stroke-dasharray="4 3"/>
     <path d="M45 55 Q120 35 185 55" fill="none" stroke="#C9971A" stroke-width="3" stroke-dasharray="7 5"/>
-    <path d="M45 55 Q90 100 140 122" fill="none" stroke="#1B4332" stroke-width="3" stroke-dasharray="3 4"/>
-    <circle cx="45" cy="55" r="6" fill="#1B4332"/>
+    <path d="M45 55 Q90 100 140 122" fill="none" stroke="#1B4A6B" stroke-width="3" stroke-dasharray="3 4"/>
+    <circle cx="45" cy="55" r="6" fill="#1B4A6B"/>
     <text x="145" y="50" font-size="20" fill="#C9971A">?</text>
   </svg>`,
 
   puntos: `<svg viewBox="0 0 220 150" xmlns="http://www.w3.org/2000/svg">
-    <rect x="10" y="40" width="200" height="90" fill="none" stroke="#1B4332" stroke-width="2"/>
-    <line x1="110" y1="40" x2="110" y2="130" stroke="#1B4332" stroke-width="2" stroke-dasharray="4 3"/>
-    <path d="M30 115 Q110 15 190 115" fill="none" stroke="#1B4332" stroke-width="2.5"/>
+    <rect x="10" y="40" width="200" height="90" fill="none" stroke="#1B4A6B" stroke-width="2"/>
+    <line x1="110" y1="40" x2="110" y2="130" stroke="#1B4A6B" stroke-width="2" stroke-dasharray="4 3"/>
+    <path d="M30 115 Q110 15 190 115" fill="none" stroke="#1B4A6B" stroke-width="2.5"/>
     <path d="M190 115 Q140 100 165 60" fill="none" stroke="#C9971A" stroke-width="2.5"/>
-    <path d="M165 60 Q120 75 100 125" fill="none" stroke="#1B4332" stroke-width="2.5" stroke-dasharray="4 3"/>
-    <circle cx="30" cy="115" r="10" fill="#1B4332"/><text x="26" y="120" font-size="12" fill="#fff" font-weight="700">1</text>
-    <circle cx="165" cy="60" r="10" fill="#E8B924"/><text x="161" y="65" font-size="12" fill="#1B4332" font-weight="700">2</text>
-    <circle cx="100" cy="125" r="10" fill="#1B4332"/><text x="96" y="130" font-size="12" fill="#fff" font-weight="700">3</text>
+    <path d="M165 60 Q120 75 100 125" fill="none" stroke="#1B4A6B" stroke-width="2.5" stroke-dasharray="4 3"/>
+    <circle cx="30" cy="115" r="10" fill="#1B4A6B"/><text x="26" y="120" font-size="12" fill="#fff" font-weight="700">1</text>
+    <circle cx="165" cy="60" r="10" fill="#E8B924"/><text x="161" y="65" font-size="12" fill="#1B4A6B" font-weight="700">2</text>
+    <circle cx="100" cy="125" r="10" fill="#1B4A6B"/><text x="96" y="130" font-size="12" fill="#fff" font-weight="700">3</text>
   </svg>`,
 
   doblesLado: `<svg viewBox="0 0 220 150" xmlns="http://www.w3.org/2000/svg">
-    <rect x="10" y="20" width="200" height="110" fill="none" stroke="#1B4332" stroke-width="2"/>
-    <line x1="110" y1="20" x2="110" y2="130" stroke="#1B4332" stroke-width="2" stroke-dasharray="4 3"/>
+    <rect x="10" y="20" width="200" height="110" fill="none" stroke="#1B4A6B" stroke-width="2"/>
+    <line x1="110" y1="20" x2="110" y2="130" stroke="#1B4A6B" stroke-width="2" stroke-dasharray="4 3"/>
     <line x1="60" y1="20" x2="60" y2="130" stroke="#C9971A" stroke-width="2" stroke-dasharray="6 4"/>
-    <circle cx="35" cy="75" r="11" fill="#1B4332"/>
-    <circle cx="85" cy="75" r="11" fill="#1B4332"/>
+    <circle cx="35" cy="75" r="11" fill="#1B4A6B"/>
+    <circle cx="85" cy="75" r="11" fill="#1B4A6B"/>
     <text x="150" y="80" font-size="12" fill="#7A5B00">Rival</text>
   </svg>`,
 
   doblesArriba: `<svg viewBox="0 0 220 150" xmlns="http://www.w3.org/2000/svg">
-    <rect x="10" y="20" width="200" height="110" fill="none" stroke="#1B4332" stroke-width="2"/>
-    <line x1="110" y1="20" x2="110" y2="130" stroke="#1B4332" stroke-width="2" stroke-dasharray="4 3"/>
+    <rect x="10" y="20" width="200" height="110" fill="none" stroke="#1B4A6B" stroke-width="2"/>
+    <line x1="110" y1="20" x2="110" y2="130" stroke="#1B4A6B" stroke-width="2" stroke-dasharray="4 3"/>
     <line x1="10" y1="60" x2="110" y2="60" stroke="#C9971A" stroke-width="2" stroke-dasharray="6 4"/>
     <circle cx="60" cy="38" r="11" fill="#E8B924"/>
-    <circle cx="60" cy="100" r="11" fill="#1B4332"/>
+    <circle cx="60" cy="100" r="11" fill="#1B4A6B"/>
     <text x="150" y="80" font-size="12" fill="#7A5B00">Rival</text>
   </svg>`,
 
   rotacion: `<svg viewBox="0 0 220 150" xmlns="http://www.w3.org/2000/svg">
-    <rect x="10" y="20" width="200" height="110" fill="none" stroke="#1B4332" stroke-width="2"/>
-    <line x1="110" y1="20" x2="110" y2="130" stroke="#1B4332" stroke-width="2" stroke-dasharray="4 3"/>
+    <rect x="10" y="20" width="200" height="110" fill="none" stroke="#1B4A6B" stroke-width="2"/>
+    <line x1="110" y1="20" x2="110" y2="130" stroke="#1B4A6B" stroke-width="2" stroke-dasharray="4 3"/>
     <circle cx="60" cy="40" r="11" fill="#E8B924"/>
-    <circle cx="60" cy="105" r="11" fill="#1B4332"/>
+    <circle cx="60" cy="105" r="11" fill="#1B4A6B"/>
     <path d="M45 55 Q30 75 45 92" fill="none" stroke="#C9971A" stroke-width="2.5" marker-end="url(#arrow)"/>
-    <path d="M75 92 Q90 75 75 55" fill="none" stroke="#1B4332" stroke-width="2.5"/>
+    <path d="M75 92 Q90 75 75 55" fill="none" stroke="#1B4A6B" stroke-width="2.5"/>
     <path d="M40 90 L45 92 L44 85" fill="#C9971A"/>
-    <path d="M80 57 L75 55 L76 62" fill="#1B4332"/>
+    <path d="M80 57 L75 55 L76 62" fill="#1B4A6B"/>
   </svg>`,
 
   fuerza: `<svg viewBox="0 0 220 150" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="45" cy="75" r="24" fill="none" stroke="#1B4332" stroke-width="6"/>
-    <circle cx="175" cy="75" r="24" fill="none" stroke="#1B4332" stroke-width="6"/>
-    <rect x="68" y="68" width="84" height="14" rx="4" fill="#1B4332"/>
+    <circle cx="45" cy="75" r="24" fill="none" stroke="#1B4A6B" stroke-width="6"/>
+    <circle cx="175" cy="75" r="24" fill="none" stroke="#1B4A6B" stroke-width="6"/>
+    <rect x="68" y="68" width="84" height="14" rx="4" fill="#1B4A6B"/>
     <rect x="60" y="60" width="10" height="30" rx="3" fill="#E8B924"/>
     <rect x="150" y="60" width="10" height="30" rx="3" fill="#E8B924"/>
   </svg>`,
 
   calma: `<svg viewBox="0 0 220 150" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="110" cy="75" r="20" fill="none" stroke="#1B4332" stroke-width="3"/>
+    <circle cx="110" cy="75" r="20" fill="none" stroke="#1B4A6B" stroke-width="3"/>
     <circle cx="110" cy="75" r="38" fill="none" stroke="#C9971A" stroke-width="2.5" stroke-dasharray="6 5"/>
-    <circle cx="110" cy="75" r="56" fill="none" stroke="#1B4332" stroke-width="2" stroke-dasharray="3 6" opacity="0.6"/>
-    <path d="M110 55 L110 40 M105 45 L110 38 L115 45" fill="none" stroke="#1B4332" stroke-width="2.5"/>
+    <circle cx="110" cy="75" r="56" fill="none" stroke="#1B4A6B" stroke-width="2" stroke-dasharray="3 6" opacity="0.6"/>
+    <path d="M110 55 L110 40 M105 45 L110 38 L115 45" fill="none" stroke="#1B4A6B" stroke-width="2.5"/>
   </svg>`,
 
   prevencion: `<svg viewBox="0 0 220 150" xmlns="http://www.w3.org/2000/svg">
-    <path d="M110 25 L165 45 Q165 100 110 130 Q55 100 55 45 Z" fill="none" stroke="#1B4332" stroke-width="3"/>
+    <path d="M110 25 L165 45 Q165 100 110 130 Q55 100 55 45 Z" fill="none" stroke="#1B4A6B" stroke-width="3"/>
     <path d="M95 75 L106 86 L128 60" fill="none" stroke="#E8B924" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
   </svg>`,
 
   activacion: `<svg viewBox="0 0 220 150" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="110" cy="75" r="55" fill="none" stroke="#1B4332" stroke-width="2.5"/>
-    <circle cx="110" cy="75" r="35" fill="none" stroke="#1B4332" stroke-width="2.5"/>
+    <circle cx="110" cy="75" r="55" fill="none" stroke="#1B4A6B" stroke-width="2.5"/>
+    <circle cx="110" cy="75" r="35" fill="none" stroke="#1B4A6B" stroke-width="2.5"/>
     <circle cx="110" cy="75" r="15" fill="#E8B924"/>
-    <circle cx="110" cy="75" r="4" fill="#1B4332"/>
+    <circle cx="110" cy="75" r="4" fill="#1B4A6B"/>
   </svg>`,
   gripCambios: `<img src="data:image/jpeg;base64,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"
               alt="Tipos de agarre de raqueta en bádminton" style="width:100%;border-radius:8px;display:block;">`,

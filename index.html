@@ -3218,6 +3218,7 @@ function render() {
 
   if (activeTab === 'config') main.appendChild(viewConfig());
   else if (activeTab === 'referencia') main.appendChild(viewReferencia());
+  else if (activeTab === 'reglamento') main.appendChild(viewReglamento());
   else if (activeTab === 'macrociclo') main.appendChild(viewMacrociclo());
   else if (activeTab === 'microciclo') main.appendChild(viewMicrociclo());
   else if (activeTab === 'individual') main.appendChild(viewEntrenoIndividual());
@@ -3231,6 +3232,7 @@ function renderTabsNav() {
   const tabs = [
     ['config', '⚙ Configuración'],
     ['referencia', '📘 Normativa y contenidos'],
+    ['reglamento', '📜 Reglamento'],
     ['macrociclo', '🗓 Macrociclo'],
     ['microciclo', '📅 Microciclo tipo'],
     ['individual', '🎯 Entreno individual'],
@@ -3290,6 +3292,92 @@ function viewConfig() {
 }
 function statCard(num, label) { return el('div', { class: 'stat-card' }, el('div', { class: 'num' }, String(num)), el('div', { class: 'lab' }, label)); }
 
+const REGLAMENTO_BADMINTON = [
+  {
+    titulo: "La pista",
+    puntos: [
+      "La pista mide 13,40 m de largo. El ancho es de 6,10 m para dobles y 5,18 m para individual (las líneas laterales de individual quedan 0,46 m por dentro de las de dobles a cada lado).",
+      "Todas las líneas tienen 40 mm de grosor y se pintan en blanco o amarillo, en un color que contraste con el suelo. Las líneas se consideran parte de la zona que delimitan: si el volante cae tocando la línea, es válido.",
+      "La red se coloca a 1,55 m de altura en los postes (situados sobre las líneas laterales de dobles) y a 1,524 m en el centro de la pista, donde suele quedar ligeramente combada.",
+      "Se recomienda un espacio libre de obstáculos de al menos 7-9 m de altura sobre toda la pista, para que los golpes altos no choquen con el techo.",
+    ],
+  },
+  {
+    titulo: "El material: raqueta y volante",
+    puntos: [
+      "La raqueta no puede superar los 68 cm de longitud total ni los 23 cm de anchura, y el cordaje debe ser plano.",
+      "El volante reglamentario lleva 16 plumas (naturales o su versión sintética) fijadas a una base de corcho, y pesa entre 4,74 y 5,50 gramos.",
+      "Los volantes se clasifican por velocidad de vuelo; el club debe ajustar el tipo de volante a la altitud y temperatura del pabellón.",
+    ],
+  },
+  {
+    titulo: "Sistema de puntuación",
+    puntos: [
+      "Un partido se juega al mejor de 3 sets (el primero en ganar 2 sets gana el partido).",
+      "Cada set se juega a 21 puntos. Todos los rallies puntúan, se tenga o no el saque (sistema de \"punto por rally\").",
+      "Si se llega a 20-20, gana el primero que consiga 2 puntos de diferencia (22-20, 23-21...). Si se llega a 29-29, el punto número 30 decide el set, sin necesidad de diferencia de 2.",
+      "Hay un descanso de 60 segundos cuando el marcador de cualquiera de los dos lados llega a 11 puntos dentro de un set, y de 2 minutos entre sets.",
+      "El equipo o jugador que gana un rally suma un punto y consigue el saque siguiente (si no lo tenía ya).",
+    ],
+  },
+  {
+    titulo: "El saque",
+    puntos: [
+      "El saque se golpea siempre en diagonal, desde el cuadro de saque hacia el cuadro de saque contrario.",
+      "Se saca desde el lado derecho de la pista cuando el sacador lleva un número par de puntos (incluido el 0), y desde el lado izquierdo cuando lleva un número impar.",
+      "En el momento del golpeo, toda la base del volante debe estar por debajo de 1,15 m de altura desde el suelo, y la cabeza de la raqueta debe apuntar claramente hacia abajo.",
+      "Ambos pies del sacador y del receptor deben permanecer en contacto con el suelo, dentro de sus cuadros de saque respectivos, hasta que se golpea el volante.",
+      "El sacador no puede golpear el volante hasta que el receptor esté listo, ni fingir el saque o detenerlo una vez iniciado el movimiento continuo de la raqueta hacia adelante.",
+    ],
+  },
+  {
+    titulo: "Dobles: rotación y posiciones",
+    puntos: [
+      "En dobles, cada pareja tiene un único cuadro de saque asignado según si su marcador es par o impar; no importa qué jugador concreto de la pareja está en cada cuadro.",
+      "Cuando la pareja que saca gana un rally, el mismo jugador que sacó vuelve a sacar, pero cambiando de cuadro (de derecha a izquierda o viceversa).",
+      "Cuando la pareja que saca pierde el rally, pasa el saque a la pareja contraria, sin cambiar de cuadro los jugadores que reciben.",
+      "Solo el jugador situado en el cuadro que corresponde puede recibir el saque; si el volante se dirige al compañero, es punto para quien saca.",
+    ],
+  },
+  {
+    titulo: "Faltas más comunes",
+    puntos: [
+      "El volante cae fuera de los límites de la pista, no pasa por encima de la red, queda enganchado en ella o pasa por debajo.",
+      "Un jugador golpea el volante antes de que cruce la red hacia su lado, o lo toca dos veces seguidas (incluso entre los dos jugadores de una pareja).",
+      "El volante toca el cuerpo o la ropa del jugador, o el jugador toca la red o el poste con la raqueta, el cuerpo o la ropa mientras el volante está en juego.",
+      "Faltas de saque: golpear por encima de la altura permitida, con la raqueta sin apuntar hacia abajo, con los pies fuera del cuadro correspondiente o antes de que el receptor esté preparado.",
+      "Obstruir deliberadamente al rival o distraerlo con gestos, sonidos o palabras.",
+    ],
+  },
+  {
+    titulo: "Cambios de lado y descansos",
+    puntos: [
+      "Los jugadores cambian de lado de la pista al finalizar el primer set, al finalizar el segundo (si hay tercero), y en el tercer set cuando el líder llega a 11 puntos.",
+      "Un jugador puede recibir asistencia médica breve por parte de personal autorizado sin que se considere descanso, si hay sangrado o una lesión aguda.",
+      "El árbitro puede suspender el juego temporalmente por circunstancias ajenas a los jugadores (por ejemplo, un problema con la iluminación).",
+    ],
+  },
+  {
+    titulo: "Conducta de los jugadores",
+    puntos: [
+      "Los jugadores no pueden retrasar ni acelerar el juego deliberadamente para perjudicar al rival, discutir las decisiones arbitrales de forma inapropiada, ni tener una conducta antideportiva.",
+      "El árbitro puede amonestar, penalizar con la pérdida de un punto, o incluso descalificar a un jugador por infracciones graves o repetidas de conducta.",
+    ],
+  },
+];
+function viewReglamento() {
+  const wrap = document.createDocumentFragment();
+  const panel = el('div', { class: 'panel' },
+    el('h2', {}, '📜 Reglamento de bádminton'),
+    el('div', { class: 'sub' }, 'Resumen completo de las reglas oficiales (pista, material, puntuación, saque, dobles, faltas y conducta), redactado en español para consulta rápida del club.'),
+  );
+  REGLAMENTO_BADMINTON.forEach(sec => {
+    panel.appendChild(el('h3', { style: 'margin-top:18px;color:var(--court-dark);' }, sec.titulo));
+    panel.appendChild(el('ul', { style: 'margin:0;padding-left:20px;' }, sec.puntos.map(p => el('li', { style: 'margin-bottom:6px;' }, p))));
+  });
+  wrap.appendChild(panel);
+  return wrap;
+}
 function viewReferencia() {
   const wrap = document.createDocumentFragment();
 

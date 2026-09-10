@@ -290,6 +290,11 @@ let uidCounter = 1;
 function uid(prefix) { return prefix + '_' + (uidCounter++) + '_' + Math.random().toString(36).slice(2, 7); }
 
 function getCategory(catId) { return state.categories.find(c => c.id === catId); }
+function nombreCompletoJ(j) {
+  if (!j) return '';
+  const apellidos = (j.apellido1 || j.apellido2) ? ((j.apellido1 || '') + ' ' + (j.apellido2 || '')).trim() : (j.apellidos || '');
+  return (j.nombre + ' ' + apellidos).trim();
+}
 function generarPlantillaExcelExterno() {
   if (typeof XLSX === 'undefined') { alert('No se ha podido cargar el generador de Excel. Comprueba tu conexión a internet e inténtalo de nuevo.'); return; }
   const datos = [
@@ -406,6 +411,7 @@ function enabledCategories() { return state.categories.filter(c => c.enabled); }
 
 function saveLocal() {
   try { localStorage.setItem('badmintonTorneoState', JSON.stringify(state)); } catch (e) { }
+  guardarEstadoActivoEnLista();
   if (typeof programarSyncNube === 'function') programarSyncNube();
 }
 function tryLoadLocal() {
@@ -416,6 +422,7 @@ function tryLoadLocal() {
 }
 
 let torneosHistorial = [];
+let torneoActivoId = null;
 function saveHistorial() {
   try { localStorage.setItem('badmintonTorneosHistorial', JSON.stringify(torneosHistorial)); } catch (e) { }
   if (typeof programarSyncNube === 'function') programarSyncNube();
@@ -426,6 +433,12 @@ function tryLoadHistorial() {
     if (raw) torneosHistorial = JSON.parse(raw);
   } catch (e) { }
 }
+function saveTorneoActivoId() {
+  try { localStorage.setItem('badmintonTorneoActivoId', torneoActivoId || ''); } catch (e) { }
+}
+function tryLoadTorneoActivoId() {
+  try { torneoActivoId = localStorage.getItem('badmintonTorneoActivoId') || null; } catch (e) { }
+}
 function hoyISO() { return new Date().toISOString().slice(0, 10); }
 function diasEntre(a, b) {
   if (!a || !b) return null;
@@ -433,42 +446,94 @@ function diasEntre(a, b) {
   if (isNaN(d1) || isNaN(d2)) return null;
   return Math.round((d2 - d1) / 86400000);
 }
-function guardarTorneoEnHistorialYEmpezarNuevo() {
-  if (!confirm('Esto guarda el torneo actual en el historial y empieza uno nuevo en blanco. ¿Continuar?')) return;
-  const entrada = {
-    id: uid('th'),
+function guardarEstadoActivoEnLista() {
+  if (!torneoActivoId) return;
+  const entrada = torneosHistorial.find(t => t.id === torneoActivoId);
+  if (!entrada) return;
+  entrada.nombre = state.meta.title || 'Torneo sin nombre';
+  entrada.fechaInicio = state.meta.date || '';
+  entrada.snapshot = JSON.parse(JSON.stringify(state));
+  try { localStorage.setItem('badmintonTorneosHistorial', JSON.stringify(torneosHistorial)); } catch (e) { }
+}
+function asegurarTorneoActivo() {
+  if (torneoActivoId && torneosHistorial.some(t => t.id === torneoActivoId)) return;
+  const nuevoId = uid('th');
+  torneosHistorial.push({
+    id: nuevoId,
     nombre: state.meta.title || 'Torneo sin nombre',
     fechaInicio: state.meta.date || '',
-    fechaFin: hoyISO(),
+    fechaFin: '',
+    estado: 'en_curso',
     snapshot: JSON.parse(JSON.stringify(state)),
-  };
-  torneosHistorial.push(entrada);
+  });
+  torneoActivoId = nuevoId;
   saveHistorial();
-  state = loadState();
-  saveLocal();
+  saveTorneoActivoId();
+}
+function cambiarATorneo(id) {
+  const entrada = torneosHistorial.find(t => t.id === id);
+  if (!entrada || id === torneoActivoId) return;
+  guardarEstadoActivoEnLista();
+  state = JSON.parse(JSON.stringify(entrada.snapshot));
+  torneoActivoId = id;
+  saveTorneoActivoId();
+  try { localStorage.setItem('badmintonTorneoState', JSON.stringify(state)); } catch (e) { }
   activeTab = 'config';
   render();
 }
-function verTorneoDelHistorial(id) {
+function crearNuevoTorneo() {
+  guardarEstadoActivoEnLista();
+  const nuevoEstado = loadState();
+  const nuevoId = uid('th');
+  torneosHistorial.push({
+    id: nuevoId,
+    nombre: 'Torneo nuevo',
+    fechaInicio: '',
+    fechaFin: '',
+    estado: 'en_curso',
+    snapshot: JSON.parse(JSON.stringify(nuevoEstado)),
+  });
+  state = nuevoEstado;
+  torneoActivoId = nuevoId;
+  saveHistorial();
+  saveTorneoActivoId();
+  try { localStorage.setItem('badmintonTorneoState', JSON.stringify(state)); } catch (e) { }
+  activeTab = 'config';
+  render();
+}
+function eliminarTorneoDeLista(id) {
   const entrada = torneosHistorial.find(t => t.id === id);
   if (!entrada) return;
-  if (!confirm('Esto reemplaza el torneo que tienes abierto ahora por «' + entrada.nombre + '» del historial. Si el actual no está guardado en el historial, se perderá. ¿Continuar?')) return;
-  state = JSON.parse(JSON.stringify(entrada.snapshot));
-  saveLocal();
-  activeTab = 'config';
-  render();
-}
-function eliminarDelHistorial(id) {
-  if (!confirm('¿Eliminar este torneo del historial? No se puede deshacer.')) return;
+  if (!confirm('¿Eliminar el torneo «' + entrada.nombre + '»? No se puede deshacer.')) return;
+  const eraElActivo = id === torneoActivoId;
   torneosHistorial = torneosHistorial.filter(t => t.id !== id);
   saveHistorial();
+  if (eraElActivo) {
+    if (torneosHistorial.length) {
+      const otro = torneosHistorial[torneosHistorial.length - 1];
+      state = JSON.parse(JSON.stringify(otro.snapshot));
+      torneoActivoId = otro.id;
+      saveTorneoActivoId();
+      try { localStorage.setItem('badmintonTorneoState', JSON.stringify(state)); } catch (e) { }
+    } else {
+      crearNuevoTorneo();
+      return;
+    }
+  }
   render();
 }
-function borrarTorneoActual() {
-  if (!confirm('¿Borrar el torneo que tienes abierto ahora mismo (participantes, sorteo, resultados)? Si quieres conservarlo, usa antes «Guardar en el historial y empezar nuevo», en la pestaña Historial. Esta acción no se puede deshacer.')) return;
-  state = loadState();
-  saveLocal();
-  activeTab = 'config';
+function alternarFinalizado(id) {
+  const entrada = torneosHistorial.find(t => t.id === id);
+  if (!entrada) return;
+  if (entrada.estado === 'finalizado') {
+    entrada.estado = 'en_curso';
+    entrada.fechaFin = '';
+  } else {
+    entrada.estado = 'finalizado';
+    entrada.fechaFin = hoyISO();
+  }
+  if (id === torneoActivoId) guardarEstadoActivoEnLista();
+  saveHistorial();
   render();
 }
 
@@ -867,7 +932,7 @@ function viewConfig() {
     )
   );
   general.appendChild(el('div', { class: 'toolbar', style: 'margin-top:12px;' },
-    el('button', { class: 'btn btn-danger', onclick: () => borrarTorneoActual() }, '🗑️ Borrar este torneo'),
+    el('button', { class: 'btn btn-danger', onclick: () => eliminarTorneoDeLista(torneoActivoId) }, '🗑️ Borrar este torneo'),
   ));
   wrap.appendChild(general);
 
@@ -963,6 +1028,28 @@ function viewParticipants() {
       el('button', { class: 'btn btn-gold', onclick: () => generarPlantillaExcelExterno() }, '📤 Generar plantilla para otros clubes'),
       el('button', { class: 'btn btn-primary', onclick: () => externosInput.click() }, '📥 Importar participantes de otros clubes'),
       externosInput,
+      el('button', {
+        class: 'btn btn-ghost',
+        onclick: () => {
+          const roster = (window.JugadoresGlobal ? window.JugadoresGlobal.list() : []);
+          let n = 0;
+          state.categories.forEach(cat => {
+            (cat.players || []).forEach(p => {
+              if (p.jugadorId) {
+                const j = roster.find(x => x.id === p.jugadorId);
+                if (j) { const nuevo = nombreCompletoJ(j); if (nuevo && nuevo !== p.name) { p.name = nuevo; n++; } }
+              } else if (p.jugador1Id && p.jugador2Id) {
+                const j1 = roster.find(x => x.id === p.jugador1Id);
+                const j2 = roster.find(x => x.id === p.jugador2Id);
+                if (j1 && j2) { const nuevo = nombreCompletoJ(j1) + ' / ' + nombreCompletoJ(j2); if (nuevo && nuevo !== p.name) { p.name = nuevo; n++; } }
+              }
+            });
+          });
+          saveLocal();
+          render();
+          alert('Nombres completados: ' + n + '.');
+        },
+      }, '🔤 Completar apellidos de participantes'),
     ),
   ));
   if (!enabledCategories().length) {
@@ -1013,7 +1100,7 @@ function viewParticipants() {
               if (!j1 || !j2) return;
               const destacadosPareja = jugadoresDestacadosHistoricos(cat.id);
               const seedAuto = seedCheck2.checked || destacadosPareja.has(j1.id) || destacadosPareja.has(j2.id);
-              cat.players.push({ id: uid('pl'), name: j1.nombre + ' / ' + j2.nombre, seed: seedAuto, jugador1Id: j1.id, jugador2Id: j2.id });
+              cat.players.push({ id: uid('pl'), name: nombreCompletoJ(j1) + ' / ' + nombreCompletoJ(j2), seed: seedAuto, jugador1Id: j1.id, jugador2Id: j2.id });
               render();
             },
           }, '+ Añadir pareja'),
@@ -1075,7 +1162,7 @@ function viewParticipants() {
             class: 'btn btn-ghost btn-sm',
             onclick: () => {
               const chosen = window.JugadoresGlobal.list().find(j => j.id === rosterSelect.value);
-              if (chosen) { const destacadosInd = jugadoresDestacadosHistoricos(cat.id); cat.players.push({ id: uid('pl'), name: chosen.nombre, seed: destacadosInd.has(chosen.id), jugadorId: chosen.id }); render(); }
+              if (chosen) { const destacadosInd = jugadoresDestacadosHistoricos(cat.id); cat.players.push({ id: uid('pl'), name: nombreCompletoJ(chosen), seed: destacadosInd.has(chosen.id), jugadorId: chosen.id }); render(); }
             },
           }, '+ Añadir'));
           panel.appendChild(rosterRow);
@@ -1394,43 +1481,43 @@ function viewKnockout() {
 }
 
 function viewHistorial() {
+  guardarEstadoActivoEnLista();
   const wrap = document.createDocumentFragment();
   const panel = el('div', { class: 'panel' },
-    el('h2', {}, 'Historial de torneos'),
-    el('div', { class: 'sub' }, 'Aquí quedan guardados todos los torneos que archives, para poder consultarlos más adelante y ver cuánto dura cada uno.'),
+    el('h2', {}, 'Mis torneos'),
+    el('div', { class: 'sub' }, 'Aquí puedes tener varios campeonatos a la vez: cambia de uno a otro para seguir editándolo, consulta uno ya terminado o crea uno nuevo sin perder los demás.'),
     el('div', { class: 'toolbar' },
-      el('button', { class: 'btn btn-gold', onclick: () => guardarTorneoEnHistorialYEmpezarNuevo() }, '💾 Guardar este torneo en el historial y empezar uno nuevo'),
+      el('button', { class: 'btn btn-gold', onclick: () => crearNuevoTorneo() }, '➕ Crear nuevo torneo'),
     ),
   );
-  if (!torneosHistorial.length) {
-    panel.appendChild(el('div', { class: 'empty-state' }, 'Aún no hay ningún torneo guardado en el historial.'));
-  } else {
-    const duraciones = torneosHistorial.map(t => diasEntre(t.fechaInicio, t.fechaFin)).filter(d => d !== null && d >= 0);
-    if (duraciones.length) {
-      const media = duraciones.reduce((a, b) => a + b, 0) / duraciones.length;
-      panel.appendChild(el('div', { class: 'sub', style: 'margin-bottom:10px;' }, `Duración media de un campeonato: ${media.toFixed(1)} día(s), sobre ${duraciones.length} torneo(s) con fecha de inicio registrada.`));
-    }
-    const table = el('table', {}, el('thead', {}, el('tr', {},
-      el('th', {}, 'Nombre'), el('th', {}, 'Inicio'), el('th', {}, 'Guardado'), el('th', {}, 'Duración'), el('th', {}, 'Categorías'), el('th', {}, ''))));
-    const tbody = el('tbody');
-    torneosHistorial.slice().reverse().forEach(t => {
-      const dias = diasEntre(t.fechaInicio, t.fechaFin);
-      const numCats = (t.snapshot && t.snapshot.categories) ? t.snapshot.categories.filter(c => c.enabled).length : 0;
-      tbody.appendChild(el('tr', {},
-        el('td', {}, t.nombre),
-        el('td', {}, t.fechaInicio || '—'),
-        el('td', {}, t.fechaFin || '—'),
-        el('td', {}, dias === null ? '—' : (dias === 0 ? 'mismo día' : dias + ' día(s)')),
-        el('td', {}, String(numCats)),
-        el('td', {}, el('div', { class: 'row', style: 'gap:6px;flex-wrap:nowrap;' },
-          el('button', { class: 'btn btn-ghost btn-sm', onclick: () => verTorneoDelHistorial(t.id) }, 'Ver / cargar'),
-          el('button', { class: 'btn btn-danger btn-sm', onclick: () => eliminarDelHistorial(t.id) }, 'Eliminar'),
-        )),
-      ));
-    });
-    table.appendChild(tbody);
-    panel.appendChild(table);
+  const finalizados = torneosHistorial.filter(t => t.estado === 'finalizado');
+  const duraciones = finalizados.map(t => diasEntre(t.fechaInicio, t.fechaFin)).filter(d => d !== null && d >= 0);
+  if (duraciones.length) {
+    const media = duraciones.reduce((a, b) => a + b, 0) / duraciones.length;
+    panel.appendChild(el('div', { class: 'sub', style: 'margin-bottom:10px;' }, `Duración media de un campeonato: ${media.toFixed(1)} día(s), sobre ${duraciones.length} torneo(s) finalizado(s) con fecha registrada.`));
   }
+  const table = el('table', {}, el('thead', {}, el('tr', {},
+    el('th', {}, 'Nombre'), el('th', {}, 'Inicio'), el('th', {}, 'Estado'), el('th', {}, 'Duración'), el('th', {}, 'Categorías'), el('th', {}, ''))));
+  const tbody = el('tbody');
+  torneosHistorial.slice().reverse().forEach(t => {
+    const esActivo = t.id === torneoActivoId;
+    const dias = diasEntre(t.fechaInicio, t.fechaFin);
+    const numCats = (t.snapshot && t.snapshot.categories) ? t.snapshot.categories.filter(c => c.enabled).length : 0;
+    tbody.appendChild(el('tr', { style: esActivo ? 'background:#FBF3D8;' : '' },
+      el('td', {}, (esActivo ? '▶️ ' : '') + t.nombre),
+      el('td', {}, t.fechaInicio || '—'),
+      el('td', {}, t.estado === 'finalizado' ? el('span', { class: 'chip chip-gold' }, 'Finalizado') : el('span', { class: 'chip' }, 'En curso')),
+      el('td', {}, dias === null ? '—' : (dias === 0 ? 'mismo día' : dias + ' día(s)')),
+      el('td', {}, String(numCats)),
+      el('td', {}, el('div', { class: 'row', style: 'gap:6px;flex-wrap:nowrap;' },
+        esActivo ? el('span', { class: 'chip chip-muted' }, 'Editando ahora') : el('button', { class: 'btn btn-primary btn-sm', onclick: () => cambiarATorneo(t.id) }, 'Editar este'),
+        el('button', { class: 'btn btn-ghost btn-sm', onclick: () => alternarFinalizado(t.id) }, t.estado === 'finalizado' ? 'Reabrir' : 'Marcar finalizado'),
+        el('button', { class: 'btn btn-danger btn-sm', onclick: () => eliminarTorneoDeLista(t.id) }, 'Eliminar'),
+      )),
+    ));
+  });
+  table.appendChild(tbody);
+  panel.appendChild(table);
   wrap.appendChild(panel);
   return wrap;
 }
@@ -1538,10 +1625,10 @@ function resultadoDeParticipanteEnCategoria(cat, participantId) {
   return null;
 }
 function trayectoriaDeJugador(jugadorId) {
+  guardarEstadoActivoEnLista();
   const resultados = [];
   const fuentes = [];
   torneosHistorial.forEach(t => fuentes.push({ nombre: t.nombre, fecha: t.fechaInicio, categorias: (t.snapshot && t.snapshot.categories) || [] }));
-  fuentes.push({ nombre: state.meta.title || 'Torneo actual', fecha: state.meta.date, categorias: state.categories });
   fuentes.forEach(f => {
     (f.categorias || []).forEach(cat => {
       if (!cat.enabled || !cat.players || !cat.players.length) return;
@@ -1563,9 +1650,11 @@ function trayectoriaDeJugador(jugadorId) {
 function mount() {
   tryLoadLocal();
   tryLoadHistorial();
+  tryLoadTorneoActivoId();
+  asegurarTorneoActivo();
   render();
 }
-return { render, mount, getState, setState, getHistorial, setHistorial, trayectoriaDeJugador };
+return { render, mount, getState, setState, getHistorial, setHistorial, trayectoriaDeJugador, getTorneoActivoId: () => torneoActivoId, setTorneoActivoId: (id) => { torneoActivoId = id; } };
 })();
 </script>
 <script>
@@ -4579,6 +4668,7 @@ function exportAll() {
     jugadoresGlobal: jugadoresGlobal,
     torneo: TorneoApp.getState(),
     torneosHistorial: TorneoApp.getHistorial(),
+    torneoActivoId: TorneoApp.getTorneoActivoId(),
     planificacion: PlanApp.getState(),
     pagos: PagosApp.getState(),
   };
@@ -4604,6 +4694,7 @@ function importAll(file) {
       saveClubGlobal(); saveJugadoresGlobal();
       TorneoApp.setState(parsed.torneo);
       if (parsed.torneosHistorial) TorneoApp.setHistorial(parsed.torneosHistorial);
+      if (parsed.torneoActivoId) TorneoApp.setTorneoActivoId(parsed.torneoActivoId);
       PlanApp.setState(parsed.planificacion);
       if (parsed.pagos) PagosApp.setState(parsed.pagos);
       showSection('home');
@@ -4657,6 +4748,7 @@ function estadoCompletoParaNube() {
     jugadoresGlobal: jugadoresGlobal,
     torneo: TorneoApp.getState(),
     torneosHistorial: TorneoApp.getHistorial(),
+    torneoActivoId: TorneoApp.getTorneoActivoId(),
     planificacion: PlanApp.getState(),
     pagos: PagosApp.getState(),
     accessControl: accessControl,
@@ -4711,6 +4803,7 @@ function aplicarDatosDeNube(dataOriginal) {
   saveJugadoresGlobal();
   if (data.torneo) TorneoApp.setState(data.torneo);
   if (data.torneosHistorial) TorneoApp.setHistorial(data.torneosHistorial);
+  if (data.torneoActivoId) TorneoApp.setTorneoActivoId(data.torneoActivoId);
   if (data.planificacion) PlanApp.setState(data.planificacion);
   if (data.pagos) PagosApp.setState(data.pagos);
   if (data.accessControl) { accessControl = data.accessControl; saveAccessControl(); }

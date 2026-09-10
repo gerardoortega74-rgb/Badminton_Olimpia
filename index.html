@@ -288,6 +288,85 @@ let uidCounter = 1;
 function uid(prefix) { return prefix + '_' + (uidCounter++) + '_' + Math.random().toString(36).slice(2, 7); }
 
 function getCategory(catId) { return state.categories.find(c => c.id === catId); }
+function generarPlantillaExcelExterno() {
+  if (typeof XLSX === 'undefined') { alert('No se ha podido cargar el generador de Excel. Comprueba tu conexión a internet e inténtalo de nuevo.'); return; }
+  const datos = [
+    ['Categoría', 'Nombre', 'Apellidos', 'Sexo (M/F)', 'Club', 'Nombre pareja (solo dobles)', 'Apellidos pareja (solo dobles)', 'Teléfono', 'Email'],
+    ['Individual Masculino', 'Juan', 'Pérez López', 'M', 'CB Ejemplo', '', '', '600111222', 'juan@ejemplo.com'],
+    ['Dobles Mixto', 'Ana', 'García Ruiz', 'F', 'CB Ejemplo', 'Luis', 'Martín Soto', '600333444', 'ana@ejemplo.com'],
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(datos);
+  ws['!cols'] = [{ wch: 22 }, { wch: 14 }, { wch: 18 }, { wch: 12 }, { wch: 20 }, { wch: 24 }, { wch: 24 }, { wch: 14 }, { wch: 22 }];
+  const instrucciones = XLSX.utils.aoa_to_sheet([
+    ['Instrucciones para rellenar esta plantilla'],
+    [''],
+    ['1. Una fila por jugador (o por pareja, en categorías de dobles).'],
+    ['2. En la columna "Categoría" escribe exactamente uno de estos nombres:'],
+    ['   Individual Masculino'],
+    ['   Individual Femenino'],
+    ['   Dobles Masculino'],
+    ['   Dobles Femenino'],
+    ['   Dobles Mixto'],
+    ['3. En categorías de dobles, rellena también el Nombre y Apellidos de la pareja en la misma fila.'],
+    ['4. Borra las 2 filas de ejemplo de la hoja "Participantes" antes de enviarnos el archivo.'],
+    ['5. No cambies los nombres de las columnas ni el nombre de la hoja "Participantes".'],
+  ]);
+  instrucciones['!cols'] = [{ wch: 80 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, instrucciones, 'Instrucciones');
+  XLSX.utils.book_append_sheet(wb, ws, 'Participantes');
+  const nombreArchivo = 'plantilla_participantes_' + (clubGlobal.nombre || 'torneo').replace(/[^a-z0-9]+/gi, '_').toLowerCase() + '.xlsx';
+  XLSX.writeFile(wb, nombreArchivo);
+}
+function importarParticipantesExternos(file) {
+  if (!file) return;
+  if (typeof XLSX === 'undefined') { alert('No se ha podido cargar el lector de Excel. Comprueba tu conexión a internet e inténtalo de nuevo.'); return; }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const sheetName = workbook.SheetNames.find(n => n.toLowerCase().includes('particip')) || workbook.SheetNames[workbook.SheetNames.length - 1];
+      const sheet = workbook.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+      let anadidos = 0, saltados = 0;
+      const mapaCategorias = {};
+      CATEGORY_DEFS.forEach(c => { mapaCategorias[c.name.toLowerCase()] = c; });
+      rows.forEach(row => {
+        const catNombre = String(row['Categoría'] || row['Categoria'] || '').trim().toLowerCase();
+        const def = mapaCategorias[catNombre];
+        if (!def) { saltados++; return; }
+        let cat = getCategory(def.id);
+        if (!cat) { saltados++; return; }
+        if (!cat.enabled) cat.enabled = true;
+        const nombre = String(row['Nombre'] || '').trim();
+        const apellidos = String(row['Apellidos'] || '').trim();
+        const club = String(row['Club'] || '').trim();
+        if (!nombre) { saltados++; return; }
+        const nombreCompleto = (nombre + ' ' + apellidos).trim();
+        if (def.kind === 'double') {
+          const nombrePareja = String(row['Nombre pareja (solo dobles)'] || row['Nombre pareja'] || '').trim();
+          const apellidosPareja = String(row['Apellidos pareja (solo dobles)'] || row['Apellidos pareja'] || '').trim();
+          if (!nombrePareja) { saltados++; return; }
+          const nombreParejaCompleto = (nombrePareja + ' ' + apellidosPareja).trim();
+          const nombreFinal = nombreCompleto + ' / ' + nombreParejaCompleto;
+          if (cat.players.some(p => p.name === nombreFinal)) { saltados++; return; }
+          cat.players.push({ id: uid('pl'), name: nombreFinal, seed: false, club: club, externo: true });
+        } else {
+          if (cat.players.some(p => p.name === nombreCompleto)) { saltados++; return; }
+          cat.players.push({ id: uid('pl'), name: nombreCompleto, seed: false, club: club, externo: true });
+        }
+        anadidos++;
+      });
+      saveLocal();
+      render();
+      alert('Importación completada.\n\nAñadidos: ' + anadidos + '\nSaltados (categoría no reconocida, fila vacía o ya existente): ' + saltados);
+    } catch (err) {
+      alert('No se ha podido leer el archivo. Asegúrate de usar la plantilla generada por la app (botón "Generar plantilla").\n\nDetalle: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
 function jugadoresDestacadosHistoricos(catId) {
   const destacados = new Set();
   if (!torneosHistorial || !torneosHistorial.length) return destacados;
@@ -852,8 +931,23 @@ function catSelector(tabKey, onPick) {
 
 function viewParticipants() {
   const wrap = document.createDocumentFragment();
+  const externosInput = el('input', { type: 'file', accept: '.xlsx,.xls', style: 'display:none' });
+  externosInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) importarParticipantesExternos(file);
+    e.target.value = '';
+  });
+  wrap.appendChild(el('div', { class: 'panel', style: 'margin-bottom:14px;' },
+    el('h2', {}, 'Participantes de otros clubes'),
+    el('div', { class: 'sub' }, 'Genera una plantilla Excel para mandar a otros clubes; cuando te la devuelvan rellena, impórtala aquí y se añadirán automáticamente a la categoría correspondiente (activándola si hacía falta).'),
+    el('div', { class: 'row', style: 'gap:8px;flex-wrap:wrap;' },
+      el('button', { class: 'btn btn-gold', onclick: () => generarPlantillaExcelExterno() }, '📤 Generar plantilla para otros clubes'),
+      el('button', { class: 'btn btn-primary', onclick: () => externosInput.click() }, '📥 Importar participantes de otros clubes'),
+      externosInput,
+    ),
+  ));
   if (!enabledCategories().length) {
-    wrap.appendChild(emptyPanel('No hay categorías activas', 'Ve a la pestaña Configuración y activa al menos una categoría para empezar a añadir participantes.'));
+    wrap.appendChild(emptyPanel('No hay categorías activas', 'Ve a la pestaña Configuración y activa al menos una categoría para empezar a añadir participantes, o importa un Excel de otro club: la categoría se activará sola.'));
     return wrap;
   }
   const panel = el('div', { class: 'panel' },
@@ -976,13 +1070,14 @@ function viewParticipants() {
       panel.appendChild(el('div', { class: 'empty-state' }, 'Todavía no hay participantes en esta categoría.'));
     } else {
       const table = el('table', {},
-        el('thead', {}, el('tr', {}, el('th', {}, '#'), el('th', {}, 'Nombre'), el('th', {}, 'Cabeza de serie'), el('th', {}, ''))),
+        el('thead', {}, el('tr', {}, el('th', {}, '#'), el('th', {}, 'Nombre'), el('th', {}, 'Club'), el('th', {}, 'Cabeza de serie'), el('th', {}, ''))),
       );
       const tbody = el('tbody');
       cat.players.forEach((p, i) => {
         tbody.appendChild(el('tr', { class: p.seed ? 'seed' : '' },
           el('td', {}, String(i + 1)),
           el('td', {}, p.name),
+          el('td', {}, p.club ? el('span', { class: 'chip chip-muted' }, p.club) : ''),
           el('td', {}, el('input', {
             type: 'checkbox', style: 'width:auto;', checked: p.seed ? 'checked' : null,
             onchange: (e) => { p.seed = e.target.checked; render(); },

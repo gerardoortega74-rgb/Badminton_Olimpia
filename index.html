@@ -4518,7 +4518,7 @@ function seleccionarUsuarioLogin(id) {
   if (!usuario) return;
   const root = document.getElementById('loginScreen');
   root.innerHTML = '';
-  const pinInput = el('input', { type: 'password', inputmode: 'numeric', placeholder: 'PIN', style: 'font-size:20px;text-align:center;letter-spacing:4px;' });
+  const pinInput = el('input', { type: 'password', inputmode: 'numeric', placeholder: 'PIN', style: 'font-size:20px;text-align:center;padding-left:4px;' });
   const errorMsg = el('div', { class: 'sub', style: 'color:#B3261E;min-height:18px;' });
   const card = el('div', { class: 'login-card' },
     el('h2', {}, usuario.nombre),

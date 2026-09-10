@@ -1481,11 +1481,13 @@ function viewParticipants() {
 
   const activasResumen = enabledCategories();
   if (activasResumen.length) {
-    const idsVistos = new Set();
-    const nombresVistos = new Set();
+    const personasPorClave = new Map();
+    function marcarPersonaEnMapa(clave, club) {
+      if (!personasPorClave.has(clave)) personasPorClave.set(clave, club || clubGlobal.nombre || 'Sin club');
+    }
     function marcarPersona(catRef, p, nombreIndividual, jugadorIdIndividual) {
-      if (jugadorIdIndividual) { idsVistos.add('id:' + jugadorIdIndividual); return; }
-      nombresVistos.add((nombreIndividual.trim() + '|' + (p.club || '') + '|' + catRef.modalidadId).toLowerCase());
+      const clave = jugadorIdIndividual ? ('id:' + jugadorIdIndividual) : (nombreIndividual.trim() + '|' + (p.club || '') + '|' + catRef.modalidadId).toLowerCase();
+      marcarPersonaEnMapa(clave, p.club);
     }
     let totalIndividual = 0, totalDobles = 0, totalMixto = 0;
     const porCategoria = [];
@@ -1497,14 +1499,20 @@ function viewParticipants() {
       else totalDobles += n;
       cat.players.forEach(p => {
         if (cat.kind === 'double') {
-          if (p.jugador1Id) idsVistos.add('id:' + p.jugador1Id); else if (p.name.includes(' / ')) nombresVistos.add((p.name.split(' / ')[0].trim() + '|' + (p.club || '') + '|' + cat.modalidadId).toLowerCase());
-          if (p.jugador2Id) idsVistos.add('id:' + p.jugador2Id); else if (p.name.includes(' / ')) nombresVistos.add((p.name.split(' / ')[1].trim() + '|' + (p.club || '') + '|' + cat.modalidadId).toLowerCase());
+          const nombres = p.name.includes(' / ') ? p.name.split(' / ') : [p.name, ''];
+          const clave1 = p.jugador1Id ? ('id:' + p.jugador1Id) : (nombres[0].trim() + '|' + (p.club || '') + '|' + cat.modalidadId).toLowerCase();
+          const clave2 = p.jugador2Id ? ('id:' + p.jugador2Id) : (nombres[1].trim() + '|' + (p.club || '') + '|' + cat.modalidadId).toLowerCase();
+          marcarPersonaEnMapa(clave1, p.club);
+          if (nombres[1]) marcarPersonaEnMapa(clave2, p.club);
         } else {
           marcarPersona(cat, p, p.name, p.jugadorId);
         }
       });
     });
-    const totalPersonas = idsVistos.size + nombresVistos.size;
+    const totalPersonas = personasPorClave.size;
+    const porClub = {};
+    personasPorClave.forEach(club => { porClub[club] = (porClub[club] || 0) + 1; });
+    const clubesOrdenados = Object.keys(porClub).sort((a, b) => porClub[b] - porClub[a]);
     const resumenPanel = el('div', { class: 'panel' },
       el('h2', {}, '📊 Resumen de participantes'),
       el('div', { class: 'sub' }, 'Recuento de inscripciones por categoría, y total de personas distintas jugando en el torneo (sin contar dos veces a quien juegue en varias categorías).'),
@@ -1522,6 +1530,14 @@ function viewParticipants() {
       el('span', { class: 'chip' }, 'Parejas de mixto: ' + totalMixto),
       el('span', { class: 'chip chip-gold' }, '👥 Total de personas distintas: ' + totalPersonas),
     ));
+    resumenPanel.appendChild(el('h3', { style: 'margin-top:16px;' }, '🏠 Por club'));
+    const tablaClubes = el('table', {}, el('thead', {}, el('tr', {}, el('th', {}, 'Club'), el('th', {}, 'Jugadores'))));
+    const tbodyClubes = el('tbody');
+    clubesOrdenados.forEach(club => {
+      tbodyClubes.appendChild(el('tr', {}, el('td', {}, club), el('td', {}, String(porClub[club]))));
+    });
+    tablaClubes.appendChild(tbodyClubes);
+    resumenPanel.appendChild(tablaClubes);
     wrap.appendChild(resumenPanel);
   }
 

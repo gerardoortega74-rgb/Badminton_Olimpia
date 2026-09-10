@@ -369,32 +369,52 @@ function nombreCompletoJ(j) {
 function generarPlantillaExcelExterno() {
   if (typeof XLSX === 'undefined') { alert('No se ha podido cargar el generador de Excel. Comprueba tu conexión a internet e inténtalo de nuevo.'); return; }
   const datos = [
-    ['Categoría', 'Nombre', 'Apellidos', 'Sexo (M/F)', 'Club', 'Nombre pareja (solo dobles)', 'Apellidos pareja (solo dobles)', 'Teléfono', 'Email'],
-    ['Individual Masculino', 'Juan', 'Pérez López', 'M', 'CB Ejemplo', '', '', '600111222', 'juan@ejemplo.com'],
-    ['Dobles Mixto', 'Ana', 'García Ruiz', 'F', 'CB Ejemplo', 'Luis', 'Martín Soto', '600333444', 'ana@ejemplo.com'],
+    ['Modalidad', 'Sistema de categoría', 'Nombre', 'Apellidos', 'Fecha nacimiento (AAAA-MM-DD)', 'Sexo (M/F)', 'Club', 'Teléfono', 'Email', 'Nombre pareja (solo dobles)', 'Apellidos pareja (solo dobles)', 'Fecha nacimiento pareja (solo dobles)', 'Sexo pareja (solo dobles)'],
+    ['Individual Masculino', 'Por edad', 'Juan', 'Pérez López', '2013-04-10', 'M', 'CB Ejemplo', '600111222', 'juan@ejemplo.com', '', '', '', ''],
+    ['Dobles Mixto', 'Por edad', 'Ana', 'García Ruiz', '1998-02-20', 'F', 'CB Ejemplo', '600333444', 'ana@ejemplo.com', 'Luis', 'Martín Soto', '1996-11-05', 'M'],
+    ['Individual Masculino', 'Categoría A', 'Pedro', 'Ruiz Gómez', '1990-01-01', 'M', 'CB Ejemplo', '600555666', 'pedro@ejemplo.com', '', '', '', ''],
+    ['Individual', 'Non-Clase', 'Marta', 'Soto Díaz', '1985-06-15', 'F', 'CB Ejemplo', '600777888', 'marta@ejemplo.com', '', '', '', ''],
   ];
   const ws = XLSX.utils.aoa_to_sheet(datos);
-  ws['!cols'] = [{ wch: 22 }, { wch: 14 }, { wch: 18 }, { wch: 12 }, { wch: 20 }, { wch: 24 }, { wch: 24 }, { wch: 14 }, { wch: 22 }];
+  ws['!cols'] = [{ wch: 20 }, { wch: 16 }, { wch: 14 }, { wch: 18 }, { wch: 24 }, { wch: 12 }, { wch: 20 }, { wch: 14 }, { wch: 22 }, { wch: 20 }, { wch: 20 }, { wch: 26 }, { wch: 14 }];
   const instrucciones = XLSX.utils.aoa_to_sheet([
     ['Instrucciones para rellenar esta plantilla'],
     [''],
     ['1. Una fila por jugador (o por pareja, en categorías de dobles).'],
-    ['2. En la columna "Categoría" escribe exactamente uno de estos nombres:'],
-    ['   Individual Masculino'],
-    ['   Individual Femenino'],
-    ['   Dobles Masculino'],
-    ['   Dobles Femenino'],
-    ['   Dobles Mixto'],
-    ['3. En categorías de dobles, rellena también el Nombre y Apellidos de la pareja en la misma fila.'],
-    ['4. Borra las 2 filas de ejemplo de la hoja "Participantes" antes de enviarnos el archivo.'],
-    ['5. No cambies los nombres de las columnas ni el nombre de la hoja "Participantes".'],
+    ['2. En "Modalidad" escribe exactamente uno de estos nombres:'],
+    ['   Individual Masculino / Individual Femenino / Dobles Masculino / Dobles Femenino / Dobles Mixto'],
+    ['   (si el sistema es "Non-Clase", escribe solo "Individual" o "Dobles")'],
+    ['3. En "Sistema de categoría" escribe exactamente uno de estos:'],
+    ['   Por edad   (la app calcula sola la categoría de edad exacta a partir de la fecha de nacimiento)'],
+    ['   Categoría A'],
+    ['   Categoría B'],
+    ['   Non-Clase'],
+    ['4. La fecha de nacimiento es MUY IMPORTANTE si el sistema es "Por edad": sin ella no se puede calcular la categoría correcta. Formato AAAA-MM-DD, por ejemplo 2013-04-10.'],
+    ['5. En categorías de dobles, rellena también los datos de la pareja en la misma fila.'],
+    ['6. Teléfono y email son opcionales, pero si los rellenas quedan guardados en la ficha del participante, sin tener que volver a teclearlos después.'],
+    ['7. Borra las filas de ejemplo de la hoja "Participantes" antes de enviarnos el archivo.'],
+    ['8. No cambies los nombres de las columnas ni el nombre de la hoja "Participantes".'],
   ]);
-  instrucciones['!cols'] = [{ wch: 80 }];
+  instrucciones['!cols'] = [{ wch: 90 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, instrucciones, 'Instrucciones');
   XLSX.utils.book_append_sheet(wb, ws, 'Participantes');
   const nombreArchivo = 'plantilla_participantes_' + (clubGlobal.nombre || 'torneo').replace(/[^a-z0-9]+/gi, '_').toLowerCase() + '.xlsx';
   XLSX.writeFile(wb, nombreArchivo);
+}
+function resolverCategoriaExterna(modalidadTexto, sistemaTexto, fechaNacimiento) {
+  const modalidad = String(modalidadTexto || '').trim().toLowerCase();
+  const sistema = String(sistemaTexto || 'por edad').trim().toLowerCase();
+  if (sistema === 'non-clase' || sistema === 'nonclase') {
+    const modDef = MODALIDADES_NONCLASE_DEF.find(m => m.name.toLowerCase() === modalidad);
+    return modDef ? getCategory(modDef.id + '_nonclase') : null;
+  }
+  const modDef = MODALIDADES_DEF.find(m => m.name.toLowerCase() === modalidad);
+  if (!modDef) return null;
+  if (sistema === 'categoría a' || sistema === 'categoria a') return getCategory(modDef.id + '_catA');
+  if (sistema === 'categoría b' || sistema === 'categoria b') return getCategory(modDef.id + '_catB');
+  const edadId = window.calcularCategoria ? window.calcularCategoria(fechaNacimiento) : '';
+  return edadId ? getCategory(modDef.id + '_' + edadId) : null;
 }
 function importarParticipantesExternos(file) {
   if (!file) return;
@@ -408,37 +428,47 @@ function importarParticipantesExternos(file) {
       const sheet = workbook.Sheets[sheetName];
       const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
       let anadidos = 0, saltados = 0;
-      const mapaCategorias = {};
-      CATEGORY_DEFS.forEach(c => { mapaCategorias[c.name.toLowerCase()] = c; });
-      rows.forEach(row => {
-        const catNombre = String(row['Categoría'] || row['Categoria'] || '').trim().toLowerCase();
-        const def = mapaCategorias[catNombre];
-        if (!def) { saltados++; return; }
-        let cat = getCategory(def.id);
-        if (!cat) { saltados++; return; }
-        if (!cat.enabled) cat.enabled = true;
+      const motivos = [];
+      rows.forEach((row, idx) => {
+        const modalidadTexto = row['Modalidad'] || '';
+        const sistemaTexto = row['Sistema de categoría'] || row['Sistema de categoria'] || 'Por edad';
+        const fechaNacimiento = String(row['Fecha nacimiento (AAAA-MM-DD)'] || row['Fecha nacimiento'] || '').trim();
         const nombre = String(row['Nombre'] || '').trim();
         const apellidos = String(row['Apellidos'] || '').trim();
+        const sexo = String(row['Sexo (M/F)'] || row['Sexo'] || '').trim().toUpperCase();
         const club = String(row['Club'] || '').trim();
+        const telefono = String(row['Teléfono'] || '').trim();
+        const email = String(row['Email'] || '').trim();
         if (!nombre) { saltados++; return; }
+        const cat = resolverCategoriaExterna(modalidadTexto, sistemaTexto, fechaNacimiento);
+        if (!cat) { saltados++; motivos.push('Fila ' + (idx + 2) + ': categoría no reconocida (revisa Modalidad, Sistema y fecha de nacimiento).'); return; }
+        if (!cat.enabled) cat.enabled = true;
         const nombreCompleto = (nombre + ' ' + apellidos).trim();
-        if (def.kind === 'double') {
+        if (cat.kind === 'double') {
           const nombrePareja = String(row['Nombre pareja (solo dobles)'] || row['Nombre pareja'] || '').trim();
           const apellidosPareja = String(row['Apellidos pareja (solo dobles)'] || row['Apellidos pareja'] || '').trim();
-          if (!nombrePareja) { saltados++; return; }
+          const fechaNacimientoPareja = String(row['Fecha nacimiento pareja (solo dobles)'] || row['Fecha nacimiento pareja'] || '').trim();
+          const sexoPareja = String(row['Sexo pareja (solo dobles)'] || row['Sexo pareja'] || '').trim().toUpperCase();
+          if (!nombrePareja) { saltados++; motivos.push('Fila ' + (idx + 2) + ': falta el nombre de la pareja (categoría de dobles).'); return; }
           const nombreParejaCompleto = (nombrePareja + ' ' + apellidosPareja).trim();
           const nombreFinal = nombreCompleto + ' / ' + nombreParejaCompleto;
           if (cat.players.some(p => p.name === nombreFinal)) { saltados++; return; }
-          cat.players.push({ id: uid('pl'), name: nombreFinal, seed: false, club: club, externo: true });
+          cat.players.push({
+            id: uid('pl'), name: nombreFinal, seed: false, club, externo: true,
+            telefono, email, fechaNacimiento, sexo,
+            parejaFechaNacimiento: fechaNacimientoPareja, parejaSexo: sexoPareja,
+          });
         } else {
           if (cat.players.some(p => p.name === nombreCompleto)) { saltados++; return; }
-          cat.players.push({ id: uid('pl'), name: nombreCompleto, seed: false, club: club, externo: true });
+          cat.players.push({ id: uid('pl'), name: nombreCompleto, seed: false, club, externo: true, telefono, email, fechaNacimiento, sexo });
         }
         anadidos++;
       });
       saveLocal();
       render();
-      alert('Importación completada.\n\nAñadidos: ' + anadidos + '\nSaltados (categoría no reconocida, fila vacía o ya existente): ' + saltados);
+      let msg = 'Importación completada.\n\nAñadidos: ' + anadidos + '\nSaltados: ' + saltados;
+      if (motivos.length) msg += '\n\n' + motivos.slice(0, 8).join('\n');
+      alert(msg);
     } catch (err) {
       alert('No se ha podido leer el archivo. Asegúrate de usar la plantilla generada por la app (botón "Generar plantilla").\n\nDetalle: ' + err.message);
     }
@@ -1408,8 +1438,9 @@ function viewParticipants() {
     if (!cat.players.length) {
       panel.appendChild(el('div', { class: 'empty-state' }, 'Todavía no hay participantes en esta categoría.'));
     } else {
+      const hayContacto = cat.players.some(p => p.telefono || p.email);
       const table = el('table', {},
-        el('thead', {}, el('tr', {}, el('th', {}, '#'), el('th', {}, 'Nombre'), el('th', {}, 'Club'), el('th', {}, 'Cabeza de serie'), el('th', {}, ''))),
+        el('thead', {}, el('tr', {}, el('th', {}, '#'), el('th', {}, 'Nombre'), el('th', {}, 'Club'), hayContacto ? el('th', {}, 'Contacto') : null, el('th', {}, 'Cabeza de serie'), el('th', {}, ''))),
       );
       const tbody = el('tbody');
       cat.players.forEach((p, i) => {
@@ -1417,6 +1448,7 @@ function viewParticipants() {
           el('td', {}, String(i + 1)),
           el('td', {}, p.name),
           el('td', {}, p.club ? el('span', { class: 'chip chip-muted' }, p.club) : ''),
+          hayContacto ? el('td', {}, [p.telefono, p.email].filter(Boolean).join(' · ')) : null,
           el('td', {}, el('input', {
             type: 'checkbox', style: 'width:auto;', checked: p.seed ? 'checked' : null,
             onchange: (e) => { p.seed = e.target.checked; render(); },

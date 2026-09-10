@@ -272,6 +272,7 @@ const EDADES_DEF = [
 const NIVELES_DEF = [
   { id: 'catA', name: 'Categoría A' },
   { id: 'catB', name: 'Categoría B' },
+  { id: 'catC', name: 'Categoría C' },
 ];
 const SENIOR_DEF = [
   { id: 'sr35', name: 'Senior 35+', minEdad: 35 },
@@ -282,10 +283,6 @@ const SENIOR_DEF = [
   { id: 'sr60', name: 'Senior 60+', minEdad: 60 },
   { id: 'sr65', name: 'Senior 65+', minEdad: 65 },
   { id: 'sr70', name: 'Senior 70+', minEdad: 70 },
-];
-const MODALIDADES_NONCLASE_DEF = [
-  { id: 'INC', name: 'Individual', kind: 'single' },
-  { id: 'DNC', name: 'Dobles', kind: 'double' },
 ];
 const CATEGORY_DEFS = [];
 MODALIDADES_DEF.forEach(mod => {
@@ -298,9 +295,6 @@ MODALIDADES_DEF.forEach(mod => {
   SENIOR_DEF.forEach(sr => {
     CATEGORY_DEFS.push({ id: mod.id + '_' + sr.id, name: mod.name + ' ' + sr.name, kind: mod.kind, modalidadId: mod.id, edadId: sr.id, nivelTipo: 'senior' });
   });
-});
-MODALIDADES_NONCLASE_DEF.forEach(mod => {
-  CATEGORY_DEFS.push({ id: mod.id + '_nonclase', name: mod.name + ' Non-Clase', kind: mod.kind, modalidadId: mod.id, edadId: 'nonclase', nivelTipo: 'nonclase' });
 });
 
 function defaultCategoryState(def) {
@@ -373,7 +367,7 @@ function generarPlantillaExcelExterno() {
     ['Individual Masculino', 'Por edad', 'Juan', 'Pérez López', '2013-04-10', 'M', 'CB Ejemplo', '600111222', 'juan@ejemplo.com', '', '', '', ''],
     ['Dobles Mixto', 'Por edad', 'Ana', 'García Ruiz', '1998-02-20', 'F', 'CB Ejemplo', '600333444', 'ana@ejemplo.com', 'Luis', 'Martín Soto', '1996-11-05', 'M'],
     ['Individual Masculino', 'Categoría A', 'Pedro', 'Ruiz Gómez', '1990-01-01', 'M', 'CB Ejemplo', '600555666', 'pedro@ejemplo.com', '', '', '', ''],
-    ['Individual', 'Non-Clase', 'Marta', 'Soto Díaz', '1985-06-15', 'F', 'CB Ejemplo', '600777888', 'marta@ejemplo.com', '', '', '', ''],
+    ['Individual Femenino', 'Categoría C', 'Marta', 'Soto Díaz', '1985-06-15', 'F', 'CB Ejemplo', '600777888', 'marta@ejemplo.com', '', '', '', ''],
   ];
   const ws = XLSX.utils.aoa_to_sheet(datos);
   ws['!cols'] = [{ wch: 20 }, { wch: 16 }, { wch: 14 }, { wch: 18 }, { wch: 24 }, { wch: 12 }, { wch: 20 }, { wch: 14 }, { wch: 22 }, { wch: 20 }, { wch: 20 }, { wch: 26 }, { wch: 14 }];
@@ -383,12 +377,11 @@ function generarPlantillaExcelExterno() {
     ['1. Una fila por jugador (o por pareja, en categorías de dobles).'],
     ['2. En "Modalidad" escribe exactamente uno de estos nombres:'],
     ['   Individual Masculino / Individual Femenino / Dobles Masculino / Dobles Femenino / Dobles Mixto'],
-    ['   (si el sistema es "Non-Clase", escribe solo "Individual" o "Dobles")'],
     ['3. En "Sistema de categoría" escribe exactamente uno de estos:'],
     ['   Por edad   (la app calcula sola la categoría de edad exacta a partir de la fecha de nacimiento)'],
     ['   Categoría A'],
     ['   Categoría B'],
-    ['   Non-Clase'],
+    ['   Categoría C'],
     ['4. La fecha de nacimiento es MUY IMPORTANTE si el sistema es "Por edad": sin ella no se puede calcular la categoría correcta. Formato AAAA-MM-DD, por ejemplo 2013-04-10.'],
     ['5. En categorías de dobles, rellena también los datos de la pareja en la misma fila.'],
     ['6. Teléfono y email son opcionales, pero si los rellenas quedan guardados en la ficha del participante, sin tener que volver a teclearlos después.'],
@@ -405,14 +398,11 @@ function generarPlantillaExcelExterno() {
 function resolverCategoriaExterna(modalidadTexto, sistemaTexto, fechaNacimiento) {
   const modalidad = String(modalidadTexto || '').trim().toLowerCase();
   const sistema = String(sistemaTexto || 'por edad').trim().toLowerCase();
-  if (sistema === 'non-clase' || sistema === 'nonclase') {
-    const modDef = MODALIDADES_NONCLASE_DEF.find(m => m.name.toLowerCase() === modalidad);
-    return modDef ? getCategory(modDef.id + '_nonclase') : null;
-  }
   const modDef = MODALIDADES_DEF.find(m => m.name.toLowerCase() === modalidad);
   if (!modDef) return null;
   if (sistema === 'categoría a' || sistema === 'categoria a') return getCategory(modDef.id + '_catA');
   if (sistema === 'categoría b' || sistema === 'categoria b') return getCategory(modDef.id + '_catB');
+  if (sistema === 'categoría c' || sistema === 'categoria c') return getCategory(modDef.id + '_catC');
   const edadId = window.calcularCategoria ? window.calcularCategoria(fechaNacimiento) : '';
   return edadId ? getCategory(modDef.id + '_' + edadId) : null;
 }
@@ -1179,21 +1169,6 @@ function viewConfig() {
   });
   wrap.appendChild(seniorPanel);
 
-  const nonClasePanel = el('div', { class: 'panel' },
-    el('h2', {}, 'Categoría del torneo · Non-Clase'),
-    el('div', { class: 'sub' }, 'Categoría abierta, todos contra todos, sin separar por sexo ni edad.'),
-    el('div', { class: 'row', style: 'gap:6px;flex-wrap:wrap;' },
-      MODALIDADES_NONCLASE_DEF.map(mod => {
-        const cat = getCategory(mod.id + '_nonclase');
-        return el('button', {
-          class: 'btn btn-sm ' + (cat.enabled ? 'btn-primary' : 'btn-ghost'),
-          onclick: () => { cat.enabled = !cat.enabled; render(); },
-        }, mod.name);
-      })
-    ),
-  );
-  wrap.appendChild(nonClasePanel);
-
   const activas = state.categories.filter(c => c.enabled);
   if (activas.length) {
     const detallePanel = el('div', { class: 'panel' },
@@ -1322,7 +1297,7 @@ function viewParticipants() {
       if (rangoJugador === -1 || rangoCategoria === -1) return false;
       return rangoJugador <= rangoCategoria;
     };
-    const etiquetaEdad = cat.edadId ? (cat.nivelTipo === 'edad' ? (window.nombreCategoria ? window.nombreCategoria(cat.edadId) : '') : (cat.nivelTipo === 'senior' ? (SENIOR_DEF.find(s => s.id === cat.edadId) || {}).name : (NIVELES_DEF.find(n => n.id === cat.edadId) || {}).name) || (cat.edadId === 'nonclase' ? 'Non-Clase' : '')) : '';
+    const etiquetaEdad = cat.edadId ? (cat.nivelTipo === 'edad' ? (window.nombreCategoria ? window.nombreCategoria(cat.edadId) : '') : (cat.nivelTipo === 'senior' ? (SENIOR_DEF.find(s => s.id === cat.edadId) || {}).name : (NIVELES_DEF.find(n => n.id === cat.edadId) || {}).name)) : '';
     const yaUsadosEnCategoria = new Set();
     cat.players.forEach(p => { if (p.jugadorId) yaUsadosEnCategoria.add(p.jugadorId); if (p.jugador1Id) yaUsadosEnCategoria.add(p.jugador1Id); if (p.jugador2Id) yaUsadosEnCategoria.add(p.jugador2Id); });
     if (cat.nivelTipo === 'edad' || cat.nivelTipo === 'senior') {

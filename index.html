@@ -248,19 +248,36 @@ header.app-header::before{display:none !important;}
 
 <script>
 window.TorneoApp = (function () {
-const CATEGORY_DEFS = [
+const MODALIDADES_DEF = [
   { id: 'IM', name: 'Individual Masculino', kind: 'single' },
   { id: 'IF', name: 'Individual Femenino', kind: 'single' },
   { id: 'DM', name: 'Dobles Masculino', kind: 'double' },
   { id: 'DF', name: 'Dobles Femenino', kind: 'double' },
   { id: 'DX', name: 'Dobles Mixto', kind: 'double' },
 ];
+const EDADES_DEF = [
+  { id: 'sub9', name: 'Sub9' },
+  { id: 'sub11', name: 'Sub11' },
+  { id: 'sub13', name: 'Sub13' },
+  { id: 'sub15', name: 'Sub15' },
+  { id: 'sub17', name: 'Sub17' },
+  { id: 'sub19', name: 'Sub19' },
+  { id: 'absoluto', name: 'Absoluto/Sénior' },
+];
+const CATEGORY_DEFS = [];
+MODALIDADES_DEF.forEach(mod => {
+  EDADES_DEF.forEach(edad => {
+    CATEGORY_DEFS.push({ id: mod.id + '_' + edad.id, name: mod.name + ' ' + edad.name, kind: mod.kind, modalidadId: mod.id, edadId: edad.id });
+  });
+});
 
 function defaultCategoryState(def) {
   return {
     id: def.id,
     name: def.name,
     kind: def.kind,
+    modalidadId: def.modalidadId,
+    edadId: def.edadId,
     enabled: false,
     numGroups: 2,
     qualifiersPerGroup: 2,
@@ -955,34 +972,45 @@ function viewConfig() {
 
   const catsPanel = el('div', { class: 'panel' },
     el('h2', {}, 'Categorías del torneo'),
-    el('div', { class: 'sub' }, 'Activa las categorías que se van a disputar y define nº de grupos y clasificados por grupo para cada una.')
+    el('div', { class: 'sub' }, 'Marca las combinaciones de modalidad y categoría de edad (Sub9 a Absoluto) que se van a disputar en este torneo. Puedes activar varias edades dentro de la misma modalidad.')
   );
-  state.categories.forEach(cat => {
-    const card = el('div', { class: 'cat-card' + (cat.enabled ? '' : ' disabled') });
-    const head = el('div', { class: 'cat-card-head' },
-      el('label', { style: 'display:flex;align-items:center;gap:8px;cursor:pointer;margin:0;text-transform:none;' },
-        el('input', {
-          type: 'checkbox',
-          style: 'width:auto;',
-          checked: cat.enabled ? 'checked' : null,
-          onchange: (e) => { cat.enabled = e.target.checked; render(); },
-        }),
-        el('span', { class: 'cat-title' }, cat.name)
+  MODALIDADES_DEF.forEach(mod => {
+    const fila = el('div', { style: 'margin-bottom:14px;' },
+      el('div', { style: 'font-weight:700;color:var(--court-dark);margin-bottom:6px;' }, mod.name),
+      el('div', { class: 'row', style: 'gap:6px;flex-wrap:wrap;' },
+        EDADES_DEF.map(edad => {
+          const cat = getCategory(mod.id + '_' + edad.id);
+          return el('button', {
+            class: 'btn btn-sm ' + (cat.enabled ? 'btn-primary' : 'btn-ghost'),
+            onclick: () => { cat.enabled = !cat.enabled; render(); },
+          }, edad.name);
+        })
       ),
-      el('span', {},
-        cat.enabled ? el('span', { class: 'chip' }, (cat.players.length) + ' jugador(es)/pareja(s)') : el('span', { class: 'chip chip-muted' }, 'Desactivada')
-      )
     );
-    card.appendChild(head);
-    if (cat.enabled) {
+    catsPanel.appendChild(fila);
+  });
+  wrap.appendChild(catsPanel);
+
+  const activas = state.categories.filter(c => c.enabled);
+  if (activas.length) {
+    const detallePanel = el('div', { class: 'panel' },
+      el('h2', {}, 'Grupos y clasificados por categoría activa'),
+      el('div', { class: 'sub' }, 'Para cada categoría activada, define en cuántos grupos se reparten y cuántos pasan a la eliminatoria.'),
+    );
+    activas.forEach(cat => {
+      const card = el('div', { class: 'cat-card' });
+      card.appendChild(el('div', { class: 'cat-card-head' },
+        el('span', { class: 'cat-title' }, cat.name),
+        el('span', {}, el('span', { class: 'chip' }, (cat.players.length) + ' jugador(es)/pareja(s)')),
+      ));
       card.appendChild(el('div', { class: 'grid', style: 'margin-top:10px;' },
         field('Nº de grupos', inputEl('number', cat.numGroups, v => { cat.numGroups = Math.max(1, parseInt(v) || 1); }, { min: 1 })),
         field('Clasificados por grupo a eliminatoria', inputEl('number', cat.qualifiersPerGroup, v => { cat.qualifiersPerGroup = Math.max(1, parseInt(v) || 1); }, { min: 1 })),
       ));
-    }
-    catsPanel.appendChild(card);
-  });
-  wrap.appendChild(catsPanel);
+      detallePanel.appendChild(card);
+    });
+    wrap.appendChild(detallePanel);
+  }
 
   return wrap;
 }
@@ -1063,21 +1091,23 @@ function viewParticipants() {
   );
   const cat = getCategory(activeCatTab.participants);
   if (cat) {
-    const sexoDeCategoria = (c) => (c.id === 'IM' || c.id === 'DM') ? 'M' : (c.id === 'IF' || c.id === 'DF') ? 'F' : null;
+    const sexoDeCategoria = (c) => (c.modalidadId === 'IM' || c.modalidadId === 'DM') ? 'M' : (c.modalidadId === 'IF' || c.modalidadId === 'DF') ? 'F' : null;
     const catSexo = sexoDeCategoria(cat);
+    const edadOk = (j) => !cat.edadId || (window.calcularCategoria && window.calcularCategoria(j.fechaNacimiento) === cat.edadId);
+    const etiquetaEdad = (window.nombreCategoria && cat.edadId) ? window.nombreCategoria(cat.edadId) : '';
     const yaUsadosEnCategoria = new Set();
     cat.players.forEach(p => { if (p.jugadorId) yaUsadosEnCategoria.add(p.jugadorId); if (p.jugador1Id) yaUsadosEnCategoria.add(p.jugador1Id); if (p.jugador2Id) yaUsadosEnCategoria.add(p.jugador2Id); });
     if (cat.kind === 'double') {
       const rosterAll = (window.JugadoresGlobal ? window.JugadoresGlobal.list() : []);
       let roster1, roster2, avisoSexo;
-      if (cat.id === 'DX') {
-        roster1 = rosterAll.filter(j => j.sexo === 'M' && !yaUsadosEnCategoria.has(j.id));
-        roster2 = rosterAll.filter(j => j.sexo === 'F' && !yaUsadosEnCategoria.has(j.id));
-        avisoSexo = 'Dobles mixto: Jugador 1 debe ser chico y Jugador 2 chica.';
+      if (cat.modalidadId === 'DX') {
+        roster1 = rosterAll.filter(j => j.sexo === 'M' && edadOk(j) && !yaUsadosEnCategoria.has(j.id));
+        roster2 = rosterAll.filter(j => j.sexo === 'F' && edadOk(j) && !yaUsadosEnCategoria.has(j.id));
+        avisoSexo = 'Dobles mixto' + (etiquetaEdad ? ' ' + etiquetaEdad : '') + ': Jugador 1 debe ser chico y Jugador 2 chica' + (etiquetaEdad ? ', ambos de la categoría ' + etiquetaEdad : '') + '.';
       } else {
-        const base = rosterAll.filter(j => (!catSexo || j.sexo === catSexo) && !yaUsadosEnCategoria.has(j.id));
+        const base = rosterAll.filter(j => (!catSexo || j.sexo === catSexo) && edadOk(j) && !yaUsadosEnCategoria.has(j.id));
         roster1 = base; roster2 = base;
-        avisoSexo = catSexo ? `Solo se muestran jugadores de sexo ${catSexo === 'M' ? 'masculino' : 'femenino'} para esta categoría, y ya no aparece quien ya esté apuntado aquí.` : 'Ya no aparece en la lista quién esté apuntado en esta categoría.';
+        avisoSexo = (catSexo || etiquetaEdad) ? `Solo se muestran jugadores${catSexo ? ' de sexo ' + (catSexo === 'M' ? 'masculino' : 'femenino') : ''}${etiquetaEdad ? ' de la categoría ' + etiquetaEdad : ''} para esta categoría, y ya no aparece quien ya esté apuntado aquí.` : 'Ya no aparece en la lista quién esté apuntado en esta categoría.';
       }
       if (roster1.length >= 1 && roster2.length >= 1) {
         const p1Select = el('select', { style: 'min-width:160px;' }, roster1.map(j => el('option', { value: j.id }, j.nombre)));
@@ -1151,12 +1181,12 @@ function viewParticipants() {
       panel.appendChild(addRow);
 
       if (window.JugadoresGlobal) {
-        const roster = window.JugadoresGlobal.list().filter(j => (!catSexo || j.sexo === catSexo) && !yaUsadosEnCategoria.has(j.id));
+        const roster = window.JugadoresGlobal.list().filter(j => (!catSexo || j.sexo === catSexo) && edadOk(j) && !yaUsadosEnCategoria.has(j.id));
         if (roster.length) {
           const rosterRow = el('div', { class: 'row', style: 'margin-bottom:18px;padding:10px;background:#F5F3EB;border-radius:8px;' });
           const rosterSelect = el('select', { style: 'flex:1;min-width:200px;' },
             roster.map(j => { const c2 = window.calcularCategoria ? window.calcularCategoria(j.fechaNacimiento) : ''; const catLabel = c2 && window.nombreCategoria ? window.nombreCategoria(c2) : ''; return el('option', { value: j.id }, j.nombre + (catLabel ? ' · ' + catLabel : '')); }));
-          rosterRow.appendChild(el('span', { style: 'font-size:12px;font-weight:700;color:var(--court-dark);white-space:nowrap;' }, '👥 Desde Jugadores' + (catSexo ? ' (' + (catSexo === 'M' ? 'chicos' : 'chicas') + ')' : '') + ':'));
+          rosterRow.appendChild(el('span', { style: 'font-size:12px;font-weight:700;color:var(--court-dark);white-space:nowrap;' }, '👥 Desde Jugadores' + (catSexo ? ' (' + (catSexo === 'M' ? 'chicos' : 'chicas') + ')' : '') + (etiquetaEdad ? ' · ' + etiquetaEdad : '') + ':'));
           rosterRow.appendChild(rosterSelect);
           rosterRow.appendChild(el('button', {
             class: 'btn btn-ghost btn-sm',
@@ -1166,8 +1196,8 @@ function viewParticipants() {
             },
           }, '+ Añadir'));
           panel.appendChild(rosterRow);
-        } else if (catSexo) {
-          panel.appendChild(el('div', { class: 'sub', style: 'margin-bottom:14px;' }, `No quedan jugadores ${catSexo === 'M' ? 'chicos' : 'chicas'} disponibles para añadir desde la lista (o ya están todos apuntados en esta categoría).`));
+        } else if (catSexo || etiquetaEdad) {
+          panel.appendChild(el('div', { class: 'sub', style: 'margin-bottom:14px;' }, `No quedan jugadores${catSexo ? ' ' + (catSexo === 'M' ? 'chicos' : 'chicas') : ''}${etiquetaEdad ? ' de la categoría ' + etiquetaEdad : ''} disponibles para añadir desde la lista (o ya están todos apuntados en esta categoría).`));
         }
       }
     }

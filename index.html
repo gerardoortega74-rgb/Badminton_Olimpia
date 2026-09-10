@@ -268,6 +268,16 @@ const NIVELES_DEF = [
   { id: 'catA', name: 'Categoría A' },
   { id: 'catB', name: 'Categoría B' },
 ];
+const SENIOR_DEF = [
+  { id: 'sr35', name: 'Senior 35+', minEdad: 35 },
+  { id: 'sr40', name: 'Senior 40+', minEdad: 40 },
+  { id: 'sr45', name: 'Senior 45+', minEdad: 45 },
+  { id: 'sr50', name: 'Senior 50+', minEdad: 50 },
+  { id: 'sr55', name: 'Senior 55+', minEdad: 55 },
+  { id: 'sr60', name: 'Senior 60+', minEdad: 60 },
+  { id: 'sr65', name: 'Senior 65+', minEdad: 65 },
+  { id: 'sr70', name: 'Senior 70+', minEdad: 70 },
+];
 const MODALIDADES_NONCLASE_DEF = [
   { id: 'INC', name: 'Individual', kind: 'single' },
   { id: 'DNC', name: 'Dobles', kind: 'double' },
@@ -279,6 +289,9 @@ MODALIDADES_DEF.forEach(mod => {
   });
   NIVELES_DEF.forEach(niv => {
     CATEGORY_DEFS.push({ id: mod.id + '_' + niv.id, name: mod.name + ' ' + niv.name, kind: mod.kind, modalidadId: mod.id, edadId: niv.id, nivelTipo: 'nivel' });
+  });
+  SENIOR_DEF.forEach(sr => {
+    CATEGORY_DEFS.push({ id: mod.id + '_' + sr.id, name: mod.name + ' ' + sr.name, kind: mod.kind, modalidadId: mod.id, edadId: sr.id, nivelTipo: 'senior' });
   });
 });
 MODALIDADES_NONCLASE_DEF.forEach(mod => {
@@ -1026,6 +1039,27 @@ function viewConfig() {
   });
   wrap.appendChild(nivelPanel);
 
+  const seniorPanel = el('div', { class: 'panel' },
+    el('h2', {}, 'Categorías del torneo · Senior / Veteranos'),
+    el('div', { class: 'sub' }, 'Tramos de edad mínima (35+ a 70+). Aquí la regla es al revés que en las de edad joven: un jugador puede jugar en un tramo inferior al suyo (por ejemplo, un jugador de 47 años puede jugar en 35+ o 40+), pero nunca en uno superior al que aún no ha llegado. Si juega en otro tramo, no puede jugar también en el suyo dentro de la misma modalidad.'),
+  );
+  MODALIDADES_DEF.forEach(mod => {
+    const fila = el('div', { style: 'margin-bottom:14px;' },
+      el('div', { style: 'font-weight:700;color:var(--court-dark);margin-bottom:6px;' }, mod.name),
+      el('div', { class: 'row', style: 'gap:6px;flex-wrap:wrap;' },
+        SENIOR_DEF.map(sr => {
+          const cat = getCategory(mod.id + '_' + sr.id);
+          return el('button', {
+            class: 'btn btn-sm ' + (cat.enabled ? 'btn-primary' : 'btn-ghost'),
+            onclick: () => { cat.enabled = !cat.enabled; render(); },
+          }, sr.name);
+        })
+      ),
+    );
+    seniorPanel.appendChild(fila);
+  });
+  wrap.appendChild(seniorPanel);
+
   const nonClasePanel = el('div', { class: 'panel' },
     el('h2', {}, 'Categoría del torneo · Non-Clase'),
     el('div', { class: 'sub' }, 'Categoría abierta, todos contra todos, sin separar por sexo ni edad.'),
@@ -1145,6 +1179,12 @@ function viewParticipants() {
     const catSexo = sexoDeCategoria(cat);
     const ORDEN_EDADES = ['sub9', 'sub11', 'sub13', 'sub15', 'sub17', 'sub19', 'absoluto'];
     const edadOk = (j) => {
+      if (cat.nivelTipo === 'senior') {
+        const srCat = SENIOR_DEF.find(s => s.id === cat.edadId);
+        const edadJ = window.edadNumerica ? window.edadNumerica(j.fechaNacimiento) : null;
+        if (!srCat || edadJ === null) return false;
+        return edadJ >= srCat.minEdad;
+      }
       if (cat.nivelTipo !== 'edad' || !cat.edadId) return true;
       const propia = window.calcularCategoria ? window.calcularCategoria(j.fechaNacimiento) : '';
       const rangoJugador = ORDEN_EDADES.indexOf(propia);
@@ -1152,11 +1192,11 @@ function viewParticipants() {
       if (rangoJugador === -1 || rangoCategoria === -1) return false;
       return rangoJugador <= rangoCategoria;
     };
-    const etiquetaEdad = cat.edadId ? (cat.nivelTipo === 'edad' ? (window.nombreCategoria ? window.nombreCategoria(cat.edadId) : '') : (NIVELES_DEF.find(n => n.id === cat.edadId) || {}).name || (cat.edadId === 'nonclase' ? 'Non-Clase' : '')) : '';
+    const etiquetaEdad = cat.edadId ? (cat.nivelTipo === 'edad' ? (window.nombreCategoria ? window.nombreCategoria(cat.edadId) : '') : (cat.nivelTipo === 'senior' ? (SENIOR_DEF.find(s => s.id === cat.edadId) || {}).name : (NIVELES_DEF.find(n => n.id === cat.edadId) || {}).name) || (cat.edadId === 'nonclase' ? 'Non-Clase' : '')) : '';
     const yaUsadosEnCategoria = new Set();
     cat.players.forEach(p => { if (p.jugadorId) yaUsadosEnCategoria.add(p.jugadorId); if (p.jugador1Id) yaUsadosEnCategoria.add(p.jugador1Id); if (p.jugador2Id) yaUsadosEnCategoria.add(p.jugador2Id); });
-    if (cat.nivelTipo === 'edad') {
-      state.categories.filter(c => c.modalidadId === cat.modalidadId && c.nivelTipo === 'edad' && c.id !== cat.id).forEach(c => {
+    if (cat.nivelTipo === 'edad' || cat.nivelTipo === 'senior') {
+      state.categories.filter(c => c.modalidadId === cat.modalidadId && c.nivelTipo === cat.nivelTipo && c.id !== cat.id).forEach(c => {
         (c.players || []).forEach(p => { if (p.jugadorId) yaUsadosEnCategoria.add(p.jugadorId); if (p.jugador1Id) yaUsadosEnCategoria.add(p.jugador1Id); if (p.jugador2Id) yaUsadosEnCategoria.add(p.jugador2Id); });
       });
     }
@@ -3491,6 +3531,12 @@ function calcularCategoria(fechaNacimiento) {
   if (edad <= 16) return 'sub17';
   if (edad <= 18) return 'sub19';
   return 'absoluto';
+}
+function edadNumerica(fechaNacimiento) {
+  if (!fechaNacimiento) return null;
+  const anoNac = parseInt(fechaNacimiento.slice(0, 4), 10);
+  if (isNaN(anoNac)) return null;
+  return anoReferenciaTemporada() - anoNac;
 }
 
 let clubGlobal = { nombre: '', localidad: '', temporadaInicio: '', temporadaFin: '', logo: '', tecnicos: [] };

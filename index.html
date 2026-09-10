@@ -2777,6 +2777,293 @@ const CONTENT_REF = {
   },
 };
 
+const PASOS_DETALLADOS = {
+  "Empuñaduras: universal, de derecha (forehand) y de revés (backhand) básicas.": [
+    "Sujeta la raqueta como si le fueras a dar la mano a alguien: es la empuñadura universal.",
+    "Coloca el pulgar y el índice formando una \"V\" sobre el bisel superior del mango; la cara de la raqueta debe quedar perpendicular al suelo, no plana.",
+    "Deja el resto de los dedos relajados alrededor del mango, sin apretar: solo se cierran con fuerza justo en el instante de golpear.",
+    "Para el golpe de derecha (forehand), parte de esa posición universal, es la misma.",
+    "Para el golpe de revés (backhand), gira ligeramente la mano para que el pulgar se apoye plano sobre el bisel trasero del mango, como una palanca.",
+    "Practica cambiar de una empuñadura a otra solo con los dedos, sin mirar la raqueta ni mover todo el brazo.",
+  ],
+  "Posición básica y desplazamientos elementales (adelante, atrás, laterales) por la pista.": [
+    "Colócate en el centro de la pista, rodillas ligeramente flexionadas y el peso repartido en la punta de los pies (posición base).",
+    "Sujeta la raqueta delante del cuerpo, a la altura del pecho, lista para reaccionar a cualquier lado.",
+    "Antes de cada desplazamiento, da un pequeño salto de separación con los dos pies (el \"split step\"): es lo que te permite arrancar rápido hacia cualquier lado.",
+    "Para ir adelante, tras el split step da un paso largo con la pierna dominante hacia el volante.",
+    "Para ir atrás, gira el cuerpo de lado (no de espaldas) y retrocede con pasos cortos sin cruzar las piernas.",
+    "Para ir a los lados, usa pasos laterales cortos (nunca cruzando del todo las piernas) para no perder el equilibrio.",
+    "Después de cada golpe, recupera inmediatamente la posición central antes de que llegue el siguiente volante.",
+  ],
+  "Familiarización raqueta-volante: golpeos autopase, control de trayectorias simples.": [
+    "Lanza el volante suavemente hacia arriba con la mano libre y golpéalo con la raqueta hacia arriba, intentando mantenerlo en el aire (autopase).",
+    "Empieza golpeando siempre por el mismo lado (forehand) hasta controlar bien la altura del bote.",
+    "Cuando lo domines, intenta dirigir el volante hacia un punto fijo del suelo o una diana marcada.",
+    "Alterna golpes suaves y algo más fuertes para notar cómo cambia la trayectoria según la fuerza.",
+  ],
+  "Saque alto y saque corto (aprendizaje del gesto, sin exigencia de precisión aún).": [
+    "Colócate con un pie ligeramente adelantado, sujetando el volante por las plumas, por debajo de la cintura.",
+    "Suelta el volante y golpéalo con un movimiento de abajo hacia arriba, sin levantar la raqueta por encima de la cintura en el momento del golpeo (es la regla del saque).",
+    "Para el saque alto: acompaña el gesto con fuerza hacia arriba y al fondo de la pista contraria.",
+    "Para el saque corto: mismo gesto pero controlando la fuerza, buscando que el volante pase justo por encima de la red y caiga cerca de la línea de saque corta.",
+    "Repite el gesto despacio varias veces antes de buscar potencia o precisión.",
+  ],
+  "Golpe de fondo básico: el clear (despeje alto hacia el fondo de la pista).": [
+    "Colócate de lado, con el hombro no dominante apuntando hacia la red (como si fueras a lanzar algo).",
+    "Lleva la raqueta hacia atrás, por encima del hombro, como si te rascaras la espalda.",
+    "Golpea el volante por encima de tu cabeza, extendiendo el brazo del todo en el momento del impacto.",
+    "Acompaña el golpe hacia arriba y adelante, buscando que el volante suba alto y caiga cerca del fondo de la pista contraria.",
+    "Deja que la raqueta termine el movimiento bajando de forma natural hacia el lado contrario del cuerpo.",
+  ],
+  "Golpe de red básico: el lob/lift (elevar el volante desde la red hacia el fondo).": [
+    "Acércate a la red con un paso largo, raqueta por delante y por debajo de la altura del volante.",
+    "Flexiona la rodilla de la pierna adelantada para bajar tu altura hasta el volante.",
+    "Golpea de abajo hacia arriba, con un gesto suave pero firme, como si \"levantaras\" el volante con la raqueta.",
+    "Acompaña el golpe hacia arriba y hacia el fondo de la pista contraria, sin cortar el movimiento.",
+    "Recupera rápido hacia el centro de la pista después de golpear.",
+  ],
+  "Juego global en campo reducido: entender \"golpear y ocupar de nuevo el centro\".": [
+    "Juega en media pista o pista reducida para facilitar los intercambios largos.",
+    "Después de cada golpe, vuelve siempre a una posición central antes del siguiente golpe del rival.",
+    "Repite en voz alta la secuencia \"golpeo... y centro\" para automatizar el hábito.",
+    "Practica primero sin buscar ganar el punto, solo sosteniendo el intercambio el mayor número de golpes posible.",
+  ],
+  "Reconocer los espacios libres de la pista contraria de forma sencilla.": [
+    "Antes de golpear, mira un instante al otro lado de la pista y localiza dónde está el rival.",
+    "Identifica la zona más alejada de donde está el rival: ese es el espacio libre.",
+    "Intenta dirigir tus golpes hacia esa zona libre en vez de siempre al mismo sitio.",
+    "Practica con un compañero que se mueva a un lado: tú debes golpear siempre al lado contrario.",
+  ],
+  "Primeras nociones de individual: un jugador por lado.": [
+    "Recuerda que en individual toda la pista (incluida la franja lateral estrecha) es tuya para defender y atacar.",
+    "Practica cubrir tú solo los 4 rincones de la pista con desplazamientos cortos desde el centro.",
+    "Juega puntos cortos de 1 contra 1 centrándote solo en volver siempre al centro tras cada golpe.",
+  ],
+  "Predominio de juegos multilaterales y motricidad general (no trabajo analítico de fuerza).": [
+    "Dedica los primeros 10-15 minutos de la sesión a juegos variados: pilla-pilla, relevos, juegos con balón.",
+    "Evita ejercicios de fuerza con pesos o series repetitivas a esta edad.",
+    "Cambia de juego cada pocos minutos para trabajar distintas habilidades motrices (saltar, girar, lanzar, esquivar).",
+    "Termina cada juego preguntando qué les ha resultado más difícil, para adaptar el siguiente.",
+  ],
+  "Coordinación general y específica del gesto: fase sensible muy favorable en esta etapa.": [
+    "Propón ejercicios con raqueta y volante en equilibrios distintos: a la pata coja, andando hacia atrás, etc.",
+    "Combina el golpeo con una tarea simultánea sencilla (contar en voz alta, driblar una pelota con la otra mano).",
+    "Practica lanzar y recoger el volante con distintas manos para trabajar la coordinación óculo-manual.",
+    "Aumenta la dificultad poco a poco, nunca varias novedades a la vez.",
+  ],
+  "Velocidad de reacción y frecuencia de movimientos: fase sensible aprox. 6-12 años, ideal trabajarla ahora mediante juegos.": [
+    "Organiza juegos de reacción a una señal (silbato, palmada, color) donde deban salir corriendo o cambiar de dirección.",
+    "Usa distancias cortas (2-4 metros) para priorizar la velocidad de arranque, no la resistencia.",
+    "Incluye cambios de dirección repentinos dentro del juego, no solo carrera en línea recta.",
+    "Deja descansos completos entre repeticiones para que cada arranque sea a máxima intención.",
+  ],
+  "Resistencia aeróbica de baja intensidad a través del juego (no series ni cargas dirigidas).": [
+    "Elige juegos continuos de intensidad suave-moderada (pilla-pilla largo, relevos por equipos).",
+    "Evita cronometrar series o marcar ritmos exigentes: el objetivo es que se muevan a gusto, no que sufran.",
+    "Observa que puedan hablar mientras juegan; si no pueden, baja la intensidad del juego.",
+  ],
+  "Clima motivacional orientado a la tarea (esfuerzo y mejora propia, no comparación con otros).": [
+    "Cuando corrijas, compara el gesto del jugador con su propio intento anterior, nunca con el de otro compañero.",
+    "Elogia el esfuerzo y la mejora concreta (\"hoy has llegado antes al volante\"), no solo el resultado.",
+    "Evita rankings o clasificaciones explícitas en los ejercicios de esta etapa.",
+  ],
+  "Fomentar la diversión y el gusto por la práctica para evitar el abandono deportivo temprano.": [
+    "Introduce variantes lúdicas y pequeños juegos dentro de cada bloque técnico.",
+    "Pregunta al final de la sesión qué parte les ha gustado más, y ten en cuenta la respuesta para la siguiente.",
+    "Evita sesiones monótonas o excesivamente repetitivas sin variación.",
+  ],
+  "Introducir hábitos básicos: puntualidad, cuidado del material, respeto a compañeros y rivales.": [
+    "Establece una hora de llegada y empieza puntual, marcando el ejemplo tú también.",
+    "Enseña a guardar la raqueta en su funda y a no dejar volantes tirados por la pista.",
+    "Practica el saludo antes y después de cada partido o ejercicio con un compañero.",
+  ],
+  "Consolidación de empuñaduras y transición fluida entre ellas durante el golpeo.": [
+    "Repite el cambio de empuñadura universal a forehand y a backhand cada vez más rápido, sin mirar la mano.",
+    "Practica secuencias de golpes alternando lados (derecha-revés-derecha) para automatizar el cambio.",
+    "Comprueba que el cambio se hace solo con los dedos, sin mover toda la muñeca de forma forzada.",
+  ],
+  "Golpes de fondo: clear (ofensivo y defensivo), drop (dejada larga), primeras nociones de remate.": [
+    "Practica el clear defensivo (más alto, menos potencia) desde el fondo de la pista, y el ofensivo (más plano y rápido) desde una posición más adelantada.",
+    "Para el drop, usa la misma preparación que el clear, pero frena la muñeca justo antes del impacto para que el volante caiga cerca de la red.",
+    "Para el remate, golpea por delante y por encima de tu cabeza, con la muñeca activa hacia abajo, buscando ángulo descendente.",
+    "Alterna los tres golpes desde la misma preparación de brazo, para que el rival no pueda anticipar cuál vas a hacer.",
+  ],
+  "Golpes de zona media: drive y bloqueo.": [
+    "Para el drive, golpea el volante a la altura del pecho/hombro con un movimiento horizontal y rápido de muñeca, sin apenas retraso en el brazo.",
+    "Mantén el codo semiflexionado y cerca del cuerpo para ganar velocidad de reacción.",
+    "Para el bloqueo, opón la raqueta al remate del rival con un gesto corto, casi sin armar el brazo, dirigiendo el volante hacia la red o a un ángulo.",
+    "Practica primero drives suaves entre dos jugadores, aumentando la velocidad poco a poco.",
+  ],
+  "Golpes de red: net shot (dejada de red), lob/lift con más precisión, primeras nociones de kill.": [
+    "Para el net shot, acércate a la red con paso largo y toca el volante muy suavemente justo por encima de la cinta, dejándolo caer cerca de la red.",
+    "Para el lob/lift con precisión, apunta a un punto concreto del fondo de la pista, no solo \"alto y lejos\".",
+    "Para el kill (remate de red), cuando el volante esté por encima de la altura de la red, golpéalo hacia abajo con un gesto corto y seco.",
+    "Practica los tres golpes desde la misma posición de preparación para que el rival no anticipe la intención.",
+  ],
+  "Saque corto y largo con intención táctica (no solo el gesto).": [
+    "Practica el saque corto apuntando a las esquinas de la zona de saque, no solo al centro.",
+    "Combina saques cortos y largos sin patrón fijo, para que el rival no pueda anticipar.",
+    "Observa la reacción del rival tras cada saque y ajusta el siguiente según dónde deje espacios libres.",
+  ],
+  "Desplazamientos específicos: pasos laterales, cruzados y de recuperación al centro.": [
+    "Practica el paso cruzado hacia las esquinas del fondo, llevando la pierna de atrás por delante de la de delante (o el salto de tijera).",
+    "Practica el paso lateral (chassé) hacia los lados de zona media, sin cruzar completamente las piernas.",
+    "Tras cada desplazamiento, ejecuta un paso de recuperación explosivo de vuelta al centro de la pista, empujando con la pierna de golpeo.",
+    "Encadena varios desplazamientos seguidos (esquina-centro-esquina) para automatizar la recuperación.",
+  ],
+  "Patrón táctico básico de individual: \"defender con clear/lob, atacar hacia la red o al fondo\".": [
+    "Cuando estés en apuros o fuera de posición, responde con clear o lob para ganar tiempo y volver al centro.",
+    "Cuando tengas una buena posición, ataca con drop hacia la red o remate hacia el fondo.",
+    "Practica puntos dirigidos donde debas alternar conscientemente entre defender y atacar según tu posición.",
+  ],
+  "Introducción al dobles: posiciones lado a lado (defensa) y arriba-abajo (ataque).": [
+    "En defensa, colócate junto a tu compañero, cada uno cubriendo su mitad de pista de lado a lado.",
+    "En ataque, uno se coloca cerca de la red y el otro cubre el fondo, cambiando de posición según quién golpee.",
+    "Practica el cambio de lado a lado a arriba-abajo según si el equipo está atacando o defendiendo.",
+  ],
+  "Lectura simple de la posición del rival para elegir el golpe.": [
+    "Antes de golpear, observa si el rival está adelantado o retrasado en su pista.",
+    "Si está adelantado, busca el fondo de su pista; si está retrasado, busca la red.",
+    "Practica con un compañero que varíe su posición: tú decides el golpe según dónde le veas.",
+  ],
+  "Inicio del trabajo de fuerza general con el propio peso corporal y baja sobrecarga (fase sensible de potencia: 8-12 años).": [
+    "Introduce ejercicios con el propio peso corporal: sentadillas, zancadas, flexiones adaptadas.",
+    "Realiza 2-3 series de 8-10 repeticiones, priorizando la técnica del ejercicio sobre la cantidad.",
+    "No añadas cargas externas (pesas, gomas fuertes) todavía; el peso corporal es suficiente en esta etapa.",
+  ],
+  "Coordinación intermuscular específica del gesto de bádminton (fase sensible: 11-13 años).": [
+    "Practica el gesto completo del golpe (clear, remate...) sin volante, solo con la raqueta, muy despacio.",
+    "Añade después el volante, manteniendo la misma velocidad de ejecución trabajada en seco.",
+    "Aumenta poco a poco la velocidad de ejecución solo cuando el gesto sea correcto.",
+  ],
+  "Resistencia aeróbica de base mediante juegos y tareas continuas moderadas.": [
+    "Incluye tareas de intensidad moderada y continua de 5-10 minutos (multibote, juegos de pista completa).",
+    "Vigila que la intensidad sea sostenible: deben poder mantener una conversación entrecortada.",
+    "Aumenta la duración progresivamente semana a semana, no la intensidad.",
+  ],
+  "Trabajo de movilidad y flexibilidad general.": [
+    "Dedica 5-10 minutos al final de la sesión a estiramientos suaves de hombros, isquiotibiales y tobillos.",
+    "Incluye movilidad articular dinámica (rotaciones de cadera, hombro y tobillo) en el calentamiento.",
+    "Nunca fuerces el estiramiento hasta sentir dolor, solo tensión suave.",
+  ],
+  "Introducción a la gestión de la frustración ante el error y ante la derrota.": [
+    "Enseña una frase corta de reinicio tras el error (\"siguiente punto\") para pasar página rápido.",
+    "Habla con el jugador tras una derrota preguntando primero qué ha aprendido, antes que el resultado.",
+    "Normaliza el error como parte del aprendizaje en las correcciones diarias.",
+  ],
+  "Rutinas simples antes de un punto o de un partido (respiración, foco).": [
+    "Practica una respiración profunda y lenta antes de sacar o de recibir el saque.",
+    "Establece un pequeño gesto repetitivo (tocar las cuerdas de la raqueta, por ejemplo) como ancla de concentración.",
+    "Repite esta rutina en cada punto de entrenamiento hasta que sea automática.",
+  ],
+  "Fomento de la autonomía: que el jugador empiece a tomar pequeñas decisiones tácticas.": [
+    "Durante el entrenamiento, pregunta antes de corregir: \"¿qué golpe crees que tocaba ahí?\".",
+    "Deja que decida el objetivo de algunos ejercicios (a qué zona apuntar, qué golpe practicar).",
+    "Da feedback después de que decida, no antes, para no condicionar su elección.",
+  ],
+  "Perfeccionamiento completo de golpes de fondo: clear ofensivo/defensivo, drop (cortado y suave), remate con potencia y colocación, drop barrido.": [
+    "Trabaja el clear ofensivo buscando una trayectoria más plana y rápida, y el defensivo más alta para ganar tiempo.",
+    "Practica el drop cortado (con corte de muñeca lateral) y el suave (sin corte, solo frenando el brazo) desde la misma preparación.",
+    "En el remate, alterna entre buscar potencia (golpe pleno) y colocación (ángulos hacia las líneas), sin cambiar el gesto de preparación.",
+    "Practica el drop barrido (golpe raso y rápido hacia la red) como variante de sorpresa tras un remate.",
+    "Repite cada golpe desde una alimentación realista (multipeloteo) para acercarlo a la situación de partido.",
+  ],
+  "Golpes de red avanzados: net kill, net lift, dejada cortada (out-in) y topspin (in-out), bloqueos de remate.": [
+    "En el net kill, golpea el volante hacia abajo con un gesto muy corto en cuanto esté por encima de la red.",
+    "En el net lift, combina el lob con más velocidad y menos altura para sorprender al rival.",
+    "En la dejada cortada (out-in), corta el volante de fuera hacia dentro de la pista con un gesto de muñeca sutil.",
+    "En el topspin (in-out), da un pequeño efecto de dentro hacia fuera, dificultando la lectura del rival.",
+    "En el bloqueo de remate, opón la raqueta con un gesto mínimo, dirigiendo el volante a un ángulo o hacia la red.",
+  ],
+  "Zona media: drive ofensivo/defensivo, bloqueo, defensa específica de individual y de dobles.": [
+    "En el drive ofensivo, golpea plano y rápido buscando velocidad; en el defensivo, da un poco más de altura para ganar tiempo de reacción.",
+    "Practica el bloqueo de drive con un gesto muy corto, casi sin retraso del brazo.",
+    "En defensa de individual, prioriza volver siempre al centro tras cada golpe defensivo.",
+    "En defensa de dobles, reparte con tu pareja las zonas de defensa según la posición del remate rival.",
+  ],
+  "Saque flick y variantes, con intención táctica según el rival.": [
+    "Practica el saque flick imitando el gesto de un saque corto normal, pero acelerando la muñeca en el último instante para sorprender por arriba.",
+    "Varía el ritmo de preparación del saque para que el flick no se note antes de tiempo.",
+    "Observa la posición del rival antes de sacar: si está muy adelantado, el flick gana más puntos.",
+  ],
+  "Fintas: golpes \"delay\" (retardo) y \"deceptive\" (engaño) en las tres zonas de la pista.": [
+    "En el golpe delay, retrasa ligeramente el impacto manteniendo la preparación del brazo, para que el rival se mueva antes de tiempo.",
+    "En el golpe deceptive, inicia el gesto de un golpe (por ejemplo, clear) y cambia la muñeca en el último instante hacia otro golpe (drop).",
+    "Practica estas fintas primero muy despacio, exagerando el engaño, y ve acelerando poco a poco.",
+    "Aplica la finta en las tres zonas (fondo, medio, red) para no ser predecible en ninguna.",
+  ],
+  "Especialización técnica según modalidad (individual y/o dobles).": [
+    "Si se especializa en individual, prioriza el trabajo de resistencia de golpeo y desplazamientos largos.",
+    "Si se especializa en dobles, prioriza el trabajo de drive, bloqueo y comunicación con la pareja en distancias cortas.",
+    "Adapta el multipeloteo a la modalidad: puntos largos de esquina a esquina para individual, intercambios rápidos de red y zona media para dobles.",
+  ],
+  "Táctica avanzada de individual: construcción de puntos, cambios de ritmo, explotación de puntos débiles del rival.": [
+    "Antes del punto, decide una secuencia de 2-3 golpes con un objetivo claro, no golpe a golpe suelto.",
+    "Introduce cambios de ritmo deliberados (un golpe lento seguido de uno rápido) para romper el patrón del rival.",
+    "Identifica el lado o golpe más débil del rival durante el calentamiento y dirige ahí los puntos importantes.",
+  ],
+  "Táctica de dobles: rotaciones ataque/defensa, cobertura de espacios, comunicación entre pareja.": [
+    "Practica la rotación: quien remata pasa a la red, y su pareja cubre el fondo automáticamente.",
+    "Define con tu pareja quién cubre cada espacio antes de empezar el punto (líneas, centro, red).",
+    "Establece palabras clave cortas (\"mía\", \"tuya\", \"centro\") para comunicaros sin pensar durante el punto.",
+  ],
+  "Planificación básica de partido (puntos fuertes/débiles propios y del rival) y ajustes durante el juego.": [
+    "Antes del partido, anota 2 puntos fuertes propios a explotar y 2 débiles del rival a atacar.",
+    "Durante el partido, revisa mentalmente el plan cada pocos puntos y ajusta si no está funcionando.",
+    "Al descanso o cambio de lado, decide un único ajuste concreto para el siguiente tramo, no varios a la vez.",
+  ],
+  "Introducción al análisis de rivales (scouting básico) antes de competiciones importantes.": [
+    "Observa (en persona o en vídeo) 2-3 puntos del rival antes de la competición.",
+    "Anota su golpe favorito, su lado más débil y su saque más habitual.",
+    "Prepara con tu entrenador un plan de partido basado en esa información antes de saltar a la pista.",
+  ],
+  "Trabajo específico de fuerza (tras el inicio puberal) orientado a la potencia de golpeo y el desplazamiento.": [
+    "Incluye ejercicios de fuerza con carga progresiva (gomas, mancuernas ligeras, peso corporal avanzado) 2-3 veces por semana.",
+    "Prioriza ejercicios de tren superior para la potencia de golpeo (rotación de tronco, hombro) y de tren inferior para la zancada de desplazamiento.",
+    "Supervisa siempre la técnica de ejecución antes de aumentar la carga.",
+  ],
+  "Resistencia anaeróbica específica: solo recomendable una vez iniciada la pubertad.": [
+    "Introduce series cortas de alta intensidad (20-40 segundos) simulando la duración real de un punto.",
+    "Da descansos completos entre series para mantener la calidad del esfuerzo.",
+    "Verifica primero que el jugador ha iniciado la pubertad antes de aplicar este tipo de carga.",
+  ],
+  "Velocidad-agilidad multidireccional específica de bádminton (cambios de dirección, pasos de recuperación).": [
+    "Practica circuitos con cambios de dirección hacia las 6 zonas típicas de la pista (2 esquinas de fondo, 2 laterales medios, 2 de red).",
+    "Incluye siempre el paso de recuperación al centro como parte del ejercicio, no solo la salida.",
+    "Trabaja a máxima intención en tramos cortos (menos de 6 segundos) con descanso completo entre repeticiones.",
+  ],
+  "Trabajo de prevención de lesiones: hombro, rodilla y tobillo (zonas de mayor incidencia en el deporte).": [
+    "Incluye ejercicios de fortalecimiento del manguito rotador (hombro) con gomas elásticas, 2-3 veces por semana.",
+    "Trabaja la estabilidad de rodilla y tobillo con ejercicios de equilibrio sobre una pierna, a poder ser sobre superficie inestable.",
+    "Realiza este trabajo preventivo siempre dentro del calentamiento, nunca se debe saltar.",
+  ],
+  "Control de cargas de entrenamiento y de la fatiga acumulada (mayor volumen/intensidad que en etapas previas).": [
+    "Registra semanalmente cómo de cansado se siente el jugador (escala simple del 1 al 10) tras cada sesión.",
+    "Planifica una semana de menor carga cada 3-4 semanas de carga alta, para permitir la recuperación.",
+    "Ajusta el entrenamiento si detectas signos de fatiga acumulada (bajo rendimiento sostenido, mal humor, más lesiones leves).",
+  ],
+  "Control de la activación y la ansiedad competitiva antes y durante el partido.": [
+    "Practica técnicas de respiración diafragmática lenta en los minutos previos al partido.",
+    "Identifica con el jugador su nivel óptimo de activación (ni muy relajado ni muy nervioso) y cómo alcanzarlo.",
+    "Introduce una rutina fija antes de cada partido (mismo calentamiento, misma secuencia) para generar seguridad.",
+  ],
+  "Entrenamiento de la concentración y la atención selectiva en situaciones de presión.": [
+    "Practica ejercicios de multipeloteo con distracciones controladas (ruido, público simulado) para entrenar el foco.",
+    "Enseña una palabra o gesto de \"reset\" para recuperar la concentración tras un punto perdido importante.",
+    "Simula situaciones de marcador ajustado (19-19) en entrenamiento para practicar la atención bajo presión real.",
+  ],
+  "Fijación de objetivos de temporada (de resultado y de proceso) y autoevaluación tras cada competición.": [
+    "Al inicio de temporada, define con el jugador un objetivo de resultado (ej. clasificarse) y varios de proceso (ej. mejorar el remate).",
+    "Tras cada competición, dedica 10 minutos a autoevaluar qué objetivos de proceso se cumplieron, más allá del resultado.",
+    "Ajusta los objetivos de proceso para la siguiente competición según esa autoevaluación.",
+  ],
+  "Trabajo de la resiliencia ante rachas negativas de resultados.": [
+    "Tras una racha de derrotas, revisa junto al jugador los aspectos de proceso que sí han mejorado, no solo el resultado.",
+    "Normaliza las rachas negativas como parte habitual de cualquier trayectoria deportiva.",
+    "Establece un pequeño objetivo alcanzable a corto plazo para recuperar la confianza antes de la siguiente competición.",
+  ],
+};
+
 function defaultState() {
   return {
     meta: { club: '', grupo: '', temporadaInicio: '', temporadaFin: '' },
@@ -3328,9 +3615,13 @@ function viewEntrenoIndividual() {
       resultado.appendChild(el('div', { class: 'card', style: 'margin-bottom:10px;' },
         el('div', { class: 'card-head' }, el('b', {}, d.dia), el('span', { class: 'chip chip-muted' }, d.perfil)),
         el('div', { style: 'margin-top:8px;' },
-          d.bloques.map(b => el('div', { style: 'padding:6px 0;border-bottom:1px solid #eee;' },
-            el('b', {}, AREA_LABEL[b.area] + ': '), b.texto,
-          )),
+          d.bloques.map(b => {
+            const pasos = PASOS_DETALLADOS[b.texto];
+            return el('div', { style: 'padding:10px 0;border-bottom:1px solid #eee;' },
+              el('div', { style: 'margin-bottom:6px;' }, el('b', {}, AREA_LABEL[b.area] + ': '), b.texto),
+              pasos ? el('ol', { style: 'margin:0;padding-left:22px;color:var(--court-dark);' }, pasos.map(p => el('li', { style: 'margin-bottom:4px;' }, p))) : null,
+            );
+          }),
         ),
       ));
     });

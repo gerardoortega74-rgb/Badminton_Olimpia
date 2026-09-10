@@ -1478,6 +1478,53 @@ function viewParticipants() {
     }
   }
   wrap.appendChild(panel);
+
+  const activasResumen = enabledCategories();
+  if (activasResumen.length) {
+    const idsVistos = new Set();
+    const nombresVistos = new Set();
+    function marcarPersona(catRef, p, nombreIndividual, jugadorIdIndividual) {
+      if (jugadorIdIndividual) { idsVistos.add('id:' + jugadorIdIndividual); return; }
+      nombresVistos.add((nombreIndividual.trim() + '|' + (p.club || '') + '|' + catRef.modalidadId).toLowerCase());
+    }
+    let totalIndividual = 0, totalDobles = 0, totalMixto = 0;
+    const porCategoria = [];
+    activasResumen.forEach(cat => {
+      const n = cat.players.length;
+      porCategoria.push({ nombre: cat.name, n });
+      if (cat.kind === 'single') totalIndividual += n;
+      else if (cat.modalidadId === 'DX') totalMixto += n;
+      else totalDobles += n;
+      cat.players.forEach(p => {
+        if (cat.kind === 'double') {
+          if (p.jugador1Id) idsVistos.add('id:' + p.jugador1Id); else if (p.name.includes(' / ')) nombresVistos.add((p.name.split(' / ')[0].trim() + '|' + (p.club || '') + '|' + cat.modalidadId).toLowerCase());
+          if (p.jugador2Id) idsVistos.add('id:' + p.jugador2Id); else if (p.name.includes(' / ')) nombresVistos.add((p.name.split(' / ')[1].trim() + '|' + (p.club || '') + '|' + cat.modalidadId).toLowerCase());
+        } else {
+          marcarPersona(cat, p, p.name, p.jugadorId);
+        }
+      });
+    });
+    const totalPersonas = idsVistos.size + nombresVistos.size;
+    const resumenPanel = el('div', { class: 'panel' },
+      el('h2', {}, '📊 Resumen de participantes'),
+      el('div', { class: 'sub' }, 'Recuento de inscripciones por categoría, y total de personas distintas jugando en el torneo (sin contar dos veces a quien juegue en varias categorías).'),
+    );
+    const tablaResumen = el('table', {}, el('thead', {}, el('tr', {}, el('th', {}, 'Categoría'), el('th', {}, 'Inscritos'))));
+    const tbodyResumen = el('tbody');
+    porCategoria.forEach(c => {
+      tbodyResumen.appendChild(el('tr', {}, el('td', {}, c.nombre), el('td', {}, String(c.n))));
+    });
+    tablaResumen.appendChild(tbodyResumen);
+    resumenPanel.appendChild(tablaResumen);
+    resumenPanel.appendChild(el('div', { class: 'row', style: 'gap:8px;flex-wrap:wrap;margin-top:12px;' },
+      el('span', { class: 'chip' }, 'Individuales: ' + totalIndividual),
+      el('span', { class: 'chip' }, 'Parejas de dobles: ' + totalDobles),
+      el('span', { class: 'chip' }, 'Parejas de mixto: ' + totalMixto),
+      el('span', { class: 'chip chip-gold' }, '👥 Total de personas distintas: ' + totalPersonas),
+    ));
+    wrap.appendChild(resumenPanel);
+  }
+
   return wrap;
 }
 

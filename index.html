@@ -309,6 +309,7 @@ function defaultCategoryState(def) {
     enabled: false,
     numGroups: 2,
     qualifiersPerGroup: 2,
+    eliminatoriaDirecta: false,
     players: [],
     groups: null,
     matches: [],
@@ -655,6 +656,54 @@ function drawGroups(catId) {
   cat.knockout = null;
 }
 
+function sortearEliminatoriaDirecta(catId) {
+  const cat = getCategory(catId);
+  if (!cat) return;
+  const seeds = cat.players.filter(p => p.seed);
+  const rest = shuffle(cat.players.filter(p => !p.seed));
+  const qualifiers = seeds.map(p => p.id).concat(rest.map(p => p.id));
+
+  const size = nextPow2(qualifiers.length);
+  const withByes = qualifiers.slice();
+  while (withByes.length < size) withByes.push('BYE');
+
+  const round1 = [];
+  for (let i = 0; i < size / 2; i++) {
+    round1.push({
+      id: uid('ko'), categoryId: cat.id, phase: 'ko', round: roundName(size),
+      p1: withByes[i], p2: withByes[size - 1 - i], sets: [], winner: null, court: null, time: null,
+    });
+  }
+  round1.forEach(m => {
+    if (m.p1 === 'BYE' && m.p2 !== 'BYE') m.winner = m.p2;
+    else if (m.p2 === 'BYE' && m.p1 !== 'BYE') m.winner = m.p1;
+  });
+
+  const rounds = [round1];
+  let currentSize = size / 2;
+  while (currentSize > 1) {
+    const nextRound = [];
+    for (let i = 0; i < currentSize / 2; i++) {
+      nextRound.push({
+        id: uid('ko'), categoryId: cat.id, phase: 'ko', round: roundName(currentSize / 2 === 0 ? 2 : currentSize),
+        p1: null, p2: null, sets: [], winner: null, court: null, time: null,
+        fromMatch1: rounds[rounds.length - 1][i * 2].id,
+        fromMatch2: rounds[rounds.length - 1][i * 2 + 1].id,
+      });
+    }
+    rounds.push(nextRound);
+    currentSize = currentSize / 2;
+  }
+  rounds.forEach((round, idx) => {
+    const roundSize = size / Math.pow(2, idx);
+    round.forEach(m => { m.round = roundName(roundSize); });
+  });
+
+  cat.groups = null;
+  cat.matches = [];
+  cat.knockout = { rounds };
+  propagateKnockout(cat);
+}
 function generateGroupMatches(cat) {
   const matches = [];
   cat.groups.forEach((grp, gIdx) => {
@@ -1122,10 +1171,21 @@ function viewConfig() {
         el('span', { class: 'cat-title' }, cat.name),
         el('span', {}, el('span', { class: 'chip' }, (cat.players.length) + ' jugador(es)/pareja(s)')),
       ));
-      card.appendChild(el('div', { class: 'grid', style: 'margin-top:10px;' },
-        field('Nº de grupos', inputEl('number', cat.numGroups, v => { cat.numGroups = Math.max(1, parseInt(v) || 1); }, { min: 1 })),
-        field('Clasificados por grupo a eliminatoria', inputEl('number', cat.qualifiersPerGroup, v => { cat.qualifiersPerGroup = Math.max(1, parseInt(v) || 1); }, { min: 1 })),
-      ));
+      const formatoLabel = el('label', { style: 'display:flex;align-items:center;gap:8px;cursor:pointer;margin:10px 0 0;text-transform:none;font-weight:700;' },
+        el('input', {
+          type: 'checkbox', style: 'width:auto;',
+          checked: cat.eliminatoriaDirecta ? 'checked' : null,
+          onchange: (e) => { cat.eliminatoriaDirecta = e.target.checked; render(); },
+        }),
+        el('span', {}, '🏆 Eliminatoria directa (sin fase de grupos): todos entran directamente en el cuadro'),
+      );
+      card.appendChild(formatoLabel);
+      if (!cat.eliminatoriaDirecta) {
+        card.appendChild(el('div', { class: 'grid', style: 'margin-top:10px;' },
+          field('Nº de grupos', inputEl('number', cat.numGroups, v => { cat.numGroups = Math.max(1, parseInt(v) || 1); }, { min: 1 })),
+          field('Clasificados por grupo a eliminatoria', inputEl('number', cat.qualifiersPerGroup, v => { cat.qualifiersPerGroup = Math.max(1, parseInt(v) || 1); }, { min: 1 })),
+        ));
+      }
       detallePanel.appendChild(card);
     });
     wrap.appendChild(detallePanel);
@@ -1400,6 +1460,27 @@ function viewDraw() {
     catSelector('draw')
   );
   const cat = getCategory(activeCatTab.draw);
+  if (cat && cat.eliminatoriaDirecta) {
+    const minNeeded = 2;
+    if (cat.players.length < minNeeded) {
+      panel.appendChild(el('div', { class: 'msg msg-warn' }, `Se necesitan al menos 2 participantes para formar el cuadro (hay ${cat.players.length}).`));
+    }
+    panel.appendChild(el('div', { class: 'sub', style: 'margin-bottom:10px;' }, 'Esta categoría está configurada como eliminatoria directa: todos los participantes entran directamente en el cuadro, sin fase de grupos previa.'));
+    panel.appendChild(el('div', { class: 'toolbar' },
+      el('button', {
+        class: 'btn btn-gold',
+        disabled: cat.players.length < minNeeded ? 'disabled' : null,
+        onclick: () => { sortearEliminatoriaDirecta(cat.id); render(); },
+      }, (cat.knockout && cat.knockout.rounds && cat.knockout.rounds.length) ? '🏆 Repetir sorteo del cuadro' : '🏆 Sortear cuadro directo'),
+    ));
+    if (cat.knockout && cat.knockout.rounds && cat.knockout.rounds.length) {
+      panel.appendChild(el('div', { class: 'msg msg-warn' }, 'Cuadro creado. Ve a la pestaña "🏅 Eliminatoria" para verlo y anotar resultados.'));
+    } else {
+      panel.appendChild(el('div', { class: 'empty-state' }, 'Aún no se ha sorteado el cuadro de esta categoría.'));
+    }
+    wrap.appendChild(panel);
+    return wrap;
+  }
   if (cat) {
     const minNeeded = cat.numGroups * 2;
     if (cat.players.length < minNeeded) {
@@ -1620,7 +1701,7 @@ function closeModal() { document.getElementById('torneoModalRoot').innerHTML = '
 
 function viewKnockout() {
   const wrap = document.createDocumentFragment();
-  const withGroups = enabledCategories().filter(c => c.groups);
+  const withGroups = enabledCategories().filter(c => c.groups || (c.eliminatoriaDirecta && c.knockout));
   if (!withGroups.length) {
     wrap.appendChild(emptyPanel('Todavía no hay grupos', 'Realiza el sorteo de al menos una categoría antes de generar el cuadro de eliminatoria.'));
     return wrap;
@@ -1632,13 +1713,22 @@ function viewKnockout() {
   );
   const cat = getCategory(activeCatTab.knockout);
   if (cat) {
-    if (!groupStageComplete(cat)) {
-      panel.appendChild(el('div', { class: 'msg msg-warn' }, 'Aún quedan partidos de grupo sin resultado en esta categoría. Puedes generar el cuadro igualmente, pero la clasificación podría cambiar.'));
+    if (cat.eliminatoriaDirecta) {
+      panel.appendChild(el('div', { class: 'sub' }, 'Esta categoría es de eliminatoria directa. Para volver a sortear el cuadro, ve a la pestaña Sorteo.'));
+      if (cat.knockout) {
+        panel.appendChild(el('div', { class: 'toolbar' },
+          el('button', { class: 'btn btn-ghost', onclick: () => { buildSchedule(); render(); } }, '🗓 Asignar horarios de eliminatoria'),
+        ));
+      }
+    } else {
+      if (!groupStageComplete(cat)) {
+        panel.appendChild(el('div', { class: 'msg msg-warn' }, 'Aún quedan partidos de grupo sin resultado en esta categoría. Puedes generar el cuadro igualmente, pero la clasificación podría cambiar.'));
+      }
+      panel.appendChild(el('div', { class: 'toolbar' },
+        el('button', { class: 'btn btn-gold', onclick: () => { buildKnockout(cat.id); render(); } }, cat.knockout ? '🏅 Regenerar cuadro' : '🏅 Generar cuadro'),
+        cat.knockout ? el('button', { class: 'btn btn-ghost', onclick: () => { buildSchedule(); render(); } }, '🗓 Asignar horarios de eliminatoria') : null,
+      ));
     }
-    panel.appendChild(el('div', { class: 'toolbar' },
-      el('button', { class: 'btn btn-gold', onclick: () => { buildKnockout(cat.id); render(); } }, cat.knockout ? '🏅 Regenerar cuadro' : '🏅 Generar cuadro'),
-      cat.knockout ? el('button', { class: 'btn btn-ghost', onclick: () => { buildSchedule(); render(); } }, '🗓 Asignar horarios de eliminatoria') : null,
-    ));
     if (cat.knockout) {
       const bracket = el('div', { class: 'bracket' });
       cat.knockout.rounds.forEach(round => {

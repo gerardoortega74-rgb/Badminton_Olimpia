@@ -962,6 +962,23 @@ function renderTabsNav() {
 function viewConfig() {
   const wrap = document.createDocumentFragment();
 
+  const enlacePublico = location.origin + location.pathname + '?publico=1';
+  const enlaceInput = el('input', { type: 'text', value: enlacePublico, readonly: true, style: 'flex:1;min-width:220px;' });
+  wrap.appendChild(el('div', { class: 'panel', style: 'border:2px solid var(--gold);' },
+    el('h2', {}, '📱 Enlace en directo para los jugadores'),
+    el('div', { class: 'sub' }, 'Comparte este enlace con los jugadores: podrán ver el calendario, los horarios y cómo va el cuadro en directo desde su propio móvil, sin necesidad de usuario ni PIN, y sin poder tocar nada.'),
+    el('div', { class: 'row', style: 'gap:8px;' },
+      enlaceInput,
+      el('button', {
+        class: 'btn btn-gold',
+        onclick: () => {
+          enlaceInput.select();
+          navigator.clipboard && navigator.clipboard.writeText(enlacePublico).then(() => alert('Enlace copiado.')).catch(() => {});
+        },
+      }, '📋 Copiar enlace'),
+    ),
+  ));
+
   const general = el('div', { class: 'panel' },
     el('h2', {}, 'Datos generales'),
     el('div', { class: 'sub' }, 'Nombre del torneo, pistas disponibles y duración media de partido.'),
@@ -979,23 +996,6 @@ function viewConfig() {
     el('button', { class: 'btn btn-danger', onclick: () => eliminarTorneoDeLista(torneoActivoId) }, '🗑️ Borrar este torneo'),
   ));
   wrap.appendChild(general);
-
-  const enlacePublico = location.origin + location.pathname + '?publico=1';
-  const enlaceInput = el('input', { type: 'text', value: enlacePublico, readonly: true, style: 'flex:1;min-width:220px;' });
-  wrap.appendChild(el('div', { class: 'panel' },
-    el('h2', {}, '📱 Enlace en directo para los jugadores'),
-    el('div', { class: 'sub' }, 'Comparte este enlace con los jugadores: podrán ver el calendario, los horarios y cómo va el cuadro en directo desde su propio móvil, sin necesidad de usuario ni PIN, y sin poder tocar nada.'),
-    el('div', { class: 'row', style: 'gap:8px;' },
-      enlaceInput,
-      el('button', {
-        class: 'btn btn-gold',
-        onclick: () => {
-          enlaceInput.select();
-          navigator.clipboard && navigator.clipboard.writeText(enlacePublico).then(() => alert('Enlace copiado.')).catch(() => {});
-        },
-      }, '📋 Copiar enlace'),
-    ),
-  ));
 
   const catsPanel = el('div', { class: 'panel' },
     el('h2', {}, 'Categorías del torneo · por edad'),

@@ -4233,6 +4233,15 @@ function formatearSetsPublico(sets) {
   if (!sets || !sets.length) return '';
   return sets.filter(s => (s[0] || s[1])).map(s => s[0] + '-' + s[1]).join(', ');
 }
+function nombrePartidoPublico(p1n, p2n, ganadorEsP1, ganadorEsP2, onClickP1, onClickP2) {
+  const estiloBase = 'cursor:pointer;text-decoration:underline;';
+  const estiloGanador = estiloBase + 'font-weight:800;font-size:1.08em;color:var(--court-dark);';
+  return el('span', {},
+    el('span', { style: ganadorEsP1 ? estiloGanador : estiloBase, onclick: onClickP1 }, (ganadorEsP1 ? '🏆 ' : '') + p1n),
+    ' vs ',
+    el('span', { style: ganadorEsP2 ? estiloGanador : estiloBase, onclick: onClickP2 }, (ganadorEsP2 ? '🏆 ' : '') + p2n),
+  );
+}
 let jugadorSeleccionadoPublico = '';
 function todosLosPartidosDePublico(st) {
   const partidos = [];
@@ -4312,12 +4321,22 @@ function renderVistaPublica() {
         const p1n = nombreParticipantePublico(cat, m.p1);
         const p2n = nombreParticipantePublico(cat, m.p2);
         const rival = p1n === jugadorSeleccionadoPublico ? p2n : p1n;
+        const miId = p1n === jugadorSeleccionadoPublico ? m.p1 : m.p2;
+        const heGanado = m.winner && m.winner === miId;
+        let celdaResultado;
+        if (!m.winner) {
+          celdaResultado = el('span', { class: 'chip chip-muted' }, 'Pendiente');
+        } else if (heGanado) {
+          celdaResultado = el('strong', { style: 'color:var(--court-dark);font-size:1.08em;' }, '🏆 Ganado · ' + formatearSetsPublico(m.sets));
+        } else {
+          celdaResultado = 'Perdido · ' + formatearSetsPublico(m.sets);
+        }
         tbody.appendChild(el('tr', {},
           el('td', {}, m.time ? String(m.time) : '—'),
           el('td', {}, m.court ? String(m.court) : '—'),
           el('td', {}, cat.name + (ronda ? ' · ' + ronda : '')),
           el('td', {}, rival || 'Por determinar'),
-          el('td', {}, m.winner ? formatearSetsPublico(m.sets) : el('span', { class: 'chip chip-muted' }, 'Pendiente')),
+          el('td', {}, celdaResultado),
         ));
       });
       tabla.appendChild(tbody);
@@ -4340,7 +4359,7 @@ function renderVistaPublica() {
         tbody.appendChild(el('tr', {},
           el('td', {}, m.time ? String(m.time) : '—'),
           el('td', {}, m.court ? String(m.court) : '—'),
-          el('td', {}, el('span', { style: 'cursor:pointer;text-decoration:underline;', onclick: () => { jugadorSeleccionadoPublico = p1n; renderVistaPublica(); } }, p1n), ' vs ', el('span', { style: 'cursor:pointer;text-decoration:underline;', onclick: () => { jugadorSeleccionadoPublico = p2n; renderVistaPublica(); } }, p2n)),
+          el('td', {}, nombrePartidoPublico(p1n, p2n, m.winner === m.p1, m.winner === m.p2, () => { jugadorSeleccionadoPublico = p1n; renderVistaPublica(); }, () => { jugadorSeleccionadoPublico = p2n; renderVistaPublica(); })),
           el('td', {}, m.winner ? formatearSetsPublico(m.sets) : el('span', { class: 'chip chip-muted' }, 'Pendiente')),
         ));
       });

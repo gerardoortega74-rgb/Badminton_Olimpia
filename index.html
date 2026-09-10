@@ -941,19 +941,35 @@ function firstEnabledId() {
 }
 
 function render() {
-  saveLocal();
-  renderTabsNav();
-  const main = document.getElementById('torneoMainArea');
-  main.innerHTML = '';
+  try {
+    saveLocal();
+    renderTabsNav();
+    const main = document.getElementById('torneoMainArea');
+    main.innerHTML = '';
 
-  if (activeTab === 'config') main.appendChild(viewConfig());
-  else if (activeTab === 'participants') main.appendChild(viewParticipants());
-  else if (activeTab === 'draw') main.appendChild(viewDraw());
-  else if (activeTab === 'schedule') main.appendChild(viewSchedule());
-  else if (activeTab === 'results') main.appendChild(viewResults());
-  else if (activeTab === 'knockout') main.appendChild(viewKnockout());
-  else if (activeTab === 'stats') main.appendChild(viewStats());
-  else if (activeTab === 'historial') main.appendChild(viewHistorial());
+    if (activeTab === 'config') main.appendChild(viewConfig());
+    else if (activeTab === 'participants') main.appendChild(viewParticipants());
+    else if (activeTab === 'draw') main.appendChild(viewDraw());
+    else if (activeTab === 'schedule') main.appendChild(viewSchedule());
+    else if (activeTab === 'results') main.appendChild(viewResults());
+    else if (activeTab === 'knockout') main.appendChild(viewKnockout());
+    else if (activeTab === 'stats') main.appendChild(viewStats());
+    else if (activeTab === 'historial') main.appendChild(viewHistorial());
+  } catch (err) {
+    console.error('Error al pintar el torneo:', err);
+    const main = document.getElementById('torneoMainArea');
+    if (main) {
+      main.innerHTML = '';
+      const panel = el('div', { class: 'panel' },
+        el('h2', {}, '⚠️ Ha ocurrido un error al mostrar esta pantalla'),
+        el('div', { class: 'sub' }, 'Copia este mensaje y mándaselo a Claude para que lo arregle:'),
+        el('div', { style: 'background:#F5F3EB;padding:10px;border-radius:8px;font-family:monospace;font-size:12px;white-space:pre-wrap;word-break:break-word;margin-top:8px;' },
+          String(err && err.stack ? err.stack : err)
+        ),
+      );
+      main.appendChild(panel);
+    }
+  }
 }
 
 function renderTabsNav() {

@@ -264,11 +264,25 @@ const EDADES_DEF = [
   { id: 'sub19', name: 'Sub19' },
   { id: 'absoluto', name: 'Absoluto/Sénior' },
 ];
+const NIVELES_DEF = [
+  { id: 'catA', name: 'Categoría A' },
+  { id: 'catB', name: 'Categoría B' },
+];
+const MODALIDADES_NONCLASE_DEF = [
+  { id: 'INC', name: 'Individual', kind: 'single' },
+  { id: 'DNC', name: 'Dobles', kind: 'double' },
+];
 const CATEGORY_DEFS = [];
 MODALIDADES_DEF.forEach(mod => {
   EDADES_DEF.forEach(edad => {
-    CATEGORY_DEFS.push({ id: mod.id + '_' + edad.id, name: mod.name + ' ' + edad.name, kind: mod.kind, modalidadId: mod.id, edadId: edad.id });
+    CATEGORY_DEFS.push({ id: mod.id + '_' + edad.id, name: mod.name + ' ' + edad.name, kind: mod.kind, modalidadId: mod.id, edadId: edad.id, nivelTipo: 'edad' });
   });
+  NIVELES_DEF.forEach(niv => {
+    CATEGORY_DEFS.push({ id: mod.id + '_' + niv.id, name: mod.name + ' ' + niv.name, kind: mod.kind, modalidadId: mod.id, edadId: niv.id, nivelTipo: 'nivel' });
+  });
+});
+MODALIDADES_NONCLASE_DEF.forEach(mod => {
+  CATEGORY_DEFS.push({ id: mod.id + '_nonclase', name: mod.name + ' Non-Clase', kind: mod.kind, modalidadId: mod.id, edadId: 'nonclase', nivelTipo: 'nonclase' });
 });
 
 function defaultCategoryState(def) {
@@ -278,6 +292,7 @@ function defaultCategoryState(def) {
     kind: def.kind,
     modalidadId: def.modalidadId,
     edadId: def.edadId,
+    nivelTipo: def.nivelTipo,
     enabled: false,
     numGroups: 2,
     qualifiersPerGroup: 2,
@@ -971,7 +986,7 @@ function viewConfig() {
   ));
 
   const catsPanel = el('div', { class: 'panel' },
-    el('h2', {}, 'Categorías del torneo'),
+    el('h2', {}, 'Categorías del torneo · por edad'),
     el('div', { class: 'sub' }, 'Marca las combinaciones de modalidad y categoría de edad (Sub9 a Absoluto) que se van a disputar en este torneo. Puedes activar varias edades dentro de la misma modalidad.')
   );
   MODALIDADES_DEF.forEach(mod => {
@@ -990,6 +1005,42 @@ function viewConfig() {
     catsPanel.appendChild(fila);
   });
   wrap.appendChild(catsPanel);
+
+  const nivelPanel = el('div', { class: 'panel' },
+    el('h2', {}, 'Categorías del torneo · por nivel de juego'),
+    el('div', { class: 'sub' }, 'Para torneos que clasifican por nivel en vez de por edad: Categoría A y Categoría B, cada una con sus 5 modalidades.'),
+  );
+  MODALIDADES_DEF.forEach(mod => {
+    const fila = el('div', { style: 'margin-bottom:14px;' },
+      el('div', { style: 'font-weight:700;color:var(--court-dark);margin-bottom:6px;' }, mod.name),
+      el('div', { class: 'row', style: 'gap:6px;flex-wrap:wrap;' },
+        NIVELES_DEF.map(niv => {
+          const cat = getCategory(mod.id + '_' + niv.id);
+          return el('button', {
+            class: 'btn btn-sm ' + (cat.enabled ? 'btn-primary' : 'btn-ghost'),
+            onclick: () => { cat.enabled = !cat.enabled; render(); },
+          }, niv.name);
+        })
+      ),
+    );
+    nivelPanel.appendChild(fila);
+  });
+  wrap.appendChild(nivelPanel);
+
+  const nonClasePanel = el('div', { class: 'panel' },
+    el('h2', {}, 'Categoría del torneo · Non-Clase'),
+    el('div', { class: 'sub' }, 'Categoría abierta, todos contra todos, sin separar por sexo ni edad.'),
+    el('div', { class: 'row', style: 'gap:6px;flex-wrap:wrap;' },
+      MODALIDADES_NONCLASE_DEF.map(mod => {
+        const cat = getCategory(mod.id + '_nonclase');
+        return el('button', {
+          class: 'btn btn-sm ' + (cat.enabled ? 'btn-primary' : 'btn-ghost'),
+          onclick: () => { cat.enabled = !cat.enabled; render(); },
+        }, mod.name);
+      })
+    ),
+  );
+  wrap.appendChild(nonClasePanel);
 
   const activas = state.categories.filter(c => c.enabled);
   if (activas.length) {
@@ -1093,8 +1144,8 @@ function viewParticipants() {
   if (cat) {
     const sexoDeCategoria = (c) => (c.modalidadId === 'IM' || c.modalidadId === 'DM') ? 'M' : (c.modalidadId === 'IF' || c.modalidadId === 'DF') ? 'F' : null;
     const catSexo = sexoDeCategoria(cat);
-    const edadOk = (j) => !cat.edadId || (window.calcularCategoria && window.calcularCategoria(j.fechaNacimiento) === cat.edadId);
-    const etiquetaEdad = (window.nombreCategoria && cat.edadId) ? window.nombreCategoria(cat.edadId) : '';
+    const edadOk = (j) => cat.nivelTipo !== 'edad' || !cat.edadId || (window.calcularCategoria && window.calcularCategoria(j.fechaNacimiento) === cat.edadId);
+    const etiquetaEdad = cat.edadId ? (cat.nivelTipo === 'edad' ? (window.nombreCategoria ? window.nombreCategoria(cat.edadId) : '') : (NIVELES_DEF.find(n => n.id === cat.edadId) || {}).name || (cat.edadId === 'nonclase' ? 'Non-Clase' : '')) : '';
     const yaUsadosEnCategoria = new Set();
     cat.players.forEach(p => { if (p.jugadorId) yaUsadosEnCategoria.add(p.jugadorId); if (p.jugador1Id) yaUsadosEnCategoria.add(p.jugador1Id); if (p.jugador2Id) yaUsadosEnCategoria.add(p.jugador2Id); });
     if (cat.kind === 'double') {

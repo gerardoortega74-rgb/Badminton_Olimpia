@@ -4206,34 +4206,6 @@ function renderJugadores() {
       const wrap = el('span', {}, btn, excelFileInput);
       return wrap;
     })(),
-    el('button', {
-      class: 'btn btn-primary',
-      onclick: () => {
-        let n = 0;
-        jugadoresGlobal.forEach(j => {
-          if (!j.apellidos || !j.apellidos.trim()) {
-            const partes = separarNombreApellidos(j.nombre);
-            j.nombre = normalizarNombre(partes.nombre);
-            j.apellidos = normalizarNombre(partes.apellidos);
-            n++;
-          }
-        });
-        saveJugadoresGlobal();
-        renderJugadores();
-        alert('Separados ' + n + ' jugadores en nombre y apellidos. Revisa y corrige a mano los pocos casos de nombre compuesto (ej. "Miguel Ángel", "Ana Sofía") en "Ver ficha".');
-      },
-    }, '✂️ Separar nombre y apellidos automáticamente'),
-    el('button', {
-      class: 'btn btn-ghost',
-      onclick: () => {
-        jugadoresGlobal.forEach(j => { j.nombre = normalizarNombre(j.nombre); j.apellidos = normalizarNombre(j.apellidos); });
-        saveJugadoresGlobal();
-        clubGlobal.tecnicos = (clubGlobal.tecnicos || []).map(t => Object.assign({}, t, { nombre: normalizarNombre(t.nombre) }));
-        saveClubGlobal();
-        renderJugadores();
-        alert('Nombres corregidos: primera letra en mayúscula, resto en minúscula.');
-      },
-    }, '🔤 Corregir mayúsculas de nombres'),
   ));
 
   const nameInput = el('input', { type: 'text', placeholder: 'Nombre' });

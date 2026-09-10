@@ -2785,6 +2785,7 @@ function defaultState() {
     microciclo: diasSemanaDefault(),
     competiciones: [],
     evaluacion: { tests: [], jugadores: [], resultados: {} },
+    entrenosIndividuales: [],
   };
 }
 function diasSemanaDefault() {
@@ -2797,6 +2798,15 @@ let state = defaultState();
 let activeTab = 'config';
 let uidCounter = 1;
 function uid(prefix) { return prefix + '_' + (uidCounter++) + '_' + Math.random().toString(36).slice(2, 7); }
+function shufflePlan(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+let rutinaTemporal = null;
 
 function saveLocal() {
   try { localStorage.setItem('badmintonPlanState', JSON.stringify(state)); } catch (e) { }
@@ -2807,7 +2817,10 @@ function tryLoadLocal() {
     const raw = localStorage.getItem('badmintonPlanState');
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (parsed && parsed.config && parsed.meta) state = parsed;
+      if (parsed && parsed.config && parsed.meta) {
+        if (!parsed.entrenosIndividuales) parsed.entrenosIndividuales = [];
+        state = parsed;
+      }
     }
   } catch (e) { }
 }
@@ -2920,6 +2933,7 @@ function render() {
   else if (activeTab === 'referencia') main.appendChild(viewReferencia());
   else if (activeTab === 'macrociclo') main.appendChild(viewMacrociclo());
   else if (activeTab === 'microciclo') main.appendChild(viewMicrociclo());
+  else if (activeTab === 'individual') main.appendChild(viewEntrenoIndividual());
   else if (activeTab === 'competiciones') main.appendChild(viewCompeticiones());
   else if (activeTab === 'evaluacion') main.appendChild(viewEvaluacion());
 }
@@ -2932,6 +2946,7 @@ function renderTabsNav() {
     ['referencia', '📘 Normativa y contenidos'],
     ['macrociclo', '🗓 Macrociclo'],
     ['microciclo', '📅 Microciclo tipo'],
+    ['individual', '🎯 Entreno individual'],
     ['competiciones', '🏆 Competiciones'],
     ['evaluacion', '📊 Evaluación'],
   ];
@@ -3212,6 +3227,149 @@ function competicionCard(c) {
   );
 }
 
+const PERFILES_DIA = [
+  { nombre: 'Técnica + físico', pesos: { tecnica: 2, tactica: 1, fisica: 1, psicologica: 0 } },
+  { nombre: 'Táctica + físico', pesos: { tecnica: 1, tactica: 2, fisica: 1, psicologica: 0 } },
+  { nombre: 'Físico + técnica', pesos: { tecnica: 1, tactica: 1, fisica: 2, psicologica: 0 } },
+  { nombre: 'Integral + mental', pesos: { tecnica: 1, tactica: 1, fisica: 1, psicologica: 1 } },
+];
+function elegirSinRepetirPlan(lista, cantidad, usados) {
+  if (!lista || !lista.length || cantidad <= 0) return [];
+  const disponibles = lista.filter(x => !usados.has(x));
+  const pool = disponibles.length >= cantidad ? disponibles : lista.slice();
+  const barajado = shufflePlan(pool);
+  return barajado.slice(0, Math.min(cantidad, barajado.length));
+}
+function generarRutina(nivelId, numDias, jugadorNombre) {
+  const contenido = CONTENT_REF[nivelId] || CONTENT_REF.iniciacion;
+  const anteriores = state.entrenosIndividuales.filter(r => r.jugadorNombre === jugadorNombre).slice(-2);
+  const usadosEstaSemana = new Set();
+  anteriores.forEach(r => r.dias.forEach(d => d.bloques.forEach(b => usadosEstaSemana.add(b.texto))));
+  const dias = [];
+  for (let i = 0; i < numDias; i++) {
+    const perfil = PERFILES_DIA[i % PERFILES_DIA.length];
+    const bloques = [];
+    ['tecnica', 'tactica', 'fisica', 'psicologica'].forEach(area => {
+      const cantidad = perfil.pesos[area] || 0;
+      if (cantidad > 0) {
+        const elegidos = elegirSinRepetirPlan(contenido[area], cantidad, usadosEstaSemana);
+        elegidos.forEach(texto => { bloques.push({ area, texto }); usadosEstaSemana.add(texto); });
+      }
+    });
+    dias.push({ dia: 'Día ' + (i + 1), perfil: perfil.nombre, bloques });
+  }
+  return dias;
+}
+const AREA_LABEL = { tecnica: '🏸 Técnica', tactica: '♟️ Táctica', fisica: '💪 Físico', psicologica: '🧠 Mental' };
+let entrenoUI = { jugadorNombre: '', nivel: '', tipo: 'dia', numDias: null };
+function viewEntrenoIndividual() {
+  const wrap = document.createDocumentFragment();
+  const panel = el('div', { class: 'panel' },
+    el('h2', {}, 'Entreno individual'),
+    el('div', { class: 'sub' }, 'Genera una sesión de un día o una rutina semanal para una jugadora concreta. Combina técnica, táctica, físico y mental con un criterio sensato por día, y evita repetir lo mismo que en sus últimas rutinas guardadas.'),
+  );
+
+  const roster = (window.JugadoresGlobal ? window.JugadoresGlobal.list() : []);
+  const nombresDisponibles = roster.length ? roster.map(j => j.nombre) : state.evaluacion.jugadores.map(j => j.nombre);
+  if (!entrenoUI.jugadorNombre && nombresDisponibles.length) entrenoUI.jugadorNombre = nombresDisponibles[0];
+
+  const jugadorSelect = el('select', {}, nombresDisponibles.map(n => el('option', { value: n, selected: n === entrenoUI.jugadorNombre ? 'selected' : null }, n)));
+  jugadorSelect.value = entrenoUI.jugadorNombre;
+  jugadorSelect.addEventListener('change', (e) => {
+    entrenoUI.jugadorNombre = e.target.value;
+    const j = roster.find(x => x.nombre === e.target.value);
+    if (j && j.fechaNacimiento && window.calcularCategoria) {
+      const catId = window.calcularCategoria(j.fechaNacimiento);
+      const catInfo = CATEGORIES.find(c => c.id === catId);
+      if (catInfo) entrenoUI.nivel = catInfo.nivelSugerido;
+    }
+    render();
+  });
+  if (!entrenoUI.nivel) {
+    const j0 = roster.find(x => x.nombre === entrenoUI.jugadorNombre);
+    if (j0 && j0.fechaNacimiento && window.calcularCategoria) {
+      const catId = window.calcularCategoria(j0.fechaNacimiento);
+      const catInfo = CATEGORIES.find(c => c.id === catId);
+      entrenoUI.nivel = catInfo ? catInfo.nivelSugerido : 'iniciacion';
+    } else {
+      entrenoUI.nivel = 'iniciacion';
+    }
+  }
+  if (entrenoUI.numDias === null) entrenoUI.numDias = state.config.sesionesSemana;
+
+  const nivelSelect = selectEl(NIVELES.map(n => ({ value: n.id, label: n.nombre })), entrenoUI.nivel, v => { entrenoUI.nivel = v; });
+  const tipoSelect = selectEl([{ value: 'dia', label: 'Sesión de un día' }, { value: 'semana', label: 'Rutina semanal (varios días)' }], entrenoUI.tipo, v => { entrenoUI.tipo = v; render(); });
+  const numDiasInput = inputEl('number', entrenoUI.numDias, v => { entrenoUI.numDias = Math.max(1, parseInt(v) || 1); }, { min: 1, max: 7 });
+
+  panel.appendChild(el('div', { class: 'grid' },
+    field('Jugadora', jugadorSelect),
+    field('Nivel de contenidos', nivelSelect),
+    field('Tipo de rutina', tipoSelect),
+    entrenoUI.tipo === 'semana' ? field('Número de días', numDiasInput) : null,
+  ));
+  panel.appendChild(el('div', { class: 'toolbar' },
+    el('button', {
+      class: 'btn btn-gold',
+      onclick: () => {
+        if (!entrenoUI.jugadorNombre) { alert('Elige primero una jugadora.'); return; }
+        const numDias = entrenoUI.tipo === 'dia' ? 1 : entrenoUI.numDias;
+        rutinaTemporal = { jugadorNombre: entrenoUI.jugadorNombre, nivel: entrenoUI.nivel, dias: generarRutina(entrenoUI.nivel, numDias, entrenoUI.jugadorNombre) };
+        render();
+      },
+    }, rutinaTemporal ? '🎲 Volver a generar' : '🎲 Generar rutina'),
+  ));
+  wrap.appendChild(panel);
+
+  if (rutinaTemporal) {
+    const resultado = el('div', { class: 'panel', style: 'border:2px solid var(--gold);' },
+      el('h3', {}, 'Propuesta para ' + rutinaTemporal.jugadorNombre + ' · ' + (getNivel(rutinaTemporal.nivel) || {}).nombre),
+    );
+    rutinaTemporal.dias.forEach(d => {
+      resultado.appendChild(el('div', { class: 'card', style: 'margin-bottom:10px;' },
+        el('div', { class: 'card-head' }, el('b', {}, d.dia), el('span', { class: 'chip chip-muted' }, d.perfil)),
+        el('div', { style: 'margin-top:8px;' },
+          d.bloques.map(b => el('div', { style: 'padding:6px 0;border-bottom:1px solid #eee;' },
+            el('b', {}, AREA_LABEL[b.area] + ': '), b.texto,
+          )),
+        ),
+      ));
+    });
+    resultado.appendChild(el('div', { class: 'toolbar' },
+      el('button', {
+        class: 'btn btn-primary',
+        onclick: () => {
+          state.entrenosIndividuales.push({
+            id: uid('ei'), jugadorNombre: rutinaTemporal.jugadorNombre, nivel: rutinaTemporal.nivel,
+            fecha: new Date().toISOString().slice(0, 10), dias: rutinaTemporal.dias,
+          });
+          rutinaTemporal = null;
+          saveLocal();
+          render();
+        },
+      }, '💾 Guardar esta rutina'),
+      el('button', { class: 'btn btn-ghost', onclick: () => { rutinaTemporal = null; render(); } }, 'Descartar'),
+    ));
+    wrap.appendChild(resultado);
+  }
+
+  const historial = state.entrenosIndividuales.filter(r => r.jugadorNombre === entrenoUI.jugadorNombre).slice().reverse();
+  if (historial.length) {
+    const histPanel = el('div', { class: 'panel' },
+      el('h3', {}, 'Rutinas guardadas de ' + entrenoUI.jugadorNombre),
+    );
+    historial.forEach(r => {
+      histPanel.appendChild(el('div', { class: 'card', style: 'margin-bottom:8px;' },
+        el('div', { class: 'card-head' },
+          el('span', {}, fmtDate(r.fecha) + ' · ' + (getNivel(r.nivel) || {}).nombre + ' · ' + r.dias.length + ' día(s)'),
+          el('button', { class: 'btn btn-danger btn-sm', onclick: () => { state.entrenosIndividuales = state.entrenosIndividuales.filter(x => x.id !== r.id); saveLocal(); render(); } }, 'Eliminar'),
+        ),
+      ));
+    });
+    wrap.appendChild(histPanel);
+  }
+
+  return wrap;
+}
 function viewEvaluacion() {
   const wrap = document.createDocumentFragment();
   const panel = el('div', { class: 'panel' },
@@ -3328,7 +3486,7 @@ function importData(file) {
 }
 
 function getState() { return state; }
-function setState(s) { state = s; }
+function setState(s) { if (s && !s.entrenosIndividuales) s.entrenosIndividuales = []; state = s; }
 function mount() {
   tryLoadLocal();
   refActiveNivel = state.config.nivel;

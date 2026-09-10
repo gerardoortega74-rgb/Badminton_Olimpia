@@ -1489,12 +1489,64 @@ function getState() { return state; }
 function setState(s) { state = s; }
 function getHistorial() { return torneosHistorial; }
 function setHistorial(h) { torneosHistorial = h || []; }
+function resultadoDeParticipanteEnCategoria(cat, participantId) {
+  if (cat.knockout && cat.knockout.rounds && cat.knockout.rounds.length) {
+    const rounds = cat.knockout.rounds;
+    let ultimoPartido = null, ultimaRondaIdx = -1;
+    for (let r = 0; r < rounds.length; r++) {
+      const m = rounds[r].find(x => x.p1 === participantId || x.p2 === participantId);
+      if (m) { ultimoPartido = m; ultimaRondaIdx = r; }
+    }
+    if (ultimoPartido) {
+      const esUltimaRonda = ultimaRondaIdx === rounds.length - 1;
+      const gano = ultimoPartido.winner === participantId;
+      if (esUltimaRonda && ultimoPartido.winner) return gano ? '🥇 Campeón' : '🥈 Subcampeón';
+      if (ultimoPartido.winner) return 'Eliminado en ' + (ultimoPartido.round || 'eliminatoria');
+      return 'En juego (' + (ultimoPartido.round || 'eliminatoria') + ')';
+    }
+  }
+  if (cat.groups && cat.groups.length) {
+    for (let gi = 0; gi < cat.groups.length; gi++) {
+      const grp = cat.groups[gi];
+      if (grp.playerIds && grp.playerIds.includes(participantId)) {
+        if (!groupStageComplete(cat)) return 'Fase de grupos (en curso)';
+        const standings = computeStandings(cat, gi);
+        const pos = standings.findIndex(r => r.id === participantId) + 1;
+        return pos ? (pos + 'º de grupo') : 'Fase de grupos';
+      }
+    }
+  }
+  return null;
+}
+function trayectoriaDeJugador(jugadorId) {
+  const resultados = [];
+  const fuentes = [];
+  torneosHistorial.forEach(t => fuentes.push({ nombre: t.nombre, fecha: t.fechaInicio, categorias: (t.snapshot && t.snapshot.categories) || [] }));
+  fuentes.push({ nombre: state.meta.title || 'Torneo actual', fecha: state.meta.date, categorias: state.categories });
+  fuentes.forEach(f => {
+    (f.categorias || []).forEach(cat => {
+      if (!cat.enabled || !cat.players || !cat.players.length) return;
+      const participante = cat.players.find(p => p.jugadorId === jugadorId || p.jugador1Id === jugadorId || p.jugador2Id === jugadorId);
+      if (!participante) return;
+      const resultado = resultadoDeParticipanteEnCategoria(cat, participante.id);
+      resultados.push({
+        torneo: f.nombre,
+        fecha: f.fecha,
+        categoria: cat.name,
+        pareja: (participante.jugador1Id && participante.jugador2Id) ? participante.name : null,
+        resultado: resultado || 'Sin resultado registrado aún',
+      });
+    });
+  });
+  resultados.sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+  return resultados;
+}
 function mount() {
   tryLoadLocal();
   tryLoadHistorial();
   render();
 }
-return { render, mount, getState, setState, getHistorial, setHistorial };
+return { render, mount, getState, setState, getHistorial, setHistorial, trayectoriaDeJugador };
 })();
 </script>
 <script>
@@ -3661,7 +3713,7 @@ function nuevoJugador(datos) {
     id: uidShell('jg'), nombre: '', apellidos: '', apellido1: '', apellido2: '', numeroLicencia: '', nacionalidad: '', clubFederativo: '', tipoLicencia: '', fechaNacimiento: '', sexo: '', telefono: '', notas: '',
     direccion: '', codigoPostal: '', localidad: '', provincia: '', dni: '',
     foto: '', federado: false, rankingIndividual: '', parejas: [],
-    tipo: '', email: '', cuotasPagadas: {},
+    tipo: '', email: '', cuotasPagadas: {}, historialExterno: [],
   }, datos);
 }
 let jugadorDetalleId = null;
@@ -3707,6 +3759,67 @@ function rankingsOficialesPanel() {
   panel.appendChild(grid2);
   panel.appendChild(el('div', { class: 'source-note' }, 'Fuente: Federación Española de Bádminton (badminton.es) — página de Rankings Nacionales y Federaciones Territoriales.'));
   return panel;
+}
+function trayectoriaJugadorPanel(j) {
+  j.historialExterno = j.historialExterno || [];
+  const wrap = el('div', { class: 'card', style: 'background:#F5F3EB;' });
+  wrap.appendChild(el('h4', { style: 'margin:0 0 6px;' }, '📈 Trayectoria del jugador'));
+
+  const deLaApp = (typeof window.TorneoApp !== 'undefined' && window.TorneoApp.trayectoriaDeJugador) ? window.TorneoApp.trayectoriaDeJugador(j.id) : [];
+  wrap.appendChild(el('div', { class: 'sub' }, 'Torneos jugados con esta app (calculado automáticamente a partir del Historial de Torneos):'));
+  if (!deLaApp.length) {
+    wrap.appendChild(el('div', { class: 'sub', style: 'margin-bottom:10px;' }, 'Todavía no ha participado en ningún torneo gestionado con esta app.'));
+  } else {
+    const tabla1 = el('table', { style: 'margin-bottom:14px;' }, el('thead', {}, el('tr', {},
+      el('th', {}, 'Torneo'), el('th', {}, 'Fecha'), el('th', {}, 'Categoría'), el('th', {}, 'Resultado'))));
+    const tbody1 = el('tbody');
+    deLaApp.forEach(r => {
+      tbody1.appendChild(el('tr', {},
+        el('td', {}, r.torneo), el('td', {}, r.fecha || '—'), el('td', {}, r.categoria + (r.pareja ? ' (' + r.pareja + ')' : '')), el('td', {}, r.resultado),
+      ));
+    });
+    tabla1.appendChild(tbody1);
+    wrap.appendChild(tabla1);
+  }
+
+  wrap.appendChild(el('div', { class: 'sub' }, 'Campeonatos externos (organizados fuera de esta app: federación, otros clubes, etc.):'));
+  const nombreCampInput = el('input', { type: 'text', placeholder: 'Nombre del campeonato' });
+  const fechaCampInput = el('input', { type: 'date' });
+  const catCampInput = el('input', { type: 'text', placeholder: 'Categoría (ej: Individual Masculino)' });
+  const resCampInput = el('input', { type: 'text', placeholder: 'Resultado (ej: Campeón, Semifinales...)' });
+  wrap.appendChild(el('div', { class: 'grid', style: 'margin-bottom:8px;' },
+    field('Campeonato', nombreCampInput),
+    field('Fecha', fechaCampInput),
+    field('Categoría', catCampInput),
+    field('Resultado', resCampInput),
+  ));
+  wrap.appendChild(el('div', { class: 'toolbar', style: 'margin-bottom:10px;' }, el('button', {
+    class: 'btn btn-primary btn-sm',
+    onclick: () => {
+      const nombre = nombreCampInput.value.trim();
+      if (!nombre) return;
+      j.historialExterno.push({ id: uidShell('ext'), campeonato: nombre, fecha: fechaCampInput.value, categoria: catCampInput.value.trim(), resultado: resCampInput.value.trim() });
+      saveJugadoresGlobal();
+      renderJugadores();
+    },
+  }, '+ Añadir campeonato externo')));
+  if (j.historialExterno.length) {
+    const tabla2 = el('table', {}, el('thead', {}, el('tr', {},
+      el('th', {}, 'Campeonato'), el('th', {}, 'Fecha'), el('th', {}, 'Categoría'), el('th', {}, 'Resultado'), el('th', {}, ''))));
+    const tbody2 = el('tbody');
+    j.historialExterno.slice().sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '')).forEach(ext => {
+      tbody2.appendChild(el('tr', {},
+        el('td', {}, ext.campeonato), el('td', {}, ext.fecha || '—'), el('td', {}, ext.categoria || '—'), el('td', {}, ext.resultado || '—'),
+        el('td', {}, el('button', {
+          class: 'btn btn-danger btn-sm',
+          onclick: () => { j.historialExterno = j.historialExterno.filter(x => x.id !== ext.id); saveJugadoresGlobal(); renderJugadores(); },
+        }, 'Eliminar')),
+      ));
+    });
+    tabla2.appendChild(tbody2);
+    wrap.appendChild(tabla2);
+  }
+  return wrap;
 }
 function fichaFederativaJugador(j) {
   j.direccion = j.direccion || '';
@@ -4254,6 +4367,7 @@ function renderJugadores() {
           field('Tipo de licencia', selectEl([{ value: '', label: '—' }, { value: 'Nacional', label: 'Nacional' }, { value: 'Territorial', label: 'Territorial' }, { value: 'Escolares', label: 'Escolares' }], j.tipoLicencia, v => { j.tipoLicencia = v; saveJugadoresGlobal(); renderJugadores(); })),
         ));
         detailCell.appendChild(fichaFederativaJugador(j));
+        detailCell.appendChild(trayectoriaJugadorPanel(j));
         tbody.appendChild(el('tr', {}, detailCell));
       }
     });

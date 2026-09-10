@@ -310,6 +310,7 @@ function loadState() {
       courts: 4,
       matchMinutes: 25,
       bufferMinutes: 5,
+      restMinutes: 10,
       startTime: '09:00',
     },
     categories: CATEGORY_DEFS.map(defaultCategoryState),
@@ -648,7 +649,9 @@ function generateGroupMatches(cat) {
 
 function buildSchedule() {
   const numCourts = Math.max(1, state.config.courts);
-  const slotLen = Math.max(5, state.config.matchMinutes) + Math.max(0, state.config.bufferMinutes);
+  const duracionPartido = Math.max(5, state.config.matchMinutes);
+  const descansoPista = Math.max(0, state.config.bufferMinutes);
+  const descansoJugador = Math.max(0, state.config.restMinutes != null ? state.config.restMinutes : 10);
   const startMin = timeToMinutes(state.config.startTime || '09:00');
 
   enabledCategories().forEach(cat => {
@@ -677,39 +680,34 @@ function buildSchedule() {
     }
   });
 
-  const slots = [];
-  function ensureSlot(i) {
-    while (slots.length <= i) slots.push({ courtsUsed: 0, busyNames: new Set() });
-    return slots[i];
+  const pistaLibreEn = new Array(numCourts).fill(0);
+  const jugadorLibreEn = {};
+
+  function colocarPartido(cat, match) {
+    const n1 = normName(playerName(cat, match.p1));
+    const n2 = normName(playerName(cat, match.p2));
+    const minimoJugadores = Math.max(jugadorLibreEn[n1] || 0, jugadorLibreEn[n2] || 0);
+    let mejorPista = 0, mejorInicio = Infinity;
+    for (let c = 0; c < numCourts; c++) {
+      const inicio = Math.max(pistaLibreEn[c], minimoJugadores);
+      if (inicio < mejorInicio) { mejorInicio = inicio; mejorPista = c; }
+    }
+    match.court = mejorPista + 1;
+    match.time = minutesToTime(startMin + mejorInicio);
+    pistaLibreEn[mejorPista] = mejorInicio + duracionPartido + descansoPista;
+    jugadorLibreEn[n1] = mejorInicio + duracionPartido + descansoJugador;
+    jugadorLibreEn[n2] = mejorInicio + duracionPartido + descansoJugador;
   }
 
-  function scheduleQueue(queue, startSlotIndex) {
-    let lastUsedSlot = startSlotIndex - 1;
-    queue.forEach(({ cat, match }) => {
-      const n1 = normName(playerName(cat, match.p1));
-      const n2 = normName(playerName(cat, match.p2));
-      let placed = false;
-      let i = startSlotIndex;
-      while (!placed) {
-        const slot = ensureSlot(i);
-        const conflict = slot.busyNames.has(n1) || slot.busyNames.has(n2);
-        if (!conflict && slot.courtsUsed < numCourts) {
-          match.court = slot.courtsUsed + 1;
-          match.time = minutesToTime(startMin + i * slotLen);
-          slot.courtsUsed += 1;
-          slot.busyNames.add(n1);
-          slot.busyNames.add(n2);
-          placed = true;
-          if (i > lastUsedSlot) lastUsedSlot = i;
-        }
-        i++;
-      }
-    });
-    return lastUsedSlot;
-  }
+  groupQueue.forEach(({ cat, match }) => colocarPartido(cat, match));
 
-  const lastGroupSlot = scheduleQueue(groupQueue, 0);
-  scheduleQueue(koQueue, lastGroupSlot + 1);
+  if (koQueue.length) {
+    if (groupQueue.length) {
+      const finGrupos = Math.max.apply(null, pistaLibreEn);
+      for (let c = 0; c < numCourts; c++) { if (pistaLibreEn[c] < finGrupos) pistaLibreEn[c] = finGrupos; }
+    }
+    koQueue.forEach(({ cat, match }) => colocarPartido(cat, match));
+  }
 }
 
 function setWinnerFromSets(match) {
@@ -961,6 +959,7 @@ function viewConfig() {
       field('Hora de inicio', inputEl('time', state.config.startTime, v => { state.config.startTime = v; })),
       field('Duración media por partido (min)', inputEl('number', state.config.matchMinutes, v => { state.config.matchMinutes = Math.max(5, parseInt(v) || 5); }, { min: 5 })),
       field('Descanso entre partidos por pista (min)', inputEl('number', state.config.bufferMinutes, v => { state.config.bufferMinutes = Math.max(0, parseInt(v) || 0); }, { min: 0 })),
+      field('Descanso mínimo del jugador entre sus partidos (min)', inputEl('number', state.config.restMinutes != null ? state.config.restMinutes : 10, v => { state.config.restMinutes = Math.max(0, parseInt(v) || 0); }, { min: 0 })),
     )
   );
   general.appendChild(el('div', { class: 'toolbar', style: 'margin-top:12px;' },

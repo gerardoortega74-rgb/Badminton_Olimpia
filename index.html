@@ -1332,7 +1332,7 @@ function viewResults() {
     } else {
       cat.groups.forEach((g, gIdx) => {
         panel.appendChild(el('h3', { style: 'margin:18px 0 8px;color:var(--court-dark);' }, g.name));
-        const matches = cat.matches.filter(m => m.groupIndex === gIdx);
+        const matches = cat.matches.filter(m => m.groupIndex === gIdx).slice().sort((a, b) => String(a.time || '99:99').localeCompare(String(b.time || '99:99')));
         matches.forEach(m => panel.appendChild(matchCard(cat, m)));
         panel.appendChild(standingsTable(cat, gIdx));
       });
@@ -4059,6 +4059,29 @@ function formatearSetsPublico(sets) {
   if (!sets || !sets.length) return '';
   return sets.filter(s => (s[0] || s[1])).map(s => s[0] + '-' + s[1]).join(', ');
 }
+let jugadorSeleccionadoPublico = '';
+function todosLosPartidosDePublico(st) {
+  const partidos = [];
+  (st.categories || []).filter(c => c.enabled).forEach(cat => {
+    (cat.matches || []).forEach(m => {
+      partidos.push({ cat, m, ronda: null });
+    });
+    if (cat.knockout && cat.knockout.rounds) {
+      cat.knockout.rounds.forEach(ronda => {
+        const rondaLabel = (ronda[0] && ronda[0].round) ? ronda[0].round : '';
+        ronda.forEach(m => partidos.push({ cat, m, ronda: rondaLabel }));
+      });
+    }
+  });
+  return partidos;
+}
+function nombresParticipantesPublico(st) {
+  const nombres = new Set();
+  (st.categories || []).filter(c => c.enabled).forEach(cat => {
+    (cat.players || []).forEach(p => { if (p.name) nombres.add(p.name); });
+  });
+  return Array.from(nombres).sort((a, b) => a.localeCompare(b, 'es'));
+}
 function renderVistaPublica() {
   const headerActions = document.getElementById('headerActions');
   if (headerActions) headerActions.style.display = 'none';
@@ -4083,19 +4106,67 @@ function renderVistaPublica() {
     root.appendChild(el('div', { class: 'empty-state' }, 'Todavía no hay categorías activas en este torneo.'));
     return;
   }
+
+  const nombres = nombresParticipantesPublico(st);
+  const selector = el('select', { style: 'flex:1;min-width:200px;' },
+    el('option', { value: '' }, '— Elige tu nombre —'),
+    nombres.map(n => el('option', { value: n, selected: n === jugadorSeleccionadoPublico ? 'selected' : null }, n)),
+  );
+  selector.value = jugadorSeleccionadoPublico;
+  selector.addEventListener('change', (e) => { jugadorSeleccionadoPublico = e.target.value; renderVistaPublica(); });
+  root.appendChild(el('div', { class: 'panel' },
+    el('h3', { style: 'margin-bottom:6px;' }, '🔍 ¿Cuándo juego yo?'),
+    el('div', { class: 'sub' }, 'Elige tu nombre para ver solo tus partidos y horarios.'),
+    el('div', { class: 'row', style: 'gap:8px;margin-top:6px;' }, selector),
+  ));
+
+  if (jugadorSeleccionadoPublico) {
+    const misPartidos = todosLosPartidosDePublico(st).filter(({ cat, m }) => {
+      const p1n = nombreParticipantePublico(cat, m.p1);
+      const p2n = nombreParticipantePublico(cat, m.p2);
+      return p1n === jugadorSeleccionadoPublico || p2n === jugadorSeleccionadoPublico;
+    }).sort((a, b) => String(a.m.time || '99:99').localeCompare(String(b.m.time || '99:99')));
+    const panelMios = el('div', { class: 'panel', style: 'border:2px solid var(--gold);' },
+      el('h3', {}, '🏸 Partidos de ' + jugadorSeleccionadoPublico),
+    );
+    if (!misPartidos.length) {
+      panelMios.appendChild(el('div', { class: 'sub' }, 'Aún no tiene partidos programados con hora.'));
+    } else {
+      const tabla = el('table', {}, el('thead', {}, el('tr', {}, el('th', {}, 'Hora'), el('th', {}, 'Pista'), el('th', {}, 'Categoría'), el('th', {}, 'Rival'), el('th', {}, 'Resultado'))));
+      const tbody = el('tbody');
+      misPartidos.forEach(({ cat, m, ronda }) => {
+        const p1n = nombreParticipantePublico(cat, m.p1);
+        const p2n = nombreParticipantePublico(cat, m.p2);
+        const rival = p1n === jugadorSeleccionadoPublico ? p2n : p1n;
+        tbody.appendChild(el('tr', {},
+          el('td', {}, m.time ? String(m.time) : '—'),
+          el('td', {}, m.court ? String(m.court) : '—'),
+          el('td', {}, cat.name + (ronda ? ' · ' + ronda : '')),
+          el('td', {}, rival || 'Por determinar'),
+          el('td', {}, m.winner ? formatearSetsPublico(m.sets) : el('span', { class: 'chip chip-muted' }, 'Pendiente')),
+        ));
+      });
+      tabla.appendChild(tbody);
+      panelMios.appendChild(tabla);
+    }
+    root.appendChild(panelMios);
+  }
+
   cats.forEach(cat => {
     const panel = el('div', { class: 'panel' }, el('h3', {}, cat.name));
 
-    const programados = (cat.matches || []).filter(m => m.court || m.time);
+    const programados = (cat.matches || []).filter(m => m.court || m.time).slice().sort((a, b) => String(a.time || '99:99').localeCompare(String(b.time || '99:99')));
     if (programados.length) {
       panel.appendChild(el('h4', { style: 'margin-bottom:6px;' }, '🗓 Calendario'));
       const tabla = el('table', {}, el('thead', {}, el('tr', {}, el('th', {}, 'Hora'), el('th', {}, 'Pista'), el('th', {}, 'Partido'), el('th', {}, 'Resultado'))));
       const tbody = el('tbody');
       programados.forEach(m => {
+        const p1n = nombreParticipantePublico(cat, m.p1);
+        const p2n = nombreParticipantePublico(cat, m.p2);
         tbody.appendChild(el('tr', {},
           el('td', {}, m.time ? String(m.time) : '—'),
           el('td', {}, m.court ? String(m.court) : '—'),
-          el('td', {}, nombreParticipantePublico(cat, m.p1) + ' vs ' + nombreParticipantePublico(cat, m.p2)),
+          el('td', {}, el('span', { style: 'cursor:pointer;text-decoration:underline;', onclick: () => { jugadorSeleccionadoPublico = p1n; renderVistaPublica(); } }, p1n), ' vs ', el('span', { style: 'cursor:pointer;text-decoration:underline;', onclick: () => { jugadorSeleccionadoPublico = p2n; renderVistaPublica(); } }, p2n)),
           el('td', {}, m.winner ? formatearSetsPublico(m.sets) : el('span', { class: 'chip chip-muted' }, 'Pendiente')),
         ));
       });

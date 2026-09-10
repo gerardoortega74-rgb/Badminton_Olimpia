@@ -1358,7 +1358,19 @@ function viewParticipants() {
           })),
           el('td', {}, el('button', {
             class: 'btn btn-danger btn-sm',
-            onclick: () => { cat.players = cat.players.filter(x => x.id !== p.id); render(); },
+            onclick: () => {
+              cat.players = cat.players.filter(x => x.id !== p.id);
+              if (cat.groups || (cat.knockout && cat.knockout.rounds && cat.knockout.rounds.length)) {
+                if (!confirm('Este participante ya estaba en el sorteo o el cuadro. Al eliminarlo, se borra el sorteo/cuadro de esta categoría para evitar inconsistencias, y habrá que volver a sortear. ¿Continuar?')) {
+                  cat.players.push(p);
+                  return;
+                }
+                cat.groups = null;
+                cat.matches = [];
+                cat.knockout = null;
+              }
+              render();
+            },
           }, 'Eliminar')),
         ));
       });
@@ -1408,6 +1420,7 @@ function viewDraw() {
         const content = el('div', { class: 'content' });
         g.playerIds.forEach(id => {
           const p = cat.players.find(pl => pl.id === id);
+          if (!p) return;
           content.appendChild(el('div', {}, p.name, p.seed ? el('span', { class: 'badge-seed' }, 'CS') : null));
         });
         box.appendChild(content);

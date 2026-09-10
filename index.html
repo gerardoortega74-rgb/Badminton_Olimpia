@@ -49,7 +49,7 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--gold);outline-of
 .btn-sm{padding:5px 10px;font-size:12px;}
 .btn:disabled{opacity:.45;cursor:not-allowed;}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
-table{width:100%;border-collapse:collapse;font-size:13px;display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;white-space:nowrap;max-width:100%;}
+table{width:100%;border-collapse:collapse;font-size:13px;display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;white-space:nowrap;max-width:100%;background:linear-gradient(to left, rgba(0,0,0,0.16), rgba(0,0,0,0) 26px) right center no-repeat;background-size:32px 100%;}
 body.solo-lectura input:not([type=file]), body.solo-lectura select, body.solo-lectura textarea{pointer-events:none;background:#ECE9DE;opacity:0.75;}
 body.solo-lectura .btn-danger{display:none !important;}
 .lectura-banner{background:#7A5B00;color:#fff;text-align:center;padding:8px;font-size:12.5px;font-weight:700;}
@@ -1637,7 +1637,7 @@ function viewHistorial() {
     const dias = diasEntre(t.fechaInicio, t.fechaFin);
     const numCats = (t.snapshot && t.snapshot.categories) ? t.snapshot.categories.filter(c => c.enabled).length : 0;
     tbody.appendChild(el('tr', { style: esActivo ? 'background:#FBF3D8;' : '' },
-      el('td', {}, (esActivo ? '▶️ ' : '') + t.nombre),
+      el('td', {}, esActivo ? ('▶️ ' + t.nombre) : el('span', { style: 'text-decoration:underline;cursor:pointer;color:var(--court-dark);font-weight:700;', onclick: () => cambiarATorneo(t.id) }, t.nombre)),
       el('td', {}, t.fechaInicio || '—'),
       el('td', {}, t.estado === 'finalizado' ? el('span', { class: 'chip chip-gold' }, 'Finalizado') : el('span', { class: 'chip' }, 'En curso')),
       el('td', {}, dias === null ? '—' : (dias === 0 ? 'mismo día' : dias + ' día(s)')),

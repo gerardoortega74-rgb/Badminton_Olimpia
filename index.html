@@ -1144,10 +1144,23 @@ function viewParticipants() {
   if (cat) {
     const sexoDeCategoria = (c) => (c.modalidadId === 'IM' || c.modalidadId === 'DM') ? 'M' : (c.modalidadId === 'IF' || c.modalidadId === 'DF') ? 'F' : null;
     const catSexo = sexoDeCategoria(cat);
-    const edadOk = (j) => cat.nivelTipo !== 'edad' || !cat.edadId || (window.calcularCategoria && window.calcularCategoria(j.fechaNacimiento) === cat.edadId);
+    const ORDEN_EDADES = ['sub9', 'sub11', 'sub13', 'sub15', 'sub17', 'sub19', 'absoluto'];
+    const edadOk = (j) => {
+      if (cat.nivelTipo !== 'edad' || !cat.edadId) return true;
+      const propia = window.calcularCategoria ? window.calcularCategoria(j.fechaNacimiento) : '';
+      const rangoJugador = ORDEN_EDADES.indexOf(propia);
+      const rangoCategoria = ORDEN_EDADES.indexOf(cat.edadId);
+      if (rangoJugador === -1 || rangoCategoria === -1) return false;
+      return rangoJugador <= rangoCategoria;
+    };
     const etiquetaEdad = cat.edadId ? (cat.nivelTipo === 'edad' ? (window.nombreCategoria ? window.nombreCategoria(cat.edadId) : '') : (NIVELES_DEF.find(n => n.id === cat.edadId) || {}).name || (cat.edadId === 'nonclase' ? 'Non-Clase' : '')) : '';
     const yaUsadosEnCategoria = new Set();
     cat.players.forEach(p => { if (p.jugadorId) yaUsadosEnCategoria.add(p.jugadorId); if (p.jugador1Id) yaUsadosEnCategoria.add(p.jugador1Id); if (p.jugador2Id) yaUsadosEnCategoria.add(p.jugador2Id); });
+    if (cat.nivelTipo === 'edad') {
+      state.categories.filter(c => c.modalidadId === cat.modalidadId && c.nivelTipo === 'edad' && c.id !== cat.id).forEach(c => {
+        (c.players || []).forEach(p => { if (p.jugadorId) yaUsadosEnCategoria.add(p.jugadorId); if (p.jugador1Id) yaUsadosEnCategoria.add(p.jugador1Id); if (p.jugador2Id) yaUsadosEnCategoria.add(p.jugador2Id); });
+      });
+    }
     if (cat.kind === 'double') {
       const rosterAll = (window.JugadoresGlobal ? window.JugadoresGlobal.list() : []);
       let roster1, roster2, avisoSexo;

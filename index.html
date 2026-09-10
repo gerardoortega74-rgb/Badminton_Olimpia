@@ -4379,7 +4379,7 @@ function renderVistaPublica() {
   root.innerHTML = '';
   document.getElementById('shellTitle').textContent = clubGlobal.nombre || 'Torneo en directo';
   document.getElementById('shellSubtitle').textContent = 'Sigue el campeonato en directo · se actualiza solo';
-  document.body.classList.add('solo-lectura');
+  document.body.classList.remove('solo-lectura');
 
   const st = TorneoApp.getState();
   root.appendChild(el('div', { class: 'panel' },

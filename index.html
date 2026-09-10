@@ -200,7 +200,7 @@ header.app-header::before{display:none !important;}
       <small id="nubeIndicador" style="display:block;opacity:0.75;"></small>
     </div>
   </div>
-  <div class="row no-print">
+  <div class="row no-print" id="headerActions">
     <button class="btn btn-ghost btn-sm" id="btnLogout" style="display:none;">🔒 Salir</button>
     <button class="btn btn-primary btn-sm" id="btnMenu" style="display:none;">🏠 Menú</button>
     <button class="btn btn-gold btn-sm" id="btnExport">⬇ Exportar todo</button>
@@ -210,6 +210,8 @@ header.app-header::before{display:none !important;}
 </header>
 
 <main id="shellMain">
+
+  <div id="publicoScreen" style="display:none;"></div>
 
   <div id="loginScreen" style="display:none;"></div>
 
@@ -868,6 +870,23 @@ function viewConfig() {
     el('button', { class: 'btn btn-danger', onclick: () => borrarTorneoActual() }, '🗑️ Borrar este torneo'),
   ));
   wrap.appendChild(general);
+
+  const enlacePublico = location.origin + location.pathname + '?publico=1';
+  const enlaceInput = el('input', { type: 'text', value: enlacePublico, readonly: true, style: 'flex:1;min-width:220px;' });
+  wrap.appendChild(el('div', { class: 'panel' },
+    el('h2', {}, '📱 Enlace en directo para los jugadores'),
+    el('div', { class: 'sub' }, 'Comparte este enlace con los jugadores: podrán ver el calendario, los horarios y cómo va el cuadro en directo desde su propio móvil, sin necesidad de usuario ni PIN, y sin poder tocar nada.'),
+    el('div', { class: 'row', style: 'gap:8px;' },
+      enlaceInput,
+      el('button', {
+        class: 'btn btn-gold',
+        onclick: () => {
+          enlaceInput.select();
+          navigator.clipboard && navigator.clipboard.writeText(enlacePublico).then(() => alert('Enlace copiado.')).catch(() => {});
+        },
+      }, '📋 Copiar enlace'),
+    ),
+  ));
 
   const catsPanel = el('div', { class: 'panel' },
     el('h2', {}, 'Categorías del torneo'),
@@ -3939,6 +3958,82 @@ function cerrarSesion() {
   saveSesion();
   mostrarLogin();
 }
+function esVistaPublica() {
+  try { return new URLSearchParams(location.search).get('publico') === '1'; } catch (e) { return false; }
+}
+function nombreParticipantePublico(cat, id) {
+  if (!id) return 'Por determinar';
+  const p = (cat.players || []).find(x => x.id === id);
+  return p ? p.name : '?';
+}
+function formatearSetsPublico(sets) {
+  if (!sets || !sets.length) return '';
+  return sets.filter(s => (s[0] || s[1])).map(s => s[0] + '-' + s[1]).join(', ');
+}
+function renderVistaPublica() {
+  const headerActions = document.getElementById('headerActions');
+  if (headerActions) headerActions.style.display = 'none';
+  ['loginScreen', 'onboardingScreen', 'homeScreen', 'clubGestionScreen', 'torneoScreen', 'planScreen'].forEach(id => {
+    const e = document.getElementById(id); if (e) e.style.display = 'none';
+  });
+  const root = document.getElementById('publicoScreen');
+  root.style.display = 'block';
+  root.innerHTML = '';
+  document.getElementById('shellTitle').textContent = clubGlobal.nombre || 'Torneo en directo';
+  document.getElementById('shellSubtitle').textContent = 'Sigue el campeonato en directo · se actualiza solo';
+  document.body.classList.add('solo-lectura');
+
+  const st = TorneoApp.getState();
+  root.appendChild(el('div', { class: 'panel' },
+    el('h2', {}, st.meta.title || 'Torneo'),
+    el('div', { class: 'sub' }, (st.meta.date ? ('Fecha: ' + st.meta.date + ' · ') : '') + 'Esta página es solo para consultar: no se puede editar nada desde aquí.'),
+  ));
+
+  const cats = (st.categories || []).filter(c => c.enabled);
+  if (!cats.length) {
+    root.appendChild(el('div', { class: 'empty-state' }, 'Todavía no hay categorías activas en este torneo.'));
+    return;
+  }
+  cats.forEach(cat => {
+    const panel = el('div', { class: 'panel' }, el('h3', {}, cat.name));
+
+    const programados = (cat.matches || []).filter(m => m.court || m.time);
+    if (programados.length) {
+      panel.appendChild(el('h4', { style: 'margin-bottom:6px;' }, '🗓 Calendario'));
+      const tabla = el('table', {}, el('thead', {}, el('tr', {}, el('th', {}, 'Hora'), el('th', {}, 'Pista'), el('th', {}, 'Partido'), el('th', {}, 'Resultado'))));
+      const tbody = el('tbody');
+      programados.forEach(m => {
+        tbody.appendChild(el('tr', {},
+          el('td', {}, m.time ? String(m.time) : '—'),
+          el('td', {}, m.court ? String(m.court) : '—'),
+          el('td', {}, nombreParticipantePublico(cat, m.p1) + ' vs ' + nombreParticipantePublico(cat, m.p2)),
+          el('td', {}, m.winner ? formatearSetsPublico(m.sets) : el('span', { class: 'chip chip-muted' }, 'Pendiente')),
+        ));
+      });
+      tabla.appendChild(tbody);
+      panel.appendChild(tabla);
+    }
+
+    if (cat.knockout && cat.knockout.rounds && cat.knockout.rounds.length) {
+      panel.appendChild(el('h4', { style: 'margin:14px 0 6px;' }, '🏅 Cuadro de eliminatoria'));
+      cat.knockout.rounds.forEach(ronda => {
+        const rondaLabel = (ronda[0] && ronda[0].round) ? ronda[0].round : '';
+        panel.appendChild(el('div', { style: 'font-weight:700;margin-top:10px;color:var(--court-dark);' }, rondaLabel));
+        ronda.forEach(m => {
+          const p1n = nombreParticipantePublico(cat, m.p1);
+          const p2n = nombreParticipantePublico(cat, m.p2);
+          const linea = (m.winner && m.winner === m.p1 ? '🏆 ' : '') + p1n + '   vs   ' + (m.winner && m.winner === m.p2 ? '🏆 ' : '') + p2n +
+            (m.winner ? '  (' + formatearSetsPublico(m.sets) + ')' : (m.p1 && m.p2 ? '  — pendiente' : ''));
+          panel.appendChild(el('div', { class: 'sub', style: 'padding:4px 0;' }, linea));
+        });
+      });
+    } else if (cat.groups && cat.groups.length && cat.matches && cat.matches.length) {
+      panel.appendChild(el('h4', { style: 'margin:14px 0 6px;' }, '📊 Fase de grupos'));
+      panel.appendChild(el('div', { class: 'sub' }, 'La eliminatoria todavía no se ha generado.'));
+    }
+    root.appendChild(panel);
+  });
+}
 function mostrarLogin() {
   SCREENS.concat(['loginScreen']).forEach(id => { const elx = document.getElementById(id); if (elx) elx.style.display = 'none'; });
   document.getElementById('loginScreen').style.display = 'block';
@@ -4621,6 +4716,10 @@ function aplicarDatosDeNube(dataOriginal) {
   if (data.accessControl) { accessControl = data.accessControl; saveAccessControl(); }
 }
 function arrancarAppLocal() {
+  if (esVistaPublica()) {
+    renderVistaPublica();
+    return;
+  }
   const hadClubAhora = !!clubGlobal.nombre;
   syncClubIntoModules();
   if (accesoActivo() && !sesionActual) {
@@ -4662,6 +4761,14 @@ if (firebaseDisponible) {
       if (clubGlobal.nombre) programarSyncNube();
     }
     arrancarAppLocal();
+    if (esVistaPublica()) {
+      docNube().onSnapshot(snap => {
+        if (snap.exists) {
+          aplicarDatosDeNube(snap.data());
+          renderVistaPublica();
+        }
+      });
+    }
   }).catch(err => {
     console.warn('No se pudo conectar a la nube, usando datos guardados en este dispositivo:', err);
     marcarEstadoNube('⚠️ Nube: ' + (err && err.code ? err.code : (err && err.message) || 'error desconocido'));

@@ -1068,6 +1068,40 @@ function renderTabsNav() {
   });
 }
 
+function estimarDuracionTotal(nParticipantes, numGrupos, qualifiersPerGroup, courts, matchMinutes) {
+  if (numGrupos < 1 || nParticipantes < 2) return null;
+  const base = Math.floor(nParticipantes / numGrupos);
+  const resto = nParticipantes % numGrupos;
+  let totalGroupMatches = 0;
+  let clasificados = 0;
+  for (let i = 0; i < numGrupos; i++) {
+    const size = base + (i < resto ? 1 : 0);
+    if (size < 2) return null;
+    totalGroupMatches += size * (size - 1) / 2;
+    clasificados += Math.min(qualifiersPerGroup, size);
+  }
+  const partidosKO = Math.max(0, clasificados - 1);
+  const totalPartidos = totalGroupMatches + partidosKO;
+  const minutosMinimos = Math.ceil(totalPartidos / Math.max(1, courts)) * Math.max(5, matchMinutes);
+  return { totalPartidos, minutosMinimos, totalGroupMatches, partidosKO, clasificados };
+}
+function optimizarNumGrupos(cat) {
+  const n = cat.players.length;
+  if (n < 4) { alert('Añade al menos 4 participantes para que merezca la pena optimizar el número de grupos.'); return; }
+  let mejor = null;
+  const maxGrupos = Math.min(Math.floor(n / 2), 16);
+  for (let g = 1; g <= maxGrupos; g++) {
+    const est = estimarDuracionTotal(n, g, cat.qualifiersPerGroup, state.config.courts, state.config.matchMinutes);
+    if (est && (!mejor || est.minutosMinimos < mejor.est.minutosMinimos)) mejor = { g, est };
+  }
+  if (!mejor) { alert('No se ha podido calcular una combinación válida (hacen falta al menos 4 participantes, 2 por grupo como mínimo).'); return; }
+  cat.numGroups = mejor.g;
+  render();
+  alert('Número de grupos optimizado a ' + mejor.g + ' (con al menos 2 jugadores por grupo, para que siga siendo un torneo real por grupos).\n\n' +
+    'Partidos totales estimados: ' + mejor.est.totalPartidos + ' (' + mejor.est.totalGroupMatches + ' de grupos + ' + mejor.est.partidosKO + ' de eliminatoria)\n' +
+    'Duración mínima estimada: ' + mejor.est.minutosMinimos + ' min, con ' + state.config.courts + ' pista(s) (sin contar los descansos entre partidos del mismo jugador, que pueden alargarlo algo más).');
+}
+
 function viewConfig() {
   const wrap = document.createDocumentFragment();
 
@@ -1194,6 +1228,9 @@ function viewConfig() {
         card.appendChild(el('div', { class: 'grid', style: 'margin-top:10px;' },
           field('Nº de grupos', inputEl('number', cat.numGroups, v => { cat.numGroups = Math.max(1, parseInt(v) || 1); }, { min: 1 })),
           field('Clasificados por grupo a eliminatoria', inputEl('number', cat.qualifiersPerGroup, v => { cat.qualifiersPerGroup = Math.max(1, parseInt(v) || 1); }, { min: 1 })),
+        ));
+        card.appendChild(el('div', { class: 'toolbar', style: 'margin-top:8px;' },
+          el('button', { class: 'btn btn-ghost btn-sm', onclick: () => optimizarNumGrupos(cat) }, '⏱️ Optimizar nº de grupos (menor duración)'),
         ));
       }
       detallePanel.appendChild(card);

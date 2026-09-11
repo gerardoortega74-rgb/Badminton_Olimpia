@@ -4552,7 +4552,7 @@ function viewContabilidad() {
       el('button', { class: 'btn btn-ghost', onclick: () => triggerFileRecibo('gasto') }, '📎 Recibo de gasto'),
       el('button', { class: 'btn btn-ghost', onclick: () => triggerFileRecibo('ingreso') }, '📎 Recibo de ingreso'),
       el('input', {
-        type: 'file', id: 'inputRecibo', accept: 'image/*,application/pdf', capture: 'environment', style: 'display:none;',
+        type: 'file', id: 'inputRecibo', accept: 'image/*,application/pdf', style: 'display:none;',
         onchange: (e) => { const f = e.target.files && e.target.files[0]; if (f) procesarArchivoRecibo(f, tipoReciboPendiente); },
       }),
     ),

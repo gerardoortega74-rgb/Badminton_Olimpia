@@ -4364,29 +4364,30 @@ function arrayBufferABase64(buffer) {
 }
 
 function leerPDF(file) {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const reader = new FileReader();
-    reader.onerror = () => reject(reader.error || new Error('No se pudo leer el PDF'));
+    reader.onerror = () => resolve({ texto: '', imagenDataUrl: null, paginasTotales: 0 });
     reader.onload = async () => {
-      const pdfDataUrl = 'data:application/pdf;base64,' + arrayBufferABase64(reader.result);
       try {
-        if (!window.pdfjsLib) { resolve({ texto: '', imagenDataUrl: null, pdfDataUrl }); return; }
+        if (!window.pdfjsLib) { resolve({ texto: '', imagenDataUrl: null, paginasTotales: 0 }); return; }
         const typedArray = new Uint8Array(reader.result);
         const pdf = await pdfjsLib.getDocument({ data: typedArray }).promise;
         const page = await pdf.getPage(1);
         const contenido = await page.getTextContent();
         const texto = contenido.items.map(it => it.str).join(' ');
-        let imagenDataUrl = null;
-        if (texto.trim().length < 25) {
-          const viewport = page.getViewport({ scale: 2 });
-          const canvas = document.createElement('canvas');
-          canvas.width = viewport.width; canvas.height = viewport.height;
-          const ctx = canvas.getContext('2d');
-          await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-          imagenDataUrl = canvas.toDataURL('image/jpeg', 0.85);
-        }
-        resolve({ texto, imagenDataUrl, pdfDataUrl });
-      } catch (e) { resolve({ texto: '', imagenDataUrl: null, pdfDataUrl }); }
+        // Convertimos la primera página en una imagen comprimida: así el adjunto
+        // ocupa poco y cabe en el documento compartido de Firebase.
+        const viewportBase = page.getViewport({ scale: 1 });
+        const anchoObjetivo = 1400;
+        const escala = Math.min(2.5, anchoObjetivo / viewportBase.width);
+        const viewport = page.getViewport({ scale: escala });
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width; canvas.height = viewport.height;
+        const ctx = canvas.getContext('2d');
+        await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+        const imagenDataUrl = canvas.toDataURL('image/jpeg', 0.75);
+        resolve({ texto, imagenDataUrl, paginasTotales: pdf.numPages });
+      } catch (e) { resolve({ texto: '', imagenDataUrl: null, paginasTotales: 0 }); }
     };
     reader.readAsArrayBuffer(file);
   });
@@ -4452,7 +4453,14 @@ async function procesarArchivoRecibo(file, tipoMovimiento) {
   try {
     if (file.type === 'application/pdf') {
       const r = await leerPDF(file);
-      mov.adjunto = { tipo: 'pdf', dataUrl: r.pdfDataUrl, nombre: file.name };
+      if (r.imagenDataUrl) {
+        mov.adjunto = { tipo: 'imagen', dataUrl: r.imagenDataUrl, nombre: file.name.replace(/\.pdf$/i, '') + ' (pág. 1).jpg', origenPDF: true };
+        if (r.paginasTotales > 1) {
+          mov.errorProceso = 'El PDF tenía ' + r.paginasTotales + ' páginas; solo se guardó la primera (como imagen) para no superar el límite de tamaño de la nube.';
+        }
+      } else {
+        mov.errorProceso = 'No se pudo leer el PDF; adjúntalo como foto si lo necesitas.';
+      }
       let textoFinal = r.texto;
       if ((!textoFinal || textoFinal.trim().length < 25) && r.imagenDataUrl && window.Tesseract) {
         textoFinal = await ocrDesdeImagen(r.imagenDataUrl);
@@ -4478,7 +4486,11 @@ function adjuntarArchivoAMovimiento(m, file) {
   if (!file) return;
   procesandoRecibo = true; render();
   const promesa = file.type === 'application/pdf'
-    ? leerPDF(file).then(r => ({ tipo: 'pdf', dataUrl: r.pdfDataUrl, nombre: file.name }))
+    ? leerPDF(file).then(r => {
+        if (!r.imagenDataUrl) throw new Error('No se pudo convertir el PDF a imagen.');
+        if (r.paginasTotales > 1) m.errorProceso = 'El PDF tenía ' + r.paginasTotales + ' páginas; solo se guardó la primera (como imagen) para no superar el límite de tamaño de la nube.';
+        return { tipo: 'imagen', dataUrl: r.imagenDataUrl, nombre: file.name.replace(/\.pdf$/i, '') + ' (pág. 1).jpg', origenPDF: true };
+      })
     : comprimirImagen(file, 1600, 0.82).then(dataUrl => ({ tipo: 'imagen', dataUrl, nombre: file.name }));
   promesa.then(adjunto => { m.adjunto = adjunto; })
     .catch(() => { alert('No se pudo adjuntar el archivo.'); })
@@ -4508,7 +4520,7 @@ function movimientoRow(m) {
   const celdaAdjunto = el('td', {});
   if (m.adjunto) {
     celdaAdjunto.appendChild(el('div', { class: 'row', style: 'gap:6px;flex-wrap:wrap;align-items:center;' },
-      el('button', { class: 'btn btn-ghost btn-sm', onclick: () => verAdjunto(m.adjunto) }, m.adjunto.tipo === 'pdf' ? 'Ver PDF' : 'Ver foto'),
+      el('button', { class: 'btn btn-ghost btn-sm', onclick: () => verAdjunto(m.adjunto) }, m.adjunto.origenPDF ? 'Ver PDF (pág. 1)' : 'Ver foto'),
       m.origenOCR ? el('span', { class: 'chip chip-gold', title: 'Datos leídos automáticamente: revísalos' }, 'Revisar datos') : null,
     ));
   } else {
@@ -4557,7 +4569,7 @@ function viewContabilidad() {
       }),
     ),
   );
-  panel.appendChild(el('div', { class: 'sub' }, 'En el móvil, "📎 Recibo" abre la cámara para hacer la foto; en el ordenador abre el explorador para elegir el PDF. Intenta leer el importe, el concepto y la fecha solo; siempre puedes corregirlo a mano si no acierta.'));
+  panel.appendChild(el('div', { class: 'sub' }, '"📎 Recibo" deja elegir entre hacer una foto o coger un archivo (foto o PDF). Los PDF se guardan como imagen comprimida de la primera página (para no superar el límite de la nube); si el PDF tiene varias páginas, solo se guarda la primera. Intenta leer el importe, el concepto y la fecha solo; siempre puedes corregirlo a mano si no acierta.'));
   if (procesandoRecibo) panel.appendChild(el('div', { class: 'msg msg-warn' }, 'Procesando el recibo… la primera vez puede tardar un poco porque descarga el lector de texto.'));
 
   const enAnio = (anio) => contabAnioFiltro === 'todos' || anio === contabAnioFiltro;

@@ -1076,7 +1076,7 @@ function estimarDuracionTotal(nParticipantes, numGrupos, qualifiersPerGroup, cou
   let clasificados = 0;
   for (let i = 0; i < numGrupos; i++) {
     const size = base + (i < resto ? 1 : 0);
-    if (size < 2) return null;
+    if (size < 3) return null;
     totalGroupMatches += size * (size - 1) / 2;
     clasificados += Math.min(qualifiersPerGroup, size);
   }
@@ -1087,17 +1087,17 @@ function estimarDuracionTotal(nParticipantes, numGrupos, qualifiersPerGroup, cou
 }
 function optimizarNumGrupos(cat) {
   const n = cat.players.length;
-  if (n < 4) { alert('Añade al menos 4 participantes para que merezca la pena optimizar el número de grupos.'); return; }
+  if (n < 6) { alert('Añade al menos 6 participantes para que merezca la pena optimizar el número de grupos.'); return; }
   let mejor = null;
-  const maxGrupos = Math.min(Math.floor(n / 2), 16);
+  const maxGrupos = Math.min(Math.floor(n / 3), 16);
   for (let g = 1; g <= maxGrupos; g++) {
     const est = estimarDuracionTotal(n, g, cat.qualifiersPerGroup, state.config.courts, state.config.matchMinutes);
     if (est && (!mejor || est.minutosMinimos < mejor.est.minutosMinimos)) mejor = { g, est };
   }
-  if (!mejor) { alert('No se ha podido calcular una combinación válida (hacen falta al menos 4 participantes, 2 por grupo como mínimo).'); return; }
+  if (!mejor) { alert('No se ha podido calcular una combinación válida (hacen falta al menos 6 participantes, 3 por grupo como mínimo).'); return; }
   cat.numGroups = mejor.g;
   render();
-  alert('Número de grupos optimizado a ' + mejor.g + ' (con al menos 2 jugadores por grupo, para que siga siendo un torneo real por grupos).\n\n' +
+  alert('Número de grupos optimizado a ' + mejor.g + ' (con al menos 3 jugadores por grupo, para que siga siendo un torneo real por grupos).\n\n' +
     'Partidos totales estimados: ' + mejor.est.totalPartidos + ' (' + mejor.est.totalGroupMatches + ' de grupos + ' + mejor.est.partidosKO + ' de eliminatoria)\n' +
     'Duración mínima estimada: ' + mejor.est.minutosMinimos + ' min, con ' + state.config.courts + ' pista(s) (sin contar los descansos entre partidos del mismo jugador, que pueden alargarlo algo más).');
 }

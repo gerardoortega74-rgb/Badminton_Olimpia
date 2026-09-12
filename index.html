@@ -1089,7 +1089,23 @@ function renderTabsNav() {
   });
 }
 
-function estimarDuracionTotal(nParticipantes, numGrupos, qualifiersPerGroup, courts, matchMinutes) {
+function contarPartidosEstimados(cat) {
+  const n = cat.players.length;
+  if (n < 2) return 0;
+  if (cat.eliminatoriaDirecta) return Math.max(0, n - 1);
+  const numGrupos = Math.max(1, cat.numGroups || 1);
+  const base = Math.floor(n / numGrupos);
+  const resto = n % numGrupos;
+  let totalGroupMatches = 0, clasificados = 0;
+  for (let i = 0; i < numGrupos; i++) {
+    const size = base + (i < resto ? 1 : 0);
+    if (size >= 2) totalGroupMatches += size * (size - 1) / 2;
+    clasificados += Math.min(cat.qualifiersPerGroup || 2, size);
+  }
+  const partidosKO = Math.max(0, clasificados - 1);
+  return totalGroupMatches + partidosKO;
+}
+function estimarDuracionTotal(nParticipantes, numGrupos, qualifiersPerGroup, courts, matchMinutes, partidosOtrasCategorias) {
   if (numGrupos < 1 || nParticipantes < 2) return null;
   const base = Math.floor(nParticipantes / numGrupos);
   const resto = nParticipantes % numGrupos;
@@ -1103,24 +1119,27 @@ function estimarDuracionTotal(nParticipantes, numGrupos, qualifiersPerGroup, cou
   }
   const partidosKO = Math.max(0, clasificados - 1);
   const totalPartidos = totalGroupMatches + partidosKO;
-  const minutosMinimos = Math.ceil(totalPartidos / Math.max(1, courts)) * Math.max(5, matchMinutes);
+  const totalConOtras = totalPartidos + (partidosOtrasCategorias || 0);
+  const minutosMinimos = Math.ceil(totalConOtras / Math.max(1, courts)) * Math.max(5, matchMinutes);
   return { totalPartidos, minutosMinimos, totalGroupMatches, partidosKO, clasificados };
 }
 function optimizarNumGrupos(cat) {
   const n = cat.players.length;
   if (n < 6) { alert('Añade al menos 6 participantes para que merezca la pena optimizar el número de grupos.'); return; }
+  const partidosOtras = enabledCategories().filter(c => c.id !== cat.id).reduce((sum, c) => sum + contarPartidosEstimados(c), 0);
   let mejor = null;
   const maxGrupos = Math.min(Math.floor(n / 3), 16);
   for (let g = 1; g <= maxGrupos; g++) {
-    const est = estimarDuracionTotal(n, g, cat.qualifiersPerGroup, state.config.courts, state.config.matchMinutes);
+    const est = estimarDuracionTotal(n, g, cat.qualifiersPerGroup, state.config.courts, state.config.matchMinutes, partidosOtras);
     if (est && (!mejor || est.minutosMinimos < mejor.est.minutosMinimos)) mejor = { g, est };
   }
   if (!mejor) { alert('No se ha podido calcular una combinación válida (hacen falta al menos 6 participantes, 3 por grupo como mínimo).'); return; }
   cat.numGroups = mejor.g;
   render();
   alert('Número de grupos optimizado a ' + mejor.g + ' (con al menos 3 jugadores por grupo, para que siga siendo un torneo real por grupos).\n\n' +
-    'Partidos totales estimados: ' + mejor.est.totalPartidos + ' (' + mejor.est.totalGroupMatches + ' de grupos + ' + mejor.est.partidosKO + ' de eliminatoria)\n' +
-    'Duración mínima estimada: ' + mejor.est.minutosMinimos + ' min, con ' + state.config.courts + ' pista(s) (sin contar los descansos entre partidos del mismo jugador, que pueden alargarlo algo más).');
+    'Partidos de esta categoría: ' + mejor.est.totalPartidos + ' (' + mejor.est.totalGroupMatches + ' de grupos + ' + mejor.est.partidosKO + ' de eliminatoria)\n' +
+    (partidosOtras > 0 ? 'Partidos estimados de las demás categorías activas: ' + partidosOtras + ' (comparten las mismas pistas)\n' : '') +
+    'Duración mínima estimada del torneo completo: ' + mejor.est.minutosMinimos + ' min, con ' + state.config.courts + ' pista(s) (sin contar los descansos entre partidos del mismo jugador, que pueden alargarlo algo más).');
 }
 
 function viewConfig() {
@@ -5481,16 +5500,23 @@ function renderVistaPublica() {
   }
 
   const nombres = nombresParticipantesPublico(st);
-  const selector = el('select', { style: 'flex:1;min-width:200px;' },
-    el('option', { value: '' }, '— Elige tu nombre —'),
-    nombres.map(n => el('option', { value: n, selected: n === jugadorSeleccionadoPublico ? 'selected' : null }, n)),
-  );
-  selector.value = jugadorSeleccionadoPublico;
-  selector.addEventListener('change', (e) => { jugadorSeleccionadoPublico = e.target.value; renderVistaPublica(); });
+  const datalistId = 'listaJugadoresPublico';
+  const inputBuscador = el('input', {
+    type: 'text', list: datalistId, placeholder: 'Escribe tu nombre...', autocomplete: 'off',
+    style: 'flex:1;min-width:200px;', value: jugadorSeleccionadoPublico,
+  });
+  const datalist = el('datalist', { id: datalistId }, nombres.map(n => el('option', { value: n })));
+  const buscarYMostrar = (valor) => {
+    const encontrado = nombres.find(n => n.toLowerCase() === valor.trim().toLowerCase());
+    jugadorSeleccionadoPublico = encontrado || '';
+    renderVistaPublica();
+  };
+  inputBuscador.addEventListener('change', (e) => buscarYMostrar(e.target.value));
+  inputBuscador.addEventListener('keydown', (e) => { if (e.key === 'Enter') buscarYMostrar(e.target.value); });
   root.appendChild(el('div', { class: 'panel' },
     el('h3', { style: 'margin-bottom:6px;' }, '🔍 ¿Cuándo juego yo?'),
-    el('div', { class: 'sub' }, 'Elige tu nombre para ver solo tus partidos y horarios.'),
-    el('div', { class: 'row', style: 'gap:8px;margin-top:6px;' }, selector),
+    el('div', { class: 'sub' }, 'Escribe tu nombre para buscarlo y ver solo tus partidos y horarios.'),
+    el('div', { class: 'row', style: 'gap:8px;margin-top:6px;' }, inputBuscador, datalist),
   ));
 
   if (jugadorSeleccionadoPublico) {

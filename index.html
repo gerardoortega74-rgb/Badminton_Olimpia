@@ -768,16 +768,17 @@ function buildSchedule() {
   const groupQueue = [];
   const maxLen = Math.max.apply(null, [0].concat(enabledCategories().map(c => c.matches.length)));
   for (let i = 0; i < maxLen; i++) {
-    enabledCategories().forEach(cat => {
+    const categoriasBarajadas = shuffle(enabledCategories());
+    categoriasBarajadas.forEach(cat => {
       if (cat.matches[i]) groupQueue.push({ cat, match: cat.matches[i] });
     });
   }
 
   const koQueue = [];
-  enabledCategories().forEach(cat => {
+  shuffle(enabledCategories()).forEach(cat => {
     if (cat.knockout) {
       cat.knockout.rounds.forEach(round => {
-        round.forEach(m => {
+        shuffle(round).forEach(m => {
           if (m.p1 && m.p2 && m.p1 !== 'BYE' && m.p2 !== 'BYE') koQueue.push({ cat, match: m });
         });
       });

@@ -5680,7 +5680,7 @@ function renderHome() {
     { icon: '🏛️', title: 'Gestión de Club', desc: 'Datos del club, jugadores, y pagos y cuotas.', sec: 'clubgestion', permiso: null },
   ];
   if (esAdmin()) {
-    cards.unshift({ icon: '🔐', title: 'Control de acceso', desc: 'Usuarios, roles y qué puede ver cada uno.', sec: 'acceso', permiso: null });
+    cards.push({ icon: '🔐', title: 'Control de acceso', desc: 'Usuarios, roles y qué puede ver cada uno.', sec: 'acceso', permiso: null });
   }
   const grid = el('div', { class: 'home-grid' });
   cards.forEach(c => {

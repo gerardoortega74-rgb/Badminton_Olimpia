@@ -1673,7 +1673,8 @@ function viewSchedule() {
   const pending = enabledCategories().filter(c => !c.groups);
   const panel = el('div', { class: 'panel' },
     el('h2', {}, 'Calendario de partidos'),
-    el('div', { class: 'sub' }, `Se generan horarios para ${state.config.courts} pista(s), partidos de ${state.config.matchMinutes} min + ${state.config.bufferMinutes} min de descanso, comenzando a las ${state.config.startTime}.`)
+    el('div', { class: 'sub' }, `Se generan horarios para ${state.config.courts} pista(s), partidos de ${state.config.matchMinutes} min + ${state.config.bufferMinutes} min de descanso, comenzando a las ${state.config.startTime}.`),
+    state.config.courts > 2 ? el('div', { class: 'msg msg-warn', style: 'margin-top:8px;font-weight:700;' }, '👉 Desliza la tabla de abajo hacia la izquierda con el dedo para ver el resto de las pistas (tienes ' + state.config.courts + ').') : null,
   );
   if (pending.length) {
     panel.appendChild(el('div', { class: 'msg msg-warn' },

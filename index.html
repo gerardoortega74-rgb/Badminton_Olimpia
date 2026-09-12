@@ -188,11 +188,6 @@ header.app-header::before{display:none !important;}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script>
-if (window.pdfjsLib) { pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; }
-</script>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body>
 
@@ -3749,6 +3744,25 @@ function generarRutina(nivelId, numDias, jugadorNombre) {
 }
 const AREA_LABEL = { tecnica: '🏸 Técnica', tactica: '♟️ Táctica', fisica: '💪 Físico', psicologica: '🧠 Mental' };
 let entrenoUI = { jugadorNombre: '', nivel: '', tipo: 'dia', numDias: null };
+let rutinaVistaId = null;
+function renderDiasRutina(dias) {
+  const cont = document.createDocumentFragment();
+  dias.forEach(d => {
+    cont.appendChild(el('div', { class: 'card', style: 'margin-bottom:10px;' },
+      el('div', { class: 'card-head' }, el('b', {}, d.dia), el('span', { class: 'chip chip-muted' }, d.perfil)),
+      el('div', { style: 'margin-top:8px;' },
+        d.bloques.map(b => {
+          const pasos = PASOS_DETALLADOS[b.texto];
+          return el('div', { style: 'padding:10px 0;border-bottom:1px solid #eee;' },
+            el('div', { style: 'margin-bottom:6px;' }, el('b', {}, AREA_LABEL[b.area] + ': '), b.texto),
+            pasos ? el('ol', { style: 'margin:0;padding-left:22px;color:var(--court-dark);' }, pasos.map(p => el('li', { style: 'margin-bottom:4px;' }, p))) : null,
+          );
+        }),
+      ),
+    ));
+  });
+  return cont;
+}
 function viewEntrenoIndividual() {
   const wrap = document.createDocumentFragment();
   const panel = el('div', { class: 'panel' },
@@ -3811,20 +3825,7 @@ function viewEntrenoIndividual() {
     const resultado = el('div', { class: 'panel', style: 'border:2px solid var(--gold);' },
       el('h3', {}, 'Propuesta para ' + rutinaTemporal.jugadorNombre + ' · ' + (getNivel(rutinaTemporal.nivel) || {}).nombre),
     );
-    rutinaTemporal.dias.forEach(d => {
-      resultado.appendChild(el('div', { class: 'card', style: 'margin-bottom:10px;' },
-        el('div', { class: 'card-head' }, el('b', {}, d.dia), el('span', { class: 'chip chip-muted' }, d.perfil)),
-        el('div', { style: 'margin-top:8px;' },
-          d.bloques.map(b => {
-            const pasos = PASOS_DETALLADOS[b.texto];
-            return el('div', { style: 'padding:10px 0;border-bottom:1px solid #eee;' },
-              el('div', { style: 'margin-bottom:6px;' }, el('b', {}, AREA_LABEL[b.area] + ': '), b.texto),
-              pasos ? el('ol', { style: 'margin:0;padding-left:22px;color:var(--court-dark);' }, pasos.map(p => el('li', { style: 'margin-bottom:4px;' }, p))) : null,
-            );
-          }),
-        ),
-      ));
-    });
+    resultado.appendChild(renderDiasRutina(rutinaTemporal.dias));
     resultado.appendChild(el('div', { class: 'toolbar' },
       el('button', {
         class: 'btn btn-primary',
@@ -3849,12 +3850,18 @@ function viewEntrenoIndividual() {
       el('h3', {}, 'Rutinas guardadas de ' + entrenoUI.jugadorNombre),
     );
     historial.forEach(r => {
-      histPanel.appendChild(el('div', { class: 'card', style: 'margin-bottom:8px;' },
+      const abierto = rutinaVistaId === r.id;
+      const cardR = el('div', { class: 'card', style: 'margin-bottom:8px;' },
         el('div', { class: 'card-head' },
           el('span', {}, fmtDate(r.fecha) + ' · ' + (getNivel(r.nivel) || {}).nombre + ' · ' + r.dias.length + ' día(s)'),
-          el('button', { class: 'btn btn-danger btn-sm', onclick: () => { state.entrenosIndividuales = state.entrenosIndividuales.filter(x => x.id !== r.id); saveLocal(); render(); } }, 'Eliminar'),
+          el('div', { class: 'row', style: 'gap:6px;flex-wrap:nowrap;' },
+            el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { rutinaVistaId = abierto ? null : r.id; render(); } }, abierto ? 'Ocultar' : 'Ver'),
+            el('button', { class: 'btn btn-danger btn-sm', onclick: () => { state.entrenosIndividuales = state.entrenosIndividuales.filter(x => x.id !== r.id); if (rutinaVistaId === r.id) rutinaVistaId = null; saveLocal(); render(); } }, 'Eliminar'),
+          ),
         ),
-      ));
+      );
+      if (abierto) cardR.appendChild(renderDiasRutina(r.dias));
+      histPanel.appendChild(cardR);
     });
     wrap.appendChild(histPanel);
   }
@@ -3988,15 +3995,10 @@ return { render, mount, getState, setState };
 </script>
 <script>
 window.PagosApp = (function () {
-const CATEGORIAS_INGRESO = ['Subvención', 'Patrocinio', 'Donativo', 'Otros ingresos'];
-const CATEGORIAS_GASTO = ['Material', 'Alquiler de pista', 'Arbitrajes / Inscripciones', 'Equipación', 'Desplazamientos', 'Otros gastos'];
-
 function defaultState() {
   return {
     config: { cuotaMensual: 20, cuotaMenorClub: 15, nombreConcepto: 'Cuota mensual del club', tipoCuota: 'mensual' },
     competiciones: [],
-    contabilidad: { movimientos: [] },
-    proveedores: [],
   };
 }
 let state = defaultState();
@@ -4010,9 +4012,6 @@ function tryLoadLocal() {
     const raw = localStorage.getItem('badmintonPagosState');
     if (raw) { const parsed = JSON.parse(raw); if (parsed && parsed.config) state = parsed; }
   } catch (e) { }
-  if (state && !state.contabilidad) state.contabilidad = { movimientos: [] };
-  if (state && !Array.isArray(state.contabilidad.movimientos)) state.contabilidad.movimientos = [];
-  if (state && !Array.isArray(state.proveedores)) state.proveedores = [];
 }
 
 function el(tag, attrs) {
@@ -4059,8 +4058,6 @@ function render() {
   if (activeTab === 'config') main.appendChild(viewConfig());
   else if (activeTab === 'cuotas') main.appendChild(viewCuotas());
   else if (activeTab === 'competiciones') main.appendChild(viewCompeticiones());
-  else if (activeTab === 'contabilidad') main.appendChild(viewContabilidad());
-  else if (activeTab === 'proveedores') main.appendChild(viewProveedores());
 }
 
 function renderTabsNav() {
@@ -4069,8 +4066,6 @@ function renderTabsNav() {
   const tabs = [
     ['cuotas', '💶 Cuotas del club'],
     ['competiciones', '🏆 Competiciones'],
-    ['contabilidad', '📒 Contabilidad'],
-    ['proveedores', '🏢 Proveedores'],
     ['config', '⚙ Configuración'],
   ];
   tabs.forEach(([id, label]) => {
@@ -4271,401 +4266,8 @@ function competicionCard(comp) {
   return card;
 }
 
-function anioDePeriodo(periodo) { return periodo ? String(periodo).slice(0, 4) : ''; }
-function anioDeFecha(fecha) { return fecha ? String(fecha).slice(0, 4) : ''; }
-
-function cuotasCobradasDetalle() {
-  const socios = (window.JugadoresGlobal ? window.JugadoresGlobal.list() : []).filter(j => j.tipo === 'club');
-  const detalle = [];
-  socios.forEach(j => {
-    const pagadas = j.cuotasPagadas || {};
-    Object.keys(pagadas).forEach(periodo => {
-      if (!pagadas[periodo]) return;
-      detalle.push({ anio: anioDePeriodo(periodo), periodo, jugador: j.nombre, importe: cuotaDe(j) });
-    });
-  });
-  return detalle;
-}
-
-function inscripcionesCobradasDetalle() {
-  const detalle = [];
-  state.competiciones.forEach(comp => {
-    (comp.inscritos || []).forEach(insc => {
-      if (!insc.pagado) return;
-      const jug = (window.JugadoresGlobal ? window.JugadoresGlobal.list() : []).find(j => j.id === insc.jugadorId);
-      detalle.push({ anio: anioDeFecha(comp.fecha) || '(sin fecha)', competicion: comp.nombre || '(sin nombre)', jugador: jug ? jug.nombre : '(jugador eliminado)', importe: precioInscripcion(comp, insc) });
-    });
-  });
-  return detalle;
-}
-
-function aniosDisponiblesContabilidad() {
-  const anios = new Set([String(new Date().getFullYear())]);
-  (state.contabilidad.movimientos || []).forEach(m => { if (m.fecha) anios.add(anioDeFecha(m.fecha)); });
-  cuotasCobradasDetalle().forEach(d => { if (d.anio) anios.add(d.anio); });
-  inscripcionesCobradasDetalle().forEach(d => { if (d.anio && d.anio !== '(sin fecha)') anios.add(d.anio); });
-  return Array.from(anios).sort().reverse();
-}
-
-let contabAnioFiltro = String(new Date().getFullYear());
-
-function triggerFileRecibo(tipo) {
-  tipoReciboPendiente = tipo;
-  const input = document.getElementById('inputRecibo');
-  if (input) { input.value = ''; input.click(); }
-}
-
-function addMovimiento(tipo) {
-  state.contabilidad.movimientos.unshift({ id: uid('mov'), fecha: new Date().toISOString().slice(0, 10), tipo, categoria: (tipo === 'ingreso' ? CATEGORIAS_INGRESO[0] : CATEGORIAS_GASTO[0]), concepto: '', importe: 0, adjunto: null, origenOCR: false, proveedorId: null });
-}
-function removeMovimiento(id) { state.contabilidad.movimientos = state.contabilidad.movimientos.filter(m => m.id !== id); }
-
-// ---- Adjuntos y lectura automática de recibos/facturas ----
-let procesandoRecibo = false;
-let tipoReciboPendiente = 'gasto';
-let ocrWorkerPromise = null;
-
-function getOcrWorker() {
-  if (!window.Tesseract) return Promise.reject(new Error('El lector automático (OCR) no se ha podido cargar.'));
-  if (!ocrWorkerPromise) ocrWorkerPromise = Tesseract.createWorker('spa');
-  return ocrWorkerPromise;
-}
-
-function comprimirImagen(file, maxWidth, calidad) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(reader.error || new Error('No se pudo leer la imagen'));
-    reader.onload = () => {
-      const img = new Image();
-      img.onerror = () => reject(new Error('No se pudo leer la imagen'));
-      img.onload = () => {
-        let w = img.width, h = img.height;
-        if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
-        const canvas = document.createElement('canvas');
-        canvas.width = w; canvas.height = h;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL('image/jpeg', calidad));
-      };
-      img.src = reader.result;
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
-function arrayBufferABase64(buffer) {
-  let binary = '';
-  const bytes = new Uint8Array(buffer);
-  const chunk = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunk) {
-    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
-  }
-  return btoa(binary);
-}
-
-function leerPDF(file) {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onerror = () => resolve({ texto: '', imagenDataUrl: null, paginasTotales: 0 });
-    reader.onload = async () => {
-      try {
-        if (!window.pdfjsLib) { resolve({ texto: '', imagenDataUrl: null, paginasTotales: 0 }); return; }
-        const typedArray = new Uint8Array(reader.result);
-        const pdf = await pdfjsLib.getDocument({ data: typedArray }).promise;
-        const page = await pdf.getPage(1);
-        const contenido = await page.getTextContent();
-        const texto = contenido.items.map(it => it.str).join(' ');
-        // Convertimos la primera página en una imagen comprimida: así el adjunto
-        // ocupa poco y cabe en el documento compartido de Firebase.
-        const viewportBase = page.getViewport({ scale: 1 });
-        const anchoObjetivo = 1400;
-        const escala = Math.min(2.5, anchoObjetivo / viewportBase.width);
-        const viewport = page.getViewport({ scale: escala });
-        const canvas = document.createElement('canvas');
-        canvas.width = viewport.width; canvas.height = viewport.height;
-        const ctx = canvas.getContext('2d');
-        await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-        const imagenDataUrl = canvas.toDataURL('image/jpeg', 0.75);
-        resolve({ texto, imagenDataUrl, paginasTotales: pdf.numPages });
-      } catch (e) { resolve({ texto: '', imagenDataUrl: null, paginasTotales: 0 }); }
-    };
-    reader.readAsArrayBuffer(file);
-  });
-}
-
-function ocrDesdeImagen(dataUrl) {
-  return getOcrWorker().then(worker => worker.recognize(dataUrl)).then(res => (res && res.data && res.data.text) || '');
-}
-
-function aNumeroImporte(str) {
-  let s = str.trim();
-  if (s.includes(',') && s.includes('.')) {
-    if (s.lastIndexOf(',') > s.lastIndexOf('.')) s = s.replace(/\./g, '').replace(',', '.');
-    else s = s.replace(/,/g, '');
-  } else if (s.includes(',')) {
-    s = s.replace(',', '.');
-  }
-  const n = parseFloat(s);
-  return isNaN(n) ? null : n;
-}
-
-function parsearRecibo(texto) {
-  const resultado = { importe: null, concepto: null, fecha: null };
-  if (!texto) return resultado;
-  const lineas = texto.split(/\n/).map(l => l.trim()).filter(Boolean);
-  const numeroRegex = /(\d{1,3}(?:[.,]\d{3})*[.,]\d{2})/g;
-  const totalLinea = lineas.find(l => /total/i.test(l) && !/subtotal/i.test(l));
-  let importe = null;
-  if (totalLinea) {
-    const m = totalLinea.match(numeroRegex);
-    if (m && m.length) importe = aNumeroImporte(m[m.length - 1]);
-  }
-  if (importe === null) {
-    const todos = (texto.match(numeroRegex) || []).map(aNumeroImporte).filter(n => n !== null);
-    if (todos.length) importe = Math.max.apply(null, todos);
-  }
-  resultado.importe = importe;
-  const conceptoLinea = lineas.find(l => l.length > 2 && !/^\d/.test(l));
-  resultado.concepto = conceptoLinea ? conceptoLinea.slice(0, 70) : null;
-  const fechaMatch = texto.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
-  if (fechaMatch) {
-    let d = fechaMatch[1], mth = fechaMatch[2], y = fechaMatch[3];
-    if (y.length === 2) y = '20' + y;
-    d = d.padStart(2, '0'); mth = mth.padStart(2, '0');
-    const anioNum = parseInt(y, 10);
-    if (anioNum >= 2000 && anioNum <= 2100) resultado.fecha = y + '-' + mth + '-' + d;
-  }
-  return resultado;
-}
-
-function aplicarDatosDetectados(mov, texto) {
-  mov.ocrTexto = texto || '';
-  mov.origenOCR = true;
-  const datos = parsearRecibo(texto || '');
-  if (datos.importe !== null) mov.importe = datos.importe;
-  if (datos.concepto) mov.concepto = datos.concepto;
-  if (datos.fecha) mov.fecha = datos.fecha;
-}
-
-async function procesarArchivoRecibo(file, tipoMovimiento) {
-  procesandoRecibo = true; render();
-  const mov = { id: uid('mov'), fecha: new Date().toISOString().slice(0, 10), tipo: tipoMovimiento, categoria: (tipoMovimiento === 'ingreso' ? CATEGORIAS_INGRESO[0] : CATEGORIAS_GASTO[0]), concepto: '', importe: 0, adjunto: null, origenOCR: false, ocrTexto: '', errorProceso: '' };
-  try {
-    if (file.type === 'application/pdf') {
-      const r = await leerPDF(file);
-      if (r.imagenDataUrl) {
-        mov.adjunto = { tipo: 'imagen', dataUrl: r.imagenDataUrl, nombre: file.name.replace(/\.pdf$/i, '') + ' (pág. 1).jpg', origenPDF: true };
-        if (r.paginasTotales > 1) {
-          mov.errorProceso = 'El PDF tenía ' + r.paginasTotales + ' páginas; solo se guardó la primera (como imagen) para no superar el límite de tamaño de la nube.';
-        }
-      } else {
-        mov.errorProceso = 'No se pudo leer el PDF; adjúntalo como foto si lo necesitas.';
-      }
-      let textoFinal = r.texto;
-      if ((!textoFinal || textoFinal.trim().length < 25) && r.imagenDataUrl && window.Tesseract) {
-        textoFinal = await ocrDesdeImagen(r.imagenDataUrl);
-      }
-      aplicarDatosDetectados(mov, textoFinal);
-    } else if (file.type.startsWith('image/')) {
-      const dataUrl = await comprimirImagen(file, 1600, 0.82);
-      mov.adjunto = { tipo: 'imagen', dataUrl, nombre: file.name };
-      const texto = await ocrDesdeImagen(dataUrl);
-      aplicarDatosDetectados(mov, texto);
-    } else {
-      throw new Error('Formato no admitido: usa una foto o un PDF.');
-    }
-  } catch (e) {
-    mov.errorProceso = (e && e.message) ? e.message : 'No se pudieron leer los datos automáticamente; revisa los campos a mano.';
-  }
-  state.contabilidad.movimientos.unshift(mov);
-  procesandoRecibo = false;
-  render();
-}
-
-function adjuntarArchivoAMovimiento(m, file) {
-  if (!file) return;
-  procesandoRecibo = true; render();
-  const promesa = file.type === 'application/pdf'
-    ? leerPDF(file).then(r => {
-        if (!r.imagenDataUrl) throw new Error('No se pudo convertir el PDF a imagen.');
-        if (r.paginasTotales > 1) m.errorProceso = 'El PDF tenía ' + r.paginasTotales + ' páginas; solo se guardó la primera (como imagen) para no superar el límite de tamaño de la nube.';
-        return { tipo: 'imagen', dataUrl: r.imagenDataUrl, nombre: file.name.replace(/\.pdf$/i, '') + ' (pág. 1).jpg', origenPDF: true };
-      })
-    : comprimirImagen(file, 1600, 0.82).then(dataUrl => ({ tipo: 'imagen', dataUrl, nombre: file.name }));
-  promesa.then(adjunto => { m.adjunto = adjunto; })
-    .catch(() => { alert('No se pudo adjuntar el archivo.'); })
-    .then(() => { procesandoRecibo = false; render(); });
-}
-
-function verAdjunto(adjunto) {
-  if (!adjunto || !adjunto.dataUrl) return;
-  try {
-    const partes = adjunto.dataUrl.split(',');
-    const mimeMatch = partes[0].match(/data:(.*?);base64/);
-    const mime = mimeMatch ? mimeMatch[1] : (adjunto.tipo === 'pdf' ? 'application/pdf' : 'image/jpeg');
-    const binario = atob(partes[1]);
-    const bytes = new Uint8Array(binario.length);
-    for (let i = 0; i < binario.length; i++) bytes[i] = binario.charCodeAt(i);
-    const blob = new Blob([bytes], { type: mime });
-    const url = URL.createObjectURL(blob);
-    window.open(url, '_blank');
-  } catch (e) { alert('No se pudo abrir el adjunto.'); }
-}
-
-function movimientoRow(m) {
-  const categorias = m.tipo === 'ingreso' ? CATEGORIAS_INGRESO : CATEGORIAS_GASTO;
-  const opcionesProveedor = [{ value: '', label: '— Sin proveedor —' }].concat(
-    state.proveedores.map(p => ({ value: p.id, label: p.nombre || '(sin nombre)' }))
-  );
-  const celdaAdjunto = el('td', {});
-  if (m.adjunto) {
-    celdaAdjunto.appendChild(el('div', { class: 'row', style: 'gap:6px;flex-wrap:wrap;align-items:center;' },
-      el('button', { class: 'btn btn-ghost btn-sm', onclick: () => verAdjunto(m.adjunto) }, m.adjunto.origenPDF ? 'Ver PDF (pág. 1)' : 'Ver foto'),
-      m.origenOCR ? el('span', { class: 'chip chip-gold', title: 'Datos leídos automáticamente: revísalos' }, 'Revisar datos') : null,
-    ));
-  } else {
-    celdaAdjunto.appendChild(el('input', {
-      type: 'file', accept: 'image/*,application/pdf', style: 'max-width:150px;font-size:12px;',
-      onchange: (e) => { const f = e.target.files && e.target.files[0]; if (f) adjuntarArchivoAMovimiento(m, f); },
-    }));
-  }
-  if (m.errorProceso) celdaAdjunto.appendChild(el('div', { class: 'sub', style: 'color:#b04;' }, m.errorProceso));
-  return el('tr', {},
-    el('td', {}, inputEl('date', m.fecha, v => { m.fecha = v; render(); })),
-    el('td', {}, m.tipo === 'ingreso' ? el('span', { class: 'chip chip-gold' }, 'Ingreso') : el('span', { class: 'chip chip-muted' }, 'Gasto')),
-    el('td', {}, selectEl(categorias.map(c => ({ value: c, label: c })), m.categoria, v => { m.categoria = v; saveLocal(); })),
-    el('td', {}, selectEl(opcionesProveedor, m.proveedorId || '', v => {
-      m.proveedorId = v || null;
-      if (v) {
-        const prov = state.proveedores.find(p => p.id === v);
-        if (prov && !m.concepto) m.concepto = prov.nombre;
-      }
-      render();
-    })),
-    el('td', {}, inputEl('text', m.concepto, v => { m.concepto = v; }, { placeholder: 'Concepto' })),
-    el('td', {}, inputEl('number', m.importe, v => { m.importe = parseFloat(v) || 0; render(); }, { min: 0, step: '0.5' })),
-    celdaAdjunto,
-    el('td', {}, el('button', { class: 'btn btn-danger btn-sm', onclick: () => { removeMovimiento(m.id); render(); } }, 'Eliminar')),
-  );
-}
-
-function viewContabilidad() {
-  const wrap = document.createDocumentFragment();
-  const anios = aniosDisponiblesContabilidad();
-  if (!anios.includes(contabAnioFiltro)) contabAnioFiltro = anios[0] || String(new Date().getFullYear());
-
-  const panel = el('div', { class: 'panel' },
-    el('h2', {}, 'Contabilidad del club'),
-    el('div', { class: 'sub' }, 'Registra a mano los ingresos y gastos del club (subvenciones, material, alquiler de pista, etc.). Las cuotas de socios marcadas como pagadas y las inscripciones a competiciones marcadas como pagadas se suman aquí solas, como ingreso automático, sin que tengas que apuntarlas dos veces.'),
-    el('div', { class: 'toolbar' },
-      field('Año', selectEl(anios.map(a => ({ value: a, label: a })).concat([{ value: 'todos', label: 'Todos los años' }]), contabAnioFiltro, v => { contabAnioFiltro = v; render(); })),
-      el('button', { class: 'btn btn-gold', onclick: () => { addMovimiento('ingreso'); render(); } }, '+ Ingreso'),
-      el('button', { class: 'btn btn-ghost', onclick: () => { addMovimiento('gasto'); render(); } }, '+ Gasto'),
-      el('button', { class: 'btn btn-ghost', onclick: () => triggerFileRecibo('gasto') }, '📎 Recibo de gasto'),
-      el('button', { class: 'btn btn-ghost', onclick: () => triggerFileRecibo('ingreso') }, '📎 Recibo de ingreso'),
-      el('input', {
-        type: 'file', id: 'inputRecibo', accept: 'image/*,application/pdf', style: 'display:none;',
-        onchange: (e) => { const f = e.target.files && e.target.files[0]; if (f) procesarArchivoRecibo(f, tipoReciboPendiente); },
-      }),
-    ),
-  );
-  panel.appendChild(el('div', { class: 'sub' }, '"📎 Recibo" deja elegir entre hacer una foto o coger un archivo (foto o PDF). Los PDF se guardan como imagen comprimida de la primera página (para no superar el límite de la nube); si el PDF tiene varias páginas, solo se guarda la primera. Intenta leer el importe, el concepto y la fecha solo; siempre puedes corregirlo a mano si no acierta.'));
-  if (procesandoRecibo) panel.appendChild(el('div', { class: 'msg msg-warn' }, 'Procesando el recibo… la primera vez puede tardar un poco porque descarga el lector de texto.'));
-
-  const enAnio = (anio) => contabAnioFiltro === 'todos' || anio === contabAnioFiltro;
-  const movimientosFiltrados = (state.contabilidad.movimientos || []).filter(m => enAnio(anioDeFecha(m.fecha)));
-  const cuotasDetalle = cuotasCobradasDetalle().filter(d => enAnio(d.anio));
-  const inscDetalle = inscripcionesCobradasDetalle().filter(d => enAnio(d.anio));
-
-  const totalCuotas = cuotasDetalle.reduce((s, d) => s + d.importe, 0);
-  const totalInsc = inscDetalle.reduce((s, d) => s + d.importe, 0);
-  const totalIngresosManual = movimientosFiltrados.filter(m => m.tipo === 'ingreso').reduce((s, m) => s + m.importe, 0);
-  const totalGastos = movimientosFiltrados.filter(m => m.tipo === 'gasto').reduce((s, m) => s + m.importe, 0);
-  const totalIngresos = totalCuotas + totalInsc + totalIngresosManual;
-  const saldo = totalIngresos - totalGastos;
-
-  panel.appendChild(el('div', { class: 'grid', style: 'margin-top:6px;' },
-    el('div', { class: 'card' }, el('div', { class: 'sub' }, 'Ingresos'), el('h3', { style: 'margin:4px 0;' }, euros(totalIngresos))),
-    el('div', { class: 'card' }, el('div', { class: 'sub' }, 'Gastos'), el('h3', { style: 'margin:4px 0;' }, euros(totalGastos))),
-    el('div', { class: 'card' }, el('div', { class: 'sub' }, 'Saldo'), el('h3', { style: 'margin:4px 0;' }, euros(saldo))),
-  ));
-
-  panel.appendChild(el('h3', { style: 'margin-top:18px;' }, 'Ingresos automáticos (cuotas e inscripciones cobradas)'));
-  if (!cuotasDetalle.length && !inscDetalle.length) {
-    panel.appendChild(el('div', { class: 'empty-state' }, 'Todavía no hay cuotas ni inscripciones marcadas como pagadas en este periodo.'));
-  } else {
-    const tAuto = el('table', {}, el('thead', {}, el('tr', {}, el('th', {}, 'Origen'), el('th', {}, 'Detalle'), el('th', {}, 'Importe'))));
-    const bAuto = el('tbody');
-    cuotasDetalle.forEach(d => bAuto.appendChild(el('tr', {}, el('td', {}, el('span', { class: 'chip' }, 'Cuota')), el('td', {}, d.jugador + ' · ' + d.periodo), el('td', {}, euros(d.importe)))));
-    inscDetalle.forEach(d => bAuto.appendChild(el('tr', {}, el('td', {}, el('span', { class: 'chip' }, 'Inscripción')), el('td', {}, d.jugador + ' · ' + d.competicion), el('td', {}, euros(d.importe)))));
-    tAuto.appendChild(bAuto);
-    panel.appendChild(tAuto);
-  }
-
-  panel.appendChild(el('h3', { style: 'margin-top:18px;' }, 'Movimientos manuales'));
-  if (!movimientosFiltrados.length) {
-    panel.appendChild(el('div', { class: 'empty-state' }, 'Todavía no hay ingresos o gastos manuales en este periodo. Usa los botones "+ Ingreso" / "+ Gasto" de arriba.'));
-  } else {
-    const table = el('table', {}, el('thead', {}, el('tr', {},
-      el('th', {}, 'Fecha'), el('th', {}, 'Tipo'), el('th', {}, 'Categoría'), el('th', {}, 'Proveedor'), el('th', {}, 'Concepto'), el('th', {}, 'Importe'), el('th', {}, 'Adjunto'), el('th', {}, ''))));
-    const tbody = el('tbody');
-    movimientosFiltrados.forEach(m => tbody.appendChild(movimientoRow(m)));
-    table.appendChild(tbody);
-    panel.appendChild(table);
-  }
-
-  wrap.appendChild(panel);
-  return wrap;
-}
-
-const TIPOS_PROVEEDOR = ['Proveedor de material', 'Alquiler de instalaciones', 'Federación / entidad deportiva', 'Ayuntamiento / administración', 'Patrocinador', 'Otro'];
-
-function addProveedor() {
-  state.proveedores.push({ id: uid('prov'), nombre: '', tipo: TIPOS_PROVEEDOR[0], cif: '', direccion: '', telefono: '', email: '', notas: '' });
-}
-function removeProveedor(id) { state.proveedores = state.proveedores.filter(p => p.id !== id); }
-
-function proveedorCard(p) {
-  return el('div', { class: 'card' },
-    el('div', { class: 'card-head' },
-      el('span', { class: 'card-title' }, p.nombre || '(sin nombre)'),
-      el('button', { class: 'btn btn-danger btn-sm', onclick: () => { removeProveedor(p.id); render(); } }, 'Eliminar')),
-    el('div', { class: 'grid', style: 'margin-top:10px;' },
-      field('Nombre', inputEl('text', p.nombre, v => { p.nombre = v; render(); })),
-      field('Tipo', selectEl(TIPOS_PROVEEDOR.map(t => ({ value: t, label: t })), p.tipo, v => { p.tipo = v; render(); })),
-      field('CIF / NIF', inputEl('text', p.cif, v => { p.cif = v; })),
-      field('Teléfono', inputEl('tel', p.telefono, v => { p.telefono = v; })),
-      field('Email', inputEl('email', p.email, v => { p.email = v; })),
-      field('Dirección', inputEl('text', p.direccion, v => { p.direccion = v; })),
-    ),
-    el('div', { class: 'field', style: 'margin-top:10px;' }, el('label', {}, 'Notas'),
-      el('textarea', { rows: 2, oninput: (e) => { p.notas = e.target.value; } }, p.notas || '')),
-  );
-}
-
-function viewProveedores() {
-  const wrap = document.createDocumentFragment();
-  const panel = el('div', { class: 'panel' },
-    el('h2', {}, 'Proveedores y entidades'),
-    el('div', { class: 'sub' }, 'Guarda aquí los datos de proveedores de material, instalaciones, federación, ayuntamiento, patrocinadores, etc. Al apuntar un gasto en Contabilidad podrás elegirlos de esta lista en vez de escribirlos a mano.'),
-    el('div', { class: 'toolbar' }, el('button', { class: 'btn btn-gold', onclick: () => { addProveedor(); render(); } }, '+ Añadir proveedor/entidad')),
-  );
-  if (!state.proveedores.length) {
-    panel.appendChild(el('div', { class: 'empty-state' }, 'Todavía no hay proveedores ni entidades guardados.'));
-  } else {
-    state.proveedores.forEach(p => panel.appendChild(proveedorCard(p)));
-  }
-  wrap.appendChild(panel);
-  return wrap;
-}
-
 function getState() { return state; }
-function setState(s) {
-  state = s;
-  if (state && !state.contabilidad) state.contabilidad = { movimientos: [] };
-  if (state && !Array.isArray(state.contabilidad.movimientos)) state.contabilidad.movimientos = [];
-  if (state && !Array.isArray(state.proveedores)) state.proveedores = [];
-}
+function setState(s) { state = s; }
 function mount() { tryLoadLocal(); render(); }
 return { render, mount, getState, setState };
 })();

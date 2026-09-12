@@ -1673,8 +1673,7 @@ function viewSchedule() {
   const pending = enabledCategories().filter(c => !c.groups);
   const panel = el('div', { class: 'panel' },
     el('h2', {}, 'Calendario de partidos'),
-    el('div', { class: 'sub' }, `Se generan horarios para ${state.config.courts} pista(s), partidos de ${state.config.matchMinutes} min + ${state.config.bufferMinutes} min de descanso, comenzando a las ${state.config.startTime}.`),
-    state.config.courts > 2 ? el('div', { class: 'msg msg-warn', style: 'margin-top:8px;font-weight:700;' }, '👉 Desliza la tabla de abajo hacia la izquierda con el dedo para ver el resto de las pistas (tienes ' + state.config.courts + ').') : null,
+    el('div', { class: 'sub' }, `Se generan horarios para ${state.config.courts} pista(s), partidos de ${state.config.matchMinutes} min + ${state.config.bufferMinutes} min de descanso, comenzando a las ${state.config.startTime}.`)
   );
   if (pending.length) {
     panel.appendChild(el('div', { class: 'msg msg-warn' },
@@ -5501,23 +5500,59 @@ function renderVistaPublica() {
   }
 
   const nombres = nombresParticipantesPublico(st);
-  const datalistId = 'listaJugadoresPublico';
+  const buscadorWrap = el('div', { style: 'position:relative;flex:1;min-width:200px;' });
   const inputBuscador = el('input', {
-    type: 'text', list: datalistId, placeholder: 'Escribe tu nombre...', autocomplete: 'off',
-    style: 'flex:1;min-width:200px;', value: jugadorSeleccionadoPublico,
+    type: 'text', placeholder: 'Escribe tu nombre...', autocomplete: 'off', autocapitalize: 'words',
+    style: 'width:100%;box-sizing:border-box;', value: jugadorSeleccionadoPublico,
   });
-  const datalist = el('datalist', { id: datalistId }, nombres.map(n => el('option', { value: n })));
-  const buscarYMostrar = (valor) => {
-    const encontrado = nombres.find(n => n.toLowerCase() === valor.trim().toLowerCase());
-    jugadorSeleccionadoPublico = encontrado || '';
+  const sugerenciasBox = el('div', {
+    style: 'position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1px solid #ddd;border-radius:8px;max-height:240px;overflow-y:auto;z-index:20;box-shadow:0 4px 12px rgba(0,0,0,0.18);display:none;',
+  });
+  function seleccionar(nombre) {
+    jugadorSeleccionadoPublico = nombre;
     renderVistaPublica();
-  };
-  inputBuscador.addEventListener('change', (e) => buscarYMostrar(e.target.value));
-  inputBuscador.addEventListener('keydown', (e) => { if (e.key === 'Enter') buscarYMostrar(e.target.value); });
+  }
+  function actualizarSugerencias() {
+    const val = inputBuscador.value.trim().toLowerCase();
+    sugerenciasBox.innerHTML = '';
+    if (!val) { sugerenciasBox.style.display = 'none'; return; }
+    const coincidencias = nombres.filter(n => n.toLowerCase().includes(val));
+    if (!coincidencias.length) {
+      const aviso = document.createElement('div');
+      aviso.textContent = 'Nadie coincide con ese nombre.';
+      aviso.style.padding = '10px 12px';
+      aviso.style.color = 'var(--muted)';
+      sugerenciasBox.appendChild(aviso);
+      sugerenciasBox.style.display = 'block';
+      return;
+    }
+    coincidencias.slice(0, 8).forEach(n => {
+      const item = document.createElement('div');
+      item.textContent = n;
+      item.style.padding = '10px 12px';
+      item.style.cursor = 'pointer';
+      item.style.borderBottom = '1px solid #eee';
+      item.addEventListener('mousedown', (e) => { e.preventDefault(); inputBuscador.value = n; seleccionar(n); });
+      item.addEventListener('touchstart', (e) => { e.preventDefault(); inputBuscador.value = n; seleccionar(n); });
+      sugerenciasBox.appendChild(item);
+    });
+    sugerenciasBox.style.display = 'block';
+  }
+  inputBuscador.addEventListener('input', actualizarSugerencias);
+  inputBuscador.addEventListener('focus', actualizarSugerencias);
+  inputBuscador.addEventListener('blur', () => { setTimeout(() => { sugerenciasBox.style.display = 'none'; }, 200); });
+  inputBuscador.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    const val = inputBuscador.value.trim().toLowerCase();
+    const coincidencias = nombres.filter(n => n.toLowerCase().includes(val));
+    if (coincidencias.length === 1) seleccionar(coincidencias[0]);
+  });
+  buscadorWrap.appendChild(inputBuscador);
+  buscadorWrap.appendChild(sugerenciasBox);
   root.appendChild(el('div', { class: 'panel' },
     el('h3', { style: 'margin-bottom:6px;' }, '🔍 ¿Cuándo juego yo?'),
-    el('div', { class: 'sub' }, 'Escribe tu nombre para buscarlo y ver solo tus partidos y horarios.'),
-    el('div', { class: 'row', style: 'gap:8px;margin-top:6px;' }, inputBuscador, datalist),
+    el('div', { class: 'sub' }, 'Escribe tu nombre: si hay varias coincidencias te las muestro, y en cuanto solo quede una es la tuya.'),
+    el('div', { class: 'row', style: 'gap:8px;margin-top:6px;' }, buscadorWrap),
   ));
 
   if (jugadorSeleccionadoPublico) {

@@ -2077,7 +2077,7 @@ function mount() {
   asegurarTorneoActivo();
   render();
 }
-return { render, mount, getState, setState, getHistorial, setHistorial, trayectoriaDeJugador, getTorneoActivoId: () => torneoActivoId, setTorneoActivoId: (id) => { torneoActivoId = id; } };
+return { render, mount, getState, setState, getHistorial, setHistorial, trayectoriaDeJugador, computeStandings, getTorneoActivoId: () => torneoActivoId, setTorneoActivoId: (id) => { torneoActivoId = id; } };
 })();
 </script>
 <script>
@@ -5456,7 +5456,8 @@ function todosLosPartidosDePublico(st) {
   const partidos = [];
   (st.categories || []).filter(c => c.enabled).forEach(cat => {
     (cat.matches || []).forEach(m => {
-      partidos.push({ cat, m, ronda: null });
+      const nombreGrupo = (cat.groups && cat.groups[m.groupIndex]) ? cat.groups[m.groupIndex].name : null;
+      partidos.push({ cat, m, ronda: nombreGrupo });
     });
     if (cat.knockout && cat.knockout.rounds) {
       cat.knockout.rounds.forEach(ronda => {
@@ -5603,20 +5604,48 @@ function renderVistaPublica() {
     const programados = (cat.matches || []).filter(m => m.court || m.time).slice().sort((a, b) => String(a.time || '99:99').localeCompare(String(b.time || '99:99')));
     if (programados.length) {
       panel.appendChild(el('h4', { style: 'margin-bottom:6px;' }, '🗓 Calendario'));
-      const tabla = el('table', {}, el('thead', {}, el('tr', {}, el('th', {}, 'Hora'), el('th', {}, 'Pista'), el('th', {}, 'Partido'), el('th', {}, 'Resultado'))));
+      const tabla = el('table', {}, el('thead', {}, el('tr', {}, el('th', {}, 'Hora'), el('th', {}, 'Pista'), el('th', {}, 'Grupo'), el('th', {}, 'Partido'), el('th', {}, 'Resultado'))));
       const tbody = el('tbody');
       programados.forEach(m => {
         const p1n = nombreParticipantePublico(cat, m.p1);
         const p2n = nombreParticipantePublico(cat, m.p2);
+        const nombreGrupo = (cat.groups && cat.groups[m.groupIndex]) ? cat.groups[m.groupIndex].name : '—';
         tbody.appendChild(el('tr', {},
           el('td', {}, m.time ? String(m.time) : '—'),
           el('td', {}, m.court ? String(m.court) : '—'),
+          el('td', {}, nombreGrupo),
           el('td', {}, nombrePartidoPublico(p1n, p2n, m.winner === m.p1, m.winner === m.p2, () => { jugadorSeleccionadoPublico = p1n; renderVistaPublica(); }, () => { jugadorSeleccionadoPublico = p2n; renderVistaPublica(); })),
           el('td', {}, m.winner ? formatearSetsPublico(m.sets) : el('span', { class: 'chip chip-muted' }, 'Pendiente')),
         ));
       });
       tabla.appendChild(tbody);
       panel.appendChild(tabla);
+    }
+
+    if (cat.groups && cat.groups.length) {
+      panel.appendChild(el('h4', { style: 'margin:14px 0 6px;' }, '📊 Clasificación'));
+      cat.groups.forEach((grp, gIdx) => {
+        const filas = TorneoApp.computeStandings(cat, gIdx);
+        panel.appendChild(el('div', { style: 'font-weight:700;margin:8px 0 4px;color:var(--court-dark);' }, grp.name));
+        const tablaClas = el('table', { style: 'margin-bottom:10px;' },
+          el('thead', {}, el('tr', {}, el('th', {}, '#'), el('th', {}, 'Jugador/Pareja'), el('th', {}, 'PJ'), el('th', {}, 'G'), el('th', {}, 'P'), el('th', {}, 'Pts'), el('th', {}, ''))),
+        );
+        const tbodyClas = el('tbody');
+        filas.forEach((r, i) => {
+          const clasifica = i < (cat.qualifiersPerGroup || 0);
+          tbodyClas.appendChild(el('tr', { style: clasifica ? 'background:#FFF7DD;' : '' },
+            el('td', {}, String(i + 1)),
+            el('td', {}, r.name),
+            el('td', {}, String(r.PJ)),
+            el('td', {}, String(r.PG)),
+            el('td', {}, String(r.PP)),
+            el('td', { style: 'font-weight:800;' }, String(r.Pts)),
+            el('td', {}, clasifica ? el('span', { class: 'chip chip-gold' }, '✅ Clasifica') : ''),
+          ));
+        });
+        tablaClas.appendChild(tbodyClas);
+        panel.appendChild(tablaClas);
+      });
     }
 
     if (cat.knockout && cat.knockout.rounds && cat.knockout.rounds.length) {

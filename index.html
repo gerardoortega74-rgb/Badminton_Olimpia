@@ -770,12 +770,23 @@ function buildSchedule() {
     }
   });
 
+  const streams = [];
+  enabledCategories().forEach(cat => {
+    const porGrupo = {};
+    (cat.matches || []).forEach(m => {
+      const g = m.groupIndex != null ? m.groupIndex : 0;
+      if (!porGrupo[g]) porGrupo[g] = [];
+      porGrupo[g].push(m);
+    });
+    Object.keys(porGrupo).forEach(g => {
+      streams.push({ cat, partidos: shuffle(porGrupo[g]) });
+    });
+  });
   const groupQueue = [];
-  const maxLen = Math.max.apply(null, [0].concat(enabledCategories().map(c => c.matches.length)));
+  const maxLen = Math.max.apply(null, [0].concat(streams.map(s => s.partidos.length)));
   for (let i = 0; i < maxLen; i++) {
-    const categoriasBarajadas = shuffle(enabledCategories());
-    categoriasBarajadas.forEach(cat => {
-      if (cat.matches[i]) groupQueue.push({ cat, match: cat.matches[i] });
+    shuffle(streams).forEach(s => {
+      if (s.partidos[i]) groupQueue.push({ cat: s.cat, match: s.partidos[i] });
     });
   }
 
@@ -797,11 +808,17 @@ function buildSchedule() {
     const n1 = normName(playerName(cat, match.p1));
     const n2 = normName(playerName(cat, match.p2));
     const minimoJugadores = Math.max(jugadorLibreEn[n1] || 0, jugadorLibreEn[n2] || 0);
-    let mejorPista = 0, mejorInicio = Infinity;
+    let mejorInicio = Infinity;
     for (let c = 0; c < numCourts; c++) {
       const inicio = Math.max(pistaLibreEn[c], minimoJugadores);
-      if (inicio < mejorInicio) { mejorInicio = inicio; mejorPista = c; }
+      if (inicio < mejorInicio) mejorInicio = inicio;
     }
+    const candidatas = [];
+    for (let c = 0; c < numCourts; c++) {
+      const inicio = Math.max(pistaLibreEn[c], minimoJugadores);
+      if (inicio === mejorInicio) candidatas.push(c);
+    }
+    const mejorPista = candidatas[Math.floor(Math.random() * candidatas.length)];
     match.court = mejorPista + 1;
     match.time = minutesToTime(startMin + mejorInicio);
     pistaLibreEn[mejorPista] = mejorInicio + duracionPartido + descansoPista;

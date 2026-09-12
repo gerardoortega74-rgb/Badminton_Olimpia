@@ -5417,13 +5417,8 @@ function tienePermiso(seccion) {
 }
 function aplicarModoLectura() {
   document.body.classList.toggle('solo-lectura', esSoloLectura());
-  let banner = document.getElementById('lecturaBanner');
-  if (esSoloLectura()) {
-    if (!banner) {
-      banner = el('div', { id: 'lecturaBanner', class: 'lectura-banner' }, '🔒 Estás en modo solo lectura: puedes ver los datos pero no modificarlos.');
-      document.body.insertBefore(banner, document.querySelector('.app-header').nextSibling);
-    }
-  } else if (banner) { banner.remove(); }
+  const banner = document.getElementById('lecturaBanner');
+  if (banner) banner.remove();
 }
 function cerrarSesion() {
   sesionActual = null;
@@ -5452,6 +5447,7 @@ function nombrePartidoPublico(p1n, p2n, ganadorEsP1, ganadorEsP2, onClickP1, onC
   );
 }
 let jugadorSeleccionadoPublico = '';
+let mostrarTodoPublico = false;
 function todosLosPartidosDePublico(st) {
   const partidos = [];
   (st.categories || []).filter(c => c.enabled).forEach(cat => {
@@ -5493,7 +5489,7 @@ function renderVistaPublica() {
   const st = TorneoApp.getState();
   root.appendChild(el('div', { class: 'panel' },
     el('h2', {}, st.meta.title || 'Torneo'),
-    el('div', { class: 'sub' }, (st.meta.date ? ('Fecha: ' + st.meta.date + ' · ') : '') + 'Esta página es solo para consultar: no se puede editar nada desde aquí.'),
+    st.meta.date ? el('div', { class: 'sub' }, 'Fecha: ' + st.meta.date) : null,
   ));
 
   const cats = (st.categories || []).filter(c => c.enabled);
@@ -5552,6 +5548,19 @@ function renderVistaPublica() {
   });
   buscadorWrap.appendChild(inputBuscador);
   buscadorWrap.appendChild(sugerenciasBox);
+
+  if (!jugadorSeleccionadoPublico && !mostrarTodoPublico) {
+    root.appendChild(el('div', { class: 'panel', style: 'border:2px solid var(--gold);' },
+      el('h3', { style: 'margin-bottom:6px;' }, '🔍 ¿Qué jugador o pareja eres?'),
+      el('div', { class: 'sub' }, 'Escribe tu nombre para ver solo tus partidos y horarios.'),
+      el('div', { class: 'row', style: 'gap:8px;margin-top:10px;' }, buscadorWrap),
+      el('div', { style: 'margin-top:14px;text-align:center;' },
+        el('span', { style: 'color:var(--muted);text-decoration:underline;cursor:pointer;font-size:13px;', onclick: () => { mostrarTodoPublico = true; renderVistaPublica(); } }, 'Prefiero ver todo el torneo sin buscar →'),
+      ),
+    ));
+    return;
+  }
+
   root.appendChild(el('div', { class: 'panel' },
     el('h3', { style: 'margin-bottom:6px;' }, '🔍 ¿Cuándo juego yo?'),
     el('div', { class: 'sub' }, 'Escribe tu nombre: si hay varias coincidencias te las muestro, y en cuanto solo quede una es la tuya.'),

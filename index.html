@@ -208,8 +208,8 @@ header.app-header::before{display:none !important;}
   <div class="row no-print" id="headerActions">
     <button class="btn btn-ghost btn-sm" id="btnLogout" style="display:none;">🔒 Salir</button>
     <button class="btn btn-primary btn-sm" id="btnMenu" style="display:none;">🏠 Menú</button>
-    <button class="btn btn-gold btn-sm" id="btnExport">⬇ Exportar todo</button>
-    <button class="btn btn-ghost btn-sm" id="btnImport">⬆ Importar todo</button>
+    <button class="btn btn-gold btn-sm" id="btnExport" style="display:none;">⬇ Exportar todo</button>
+    <button class="btn btn-ghost btn-sm" id="btnImport" style="display:none;">⬆ Importar todo</button>
     <input type="file" id="fileImport" accept=".json" style="display:none">
   </div>
 </header>
@@ -246,8 +246,6 @@ header.app-header::before{display:none !important;}
   </div>
 
 </main>
-
-<footer class="hint">Todos los datos se guardan en este dispositivo. Usa "Exportar todo" para pasarlo a otro ordenador o al móvil, y "Importar todo" en el otro dispositivo para continuar donde lo dejaste.</footer>
 
 <div id="torneoModalRoot"></div>
 
@@ -5394,6 +5392,15 @@ function renderClub() {
     tecPanel.appendChild(table);
   }
   root.appendChild(tecPanel);
+
+  root.appendChild(el('div', { class: 'panel' },
+    el('h2', {}, '🗄️ Datos y copia de seguridad'),
+    el('div', { class: 'sub' }, 'Usa "Exportar todo" para pasar los datos a otro ordenador o al móvil, e "Importar todo" en el otro dispositivo para continuar donde lo dejaste.'),
+    el('div', { class: 'row', style: 'gap:8px;' },
+      el('button', { class: 'btn btn-gold btn-sm', onclick: () => document.getElementById('btnExport').click() }, '⬇ Exportar todo'),
+      el('button', { class: 'btn btn-ghost btn-sm', onclick: () => document.getElementById('btnImport').click() }, '⬆ Importar todo'),
+    ),
+  ));
 }
 
 function renderJugadores() {
@@ -5688,6 +5695,15 @@ function renderHome() {
       el('div', { class: 'icon' }, c.icon), el('h3', {}, c.title), el('p', {}, c.desc)));
   });
   root.appendChild(grid);
+
+  root.appendChild(el('div', { class: 'panel', style: 'margin-top:16px;' },
+    el('h3', { style: 'margin-bottom:6px;' }, '🗄️ Datos y copia de seguridad'),
+    el('div', { class: 'sub', style: 'margin-bottom:10px;' }, 'Todos los datos se guardan en este dispositivo y en la nube. Usa "Exportar todo" para pasarlos a otro ordenador o al móvil, e "Importar todo" en el otro dispositivo para continuar donde lo dejaste.'),
+    el('div', { class: 'row', style: 'gap:8px;' },
+      el('button', { class: 'btn btn-gold btn-sm', onclick: () => document.getElementById('btnExport').click() }, '⬇ Exportar todo'),
+      el('button', { class: 'btn btn-ghost btn-sm', onclick: () => document.getElementById('btnImport').click() }, '⬆ Importar todo'),
+    ),
+  ));
 }
 
 function exportAll() {

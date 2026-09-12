@@ -5473,7 +5473,16 @@ function nombresParticipantesPublico(st) {
 }
 function renderVistaPublica() {
   const scrollGuardado = window.scrollY;
-  requestAnimationFrame(() => { window.scrollTo(0, scrollGuardado); });
+  const raizAnterior = document.getElementById('publicoScreen');
+  const scrollsHorizontales = raizAnterior ? Array.from(raizAnterior.querySelectorAll('table, .sched-grid')).map(el => el.scrollLeft) : [];
+  requestAnimationFrame(() => {
+    window.scrollTo(0, scrollGuardado);
+    const raizNueva = document.getElementById('publicoScreen');
+    if (raizNueva) {
+      const elementosScroll = raizNueva.querySelectorAll('table, .sched-grid');
+      elementosScroll.forEach((el, i) => { if (scrollsHorizontales[i]) el.scrollLeft = scrollsHorizontales[i]; });
+    }
+  });
   const headerActions = document.getElementById('headerActions');
   if (headerActions) headerActions.style.display = 'none';
   ['loginScreen', 'onboardingScreen', 'homeScreen', 'clubGestionScreen', 'torneoScreen', 'planScreen'].forEach(id => {

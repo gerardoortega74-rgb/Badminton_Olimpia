@@ -1743,6 +1743,36 @@ function viewSchedule() {
   return wrap;
 }
 
+function generarSetAleatorio(ganaP1) {
+  const puntosPerdedor = Math.floor(Math.random() * 15) + 5;
+  return ganaP1 ? [21, puntosPerdedor] : [puntosPerdedor, 21];
+}
+function simularResultadosGrupos(cat) {
+  (cat.matches || []).filter(m => !m.winner).forEach(m => {
+    const ganaP1 = Math.random() < 0.5;
+    m.sets = [generarSetAleatorio(ganaP1), generarSetAleatorio(ganaP1)];
+    m.winner = ganaP1 ? m.p1 : m.p2;
+  });
+}
+function simularEliminatoria(cat) {
+  if (!cat.knockout || !cat.knockout.rounds) return;
+  let huboCambios = true;
+  let vueltas = 0;
+  while (huboCambios && vueltas < 20) {
+    huboCambios = false;
+    vueltas++;
+    cat.knockout.rounds.forEach(ronda => {
+      ronda.forEach(m => {
+        if (m.winner || !m.p1 || !m.p2 || m.p1 === 'BYE' || m.p2 === 'BYE') return;
+        const ganaP1 = Math.random() < 0.5;
+        m.sets = [generarSetAleatorio(ganaP1), generarSetAleatorio(ganaP1)];
+        m.winner = ganaP1 ? m.p1 : m.p2;
+        huboCambios = true;
+      });
+    });
+    if (huboCambios) propagateKnockout(cat);
+  }
+}
 function viewResults() {
   const wrap = document.createDocumentFragment();
   if (!enabledCategories().length) {
@@ -1759,6 +1789,9 @@ function viewResults() {
     if (!cat.groups) {
       panel.appendChild(el('div', { class: 'empty-state' }, 'Realiza primero el sorteo de esta categoría.'));
     } else {
+      panel.appendChild(el('div', { class: 'toolbar', style: 'margin-bottom:10px;' },
+        el('button', { class: 'btn btn-ghost', onclick: () => { simularResultadosGrupos(cat); render(); } }, '🎲 Simular resultados de grupos (para pruebas)'),
+      ));
       cat.groups.forEach((g, gIdx) => {
         panel.appendChild(el('h3', { style: 'margin:18px 0 8px;color:var(--court-dark);' }, g.name));
         const matches = cat.matches.filter(m => m.groupIndex === gIdx).slice().sort((a, b) => String(a.time || '99:99').localeCompare(String(b.time || '99:99')));
@@ -1885,6 +1918,7 @@ function viewKnockout() {
       if (cat.knockout) {
         panel.appendChild(el('div', { class: 'toolbar' },
           el('button', { class: 'btn btn-ghost', onclick: () => { buildSchedule(); render(); } }, '🗓 Asignar horarios de eliminatoria'),
+          el('button', { class: 'btn btn-ghost', onclick: () => { simularEliminatoria(cat); render(); } }, '🎲 Simular eliminatoria (para pruebas)'),
         ));
       }
     } else {
@@ -1894,6 +1928,7 @@ function viewKnockout() {
       panel.appendChild(el('div', { class: 'toolbar' },
         el('button', { class: 'btn btn-gold', onclick: () => { buildKnockout(cat.id); render(); } }, cat.knockout ? '🏅 Regenerar cuadro' : '🏅 Generar cuadro'),
         cat.knockout ? el('button', { class: 'btn btn-ghost', onclick: () => { buildSchedule(); render(); } }, '🗓 Asignar horarios de eliminatoria') : null,
+        cat.knockout ? el('button', { class: 'btn btn-ghost', onclick: () => { simularEliminatoria(cat); render(); } }, '🎲 Simular eliminatoria (para pruebas)') : null,
       ));
     }
     if (cat.knockout) {

@@ -5476,6 +5476,8 @@ function nombresParticipantesPublico(st) {
   return Array.from(nombres).sort((a, b) => a.localeCompare(b, 'es'));
 }
 function renderVistaPublica() {
+  const scrollGuardado = window.scrollY;
+  requestAnimationFrame(() => { window.scrollTo(0, scrollGuardado); });
   const headerActions = document.getElementById('headerActions');
   if (headerActions) headerActions.style.display = 'none';
   ['loginScreen', 'onboardingScreen', 'homeScreen', 'clubGestionScreen', 'torneoScreen', 'planScreen'].forEach(id => {

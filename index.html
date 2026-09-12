@@ -1377,20 +1377,35 @@ function viewParticipants() {
     const etiquetaEdad = cat.edadId ? (cat.nivelTipo === 'edad' ? (window.nombreCategoria ? window.nombreCategoria(cat.edadId) : '') : (cat.nivelTipo === 'senior' ? (SENIOR_DEF.find(s => s.id === cat.edadId) || {}).name : (NIVELES_DEF.find(n => n.id === cat.edadId) || {}).name)) : '';
     const yaUsadosEnCategoria = new Set();
     cat.players.forEach(p => { if (p.jugadorId) yaUsadosEnCategoria.add(p.jugadorId); if (p.jugador1Id) yaUsadosEnCategoria.add(p.jugador1Id); if (p.jugador2Id) yaUsadosEnCategoria.add(p.jugador2Id); });
-    if (cat.nivelTipo === 'edad' || cat.nivelTipo === 'senior') {
+    if (cat.nivelTipo === 'edad' || cat.nivelTipo === 'senior' || cat.nivelTipo === 'nivel') {
       state.categories.filter(c => c.modalidadId === cat.modalidadId && c.nivelTipo === cat.nivelTipo && c.id !== cat.id).forEach(c => {
         (c.players || []).forEach(p => { if (p.jugadorId) yaUsadosEnCategoria.add(p.jugadorId); if (p.jugador1Id) yaUsadosEnCategoria.add(p.jugador1Id); if (p.jugador2Id) yaUsadosEnCategoria.add(p.jugador2Id); });
       });
+    }
+    const MAX_CATEGORIAS_POR_JUGADOR = 2;
+    function categoriasDeJugador(jugadorId) {
+      const idsCategorias = new Set();
+      state.categories.forEach(c => {
+        (c.players || []).forEach(p => {
+          if (p.jugadorId === jugadorId || p.jugador1Id === jugadorId || p.jugador2Id === jugadorId) idsCategorias.add(c.id);
+        });
+      });
+      return idsCategorias;
+    }
+    function puedeApuntarseAMasCategorias(jugadorId) {
+      const yaEnEsta = categoriasDeJugador(jugadorId).has(cat.id);
+      const total = categoriasDeJugador(jugadorId).size;
+      return yaEnEsta || total < MAX_CATEGORIAS_POR_JUGADOR;
     }
     if (cat.kind === 'double') {
       const rosterAll = (window.JugadoresGlobal ? window.JugadoresGlobal.list() : []);
       let roster1, roster2, avisoSexo;
       if (cat.modalidadId === 'DX') {
-        roster1 = rosterAll.filter(j => j.sexo === 'M' && edadOk(j) && !yaUsadosEnCategoria.has(j.id));
-        roster2 = rosterAll.filter(j => j.sexo === 'F' && edadOk(j) && !yaUsadosEnCategoria.has(j.id));
+        roster1 = rosterAll.filter(j => j.sexo === 'M' && edadOk(j) && !yaUsadosEnCategoria.has(j.id) && puedeApuntarseAMasCategorias(j.id));
+        roster2 = rosterAll.filter(j => j.sexo === 'F' && edadOk(j) && !yaUsadosEnCategoria.has(j.id) && puedeApuntarseAMasCategorias(j.id));
         avisoSexo = 'Dobles mixto' + (etiquetaEdad ? ' ' + etiquetaEdad : '') + ': Jugador 1 debe ser chico y Jugador 2 chica' + (etiquetaEdad ? ', ambos de la categoría ' + etiquetaEdad : '') + '.';
       } else {
-        const base = rosterAll.filter(j => (!catSexo || j.sexo === catSexo) && edadOk(j) && !yaUsadosEnCategoria.has(j.id));
+        const base = rosterAll.filter(j => (!catSexo || j.sexo === catSexo) && edadOk(j) && !yaUsadosEnCategoria.has(j.id) && puedeApuntarseAMasCategorias(j.id));
         roster1 = base; roster2 = base;
         avisoSexo = (catSexo || etiquetaEdad) ? `Solo se muestran jugadores${catSexo ? ' de sexo ' + (catSexo === 'M' ? 'masculino' : 'femenino') : ''}${etiquetaEdad ? ' de la categoría ' + etiquetaEdad : ''} para esta categoría, y ya no aparece quien ya esté apuntado aquí.` : 'Ya no aparece en la lista quién esté apuntado en esta categoría.';
       }
@@ -1466,7 +1481,7 @@ function viewParticipants() {
       panel.appendChild(addRow);
 
       if (window.JugadoresGlobal) {
-        const roster = window.JugadoresGlobal.list().filter(j => (!catSexo || j.sexo === catSexo) && edadOk(j) && !yaUsadosEnCategoria.has(j.id));
+        const roster = window.JugadoresGlobal.list().filter(j => (!catSexo || j.sexo === catSexo) && edadOk(j) && !yaUsadosEnCategoria.has(j.id) && puedeApuntarseAMasCategorias(j.id));
         if (roster.length) {
           const rosterRow = el('div', { class: 'row', style: 'margin-bottom:18px;padding:10px;background:#F5F3EB;border-radius:8px;' });
           const rosterSelect = el('select', { style: 'flex:1;min-width:200px;' },

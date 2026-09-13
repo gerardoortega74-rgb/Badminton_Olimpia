@@ -233,6 +233,7 @@ if (window.pdfjsLib) { pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.c
     <nav class="tabs" id="clubGestionTabsNav" style="margin:-20px -16px 20px;"></nav>
     <div id="clubScreen"></div>
     <div id="jugadoresScreen" style="display:none;"></div>
+    <div id="jugadoresGeneralScreen" style="display:none;"></div>
     <div id="pagosScreen" style="display:none;">
       <nav class="tabs" id="pagosTabsNav" style="margin:-20px -16px 20px;"></nav>
       <div id="pagosMainArea"></div>
@@ -429,7 +430,7 @@ function importarParticipantesExternos(file) {
         const nombre = String(row['Nombre'] || '').trim();
         const apellidos = String(row['Apellidos'] || '').trim();
         const sexo = String(row['Sexo (M/F)'] || row['Sexo'] || '').trim().toUpperCase();
-        const club = String(row['Club'] || '').trim();
+        const club = String(row['Club'] || '').trim() || 'Independiente';
         const telefono = String(row['Teléfono'] || '').trim();
         const email = String(row['Email'] || '').trim();
         if (!nombre) { saltados++; return; }
@@ -437,6 +438,7 @@ function importarParticipantesExternos(file) {
         if (!cat) { saltados++; motivos.push('Fila ' + (idx + 2) + ': categoría no reconocida (revisa Modalidad, Sistema y fecha de nacimiento).'); return; }
         if (!cat.enabled) cat.enabled = true;
         const nombreCompleto = (nombre + ' ' + apellidos).trim();
+        upsertJugadorExterno({ nombre: nombreCompleto, club, fechaNacimiento, sexo, telefono, email });
         if (cat.kind === 'double') {
           const nombrePareja = String(row['Nombre pareja (solo dobles)'] || row['Nombre pareja'] || '').trim();
           const apellidosPareja = String(row['Apellidos pareja (solo dobles)'] || row['Apellidos pareja'] || '').trim();
@@ -444,6 +446,7 @@ function importarParticipantesExternos(file) {
           const sexoPareja = String(row['Sexo pareja (solo dobles)'] || row['Sexo pareja'] || '').trim().toUpperCase();
           if (!nombrePareja) { saltados++; motivos.push('Fila ' + (idx + 2) + ': falta el nombre de la pareja (categoría de dobles).'); return; }
           const nombreParejaCompleto = (nombrePareja + ' ' + apellidosPareja).trim();
+          upsertJugadorExterno({ nombre: nombreParejaCompleto, club, fechaNacimiento: fechaNacimientoPareja, sexo: sexoPareja });
           const nombreFinal = nombreCompleto + ' / ' + nombreParejaCompleto;
           if (cat.players.some(p => p.name === nombreFinal)) { saltados++; return; }
           cat.players.push({
@@ -1175,6 +1178,13 @@ function viewConfig() {
       field('Descanso mínimo del jugador entre sus partidos (min)', inputEl('number', state.config.restMinutes != null ? state.config.restMinutes : 10, v => { state.config.restMinutes = Math.max(0, parseInt(v) || 0); }, { min: 0 })),
     )
   );
+  general.appendChild(el('label', { style: 'display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:12px;text-transform:none;font-weight:700;' },
+    el('input', {
+      type: 'checkbox', style: 'width:auto;', checked: state.config.soloFederados ? 'checked' : null,
+      onchange: (e) => { state.config.soloFederados = e.target.checked; render(); },
+    }),
+    el('span', {}, '🎫 Torneo solo para jugadores federados (si lo desmarcas, se busca entre todos, federados o no)'),
+  ));
   general.appendChild(el('div', { class: 'toolbar', style: 'margin-top:12px;' },
     el('button', { class: 'btn btn-danger', onclick: () => eliminarTorneoDeLista(torneoActivoId) }, '🗑️ Borrar este torneo'),
   ));
@@ -1401,11 +1411,11 @@ function viewParticipants() {
       const rosterAll = (window.JugadoresGlobal ? window.JugadoresGlobal.list() : []);
       let roster1, roster2, avisoSexo;
       if (cat.modalidadId === 'DX') {
-        roster1 = rosterAll.filter(j => j.sexo === 'M' && edadOk(j) && !yaUsadosEnCategoria.has(j.id) && puedeApuntarseAMasCategorias(j.id));
-        roster2 = rosterAll.filter(j => j.sexo === 'F' && edadOk(j) && !yaUsadosEnCategoria.has(j.id) && puedeApuntarseAMasCategorias(j.id));
+        roster1 = rosterAll.filter(j => j.sexo === 'M' && edadOk(j) && !yaUsadosEnCategoria.has(j.id) && puedeApuntarseAMasCategorias(j.id) && (!state.config.soloFederados || j.federado));
+        roster2 = rosterAll.filter(j => j.sexo === 'F' && edadOk(j) && !yaUsadosEnCategoria.has(j.id) && puedeApuntarseAMasCategorias(j.id) && (!state.config.soloFederados || j.federado));
         avisoSexo = 'Dobles mixto' + (etiquetaEdad ? ' ' + etiquetaEdad : '') + ': Jugador 1 debe ser chico y Jugador 2 chica' + (etiquetaEdad ? ', ambos de la categoría ' + etiquetaEdad : '') + '.';
       } else {
-        const base = rosterAll.filter(j => (!catSexo || j.sexo === catSexo) && edadOk(j) && !yaUsadosEnCategoria.has(j.id) && puedeApuntarseAMasCategorias(j.id));
+        const base = rosterAll.filter(j => (!catSexo || j.sexo === catSexo) && edadOk(j) && !yaUsadosEnCategoria.has(j.id) && puedeApuntarseAMasCategorias(j.id) && (!state.config.soloFederados || j.federado));
         roster1 = base; roster2 = base;
         avisoSexo = (catSexo || etiquetaEdad) ? `Solo se muestran jugadores${catSexo ? ' de sexo ' + (catSexo === 'M' ? 'masculino' : 'femenino') : ''}${etiquetaEdad ? ' de la categoría ' + etiquetaEdad : ''} para esta categoría, y ya no aparece quien ya esté apuntado aquí.` : 'Ya no aparece en la lista quién esté apuntado en esta categoría.';
       }
@@ -1471,7 +1481,7 @@ function viewParticipants() {
           const val = nameInput.value.trim();
           if (!val) return;
           cat.players.push({ id: uid('pl'), name: val, seed: seedCheck.checked });
-          if (window.JugadoresGlobal) window.JugadoresGlobal.addIfNew(val);
+          if (window.upsertJugadorExterno) window.upsertJugadorExterno({ nombre: val, club: 'Independiente' });
           render();
         },
       }, '+ Añadir');
@@ -1481,7 +1491,7 @@ function viewParticipants() {
       panel.appendChild(addRow);
 
       if (window.JugadoresGlobal) {
-        const roster = window.JugadoresGlobal.list().filter(j => (!catSexo || j.sexo === catSexo) && edadOk(j) && !yaUsadosEnCategoria.has(j.id) && puedeApuntarseAMasCategorias(j.id));
+        const roster = window.JugadoresGlobal.list().filter(j => (!catSexo || j.sexo === catSexo) && edadOk(j) && !yaUsadosEnCategoria.has(j.id) && puedeApuntarseAMasCategorias(j.id) && (!state.config.soloFederados || j.federado));
         if (roster.length) {
           const rosterRow = el('div', { class: 'row', style: 'margin-bottom:18px;padding:10px;background:#F5F3EB;border-radius:8px;' });
           const rosterSelect = el('select', { style: 'flex:1;min-width:200px;' },
@@ -4853,6 +4863,32 @@ function loadJugadoresGlobal() {
   try { const raw = localStorage.getItem('badmintonJugadoresGlobal'); if (raw) jugadoresGlobal = JSON.parse(raw); } catch (e) {}
 }
 
+let jugadoresExternos = [];
+function saveJugadoresExternos() { try { localStorage.setItem('badmintonJugadoresExternos', JSON.stringify(jugadoresExternos)); } catch (e) {} if (typeof programarSyncNube === 'function') programarSyncNube(); }
+function loadJugadoresExternos() {
+  try { const raw = localStorage.getItem('badmintonJugadoresExternos'); if (raw) jugadoresExternos = JSON.parse(raw); } catch (e) {}
+}
+function upsertJugadorExterno(datos) {
+  if (!datos.nombre || !datos.club) return;
+  const clave = (datos.nombre + '|' + datos.club).trim().toLowerCase();
+  const existente = jugadoresExternos.find(j => (j.nombre + '|' + j.club).trim().toLowerCase() === clave);
+  if (existente) {
+    Object.assign(existente, {
+      fechaNacimiento: datos.fechaNacimiento || existente.fechaNacimiento,
+      sexo: datos.sexo || existente.sexo,
+      telefono: datos.telefono || existente.telefono,
+      email: datos.email || existente.email,
+    });
+  } else {
+    jugadoresExternos.push({
+      id: 'ext_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+      nombre: datos.nombre, club: datos.club, fechaNacimiento: datos.fechaNacimiento || '',
+      sexo: datos.sexo || '', telefono: datos.telefono || '', email: datos.email || '',
+    });
+  }
+  saveJugadoresExternos();
+}
+
 function formatFechaExcel(d) {
   if (!d) return '';
   if (d instanceof Date && !isNaN(d)) {
@@ -5930,6 +5966,7 @@ function renderClubGestionTabsNav() {
   const tabs = [
     ['datos', '🏛️ Datos del club', 'club'],
     ['jugadores', '👥 Jugadores', 'jugadores'],
+    ['general', '🌍 Base general de jugadores', 'jugadores'],
     ['pagos', '💶 Pagos y Cuotas', 'pagos'],
   ].filter(([, , permiso]) => tienePermiso(permiso));
   if (esAdmin()) tabs.push(['acceso', '🔐 Control de acceso']);
@@ -5940,7 +5977,7 @@ function renderClubGestionTabsNav() {
 
 function showClubGestionTab(tab) {
   if (tab === 'acceso' && !esAdmin()) tab = 'datos';
-  const permisoDeTab = { datos: 'club', jugadores: 'jugadores', pagos: 'pagos', acceso: null };
+  const permisoDeTab = { datos: 'club', jugadores: 'jugadores', general: 'jugadores', pagos: 'pagos', acceso: null };
   if (tab !== 'acceso' && !tienePermiso(permisoDeTab[tab])) {
     tab = tienePermiso('club') ? 'datos' : tienePermiso('jugadores') ? 'jugadores' : tienePermiso('pagos') ? 'pagos' : 'datos';
   }
@@ -5948,13 +5985,47 @@ function showClubGestionTab(tab) {
   renderClubGestionTabsNav();
   document.getElementById('clubScreen').style.display = tab === 'datos' ? 'block' : 'none';
   document.getElementById('jugadoresScreen').style.display = tab === 'jugadores' ? 'block' : 'none';
+  document.getElementById('jugadoresGeneralScreen').style.display = tab === 'general' ? 'block' : 'none';
   document.getElementById('pagosScreen').style.display = tab === 'pagos' ? 'block' : 'none';
   document.getElementById('accesoScreen').style.display = tab === 'acceso' ? 'block' : 'none';
   if (tab === 'datos') renderClub();
   else if (tab === 'jugadores') renderJugadores();
+  else if (tab === 'general') renderJugadoresGeneral();
   else if (tab === 'pagos') PagosApp.render();
   else if (tab === 'acceso') renderControlAcceso();
   renderShellHeader();
+}
+function renderJugadoresGeneral() {
+  const root = document.getElementById('jugadoresGeneralScreen');
+  root.innerHTML = '';
+  const filas = [];
+  jugadoresGlobal.forEach(j => filas.push({ nombre: j.nombre, club: clubGlobal.nombre || 'Mi club', fechaNacimiento: j.fechaNacimiento || '', sexo: j.sexo || '', telefono: j.telefono || '', email: j.email || '' }));
+  jugadoresExternos.forEach(j => filas.push({ nombre: j.nombre, club: j.club || 'Independiente', fechaNacimiento: j.fechaNacimiento || '', sexo: j.sexo || '', telefono: j.telefono || '', email: j.email || '' }));
+  filas.sort((a, b) => a.club.localeCompare(b.club) || a.nombre.localeCompare(b.nombre));
+  const panel = el('div', { class: 'panel' },
+    el('h2', {}, '🌍 Base general de jugadores'),
+    el('div', { class: 'sub' }, 'Todos los jugadores conocidos: los de tu club, los importados de otros clubes por Excel, y los añadidos a mano en un torneo. Se distinguen por club; si no tienen club se marcan como "Independiente".'),
+  );
+  if (!filas.length) {
+    panel.appendChild(el('div', { class: 'empty-state' }, 'Todavía no hay ningún jugador registrado.'));
+  } else {
+    const clubesUnicos = Array.from(new Set(filas.map(f => f.club)));
+    panel.appendChild(el('div', { class: 'sub', style: 'margin-bottom:10px;' }, `Total: ${filas.length} jugador(es) de ${clubesUnicos.length} club(es) distinto(s).`));
+    const table = el('table', {}, el('thead', {}, el('tr', {}, el('th', {}, 'Nombre'), el('th', {}, 'Club'), el('th', {}, 'Sexo'), el('th', {}, 'Fecha nacimiento'), el('th', {}, 'Contacto'))));
+    const tbody = el('tbody');
+    filas.forEach(f => {
+      tbody.appendChild(el('tr', {},
+        el('td', {}, f.nombre),
+        el('td', {}, el('span', { class: 'chip chip-muted' }, f.club)),
+        el('td', {}, f.sexo || '—'),
+        el('td', {}, f.fechaNacimiento || '—'),
+        el('td', {}, [f.telefono, f.email].filter(Boolean).join(' · ') || '—'),
+      ));
+    });
+    table.appendChild(tbody);
+    panel.appendChild(table);
+  }
+  root.appendChild(panel);
 }
 
 function renderShellHeader() {
@@ -6484,6 +6555,7 @@ function estadoCompletoParaNube() {
   return {
     club: clubGlobal,
     jugadoresGlobal: jugadoresGlobal,
+    jugadoresExternos: jugadoresExternos,
     torneo: TorneoApp.getState(),
     torneosHistorial: TorneoApp.getHistorial(),
     torneoActivoId: TorneoApp.getTorneoActivoId(),
@@ -6539,8 +6611,10 @@ function aplicarDatosDeNube(dataOriginal) {
   if (!data) return;
   clubGlobal = Object.assign({ nombre: '', localidad: '', temporadaInicio: '', temporadaFin: '', logo: '', tecnicos: [] }, data.club || {});
   jugadoresGlobal = data.jugadoresGlobal !== undefined ? data.jugadoresGlobal : jugadoresGlobal;
+  jugadoresExternos = data.jugadoresExternos !== undefined ? data.jugadoresExternos : jugadoresExternos;
   saveClubGlobal();
   saveJugadoresGlobal();
+  saveJugadoresExternos();
   if (data.torneo) TorneoApp.setState(data.torneo);
   if (data.torneosHistorial) TorneoApp.setHistorial(data.torneosHistorial);
   if (data.torneoActivoId) TorneoApp.setTorneoActivoId(data.torneoActivoId);
@@ -6588,6 +6662,7 @@ if (!esVistaPublica()) {
 
 loadClubGlobal();
 loadJugadoresGlobal();
+loadJugadoresExternos();
 loadAccessControl();
 loadSesion();
 TorneoApp.mount();

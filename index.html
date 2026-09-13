@@ -1808,9 +1808,9 @@ function htmlActaPartido(item) {
   const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const filas = [1, 2, 3].map(n => `
     <div class="acta-set">
-      <span>Set ${n}:</span>
-      <span>${esc(p1)} </span><span class="hueco"></span>
-      <span> — </span><span class="hueco"></span><span> ${esc(p2)}</span>
+      <div class="acta-set-titulo">Set ${n}</div>
+      <div class="acta-set-fila"><span class="acta-nombre">${esc(p1)}</span><span class="hueco"></span></div>
+      <div class="acta-set-fila"><span class="acta-nombre">${esc(p2)}</span><span class="hueco"></span></div>
     </div>`).join('');
   return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Acta partido nº ${item.numero}</title>
@@ -1819,8 +1819,12 @@ function htmlActaPartido(item) {
     .acta-hoja{max-width:640px;margin:0 auto;}
     .acta-hoja h2{margin:0 0 4px;}
     .acta-linea{display:flex;justify-content:space-between;border-bottom:1px solid #999;padding:6px 0;margin-bottom:6px;font-size:14px;}
-    .acta-set{display:flex;align-items:center;gap:10px;border:1px solid #999;border-radius:6px;padding:10px;margin-bottom:8px;}
-    .acta-set .hueco{border-bottom:1px solid #000;min-width:60px;display:inline-block;height:26px;}
+    .acta-set{border:1px solid #999;border-radius:6px;padding:10px 12px;margin-bottom:10px;}
+    .acta-set-titulo{font-weight:700;font-size:12px;text-transform:uppercase;color:#555;margin-bottom:8px;}
+    .acta-set-fila{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:8px;}
+    .acta-set-fila:last-child{margin-bottom:0;}
+    .acta-nombre{flex:1;min-width:0;word-break:break-word;font-size:15px;}
+    .acta-set .hueco, .acta-linea .hueco{border-bottom:1px solid #000;width:64px;flex-shrink:0;display:inline-block;height:28px;}
     .acta-firma{margin-top:40px;display:flex;justify-content:space-between;}
     .acta-firma div{border-top:1px solid #000;width:220px;text-align:center;padding-top:6px;font-size:12px;}
     .btn-imprimir{background:#E8B924;border:none;border-radius:7px;padding:12px 20px;font-weight:700;font-size:15px;cursor:pointer;margin-bottom:20px;}

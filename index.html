@@ -1751,6 +1751,48 @@ function viewDraw() {
   return wrap;
 }
 
+function contactosDeParticipante(p) {
+  const contactos = [];
+  function resolverUno(jugadorId, nombreFallback, telFallback, emailFallback) {
+    if (jugadorId && window.JugadoresGlobal) {
+      const j = window.JugadoresGlobal.list().find(x => x.id === jugadorId);
+      if (j) { contactos.push({ nombre: (j.nombre || '') + (j.apellidos ? ' ' + j.apellidos : ''), telefono: j.telefono || '', email: j.email || '' }); return; }
+    }
+    contactos.push({ nombre: nombreFallback, telefono: telFallback || '', email: emailFallback || '' });
+  }
+  if (p.jugador1Id || p.jugador2Id) {
+    const nombres = p.name.includes(' / ') ? p.name.split(' / ') : [p.name, ''];
+    resolverUno(p.jugador1Id, nombres[0], p.telefono, p.email);
+    if (p.jugador2Id) resolverUno(p.jugador2Id, nombres[1], p.telefono, p.email);
+  } else {
+    resolverUno(p.jugadorId, p.name, p.telefono, p.email);
+  }
+  return contactos;
+}
+function recopilarContactosDelTorneo() {
+  const vistos = new Set();
+  const lista = [];
+  enabledCategories().forEach(cat => {
+    (cat.players || []).forEach(p => {
+      contactosDeParticipante(p).forEach(c => {
+        const clave = (c.nombre + '|' + c.telefono + '|' + c.email).toLowerCase();
+        if (vistos.has(clave) || !c.nombre) return;
+        vistos.add(clave);
+        lista.push(c);
+      });
+    });
+  });
+  return lista;
+}
+function telefonoParaWhatsapp(tel) {
+  let digitos = String(tel || '').replace(/\D/g, '');
+  if (!digitos) return '';
+  if (digitos.length === 9) digitos = '34' + digitos;
+  return digitos;
+}
+function enlacePublicoDelTorneo() {
+  return location.origin + location.pathname + '?publico=1&torneo=' + torneoActivoId;
+}
 function viewSchedule() {
   const wrap = document.createDocumentFragment();
   const pending = enabledCategories().filter(c => !c.groups);
@@ -1782,6 +1824,44 @@ function viewSchedule() {
     wrap.appendChild(panel);
     return wrap;
   }
+
+  const contactos = recopilarContactosDelTorneo();
+  const conEmail = contactos.filter(c => c.email);
+  const conTelefono = contactos.filter(c => c.telefono);
+  const avisoPanel = el('div', { class: 'panel', style: 'border:2px solid var(--gold);' },
+    el('h2', {}, '📣 Avisar a los participantes'),
+    el('div', { class: 'sub' }, `Ya hay horarios generados. Comparte el enlace en directo con los participantes. Encontrados: ${conEmail.length} con email, ${conTelefono.length} con teléfono, de ${contactos.length} en total.`),
+  );
+  const enlace = enlacePublicoDelTorneo();
+  const asunto = 'Horarios de ' + (state.meta.title || 'el torneo');
+  const cuerpoMensaje = `Hola, ya están los horarios de ${state.meta.title || 'el torneo'}. Consulta tus partidos y el calendario en directo aquí: ${enlace}`;
+  avisoPanel.appendChild(el('div', { class: 'toolbar', style: 'margin-bottom:10px;' },
+    el('button', {
+      class: 'btn btn-gold',
+      disabled: !conEmail.length ? 'disabled' : null,
+      onclick: () => {
+        const bcc = conEmail.map(c => c.email).join(',');
+        window.location.href = 'mailto:?bcc=' + encodeURIComponent(bcc) + '&subject=' + encodeURIComponent(asunto) + '&body=' + encodeURIComponent(cuerpoMensaje);
+      },
+    }, '📧 Enviar email a todos (' + conEmail.length + ')'),
+    el('button', {
+      class: 'btn btn-ghost',
+      onclick: () => { navigator.clipboard && navigator.clipboard.writeText(cuerpoMensaje).then(() => alert('Mensaje copiado. Pégalo en tu grupo de WhatsApp del torneo.')).catch(() => alert(cuerpoMensaje)); },
+    }, '📋 Copiar mensaje para WhatsApp'),
+  ));
+  if (conTelefono.length) {
+    avisoPanel.appendChild(el('div', { class: 'sub', style: 'margin-bottom:6px;' }, 'O toca uno a uno para abrir su chat de WhatsApp ya escrito (WhatsApp no deja enviar a varios de golpe desde una web):'));
+    avisoPanel.appendChild(el('div', { class: 'row', style: 'gap:6px;flex-wrap:wrap;' },
+      conTelefono.map(c => {
+        const numero = telefonoParaWhatsapp(c.telefono);
+        return numero ? el('a', {
+          href: 'https://wa.me/' + numero + '?text=' + encodeURIComponent(cuerpoMensaje),
+          target: '_blank', class: 'chip', style: 'text-decoration:none;cursor:pointer;',
+        }, '💬 ' + c.nombre) : null;
+      }),
+    ));
+  }
+  panel.appendChild(avisoPanel);
 
   const times = Array.from(new Set(allMatches.map(x => x.m.time))).sort();
   const numCourts = state.config.courts;

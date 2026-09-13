@@ -1151,10 +1151,13 @@ function optimizarTodasLasCategorias() {
   render();
   const totalPartidos = todas.reduce((sum, c) => sum + contarPartidosEstimados(c), 0);
   const minutos = Math.ceil(totalPartidos / Math.max(1, state.config.courts)) * Math.max(5, state.config.matchMinutes);
+  const inicioMin = timeToMinutes(state.config.startTime || '09:00');
+  const horaFinAprox = minutesToTime(inicioMin + minutos);
   let msg = 'Optimizadas ' + optimizables.length + ' categoría(s):\n' +
     optimizables.map(c => '· ' + c.name + ' → ' + c.numGroups + ' grupo(s)').join('\n') + '\n\n' +
     'Partidos totales estimados del torneo: ' + totalPartidos + '\n' +
-    'Duración mínima estimada: ' + minutos + ' min con ' + state.config.courts + ' pista(s).';
+    'Duración mínima estimada: ' + minutos + ' min con ' + state.config.courts + ' pista(s).\n' +
+    'Empezando a las ' + (state.config.startTime || '09:00') + ', terminaría aproximadamente a las ' + horaFinAprox + '.';
   if (noOptimizables.length) {
     msg += '\n\nSin optimizar (menos de 6 participantes o eliminatoria directa): ' + noOptimizables.map(c => c.name).join(', ');
   }

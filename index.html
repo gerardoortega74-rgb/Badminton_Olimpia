@@ -1419,6 +1419,9 @@ function viewParticipants() {
         roster1 = base; roster2 = base;
         avisoSexo = (catSexo || etiquetaEdad) ? `Solo se muestran jugadores${catSexo ? ' de sexo ' + (catSexo === 'M' ? 'masculino' : 'femenino') : ''}${etiquetaEdad ? ' de la categoría ' + etiquetaEdad : ''} para esta categoría, y ya no aparece quien ya esté apuntado aquí.` : 'Ya no aparece en la lista quién esté apuntado en esta categoría.';
       }
+      const sinFechaNacimientoDobles = cat.nivelTipo === 'edad'
+        ? rosterAll.filter(j => !edadOk(j) && !j.fechaNacimiento && !yaUsadosEnCategoria.has(j.id) && puedeApuntarseAMasCategorias(j.id) && (!state.config.soloFederados || j.federado))
+        : [];
       if (roster1.length >= 1 && roster2.length >= 1) {
         const p1Select = el('select', { style: 'min-width:160px;' }, roster1.map(j => el('option', { value: j.id }, j.nombre)));
         const p2Select = el('select', { style: 'min-width:160px;' }, roster2.map(j => el('option', { value: j.id }, j.nombre)));
@@ -1451,6 +1454,10 @@ function viewParticipants() {
         panel.appendChild(el('div', { class: 'msg msg-warn' }, 'Añade al menos 2 jugadores en la sección "Jugadores" del menú principal para poder formar parejas desde aquí.'));
       } else {
         panel.appendChild(el('div', { class: 'msg msg-warn' }, 'No quedan jugadores disponibles del sexo necesario para formar más parejas en esta categoría (o ya están todos apuntados).'));
+      }
+      if (sinFechaNacimientoDobles.length) {
+        panel.appendChild(el('div', { class: 'msg msg-warn', style: 'margin-bottom:14px;' },
+          `⚠️ ${sinFechaNacimientoDobles.map(j => j.nombre).join(', ')} no aparece${sinFechaNacimientoDobles.length > 1 ? 'n' : ''} aquí porque falta su fecha de nacimiento en su ficha. Ve a Jugadores y complétala.`));
       }
       const manualRow = el('div', { class: 'row', style: 'margin-bottom:14px;' });
       const manualInput = el('input', { type: 'text', placeholder: 'O escribe el nombre de la pareja a mano (ej: "Ana / Laura")', style: 'flex:1;min-width:220px;' });
@@ -1491,7 +1498,9 @@ function viewParticipants() {
       panel.appendChild(addRow);
 
       if (window.JugadoresGlobal) {
-        const roster = window.JugadoresGlobal.list().filter(j => (!catSexo || j.sexo === catSexo) && edadOk(j) && !yaUsadosEnCategoria.has(j.id) && puedeApuntarseAMasCategorias(j.id) && (!state.config.soloFederados || j.federado));
+        const candidatosBase = window.JugadoresGlobal.list().filter(j => (!catSexo || j.sexo === catSexo) && !yaUsadosEnCategoria.has(j.id) && puedeApuntarseAMasCategorias(j.id) && (!state.config.soloFederados || j.federado));
+        const roster = candidatosBase.filter(j => edadOk(j));
+        const sinFechaNacimiento = cat.nivelTipo === 'edad' ? candidatosBase.filter(j => !edadOk(j) && !j.fechaNacimiento) : [];
         if (roster.length) {
           const rosterRow = el('div', { class: 'row', style: 'margin-bottom:18px;padding:10px;background:#F5F3EB;border-radius:8px;' });
           const rosterSelect = el('select', { style: 'flex:1;min-width:200px;' },
@@ -1508,6 +1517,10 @@ function viewParticipants() {
           panel.appendChild(rosterRow);
         } else if (catSexo || etiquetaEdad) {
           panel.appendChild(el('div', { class: 'sub', style: 'margin-bottom:14px;' }, `No quedan jugadores${catSexo ? ' ' + (catSexo === 'M' ? 'chicos' : 'chicas') : ''}${etiquetaEdad ? ' de la categoría ' + etiquetaEdad : ''} disponibles para añadir desde la lista (o ya están todos apuntados en esta categoría).`));
+        }
+        if (sinFechaNacimiento.length) {
+          panel.appendChild(el('div', { class: 'msg msg-warn', style: 'margin-bottom:14px;' },
+            `⚠️ ${sinFechaNacimiento.map(j => j.nombre).join(', ')} no aparece${sinFechaNacimiento.length > 1 ? 'n' : ''} aquí porque falta su fecha de nacimiento en su ficha (necesaria para saber su categoría de edad). Ve a Jugadores y complétala.`));
         }
       }
     }

@@ -4841,7 +4841,7 @@ function aNumeroImporte(str) {
 }
 
 function parsearRecibo(texto) {
-  const resultado = { importe: null, concepto: null, fecha: null };
+  const resultado = { importe: null, concepto: null, fecha: null, proveedorCandidato: null };
   if (!texto) return resultado;
   const lineas = texto.split(/\n/).map(l => l.trim()).filter(Boolean);
   const numeroRegex = /(\d{1,3}(?:[.,]\d{3})*[.,]\d{2})/g;
@@ -4866,6 +4866,7 @@ function parsearRecibo(texto) {
     const anioNum = parseInt(y, 10);
     if (anioNum >= 2000 && anioNum <= 2100) resultado.fecha = y + '-' + mth + '-' + d;
   }
+  resultado.proveedorCandidato = lineas.length ? lineas[0].slice(0, 60) : null;
   return resultado;
 }
 
@@ -4876,6 +4877,19 @@ function aplicarDatosDetectados(mov, texto) {
   if (datos.importe !== null) mov.importe = datos.importe;
   if (datos.concepto) mov.concepto = datos.concepto;
   if (datos.fecha) mov.fecha = datos.fecha;
+  if (datos.proveedorCandidato) {
+    const coincide = state.proveedores.find(p => p.nombre && p.nombre.trim().toLowerCase() === datos.proveedorCandidato.trim().toLowerCase());
+    if (coincide) mov.proveedorId = coincide.id;
+    else mov.proveedorCandidato = datos.proveedorCandidato;
+  }
+}
+function crearProveedorDesdeCandidato(m) {
+  const nuevo = { id: uid('prov'), nombre: m.proveedorCandidato, tipo: TIPOS_PROVEEDOR[0], cif: '', direccion: '', telefono: '', email: '', notas: '' };
+  state.proveedores.push(nuevo);
+  m.proveedorId = nuevo.id;
+  m.proveedorCandidato = null;
+  render();
+  alert('Proveedor «' + nuevo.nombre + '» creado. Puedes completar su CIF, teléfono, etc. en la pestaña Proveedores.');
 }
 
 async function procesarArchivoRecibo(file, tipoMovimiento) {
@@ -4966,14 +4980,23 @@ function movimientoRow(m) {
     el('td', {}, inputEl('date', m.fecha, v => { m.fecha = v; render(); })),
     el('td', {}, m.tipo === 'ingreso' ? el('span', { class: 'chip chip-gold' }, 'Ingreso') : el('span', { class: 'chip chip-muted' }, 'Gasto')),
     el('td', {}, selectEl(categorias.map(c => ({ value: c, label: c })), m.categoria, v => { m.categoria = v; saveLocal(); })),
-    el('td', {}, selectEl(opcionesProveedor, m.proveedorId || '', v => {
-      m.proveedorId = v || null;
-      if (v) {
-        const prov = state.proveedores.find(p => p.id === v);
-        if (prov && !m.concepto) m.concepto = prov.nombre;
-      }
-      render();
-    })),
+    el('td', {}, el('div', {},
+      selectEl(opcionesProveedor, m.proveedorId || '', v => {
+        m.proveedorId = v || null;
+        if (v) {
+          const prov = state.proveedores.find(p => p.id === v);
+          if (prov && !m.concepto) m.concepto = prov.nombre;
+        }
+        render();
+      }),
+      (m.proveedorCandidato && !m.proveedorId) ? el('div', { class: 'msg msg-info', style: 'margin-top:6px;padding:6px 8px;font-size:12px;' },
+        el('div', { style: 'margin-bottom:4px;' }, '🔎 Leído: «' + m.proveedorCandidato + '», no está en Proveedores.'),
+        el('div', { class: 'row', style: 'gap:6px;' },
+          el('button', { class: 'btn btn-gold btn-sm', onclick: () => crearProveedorDesdeCandidato(m) }, '+ Crear y usar'),
+          el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { m.proveedorCandidato = null; render(); } }, 'No es esto'),
+        ),
+      ) : null,
+    )),
     el('td', {}, inputEl('text', m.concepto, v => { m.concepto = v; }, { placeholder: 'Concepto' })),
     el('td', {}, inputEl('number', m.importe, v => { m.importe = parseFloat(v) || 0; render(); }, { min: 0, step: '0.5' })),
     celdaAdjunto,

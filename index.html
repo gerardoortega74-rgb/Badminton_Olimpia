@@ -4749,7 +4749,7 @@ function triggerFileRecibo(tipo) {
 function addMovimiento(tipo) {
   state.contabilidad.movimientos.unshift({ id: uid('mov'), fecha: new Date().toISOString().slice(0, 10), tipo, categoria: (tipo === 'ingreso' ? CATEGORIAS_INGRESO[0] : CATEGORIAS_GASTO[0]), concepto: '', importe: 0, adjunto: null, origenOCR: false, proveedorId: null });
 }
-function removeMovimiento(id) { state.contabilidad.movimientos = state.contabilidad.movimientos.filter(m => m.id !== id); }
+function removeMovimiento(id) { state.contabilidad.movimientos = state.contabilidad.movimientos.filter(m => m.id !== id); if (window.borrarReciboDeNube) window.borrarReciboDeNube(id); }
 
 // ---- Adjuntos y lectura automática de recibos/facturas ----
 let procesandoRecibo = false;
@@ -4809,14 +4809,14 @@ function leerPDF(file) {
         // Convertimos la primera página en una imagen comprimida: así el adjunto
         // ocupa poco y cabe en el documento compartido de Firebase.
         const viewportBase = page.getViewport({ scale: 1 });
-        const anchoObjetivo = 1400;
+        const anchoObjetivo = 1100;
         const escala = Math.min(2.5, anchoObjetivo / viewportBase.width);
         const viewport = page.getViewport({ scale: escala });
         const canvas = document.createElement('canvas');
         canvas.width = viewport.width; canvas.height = viewport.height;
         const ctx = canvas.getContext('2d');
         await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-        const imagenDataUrl = canvas.toDataURL('image/jpeg', 0.75);
+        const imagenDataUrl = canvas.toDataURL('image/jpeg', 0.65);
         resolve({ texto, imagenDataUrl, paginasTotales: pdf.numPages });
       } catch (e) { resolve({ texto: '', imagenDataUrl: null, paginasTotales: 0 }); }
     };
@@ -4898,7 +4898,7 @@ async function procesarArchivoRecibo(file, tipoMovimiento) {
       }
       aplicarDatosDetectados(mov, textoFinal);
     } else if (file.type.startsWith('image/')) {
-      const dataUrl = await comprimirImagen(file, 1600, 0.82);
+      const dataUrl = await comprimirImagen(file, 1100, 0.65);
       mov.adjunto = { tipo: 'imagen', dataUrl, nombre: file.name };
       const texto = await ocrDesdeImagen(dataUrl);
       aplicarDatosDetectados(mov, texto);
@@ -4909,6 +4909,7 @@ async function procesarArchivoRecibo(file, tipoMovimiento) {
     mov.errorProceso = (e && e.message) ? e.message : 'No se pudieron leer los datos automáticamente; revisa los campos a mano.';
   }
   state.contabilidad.movimientos.unshift(mov);
+  if (window.guardarReciboEnNube) window.guardarReciboEnNube(mov.id, mov.adjunto);
   procesandoRecibo = false;
   render();
 }
@@ -4922,8 +4923,8 @@ function adjuntarArchivoAMovimiento(m, file) {
         if (r.paginasTotales > 1) m.errorProceso = 'El PDF tenía ' + r.paginasTotales + ' páginas; solo se guardó la primera (como imagen) para no superar el límite de tamaño de la nube.';
         return { tipo: 'imagen', dataUrl: r.imagenDataUrl, nombre: file.name.replace(/\.pdf$/i, '') + ' (pág. 1).jpg', origenPDF: true };
       })
-    : comprimirImagen(file, 1600, 0.82).then(dataUrl => ({ tipo: 'imagen', dataUrl, nombre: file.name }));
-  promesa.then(adjunto => { m.adjunto = adjunto; })
+    : comprimirImagen(file, 1100, 0.65).then(dataUrl => ({ tipo: 'imagen', dataUrl, nombre: file.name }));
+  promesa.then(adjunto => { m.adjunto = adjunto; if (window.guardarReciboEnNube) window.guardarReciboEnNube(m.id, adjunto); })
     .catch(() => { alert('No se pudo adjuntar el archivo.'); })
     .then(() => { procesandoRecibo = false; render(); });
 }
@@ -5000,7 +5001,7 @@ function viewContabilidad() {
       }),
     ),
   );
-  panel.appendChild(el('div', { class: 'sub' }, '"📎 Recibo" deja elegir entre hacer una foto o coger un archivo (foto o PDF). Los PDF se guardan como imagen comprimida de la primera página (para no superar el límite de la nube); si el PDF tiene varias páginas, solo se guarda la primera. Intenta leer el importe, el concepto y la fecha solo; siempre puedes corregirlo a mano si no acierta.'));
+  panel.appendChild(el('div', { class: 'sub' }, '"📎 Recibo" deja elegir entre hacer una foto o coger un archivo (foto o PDF); cada uno se guarda aparte en la nube, así que adjuntar fotos no afecta al resto de datos del club. Los PDF se guardan como imagen comprimida de la primera página; si el PDF tiene varias páginas, solo se guarda la primera. Intenta leer el importe, el concepto y la fecha solo; siempre puedes corregirlo a mano si no acierta.'));
   if (procesandoRecibo) panel.appendChild(el('div', { class: 'msg msg-warn' }, 'Procesando el recibo… la primera vez puede tardar un poco porque descarga el lector de texto.'));
 
   const enAnio = (anio) => contabAnioFiltro === 'todos' || anio === contabAnioFiltro;
@@ -6878,6 +6879,14 @@ function marcarEstadoNube(texto) {
   if (ind) ind.textContent = texto;
 }
 function estadoCompletoParaNube() {
+  const pagosParaNube = JSON.parse(JSON.stringify(PagosApp.getState()));
+  if (pagosParaNube.contabilidad && Array.isArray(pagosParaNube.contabilidad.movimientos)) {
+    pagosParaNube.contabilidad.movimientos.forEach(m => {
+      if (m.adjunto && m.adjunto.dataUrl) {
+        m.adjunto = { tipo: m.adjunto.tipo, nombre: m.adjunto.nombre, origenPDF: !!m.adjunto.origenPDF, tieneAdjunto: true };
+      }
+    });
+  }
   return {
     club: clubGlobal,
     jugadoresGlobal: jugadoresGlobal,
@@ -6886,11 +6895,39 @@ function estadoCompletoParaNube() {
     torneosHistorial: TorneoApp.getHistorial(),
     torneoActivoId: TorneoApp.getTorneoActivoId(),
     planificacion: PlanApp.getState(),
-    pagos: PagosApp.getState(),
+    pagos: pagosParaNube,
     accessControl: accessControl,
     actualizadoEn: Date.now(),
   };
 }
+function coleccionRecibos() {
+  return docNube().collection('recibos');
+}
+function guardarReciboEnNube(movimientoId, adjunto) {
+  if (!firebaseDisponible || !sincronizacionInicialLista || !adjunto || !adjunto.dataUrl) return;
+  coleccionRecibos().doc(movimientoId).set({
+    dataUrl: adjunto.dataUrl, nombre: adjunto.nombre || '', tipo: adjunto.tipo || 'imagen', origenPDF: !!adjunto.origenPDF,
+  }).catch(err => { console.warn('Error guardando recibo en la nube:', err); marcarEstadoNube('⚠️ No se pudo guardar el recibo adjunto: ' + (err && err.message ? err.message : 'error desconocido')); });
+}
+function borrarReciboDeNube(movimientoId) {
+  if (!firebaseDisponible || !sincronizacionInicialLista) return;
+  coleccionRecibos().doc(movimientoId).delete().catch(() => {});
+}
+function cargarRecibosDeNube() {
+  if (!firebaseDisponible) return Promise.resolve();
+  return coleccionRecibos().get().then(snap => {
+    const mapa = {};
+    snap.forEach(doc => { mapa[doc.id] = doc.data(); });
+    const pagosState = PagosApp.getState();
+    if (pagosState.contabilidad && Array.isArray(pagosState.contabilidad.movimientos)) {
+      pagosState.contabilidad.movimientos.forEach(m => {
+        if (mapa[m.id]) m.adjunto = mapa[m.id];
+      });
+    }
+  }).catch(err => { console.warn('No se pudieron cargar los recibos guardados:', err); });
+}
+window.guardarReciboEnNube = guardarReciboEnNube;
+window.borrarReciboDeNube = borrarReciboDeNube;
 function envolverArraysAnidados(valor) {
   if (Array.isArray(valor)) {
     return valor.map(v => Array.isArray(v) ? { __arr: envolverArraysAnidados(v) } : envolverArraysAnidados(v));
@@ -7008,6 +7045,10 @@ if (firebaseDisponible) {
     sincronizacionInicialLista = true;
     if (!doc.exists && clubGlobal.nombre) programarSyncNube();
     arrancarAppLocal();
+    cargarRecibosDeNube().then(() => {
+      const pagosScreen = document.getElementById('pagosScreen');
+      if (pagosScreen && pagosScreen.style.display !== 'none') PagosApp.render();
+    });
     if (esVistaPublica()) {
       let timerVistaPublica = null;
       docNube().onSnapshot(snap => {

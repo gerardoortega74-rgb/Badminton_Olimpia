@@ -1126,6 +1126,40 @@ function estimarDuracionTotal(nParticipantes, numGrupos, qualifiersPerGroup, cou
   const minutosMinimos = Math.ceil(totalConOtras / Math.max(1, courts)) * Math.max(5, matchMinutes);
   return { totalPartidos, minutosMinimos, totalGroupMatches, partidosKO, clasificados };
 }
+function mejorNumGruposPara(cat, partidosOtras) {
+  const n = cat.players.length;
+  let mejor = null;
+  const maxGrupos = Math.min(Math.floor(n / 3), 16);
+  for (let g = 1; g <= maxGrupos; g++) {
+    const est = estimarDuracionTotal(n, g, cat.qualifiersPerGroup, state.config.courts, state.config.matchMinutes, partidosOtras);
+    if (est && (!mejor || est.minutosMinimos < mejor.est.minutosMinimos)) mejor = { g, est };
+  }
+  return mejor;
+}
+function optimizarTodasLasCategorias() {
+  const todas = enabledCategories();
+  const optimizables = todas.filter(c => !c.eliminatoriaDirecta && c.players.length >= 6);
+  const noOptimizables = todas.filter(c => !optimizables.includes(c));
+  if (!optimizables.length) { alert('Ninguna categoría activa tiene al menos 6 participantes (mínimo 3 por grupo) para poder optimizar.'); return; }
+  for (let pasada = 0; pasada < 3; pasada++) {
+    optimizables.forEach(cat => {
+      const partidosOtras = todas.filter(c => c.id !== cat.id).reduce((sum, c) => sum + contarPartidosEstimados(c), 0);
+      const mejor = mejorNumGruposPara(cat, partidosOtras);
+      if (mejor) cat.numGroups = mejor.g;
+    });
+  }
+  render();
+  const totalPartidos = todas.reduce((sum, c) => sum + contarPartidosEstimados(c), 0);
+  const minutos = Math.ceil(totalPartidos / Math.max(1, state.config.courts)) * Math.max(5, state.config.matchMinutes);
+  let msg = 'Optimizadas ' + optimizables.length + ' categoría(s):\n' +
+    optimizables.map(c => '· ' + c.name + ' → ' + c.numGroups + ' grupo(s)').join('\n') + '\n\n' +
+    'Partidos totales estimados del torneo: ' + totalPartidos + '\n' +
+    'Duración mínima estimada: ' + minutos + ' min con ' + state.config.courts + ' pista(s).';
+  if (noOptimizables.length) {
+    msg += '\n\nSin optimizar (menos de 6 participantes o eliminatoria directa): ' + noOptimizables.map(c => c.name).join(', ');
+  }
+  alert(msg);
+}
 function optimizarNumGrupos(cat) {
   const n = cat.players.length;
   if (n < 6) { alert('Añade al menos 6 participantes para que merezca la pena optimizar el número de grupos.'); return; }
@@ -1258,6 +1292,9 @@ function viewConfig() {
     const detallePanel = el('div', { class: 'panel' },
       el('h2', {}, 'Grupos y clasificados por categoría activa'),
       el('div', { class: 'sub' }, 'Para cada categoría activada, define en cuántos grupos se reparten y cuántos pasan a la eliminatoria.'),
+      el('div', { class: 'toolbar', style: 'margin:10px 0 4px;' },
+        el('button', { class: 'btn btn-gold', onclick: () => optimizarTodasLasCategorias() }, '⏱️ Optimizar TODAS las categorías a la vez'),
+      ),
     );
     activas.forEach(cat => {
       const card = el('div', { class: 'cat-card' });
@@ -1278,9 +1315,6 @@ function viewConfig() {
         card.appendChild(el('div', { class: 'grid', style: 'margin-top:10px;' },
           field('Nº de grupos', inputEl('number', cat.numGroups, v => { cat.numGroups = Math.max(1, parseInt(v) || 1); }, { min: 1 })),
           field('Clasificados por grupo a eliminatoria', inputEl('number', cat.qualifiersPerGroup, v => { cat.qualifiersPerGroup = Math.max(1, parseInt(v) || 1); }, { min: 1 })),
-        ));
-        card.appendChild(el('div', { class: 'toolbar', style: 'margin-top:8px;' },
-          el('button', { class: 'btn btn-ghost btn-sm', onclick: () => optimizarNumGrupos(cat) }, '⏱️ Optimizar nº de grupos (menor duración)'),
         ));
       }
       detallePanel.appendChild(card);

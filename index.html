@@ -1419,9 +1419,11 @@ function viewParticipants() {
         roster1 = base; roster2 = base;
         avisoSexo = (catSexo || etiquetaEdad) ? `Solo se muestran jugadores${catSexo ? ' de sexo ' + (catSexo === 'M' ? 'masculino' : 'femenino') : ''}${etiquetaEdad ? ' de la categoría ' + etiquetaEdad : ''} para esta categoría, y ya no aparece quien ya esté apuntado aquí.` : 'Ya no aparece en la lista quién esté apuntado en esta categoría.';
       }
+      const rosterSinUsarDobles = rosterAll.filter(j => !yaUsadosEnCategoria.has(j.id) && puedeApuntarseAMasCategorias(j.id) && (!state.config.soloFederados || j.federado));
       const sinFechaNacimientoDobles = cat.nivelTipo === 'edad'
-        ? rosterAll.filter(j => !edadOk(j) && !j.fechaNacimiento && !yaUsadosEnCategoria.has(j.id) && puedeApuntarseAMasCategorias(j.id) && (!state.config.soloFederados || j.federado))
+        ? rosterSinUsarDobles.filter(j => j.sexo && !edadOk(j) && !j.fechaNacimiento)
         : [];
+      const sinSexoDobles = (catSexo || cat.modalidadId === 'DX') ? rosterSinUsarDobles.filter(j => !j.sexo) : [];
       if (roster1.length >= 1 && roster2.length >= 1) {
         const p1Select = el('select', { style: 'min-width:160px;' }, roster1.map(j => el('option', { value: j.id }, j.nombre)));
         const p2Select = el('select', { style: 'min-width:160px;' }, roster2.map(j => el('option', { value: j.id }, j.nombre)));
@@ -1498,9 +1500,11 @@ function viewParticipants() {
       panel.appendChild(addRow);
 
       if (window.JugadoresGlobal) {
-        const candidatosBase = window.JugadoresGlobal.list().filter(j => (!catSexo || j.sexo === catSexo) && !yaUsadosEnCategoria.has(j.id) && puedeApuntarseAMasCategorias(j.id) && (!state.config.soloFederados || j.federado));
+        const rosterCompletoInd = window.JugadoresGlobal.list().filter(j => !yaUsadosEnCategoria.has(j.id) && puedeApuntarseAMasCategorias(j.id) && (!state.config.soloFederados || j.federado));
+        const candidatosBase = rosterCompletoInd.filter(j => (!catSexo || j.sexo === catSexo));
         const roster = candidatosBase.filter(j => edadOk(j));
         const sinFechaNacimiento = cat.nivelTipo === 'edad' ? candidatosBase.filter(j => !edadOk(j) && !j.fechaNacimiento) : [];
+        const sinSexo = catSexo ? rosterCompletoInd.filter(j => !j.sexo) : [];
         if (roster.length) {
           const rosterRow = el('div', { class: 'row', style: 'margin-bottom:18px;padding:10px;background:#F5F3EB;border-radius:8px;' });
           const rosterSelect = el('select', { style: 'flex:1;min-width:200px;' },
@@ -1521,6 +1525,10 @@ function viewParticipants() {
         if (sinFechaNacimiento.length) {
           panel.appendChild(el('div', { class: 'msg msg-warn', style: 'margin-bottom:14px;' },
             `⚠️ ${sinFechaNacimiento.map(j => j.nombre).join(', ')} no aparece${sinFechaNacimiento.length > 1 ? 'n' : ''} aquí porque falta su fecha de nacimiento en su ficha (necesaria para saber su categoría de edad). Ve a Jugadores y complétala.`));
+        }
+        if (sinSexo.length) {
+          panel.appendChild(el('div', { class: 'msg msg-warn', style: 'margin-bottom:14px;' },
+            `⚠️ ${sinSexo.map(j => j.nombre).join(', ')} no aparece${sinSexo.length > 1 ? 'n' : ''} aquí porque falta el sexo en su ficha. Ve a Jugadores y complétalo.`));
         }
       }
     }
@@ -6226,12 +6234,13 @@ function renderJugadores() {
   const tipoLicenciaSelect = selectEl([{ value: '', label: 'Tipo de licencia' }, { value: 'Nacional', label: 'Nacional' }, { value: 'Territorial', label: 'Territorial' }, { value: 'Escolares', label: 'Escolares' }], '', () => {});
   const notasInput = el('input', { type: 'text', placeholder: 'Notas (opcional)' });
 
+  panel.appendChild(el('div', { class: 'sub', style: 'margin-bottom:6px;' }, 'Los campos con * son obligatorios para poder crear el jugador: hacen falta para poder apuntarlo luego en las categorías de un torneo.'));
   panel.appendChild(el('div', { class: 'grid' },
-    field('Nombre', nameInput),
+    field('Nombre *', nameInput),
     field('Primer apellido', apellido1Input),
     field('Segundo apellido', apellido2Input),
-    field('Fecha de nacimiento', fechaInput),
-    field('Sexo', sexoSelect),
+    field('Fecha de nacimiento *', fechaInput),
+    field('Sexo *', sexoSelect),
     field('Teléfono', telInput),
     field('Email', emailInput),
     field('Club o escuela', tipoSelect),
@@ -6279,6 +6288,11 @@ function renderJugadores() {
       const ap1 = apellido1Input.value.trim();
       const ap2 = apellido2Input.value.trim();
       if (!v && !ap1) return;
+      const faltan = [];
+      if (!v) faltan.push('Nombre');
+      if (!fechaInput.value) faltan.push('Fecha de nacimiento');
+      if (!sexoSelect.value) faltan.push('Sexo');
+      if (faltan.length) { alert('Para crear el jugador hacen falta estos datos: ' + faltan.join(', ') + '.\n\nSin ellos, luego no se le podrá apuntar a las categorías del torneo.'); return; }
       window.JugadoresGlobal.add({
         nombre: normalizarNombre(v), apellido1: normalizarNombre(ap1), apellido2: normalizarNombre(ap2), apellidos: normalizarNombre((ap1 + ' ' + ap2).trim()), fechaNacimiento: fechaInput.value, sexo: sexoSelect.value, telefono: telInput.value.trim(),
         direccion: direccionInput.value.trim(), codigoPostal: codigoPostalInput.value.trim(), localidad: localidadInput.value.trim(), provincia: provinciaInput.value.trim(), dni: dniInput.value.trim(),

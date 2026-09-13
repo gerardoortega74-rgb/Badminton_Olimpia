@@ -6513,8 +6513,10 @@ function desenvolverArraysAnidados(valor) {
   }
   return valor;
 }
+let sincronizacionInicialLista = false;
 function programarSyncNube() {
   if (!firebaseDisponible) return;
+  if (!sincronizacionInicialLista) return;
   marcarEstadoNube('☁️ Guardando en la nube…');
   clearTimeout(nubeSyncTimer);
   nubeSyncTimer = setTimeout(() => {
@@ -6536,7 +6538,7 @@ function aplicarDatosDeNube(dataOriginal) {
   const data = desenvolverArraysAnidados(dataOriginal);
   if (!data) return;
   clubGlobal = Object.assign({ nombre: '', localidad: '', temporadaInicio: '', temporadaFin: '', logo: '', tecnicos: [] }, data.club || {});
-  jugadoresGlobal = data.jugadoresGlobal || [];
+  jugadoresGlobal = data.jugadoresGlobal !== undefined ? data.jugadoresGlobal : jugadoresGlobal;
   saveClubGlobal();
   saveJugadoresGlobal();
   if (data.torneo) TorneoApp.setState(data.torneo);
@@ -6601,8 +6603,9 @@ if (firebaseDisponible) {
       marcarEstadoNube('☁️ Sincronizado');
     } else {
       marcarEstadoNube('☁️ Sincronizado');
-      if (clubGlobal.nombre) programarSyncNube();
     }
+    sincronizacionInicialLista = true;
+    if (!doc.exists && clubGlobal.nombre) programarSyncNube();
     arrancarAppLocal();
     if (esVistaPublica()) {
       let timerVistaPublica = null;
@@ -6622,6 +6625,7 @@ if (firebaseDisponible) {
   }).catch(err => {
     console.warn('No se pudo conectar a la nube, usando datos guardados en este dispositivo:', err);
     marcarEstadoNube('⚠️ Nube: ' + (err && err.code ? err.code : (err && err.message) || 'error desconocido'));
+    sincronizacionInicialLista = true;
     arrancarAppLocal();
   });
 } else {

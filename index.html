@@ -818,36 +818,52 @@ function buildSchedule() {
   const pistaLibreEn = new Array(numCourts).fill(0);
   const jugadorLibreEn = {};
 
-  function colocarPartido(cat, match) {
-    const n1 = normName(playerName(cat, match.p1));
-    const n2 = normName(playerName(cat, match.p2));
+  function inicioPosible(item) {
+    const n1 = normName(playerName(item.cat, item.match.p1));
+    const n2 = normName(playerName(item.cat, item.match.p2));
     const minimoJugadores = Math.max(jugadorLibreEn[n1] || 0, jugadorLibreEn[n2] || 0);
-    let mejorInicio = Infinity;
+    let mejorInicio = Infinity, mejorPista = 0;
     for (let c = 0; c < numCourts; c++) {
       const inicio = Math.max(pistaLibreEn[c], minimoJugadores);
-      if (inicio < mejorInicio) mejorInicio = inicio;
+      if (inicio < mejorInicio) { mejorInicio = inicio; mejorPista = c; }
     }
-    const candidatas = [];
-    for (let c = 0; c < numCourts; c++) {
-      const inicio = Math.max(pistaLibreEn[c], minimoJugadores);
-      if (inicio === mejorInicio) candidatas.push(c);
+    return { inicio: mejorInicio, pista: mejorPista, n1, n2 };
+  }
+  function programarLote(cola) {
+    const restantes = cola.slice();
+    while (restantes.length) {
+      let mejorInicioGlobal = Infinity;
+      const evaluaciones = restantes.map(item => inicioPosible(item));
+      evaluaciones.forEach(ev => { if (ev.inicio < mejorInicioGlobal) mejorInicioGlobal = ev.inicio; });
+      const candidatas = [];
+      evaluaciones.forEach((ev, idx) => {
+        if (ev.inicio !== mejorInicioGlobal) return;
+        for (let c = 0; c < numCourts; c++) {
+          const item = restantes[idx];
+          const inicioEnEstaPista = Math.max(pistaLibreEn[c], Math.max(jugadorLibreEn[ev.n1] || 0, jugadorLibreEn[ev.n2] || 0));
+          if (inicioEnEstaPista === mejorInicioGlobal) candidatas.push({ idx, c });
+        }
+      });
+      const elegido = candidatas[Math.floor(Math.random() * candidatas.length)];
+      const item = restantes[elegido.idx];
+      const ev = evaluaciones[elegido.idx];
+      item.match.court = elegido.c + 1;
+      item.match.time = minutesToTime(startMin + mejorInicioGlobal);
+      pistaLibreEn[elegido.c] = mejorInicioGlobal + duracionPartido + descansoPista;
+      jugadorLibreEn[ev.n1] = mejorInicioGlobal + duracionPartido + descansoJugador;
+      jugadorLibreEn[ev.n2] = mejorInicioGlobal + duracionPartido + descansoJugador;
+      restantes.splice(elegido.idx, 1);
     }
-    const mejorPista = candidatas[Math.floor(Math.random() * candidatas.length)];
-    match.court = mejorPista + 1;
-    match.time = minutesToTime(startMin + mejorInicio);
-    pistaLibreEn[mejorPista] = mejorInicio + duracionPartido + descansoPista;
-    jugadorLibreEn[n1] = mejorInicio + duracionPartido + descansoJugador;
-    jugadorLibreEn[n2] = mejorInicio + duracionPartido + descansoJugador;
   }
 
-  groupQueue.forEach(({ cat, match }) => colocarPartido(cat, match));
+  programarLote(groupQueue);
 
   if (koQueue.length) {
     if (groupQueue.length) {
       const finGrupos = Math.max.apply(null, pistaLibreEn);
       for (let c = 0; c < numCourts; c++) { if (pistaLibreEn[c] < finGrupos) pistaLibreEn[c] = finGrupos; }
     }
-    koQueue.forEach(({ cat, match }) => colocarPartido(cat, match));
+    programarLote(koQueue);
   }
 }
 

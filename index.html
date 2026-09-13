@@ -124,6 +124,16 @@ footer.hint{text-align:center;color:var(--muted);font-size:12px;padding:20px;}
 .club-banner .logo-big{width:64px;height:64px;border-radius:12px;object-fit:cover;box-shadow:var(--shadow);flex-shrink:0;}
 .club-banner .logo-big-emoji{width:64px;height:64px;border-radius:12px;background:var(--gold);display:flex;align-items:center;justify-content:center;font-size:32px;flex-shrink:0;}
 @media print{header.app-header,nav.tabs,.toolbar,.no-print{display:none !important;}body{background:#fff;}}
+#areaImpresionActa{display:none;}
+body.imprimiendo-acta > *:not(#areaImpresionActa){display:none !important;}
+body.imprimiendo-acta #areaImpresionActa{display:block !important;position:static;background:#fff;padding:24px;}
+.acta-hoja{max-width:640px;margin:0 auto;font-family:inherit;color:#000;}
+.acta-hoja h2{margin:0 0 4px;}
+.acta-hoja .acta-linea{display:flex;justify-content:space-between;border-bottom:1px solid #999;padding:6px 0;margin-bottom:6px;font-size:14px;}
+.acta-hoja .acta-set{display:flex;align-items:center;gap:10px;border:1px solid #999;border-radius:6px;padding:10px;margin-bottom:8px;}
+.acta-hoja .acta-set .hueco{border-bottom:1px solid #000;min-width:60px;display:inline-block;height:26px;}
+.acta-hoja .acta-firma{margin-top:40px;display:flex;justify-content:space-between;}
+.acta-hoja .acta-firma div{border-top:1px solid #000;width:220px;text-align:center;padding-top:6px;font-size:12px;}
 
 body::before{
   content:"";
@@ -254,6 +264,7 @@ if (window.pdfjsLib) { pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.c
 </main>
 
 <div id="torneoModalRoot"></div>
+<div id="areaImpresionActa"></div>
 
 <script>
 window.TorneoApp = (function () {
@@ -1051,6 +1062,7 @@ function render() {
     else if (activeTab === 'schedule') main.appendChild(viewSchedule());
     else if (activeTab === 'results') main.appendChild(viewResults());
     else if (activeTab === 'knockout') main.appendChild(viewKnockout());
+    else if (activeTab === 'partidos') main.appendChild(viewPartidos());
     else if (activeTab === 'stats') main.appendChild(viewStats());
     else if (activeTab === 'historial') main.appendChild(viewHistorial());
   } catch (err) {
@@ -1080,6 +1092,7 @@ function renderTabsNav() {
     ['schedule', '🗓 Calendario'],
     ['results', '🏆 Resultados'],
     ['knockout', '🏅 Eliminatoria'],
+    ['partidos', '🔢 Partidos'],
     ['stats', '📊 Estadísticas'],
     ['historial', '📚 Historial'],
   ];
@@ -1751,6 +1764,103 @@ function viewDraw() {
   return wrap;
 }
 
+function todosLosPartidosDelTorneo() {
+  const lista = [];
+  enabledCategories().forEach(cat => {
+    (cat.matches || []).forEach(m => {
+      const nombreGrupo = (cat.groups && cat.groups[m.groupIndex]) ? cat.groups[m.groupIndex].name : '';
+      lista.push({ cat, m, ronda: nombreGrupo });
+    });
+    if (cat.knockout && cat.knockout.rounds) {
+      cat.knockout.rounds.forEach(ronda => {
+        const rondaLabel = (ronda[0] && ronda[0].round) ? ronda[0].round : '';
+        ronda.forEach(m => { if (m.p1 && m.p2 && m.p1 !== 'BYE' && m.p2 !== 'BYE') lista.push({ cat, m, ronda: rondaLabel }); });
+      });
+    }
+  });
+  lista.sort((a, b) => String(a.m.time || '99:99').localeCompare(String(b.m.time || '99:99')));
+  lista.forEach((item, i) => { item.numero = i + 1; });
+  return lista;
+}
+function formatSetsActa(sets) {
+  if (!sets || !sets.length) return '';
+  return sets.filter(s => (s[0] || s[1])).map(s => s[0] + '-' + s[1]).join(', ');
+}
+function imprimirActaPartido(item) {
+  const p1 = playerName(item.cat, item.m.p1);
+  const p2 = playerName(item.cat, item.m.p2);
+  const area = document.getElementById('areaImpresionActa');
+  area.innerHTML = '';
+  area.appendChild(el('div', { class: 'acta-hoja' },
+    el('h2', {}, clubGlobal.nombre || 'Club de bádminton'),
+    el('div', { style: 'margin-bottom:16px;color:#333;' }, state.meta.title || 'Torneo'),
+    el('h2', { style: 'font-size:20px;' }, 'Acta del partido nº ' + item.numero),
+    el('div', { class: 'acta-linea' }, el('span', {}, 'Categoría'), el('b', {}, item.cat.name)),
+    el('div', { class: 'acta-linea' }, el('span', {}, 'Grupo / Ronda'), el('b', {}, item.ronda || '—')),
+    el('div', { class: 'acta-linea' }, el('span', {}, 'Pista'), el('b', {}, item.m.court ? String(item.m.court) : '—')),
+    el('div', { class: 'acta-linea' }, el('span', {}, 'Hora'), el('b', {}, item.m.time || '—')),
+    el('div', { class: 'acta-linea', style: 'font-size:18px;margin-top:14px;' }, el('span', {}, p1)),
+    el('div', { class: 'acta-linea', style: 'font-size:18px;' }, el('span', {}, p2)),
+    el('h3', { style: 'margin-top:20px;' }, 'Resultado por sets'),
+    [1, 2, 3].map(n => el('div', { class: 'acta-set' },
+      el('span', {}, 'Set ' + n + ':'),
+      el('span', {}, p1 + ' '), el('span', { class: 'hueco' }),
+      el('span', {}, ' — '), el('span', { class: 'hueco' }), el('span', {}, ' ' + p2),
+    )),
+    el('div', { class: 'acta-linea', style: 'margin-top:16px;' }, el('span', {}, 'Ganador del partido:'), el('span', { class: 'hueco', style: 'min-width:220px;' })),
+    el('div', { class: 'acta-linea' }, el('span', {}, 'Incidencias / observaciones:')),
+    el('div', { style: 'border-bottom:1px solid #999;height:40px;margin-bottom:14px;' }),
+    el('div', { class: 'acta-firma' },
+      el('div', {}, 'Firma árbitro/a'),
+      el('div', {}, 'Firma jugador/a 1 y 2'),
+    ),
+  ));
+  document.body.classList.add('imprimiendo-acta');
+  window.print();
+}
+window.addEventListener('afterprint', () => {
+  document.body.classList.remove('imprimiendo-acta');
+  const area = document.getElementById('areaImpresionActa');
+  if (area) area.innerHTML = '';
+});
+function viewPartidos() {
+  const wrap = document.createDocumentFragment();
+  const lista = todosLosPartidosDelTorneo();
+  const panel = el('div', { class: 'panel' },
+    el('h2', {}, '🔢 Partidos numerados'),
+    el('div', { class: 'sub' }, 'Todos los partidos del torneo, numerados por orden de horario, para que los árbitros puedan rellenar el acta de cada uno. Se marcan como terminados en cuanto se anota el resultado en Resultados o Eliminatoria.'),
+  );
+  if (!lista.length) {
+    panel.appendChild(el('div', { class: 'empty-state' }, 'Todavía no hay partidos generados. Haz el sorteo y el calendario primero.'));
+    wrap.appendChild(panel);
+    return wrap;
+  }
+  const pendientes = lista.filter(x => !x.m.winner).length;
+  panel.appendChild(el('div', { class: 'sub', style: 'margin-bottom:10px;' }, `Total: ${lista.length} partido(s) · ${lista.length - pendientes} terminado(s) · ${pendientes} pendiente(s).`));
+  const table = el('table', {}, el('thead', {}, el('tr', {},
+    el('th', {}, 'Nº'), el('th', {}, 'Hora'), el('th', {}, 'Pista'), el('th', {}, 'Categoría'), el('th', {}, 'Grupo/Ronda'), el('th', {}, 'Partido'), el('th', {}, 'Estado'), el('th', {}, ''),
+  )));
+  const tbody = el('tbody');
+  lista.forEach(item => {
+    const p1 = playerName(item.cat, item.m.p1);
+    const p2 = playerName(item.cat, item.m.p2);
+    const terminado = !!item.m.winner;
+    tbody.appendChild(el('tr', { class: terminado ? 'seed' : '' },
+      el('td', {}, el('b', {}, '#' + item.numero)),
+      el('td', {}, item.m.time || '—'),
+      el('td', {}, item.m.court ? String(item.m.court) : '—'),
+      el('td', {}, item.cat.name),
+      el('td', {}, item.ronda || '—'),
+      el('td', {}, p1 + ' vs ' + p2),
+      el('td', {}, terminado ? el('span', { class: 'chip chip-gold' }, '✅ Terminado') : el('span', { class: 'chip chip-muted' }, 'Pendiente')),
+      el('td', {}, terminado ? formatSetsActa(item.m.sets) : el('button', { class: 'btn btn-ghost btn-sm no-print', onclick: () => imprimirActaPartido(item) }, '🖨 Imprimir acta')),
+    ));
+  });
+  table.appendChild(tbody);
+  panel.appendChild(table);
+  wrap.appendChild(panel);
+  return wrap;
+}
 function contactosDeParticipante(p) {
   const contactos = [];
   function resolverUno(jugadorId, nombreFallback, telFallback, emailFallback) {

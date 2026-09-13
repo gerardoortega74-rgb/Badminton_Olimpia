@@ -1802,11 +1802,20 @@ function formatSetsActa(sets) {
   if (!sets || !sets.length) return '';
   return sets.filter(s => (s[0] || s[1])).map(s => s[0] + '-' + s[1]).join(', ');
 }
+function cerrarActaImpresion() {
+  document.body.classList.remove('imprimiendo-acta');
+  const area = document.getElementById('areaImpresionActa');
+  if (area) area.innerHTML = '';
+}
 function imprimirActaPartido(item) {
   const p1 = playerName(item.cat, item.m.p1);
   const p2 = playerName(item.cat, item.m.p2);
   const area = document.getElementById('areaImpresionActa');
   area.innerHTML = '';
+  area.appendChild(el('div', { class: 'row no-print', style: 'justify-content:flex-end;margin-bottom:14px;gap:8px;' },
+    el('button', { class: 'btn btn-gold', onclick: () => window.print() }, '🖨 Imprimir'),
+    el('button', { class: 'btn btn-ghost', onclick: () => cerrarActaImpresion() }, '✕ Cerrar y volver'),
+  ));
   area.appendChild(el('div', { class: 'acta-hoja' },
     el('h2', {}, clubGlobal.nombre || 'Club de bádminton'),
     el('div', { style: 'margin-bottom:16px;color:#333;' }, state.meta.title || 'Torneo'),
@@ -1832,13 +1841,8 @@ function imprimirActaPartido(item) {
     ),
   ));
   document.body.classList.add('imprimiendo-acta');
-  window.print();
 }
-window.addEventListener('afterprint', () => {
-  document.body.classList.remove('imprimiendo-acta');
-  const area = document.getElementById('areaImpresionActa');
-  if (area) area.innerHTML = '';
-});
+window.addEventListener('afterprint', cerrarActaImpresion);
 function viewPartidos() {
   const wrap = document.createDocumentFragment();
   const lista = todosLosPartidosDelTorneo();

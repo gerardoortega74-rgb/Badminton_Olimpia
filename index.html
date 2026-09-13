@@ -1778,7 +1778,7 @@ function todosLosPartidosDelTorneo() {
       });
     }
   });
-  lista.sort((a, b) => String(a.m.time || '99:99').localeCompare(String(b.m.time || '99:99')));
+  lista.sort((a, b) => String(a.m.time || '99:99').localeCompare(String(b.m.time || '99:99')) || ((a.m.court || 99) - (b.m.court || 99)));
   lista.forEach((item, i) => { item.numero = i + 1; });
   return lista;
 }

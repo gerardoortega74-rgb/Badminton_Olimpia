@@ -4678,17 +4678,39 @@ function addCompeticion() {
 }
 function removeCompeticion(id) { state.competiciones = state.competiciones.filter(c => c.id !== id); }
 
+let competicionesExpandidas = new Set();
+function toggleCompeticionExpandida(id) {
+  if (competicionesExpandidas.has(id)) competicionesExpandidas.delete(id);
+  else competicionesExpandidas.add(id);
+  render();
+}
+function competicionResumenColapsado(comp) {
+  const total = comp.inscritos.reduce((s, i) => s + precioInscripcion(comp, i), 0);
+  const pendiente = comp.inscritos.filter(i => !i.pagado).reduce((s, i) => s + precioInscripcion(comp, i), 0);
+  return el('div', { class: 'card', style: 'cursor:pointer;', onclick: () => toggleCompeticionExpandida(comp.id) },
+    el('div', { class: 'card-head' },
+      el('span', { class: 'card-title' }, '▸ ' + (comp.nombre || '(sin nombre)'))),
+    el('div', { class: 'sub', style: 'margin-top:4px;' },
+      (comp.fecha || 'Sin fecha') + ' · ' + comp.inscritos.length + ' inscrito(s) · Total ' + euros(total) + (pendiente > 0 ? ' · Pendiente ' + euros(pendiente) : ' · Todo cobrado')),
+  );
+}
 function viewCompeticiones() {
   const wrap = document.createDocumentFragment();
   const panel = el('div', { class: 'panel' },
     el('h2', {}, 'Competiciones: inscripciones y pagos'),
-    el('div', { class: 'sub' }, 'Crea cada competición con su precio según el número de modalidades, apunta quién va a jugar y en qué modalidades (esto calcula el precio solo), y controla quién ha pagado. El aviso de pago abre tu correo ya escrito.'),
-    el('div', { class: 'toolbar' }, el('button', { class: 'btn btn-gold', onclick: () => { addCompeticion(); render(); } }, '+ Añadir competición')),
+    el('div', { class: 'sub' }, 'Crea cada competición con su precio según el número de modalidades, apunta quién va a jugar y en qué modalidades (esto calcula el precio solo), y controla quién ha pagado. El aviso de pago abre tu correo ya escrito. Pincha en una competición para ver o cerrar sus datos.'),
+    el('div', { class: 'toolbar' }, el('button', { class: 'btn btn-gold', onclick: () => {
+      addCompeticion();
+      competicionesExpandidas.add(state.competiciones[state.competiciones.length - 1].id);
+      render();
+    } }, '+ Añadir competición')),
   );
   if (!state.competiciones.length) {
     panel.appendChild(el('div', { class: 'empty-state' }, 'Todavía no hay competiciones creadas.'));
   } else {
-    state.competiciones.forEach(comp => panel.appendChild(competicionCard(comp)));
+    state.competiciones.forEach(comp => {
+      panel.appendChild(competicionesExpandidas.has(comp.id) ? competicionCard(comp) : competicionResumenColapsado(comp));
+    });
   }
   wrap.appendChild(panel);
   return wrap;
@@ -4697,7 +4719,7 @@ function viewCompeticiones() {
 function competicionCard(comp) {
   const card = el('div', { class: 'card' },
     el('div', { class: 'card-head' },
-      el('span', { class: 'card-title' }, comp.nombre || '(sin nombre)'),
+      el('span', { class: 'card-title', style: 'cursor:pointer;', onclick: () => toggleCompeticionExpandida(comp.id) }, '▾ ' + (comp.nombre || '(sin nombre)')),
       el('button', { class: 'btn btn-danger btn-sm', onclick: () => { removeCompeticion(comp.id); render(); } }, 'Eliminar')),
     el('div', { class: 'grid', style: 'margin-top:10px;' },
       field('Nombre', inputEl('text', comp.nombre, v => { comp.nombre = v; render(); })),

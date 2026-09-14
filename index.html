@@ -4481,6 +4481,11 @@ function mailtoLink(email, subject, body) {
   return 'mailto:' + encodeURIComponent(email) + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
 }
 function euros(n) { return (Math.round(n * 100) / 100).toFixed(2) + ' €'; }
+function nombreCompletoPagos(j) {
+  if (!j) return '';
+  const apellidos = (j.apellido1 || j.apellido2) ? ((j.apellido1 || '') + ' ' + (j.apellido2 || '')).trim() : (j.apellidos || '');
+  return (j.nombre + ' ' + apellidos).trim();
+}
 
 function render() {
   saveLocal();
@@ -4581,7 +4586,7 @@ function viewCuotas() {
     pintarEstado();
     periodoInput.addEventListener('change', pintarEstado);
     tbody.appendChild(el('tr', {},
-      el('td', {}, j.nombre),
+      el('td', {}, nombreCompletoPagos(j)),
       el('td', {}, menor ? el('span', { class: 'chip chip-gold' }, 'Menor del club') : el('span', { class: 'chip' }, 'Adulto')),
       el('td', {}, euros(importe)),
       el('td', {}, j.email ? j.email : el('span', { class: 'chip chip-muted' }, 'Sin email')),
@@ -4654,7 +4659,7 @@ function competicionCard(comp) {
   const todosJugadores = (window.JugadoresGlobal ? window.JugadoresGlobal.list() : []);
   const roster = todosJugadores.filter(j => !comp.inscritos.some(i => i.jugadorId === j.id));
   if (roster.length) {
-    const sel = el('select', {}, roster.map(j => el('option', { value: j.id }, j.nombre)));
+    const sel = el('select', {}, roster.map(j => el('option', { value: j.id }, nombreCompletoPagos(j))));
     card.appendChild(el('div', { class: 'row', style: 'margin-bottom:10px;' },
       sel,
       el('button', { class: 'btn btn-ghost btn-sm', onclick: () => {
@@ -4676,7 +4681,7 @@ function competicionCard(comp) {
       const jug = todosJugadores.find(j => j.id === insc.jugadorId);
       const precio = precioInscripcion(comp, insc);
       tbody.appendChild(el('tr', {},
-        el('td', {}, jug ? jug.nombre : '(jugador eliminado)'),
+        el('td', {}, jug ? nombreCompletoPagos(jug) : '(jugador eliminado)'),
         el('td', {}, el('input', { type: 'checkbox', style: 'width:auto;', checked: insc.modalidades.individual ? 'checked' : null, onchange: e => { insc.modalidades.individual = e.target.checked; render(); } })),
         el('td', {}, el('input', { type: 'checkbox', style: 'width:auto;', checked: insc.modalidades.dobles ? 'checked' : null, onchange: e => { insc.modalidades.dobles = e.target.checked; render(); } })),
         el('td', {}, euros(precio)),
@@ -4712,7 +4717,7 @@ function cuotasCobradasDetalle() {
     const pagadas = j.cuotasPagadas || {};
     Object.keys(pagadas).forEach(periodo => {
       if (!pagadas[periodo]) return;
-      detalle.push({ anio: anioDePeriodo(periodo), periodo, jugador: j.nombre, importe: cuotaDe(j) });
+      detalle.push({ anio: anioDePeriodo(periodo), periodo, jugador: nombreCompletoPagos(j), importe: cuotaDe(j) });
     });
   });
   return detalle;
@@ -4724,7 +4729,7 @@ function inscripcionesCobradasDetalle() {
     (comp.inscritos || []).forEach(insc => {
       if (!insc.pagado) return;
       const jug = (window.JugadoresGlobal ? window.JugadoresGlobal.list() : []).find(j => j.id === insc.jugadorId);
-      detalle.push({ anio: anioDeFecha(comp.fecha) || '(sin fecha)', competicion: comp.nombre || '(sin nombre)', jugador: jug ? jug.nombre : '(jugador eliminado)', importe: precioInscripcion(comp, insc) });
+      detalle.push({ anio: anioDeFecha(comp.fecha) || '(sin fecha)', competicion: comp.nombre || '(sin nombre)', jugador: jug ? nombreCompletoPagos(jug) : '(jugador eliminado)', importe: precioInscripcion(comp, insc) });
     });
   });
   return detalle;

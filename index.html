@@ -4424,11 +4424,25 @@ const CATEGORIAS_GASTO = ['Material', 'Alquiler de pista', 'Arbitrajes / Inscrip
 
 function defaultState() {
   return {
-    config: { cuotaMensual: 20, cuotaMenorClub: 15, nombreConcepto: 'Cuota mensual del club', tipoCuota: 'mensual' },
+    config: {
+      nombreConcepto: 'Cuota del club',
+      matricula: { importe: 0 },
+      tarifas: [],
+    },
     competiciones: [],
     contabilidad: { movimientos: [] },
     proveedores: [],
   };
+}
+function migrarConfigCuotas() {
+  if (!state.config.matricula) state.config.matricula = { importe: 0 };
+  if (!Array.isArray(state.config.tarifas)) {
+    const periodicidadVieja = state.config.tipoCuota || 'anual';
+    state.config.tarifas = [
+      { id: uid('tar'), nombre: 'Adultos', periodicidad: periodicidadVieja, importe: state.config.cuotaMensual || 0 },
+      { id: uid('tar'), nombre: 'Menores del club', periodicidad: periodicidadVieja, importe: state.config.cuotaMenorClub || 0 },
+    ];
+  }
 }
 let state = defaultState();
 let activeTab = 'cuotas';
@@ -4517,47 +4531,58 @@ function renderTabsNav() {
 function viewConfig() {
   const wrap = document.createDocumentFragment();
   wrap.appendChild(el('div', { class: 'panel' },
-    el('h2', {}, 'Configuración de cuotas'),
-    el('div', { class: 'sub' }, 'Importe de la cuota para los jugadores marcados como "Club" en su ficha (los de "Escuela" no pagan cuota de club aquí). Los jugadores del club que sean menores de edad pagan automáticamente la cuota reducida; el resto, la cuota normal. Elige si se cobra cada mes o una vez al año.'),
+    el('h2', {}, 'Matrícula (pago único de alta)'),
+    el('div', { class: 'sub' }, 'Se paga una sola vez al darse de alta en el club. Si alguien causa baja y se vuelve a apuntar más adelante, tendrá que pagarla de nuevo: desde "Cuotas del club" puedes marcarla otra vez como pendiente para esa persona.'),
     el('div', { class: 'grid' },
-      field('Periodicidad', selectEl([{ value: 'mensual', label: 'Mensual' }, { value: 'anual', label: 'Anual' }], state.config.tipoCuota || 'mensual', v => { state.config.tipoCuota = v; render(); })),
-      field((state.config.tipoCuota === 'anual' ? 'Cuota anual adultos (€)' : 'Cuota mensual adultos (€)'), inputEl('number', state.config.cuotaMensual, v => { state.config.cuotaMensual = parseFloat(v) || 0; }, { min: 0, step: '0.5' })),
-      field((state.config.tipoCuota === 'anual' ? 'Cuota anual menores del club (€)' : 'Cuota mensual menores del club (€)'), inputEl('number', state.config.cuotaMenorClub, v => { state.config.cuotaMenorClub = parseFloat(v) || 0; }, { min: 0, step: '0.5' })),
+      field('Importe de la matrícula (€)', inputEl('number', state.config.matricula.importe, v => { state.config.matricula.importe = parseFloat(v) || 0; }, { min: 0, step: '0.5' })),
       field('Concepto del recibo', inputEl('text', state.config.nombreConcepto, v => { state.config.nombreConcepto = v; })),
     ),
   ));
+
+  const tarifasPanel = el('div', { class: 'panel' },
+    el('h2', {}, 'Tarifas de cuota'),
+    el('div', { class: 'sub' }, 'Crea todas las tarifas que necesites (por ejemplo, según los días de entreno a la semana), cada una con su periodicidad e importe. Luego, a cada jugador del club le asignas la que le corresponda desde "Cuotas del club".'),
+    el('div', { class: 'toolbar' },
+      el('button', { class: 'btn btn-gold btn-sm', onclick: () => { state.config.tarifas.push({ id: uid('tar'), nombre: 'Nueva tarifa', periodicidad: 'anual', importe: 0 }); render(); } }, '+ Añadir tarifa'),
+    ),
+  );
+  if (!state.config.tarifas.length) {
+    tarifasPanel.appendChild(el('div', { class: 'empty-state' }, 'Todavía no has definido ninguna tarifa.'));
+  } else {
+    state.config.tarifas.forEach(t => {
+      tarifasPanel.appendChild(el('div', { class: 'card' },
+        el('div', { class: 'grid' },
+          field('Nombre de la tarifa', inputEl('text', t.nombre, v => { t.nombre = v; render(); })),
+          field('Periodicidad', selectEl([{ value: 'mensual', label: 'Mensual' }, { value: 'anual', label: 'Anual' }], t.periodicidad, v => { t.periodicidad = v; render(); })),
+          field('Importe (€)', inputEl('number', t.importe, v => { t.importe = parseFloat(v) || 0; render(); }, { min: 0, step: '0.5' })),
+        ),
+        el('div', { class: 'toolbar', style: 'margin-top:6px;' },
+          el('button', { class: 'btn btn-danger btn-sm', onclick: () => { state.config.tarifas = state.config.tarifas.filter(x => x.id !== t.id); render(); } }, 'Eliminar tarifa'),
+        ),
+      ));
+    });
+  }
+  wrap.appendChild(tarifasPanel);
+
   wrap.appendChild(el('div', { class: 'msg msg-warn' },
     'Importante: esta app funciona solo en tu navegador y no tiene servidor propio, así que no puede enviar correos ella sola ni de forma programada. Los botones "Enviar recibo" y "Aviso de pago" abren tu programa de correo con el mensaje ya escrito, listo para que le des a enviar. Para un envío realmente automático haría falta conectar un servicio de correo externo (por ejemplo Gmail) a un backend, algo que esta app no tiene.'));
   return wrap;
 }
 
-function periodoActualDefault() {
+function tarifaDe(jugador) {
+  return state.config.tarifas.find(t => t.id === jugador.tarifaId) || null;
+}
+function periodoActualPara(tarifa) {
   const now = new Date();
-  if (state.config.tipoCuota === 'anual') return String(now.getFullYear());
+  if (!tarifa || tarifa.periodicidad === 'anual') return String(now.getFullYear());
   return now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
-}
-
-function esMenorDeEdad(fechaNacimiento) {
-  if (!fechaNacimiento) return false;
-  const nacimiento = new Date(fechaNacimiento);
-  if (isNaN(nacimiento.getTime())) return false;
-  const hoy = new Date();
-  let edad = hoy.getFullYear() - nacimiento.getFullYear();
-  const m = hoy.getMonth() - nacimiento.getMonth();
-  if (m < 0 || (m === 0 && hoy.getDate() < nacimiento.getDate())) edad--;
-  return edad < 18;
-}
-
-function cuotaDe(jugador) {
-  return esMenorDeEdad(jugador.fechaNacimiento) ? state.config.cuotaMenorClub : state.config.cuotaMensual;
 }
 
 function viewCuotas() {
   const wrap = document.createDocumentFragment();
-  const esAnual = state.config.tipoCuota === 'anual';
   const panel = el('div', { class: 'panel' },
-    el('h2', {}, esAnual ? 'Cuota anual del club' : 'Cuotas mensuales del club'),
-    el('div', { class: 'sub' }, `Adultos: ${euros(state.config.cuotaMensual)} ${esAnual ? 'al año' : 'al mes'} · Menores de edad del club: ${euros(state.config.cuotaMenorClub)} ${esAnual ? 'al año' : 'al mes'} (se calcula solo según la fecha de nacimiento). Solo aparecen aquí los jugadores marcados como "Club" en su ficha (sección Jugadores). Elige el ${esAnual ? 'año' : 'mes'}, marca si está pagado y, si el jugador tiene email guardado, envíale el recibo con un clic.`),
+    el('h2', {}, 'Cuotas del club'),
+    el('div', { class: 'sub' }, 'Asigna a cada jugador la tarifa que le corresponde (según sus días de entreno) y controla la matrícula de alta y las cuotas de cada periodo. Solo aparecen aquí los jugadores marcados como "Club" en su ficha (sección Jugadores).'),
   );
   const socios = (window.JugadoresGlobal ? window.JugadoresGlobal.list() : []).filter(j => j.tipo === 'club');
   if (!socios.length) {
@@ -4565,15 +4590,24 @@ function viewCuotas() {
     wrap.appendChild(panel);
     return wrap;
   }
-  const periodoActual = periodoActualDefault();
+  if (!state.config.tarifas.length) {
+    panel.appendChild(el('div', { class: 'msg msg-warn' }, 'Todavía no has definido ninguna tarifa. Ve a la pestaña Configuración para crear al menos una.'));
+    wrap.appendChild(panel);
+    return wrap;
+  }
   const table = el('table', {}, el('thead', {}, el('tr', {},
-    el('th', {}, 'Jugador'), el('th', {}, 'Tipo de cuota'), el('th', {}, 'Importe'), el('th', {}, 'Email'), el('th', {}, esAnual ? 'Año' : 'Mes'), el('th', {}, 'Estado'), el('th', {}, ''))));
+    el('th', {}, 'Jugador'), el('th', {}, 'Tarifa'), el('th', {}, 'Importe'), el('th', {}, 'Matrícula'), el('th', {}, 'Periodo'), el('th', {}, 'Estado'), el('th', {}, ''))));
   const tbody = el('tbody');
   socios.forEach(j => {
     j.cuotasPagadas = j.cuotasPagadas || {};
-    const menor = esMenorDeEdad(j.fechaNacimiento);
-    const importe = cuotaDe(j);
-    const periodoInput = esAnual
+    if (!j.tarifaId || !tarifaDe(j)) j.tarifaId = state.config.tarifas[0].id;
+    const tarifa = tarifaDe(j) || state.config.tarifas[0];
+    const tarifaSelect = selectEl(
+      state.config.tarifas.map(t => ({ value: t.id, label: t.nombre + ' (' + euros(t.importe) + '/' + (t.periodicidad === 'anual' ? 'año' : 'mes') + ')' })),
+      j.tarifaId, v => { j.tarifaId = v; if (typeof saveJugadoresGlobal === 'function') saveJugadoresGlobal(); render(); }
+    );
+    const periodoActual = periodoActualPara(tarifa);
+    const periodoInput = tarifa.periodicidad === 'anual'
       ? el('input', { type: 'number', value: periodoActual, style: 'width:100px;', min: '2000', max: '2100' })
       : el('input', { type: 'month', value: periodoActual });
     const estadoCell = el('td', {});
@@ -4585,11 +4619,24 @@ function viewCuotas() {
     }
     pintarEstado();
     periodoInput.addEventListener('change', pintarEstado);
+    const matriculaCell = el('td', {});
+    function pintarMatricula() {
+      matriculaCell.innerHTML = '';
+      matriculaCell.appendChild(el('div', {},
+        j.matriculaPagada ? el('span', { class: 'chip chip-gold' }, 'Pagada') : el('span', { class: 'chip chip-muted' }, 'Pendiente'),
+        el('button', { class: 'btn btn-ghost btn-sm', style: 'display:block;margin-top:4px;', onclick: () => {
+          j.matriculaPagada = !j.matriculaPagada;
+          if (typeof saveJugadoresGlobal === 'function') saveJugadoresGlobal();
+          pintarMatricula();
+        } }, j.matriculaPagada ? 'Marcar pendiente' : 'Marcar pagada'),
+      ));
+    }
+    pintarMatricula();
     tbody.appendChild(el('tr', {},
       el('td', {}, nombreCompletoPagos(j)),
-      el('td', {}, menor ? el('span', { class: 'chip chip-gold' }, 'Menor del club') : el('span', { class: 'chip' }, 'Adulto')),
-      el('td', {}, euros(importe)),
-      el('td', {}, j.email ? j.email : el('span', { class: 'chip chip-muted' }, 'Sin email')),
+      el('td', {}, tarifaSelect),
+      el('td', {}, euros(tarifa.importe)),
+      matriculaCell,
       el('td', {}, periodoInput),
       estadoCell,
       el('td', {}, el('div', { class: 'row', style: 'gap:6px;flex-wrap:nowrap;' },
@@ -4601,8 +4648,8 @@ function viewCuotas() {
         } }, 'Cambiar a pagado/pendiente'),
         j.email ? el('a', {
           class: 'btn btn-gold btn-sm',
-          href: mailtoLink(j.email, 'Recibo: ' + state.config.nombreConcepto + ' - ' + (periodoInput.value || periodoActual),
-            'Hola ' + j.nombre + ',\n\nTe enviamos el recibo correspondiente a ' + state.config.nombreConcepto.toLowerCase() + ' de ' + (periodoInput.value || periodoActual) + (menor ? ' (cuota de menor del club)' : ' (cuota de adulto)') + '.\nImporte: ' + euros(importe) + '\n\nUn saludo' + (typeof clubGlobal !== 'undefined' && clubGlobal.nombre ? ',\n' + clubGlobal.nombre : '.')),
+          href: mailtoLink(j.email, 'Recibo: ' + tarifa.nombre + ' - ' + (periodoInput.value || periodoActual),
+            'Hola ' + j.nombre + ',\n\nTe enviamos el recibo correspondiente a ' + tarifa.nombre.toLowerCase() + ' de ' + (periodoInput.value || periodoActual) + '.\nImporte: ' + euros(tarifa.importe) + '\n\nUn saludo' + (typeof clubGlobal !== 'undefined' && clubGlobal.nombre ? ',\n' + clubGlobal.nombre : '.')),
           target: '_blank',
         }, 'Enviar recibo') : null,
       )),
@@ -4727,7 +4774,8 @@ function cuotasCobradasDetalle() {
     const pagadas = j.cuotasPagadas || {};
     Object.keys(pagadas).forEach(periodo => {
       if (!pagadas[periodo]) return;
-      detalle.push({ anio: anioDePeriodo(periodo), periodo, jugador: nombreCompletoPagos(j), importe: cuotaDe(j) });
+      const tarifaJ = tarifaDe(j);
+      detalle.push({ anio: anioDePeriodo(periodo), periodo, jugador: nombreCompletoPagos(j), importe: tarifaJ ? tarifaJ.importe : 0 });
     });
   });
   return detalle;
@@ -5169,8 +5217,9 @@ function setState(s) {
   if (state && !state.contabilidad) state.contabilidad = { movimientos: [] };
   if (state && !Array.isArray(state.contabilidad.movimientos)) state.contabilidad.movimientos = [];
   if (state && !Array.isArray(state.proveedores)) state.proveedores = [];
+  migrarConfigCuotas();
 }
-function mount() { tryLoadLocal(); render(); }
+function mount() { tryLoadLocal(); migrarConfigCuotas(); render(); }
 return { render, mount, getState, setState };
 })();
 </script>

@@ -4708,7 +4708,13 @@ function viewCompeticiones() {
   if (!state.competiciones.length) {
     panel.appendChild(el('div', { class: 'empty-state' }, 'Todavía no hay competiciones creadas.'));
   } else {
-    state.competiciones.forEach(comp => {
+    const ordenadas = state.competiciones.slice().sort((a, b) => {
+      if (!a.fecha && !b.fecha) return 0;
+      if (!a.fecha) return 1;
+      if (!b.fecha) return -1;
+      return a.fecha.localeCompare(b.fecha);
+    });
+    ordenadas.forEach(comp => {
       panel.appendChild(competicionesExpandidas.has(comp.id) ? competicionCard(comp) : competicionResumenColapsado(comp));
     });
   }

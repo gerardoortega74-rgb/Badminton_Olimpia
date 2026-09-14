@@ -4614,15 +4614,20 @@ function viewCuotas() {
   return wrap;
 }
 
+function numModalidadesDe(insc) {
+  if (insc.numModalidades) return insc.numModalidades;
+  if (insc.modalidades) return (insc.modalidades.individual ? 1 : 0) + (insc.modalidades.dobles ? 1 : 0) || 1;
+  return 1;
+}
 function precioInscripcion(comp, insc) {
-  const n = (insc.modalidades.individual ? 1 : 0) + (insc.modalidades.dobles ? 1 : 0);
-  if (n <= 0) return 0;
-  if (n === 1) return comp.precio1;
-  return comp.precio2;
+  const n = numModalidadesDe(insc);
+  if (n <= 1) return comp.precio1 || 0;
+  if (n === 2) return comp.precio2 || 0;
+  return (comp.precio3 != null ? comp.precio3 : comp.precio2) || 0;
 }
 
 function addCompeticion() {
-  state.competiciones.push({ id: uid('cp'), nombre: '', fecha: '', precio1: 0, precio2: 0, inscritos: [] });
+  state.competiciones.push({ id: uid('cp'), nombre: '', fecha: '', precio1: 0, precio2: 0, precio3: 0, inscritos: [] });
 }
 function removeCompeticion(id) { state.competiciones = state.competiciones.filter(c => c.id !== id); }
 
@@ -4652,6 +4657,7 @@ function competicionCard(comp) {
       field('Fecha', inputEl('date', comp.fecha, v => { comp.fecha = v; })),
       field('Precio 1 modalidad (€)', inputEl('number', comp.precio1, v => { comp.precio1 = parseFloat(v) || 0; render(); }, { min: 0, step: '0.5' })),
       field('Precio 2 modalidades (€)', inputEl('number', comp.precio2, v => { comp.precio2 = parseFloat(v) || 0; render(); }, { min: 0, step: '0.5' })),
+      field('Precio 3 modalidades (€)', inputEl('number', comp.precio3 || 0, v => { comp.precio3 = parseFloat(v) || 0; render(); }, { min: 0, step: '0.5' })),
     ),
   );
 
@@ -4663,7 +4669,7 @@ function competicionCard(comp) {
     card.appendChild(el('div', { class: 'row', style: 'margin-bottom:10px;' },
       sel,
       el('button', { class: 'btn btn-ghost btn-sm', onclick: () => {
-        comp.inscritos.push({ id: uid('ins'), jugadorId: sel.value, modalidades: { individual: true, dobles: false }, pagado: false });
+        comp.inscritos.push({ id: uid('ins'), jugadorId: sel.value, numModalidades: 1, pagado: false });
         render();
       } }, '+ Inscribir'),
     ));
@@ -4675,15 +4681,19 @@ function competicionCard(comp) {
     card.appendChild(el('div', { class: 'empty-state' }, 'Todavía no hay inscritos.'));
   } else {
     const table = el('table', {}, el('thead', {}, el('tr', {},
-      el('th', {}, 'Jugador'), el('th', {}, 'Individual'), el('th', {}, 'Dobles'), el('th', {}, 'Precio'), el('th', {}, 'Pagado'), el('th', {}, ''))));
+      el('th', {}, 'Jugador'), el('th', {}, 'Modalidades'), el('th', {}, 'Precio'), el('th', {}, 'Pagado'), el('th', {}, ''))));
     const tbody = el('tbody');
     comp.inscritos.forEach(insc => {
       const jug = todosJugadores.find(j => j.id === insc.jugadorId);
       const precio = precioInscripcion(comp, insc);
+      const numMod = numModalidadesDe(insc);
       tbody.appendChild(el('tr', {},
         el('td', {}, jug ? nombreCompletoPagos(jug) : '(jugador eliminado)'),
-        el('td', {}, el('input', { type: 'checkbox', style: 'width:auto;', checked: insc.modalidades.individual ? 'checked' : null, onchange: e => { insc.modalidades.individual = e.target.checked; render(); } })),
-        el('td', {}, el('input', { type: 'checkbox', style: 'width:auto;', checked: insc.modalidades.dobles ? 'checked' : null, onchange: e => { insc.modalidades.dobles = e.target.checked; render(); } })),
+        el('td', {}, selectEl([
+          { value: '1', label: '1 Modalidad' },
+          { value: '2', label: '2 Modalidades' },
+          { value: '3', label: '3 Modalidades' },
+        ], String(numMod), v => { insc.numModalidades = parseInt(v, 10); delete insc.modalidades; render(); })),
         el('td', {}, euros(precio)),
         el('td', {}, insc.pagado ? el('span', { class: 'chip chip-gold' }, 'Pagado') : el('span', { class: 'chip chip-muted' }, 'Pendiente')),
         el('td', {}, el('div', { class: 'row', style: 'gap:6px;flex-wrap:nowrap;' },
@@ -4691,7 +4701,7 @@ function competicionCard(comp) {
           (jug && jug.email) ? el('a', {
             class: 'btn btn-gold btn-sm',
             href: mailtoLink(jug.email, 'Pago inscripción: ' + (comp.nombre || 'competición'),
-              'Hola ' + jug.nombre + ',\n\nInscripción en ' + (comp.nombre || 'la competición') + (comp.fecha ? ' (' + comp.fecha + ')' : '') + '.\nModalidades: ' + [insc.modalidades.individual ? 'Individual' : null, insc.modalidades.dobles ? 'Dobles' : null].filter(Boolean).join(' y ') + '.\nImporte a pagar: ' + euros(precio) + '\n\nUn saludo' + (typeof clubGlobal !== 'undefined' && clubGlobal.nombre ? ',\n' + clubGlobal.nombre : '.')),
+              'Hola ' + jug.nombre + ',\n\nInscripción en ' + (comp.nombre || 'la competición') + (comp.fecha ? ' (' + comp.fecha + ')' : '') + '.\nModalidades: ' + numMod + '.\nImporte a pagar: ' + euros(precio) + '\n\nUn saludo' + (typeof clubGlobal !== 'undefined' && clubGlobal.nombre ? ',\n' + clubGlobal.nombre : '.')),
             target: '_blank',
           }, 'Aviso de pago') : null,
           el('button', { class: 'btn btn-danger btn-sm', onclick: () => { comp.inscritos = comp.inscritos.filter(x => x.id !== insc.id); render(); } }, 'Quitar'),
@@ -6382,7 +6392,7 @@ function renderJugadoresGeneral() {
   const root = document.getElementById('jugadoresGeneralScreen');
   root.innerHTML = '';
   const filas = [];
-  jugadoresGlobal.forEach(j => filas.push({ nombre: j.nombre, club: clubGlobal.nombre || 'Mi club', fechaNacimiento: j.fechaNacimiento || '', sexo: j.sexo || '', telefono: j.telefono || '', email: j.email || '' }));
+  jugadoresGlobal.forEach(j => filas.push({ nombre: nombreCompletoJ(j) || j.nombre, club: clubGlobal.nombre || 'Mi club', fechaNacimiento: j.fechaNacimiento || '', sexo: j.sexo || '', telefono: j.telefono || '', email: j.email || '' }));
   jugadoresExternos.forEach(j => filas.push({ nombre: j.nombre, club: j.club || 'Independiente', fechaNacimiento: j.fechaNacimiento || '', sexo: j.sexo || '', telefono: j.telefono || '', email: j.email || '' }));
   filas.sort((a, b) => a.club.localeCompare(b.club) || a.nombre.localeCompare(b.nombre));
   const panel = el('div', { class: 'panel' },

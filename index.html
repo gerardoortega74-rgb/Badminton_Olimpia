@@ -6564,11 +6564,16 @@ function showClubGestionTab(tab) {
   else if (tab === 'acceso') renderControlAcceso();
   renderShellHeader();
 }
+function nombreCompletoShell(j) {
+  if (!j) return '';
+  const apellidos = (j.apellido1 || j.apellido2) ? ((j.apellido1 || '') + ' ' + (j.apellido2 || '')).trim() : (j.apellidos || '');
+  return (j.nombre + ' ' + apellidos).trim();
+}
 function renderJugadoresGeneral() {
   const root = document.getElementById('jugadoresGeneralScreen');
   root.innerHTML = '';
   const filas = [];
-  jugadoresGlobal.forEach(j => filas.push({ nombre: nombreCompletoJ(j) || j.nombre, club: clubGlobal.nombre || 'Mi club', fechaNacimiento: j.fechaNacimiento || '', sexo: j.sexo || '', telefono: j.telefono || '', email: j.email || '' }));
+  jugadoresGlobal.forEach(j => filas.push({ nombre: nombreCompletoShell(j) || j.nombre, club: clubGlobal.nombre || 'Mi club', fechaNacimiento: j.fechaNacimiento || '', sexo: j.sexo || '', telefono: j.telefono || '', email: j.email || '' }));
   jugadoresExternos.forEach(j => filas.push({ nombre: j.nombre, club: j.club || 'Independiente', fechaNacimiento: j.fechaNacimiento || '', sexo: j.sexo || '', telefono: j.telefono || '', email: j.email || '' }));
   filas.sort((a, b) => a.club.localeCompare(b.club) || a.nombre.localeCompare(b.nombre));
   const panel = el('div', { class: 'panel' },

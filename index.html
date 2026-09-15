@@ -6447,6 +6447,68 @@ let currentSection = 'home';
 const SCREENS = ['onboardingScreen', 'homeScreen', 'clubGestionScreen', 'torneoScreen', 'planScreen'];
 let clubGestionTab = 'datos';
 
+const AYUDA_INDICE = [
+  { pregunta: 'Apuntar un gasto o ingreso del club', ruta: 'Menú → Gestión de Club → Pagos y Cuotas → Contabilidad', palabras: 'gasto ingreso recibo factura contabilidad dinero comprar material' },
+  { pregunta: 'Escanear un recibo o factura con la cámara', ruta: 'Menú → Gestión de Club → Pagos y Cuotas → Contabilidad → botón "Recibo de gasto/ingreso"', palabras: 'recibo foto escanear camara ocr factura pdf' },
+  { pregunta: 'Cobrar la cuota del club a los socios', ruta: 'Menú → Gestión de Club → Pagos y Cuotas → Cuotas del club', palabras: 'cuota socio mensualidad matricula tarifa pagar cobrar' },
+  { pregunta: 'Crear o cambiar las tarifas de cuota (por días de entreno, mensual o anual)', ruta: 'Menú → Gestión de Club → Pagos y Cuotas → Configuración', palabras: 'tarifa precio cuota matricula configurar' },
+  { pregunta: 'Inscribir a alguien en una competición federada (TTR, autonómico...)', ruta: 'Menú → Gestión de Club → Pagos y Cuotas → Competiciones', palabras: 'competicion inscripcion federada ttr autonomico modalidad' },
+  { pregunta: 'Ver los proveedores del club (CIF, teléfono...)', ruta: 'Menú → Gestión de Club → Pagos y Cuotas → Proveedores', palabras: 'proveedor cif telefono empresa' },
+  { pregunta: 'Crear o gestionar un torneo del club', ruta: 'Menú → Gestor de Torneos', palabras: 'torneo campeonato crear gestionar' },
+  { pregunta: 'Apuntar participantes a un torneo', ruta: 'Menú → Gestor de Torneos → Participantes', palabras: 'apuntar participante inscribir torneo jugador categoria' },
+  { pregunta: 'Hacer el sorteo de grupos de un torneo', ruta: 'Menú → Gestor de Torneos → Sorteo', palabras: 'sorteo grupo aleatorio' },
+  { pregunta: 'Optimizar el número de grupos para que dure menos el torneo', ruta: 'Menú → Gestor de Torneos → Configuración → botón "Optimizar TODAS las categorías"', palabras: 'optimizar grupos duracion tiempo pistas' },
+  { pregunta: 'Generar el calendario de horarios de un torneo', ruta: 'Menú → Gestor de Torneos → Calendario', palabras: 'horario calendario pistas generar' },
+  { pregunta: 'Avisar a los participantes por email o WhatsApp de los horarios', ruta: 'Menú → Gestor de Torneos → Calendario (tras generar los horarios, panel "Avisar a los participantes")', palabras: 'whatsapp email avisar notificar mensaje enlace participantes' },
+  { pregunta: 'Anotar resultados de partidos', ruta: 'Menú → Gestor de Torneos → Resultados / Eliminatoria', palabras: 'resultado marcador set puntos anotar' },
+  { pregunta: 'Imprimir el acta de un partido para el árbitro', ruta: 'Menú → Gestor de Torneos → Partidos → botón "Imprimir acta"', palabras: 'acta arbitro imprimir partido numero' },
+  { pregunta: 'Compartir el enlace del torneo para que los jugadores vean sus horarios', ruta: 'Menú → Gestor de Torneos → Historial → botón "🔗 Enlace" (o Configuración, enlace del torneo activo)', palabras: 'enlace visor publico jugadores ver horario' },
+  { pregunta: 'Ver torneos anteriores', ruta: 'Menú → Gestor de Torneos → Historial', palabras: 'historial anteriores pasados' },
+  { pregunta: 'Añadir un jugador nuevo al club', ruta: 'Menú → Gestión de Club → Jugadores → "+ Añadir jugador"', palabras: 'jugador alta nuevo añadir crear ficha' },
+  { pregunta: 'Ver todos los jugadores conocidos (también de otros clubes)', ruta: 'Menú → Gestión de Club → Base general de jugadores', palabras: 'base general otros clubes independiente todos' },
+  { pregunta: 'Planificar entrenamientos y crear grupos de entreno', ruta: 'Menú → Planificación Anual → Configuración', palabras: 'planificacion grupo entreno nivel iniciacion tecnificacion' },
+  { pregunta: 'Generar el macrociclo o microciclo de la temporada', ruta: 'Menú → Planificación Anual → Macrociclo / Microciclo tipo', palabras: 'macrociclo microciclo temporada planificar entrenamiento' },
+  { pregunta: 'Ver el reglamento oficial de bádminton', ruta: 'Menú → Planificación Anual → Reglamento', palabras: 'reglamento normas reglas puntuacion saque' },
+  { pregunta: 'Configurar quién puede entrar en la app y qué puede ver', ruta: 'Menú → Control de acceso', palabras: 'acceso contraseña permiso usuario rol administrador' },
+  { pregunta: 'Exportar o hacer copia de seguridad de todos los datos', ruta: 'Menú principal → "🗄️ Datos y copia de seguridad"', palabras: 'exportar importar copia seguridad backup traspasar otro dispositivo' },
+];
+function abrirAyuda() {
+  const root = document.getElementById('torneoModalRoot');
+  if (!root) return;
+  let filtro = '';
+  function normalizar(t) { return String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+  function pintarResultados(lista) {
+    const cont = document.getElementById('ayudaResultados');
+    if (!cont) return;
+    cont.innerHTML = '';
+    const f = normalizar(filtro).trim();
+    const resultados = f ? AYUDA_INDICE.filter(item => normalizar(item.pregunta + ' ' + item.palabras).includes(f)) : AYUDA_INDICE;
+    if (!resultados.length) {
+      cont.appendChild(el('div', { class: 'empty-state' }, 'No he encontrado nada con esas palabras. Prueba con otro término.'));
+      return;
+    }
+    resultados.forEach(item => {
+      cont.appendChild(el('div', { class: 'card', style: 'padding:12px;margin-bottom:8px;' },
+        el('div', { style: 'font-weight:700;margin-bottom:4px;' }, item.pregunta),
+        el('div', { class: 'sub' }, '📍 ' + item.ruta),
+      ));
+    });
+  }
+  const input = el('input', { type: 'text', placeholder: 'Escribe lo que buscas… (ej: "recibo", "acta", "cuota")' });
+  input.addEventListener('input', (e) => { filtro = e.target.value; pintarResultados(); });
+  root.innerHTML = '';
+  root.appendChild(el('div', { class: 'modal-bg', onclick: (e) => { if (e.target.classList.contains('modal-bg')) root.innerHTML = ''; } },
+    el('div', { class: 'modal', style: 'max-width:560px;max-height:80vh;overflow-y:auto;' },
+      el('h3', {}, '❓ ¿Dónde encuentro…?'),
+      el('div', { class: 'sub', style: 'margin-bottom:10px;' }, 'Escribe qué quieres hacer y te digo en qué pantalla está.'),
+      input,
+      el('div', { id: 'ayudaResultados', style: 'margin-top:14px;' }),
+      el('div', { class: 'row', style: 'margin-top:10px;' }, el('button', { class: 'btn btn-ghost', onclick: () => { root.innerHTML = ''; } }, 'Cerrar')),
+    ),
+  ));
+  pintarResultados();
+  input.focus();
+}
 function showSection(sec) {
   const permitido = sec === 'clubgestion' ? (tienePermiso('club') || tienePermiso('jugadores') || tienePermiso('pagos')) : tienePermiso(sec);
   if (!permitido) { alert('No tienes permiso para ver esta sección.'); sec = 'home'; }
@@ -6973,6 +7035,10 @@ function renderHome() {
       el('div', { class: 'icon' }, c.icon), el('h3', {}, c.title), el('p', {}, c.desc)));
   });
   root.appendChild(grid);
+
+  root.appendChild(el('div', { class: 'panel', style: 'margin-top:16px;text-align:center;' },
+    el('button', { class: 'btn btn-gold', onclick: () => abrirAyuda() }, '❓ ¿Dónde encuentro…?'),
+  ));
 
   root.appendChild(el('div', { class: 'panel', style: 'margin-top:16px;' },
     el('h3', { style: 'margin-bottom:6px;' }, '🗄️ Datos y copia de seguridad'),

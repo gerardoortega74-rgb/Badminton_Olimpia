@@ -374,6 +374,12 @@ let uidCounter = 1;
 function uid(prefix) { return prefix + '_' + (uidCounter++) + '_' + Math.random().toString(36).slice(2, 7); }
 
 function getCategory(catId) { return state.categories.find(c => c.id === catId); }
+function fmtFechaDMY(s) {
+  if (!s) return '—';
+  const partes = String(s).slice(0, 10).split('-');
+  if (partes.length !== 3) return s;
+  return partes[2] + '/' + partes[1] + '/' + partes[0];
+}
 function nombreCompletoJ(j) {
   if (!j) return '';
   const apellidos = (j.apellido1 || j.apellido2) ? ((j.apellido1 || '') + ' ' + (j.apellido2 || '')).trim() : (j.apellidos || '');
@@ -2308,7 +2314,7 @@ function viewHistorial() {
     const numCats = (t.snapshot && t.snapshot.categories) ? t.snapshot.categories.filter(c => c.enabled).length : 0;
     tbody.appendChild(el('tr', { style: esActivo ? 'background:#FBF3D8;' : '' },
       el('td', {}, esActivo ? ('▶️ ' + t.nombre) : el('span', { style: 'text-decoration:underline;cursor:pointer;color:var(--court-dark);font-weight:700;', onclick: () => cambiarATorneo(t.id) }, t.nombre)),
-      el('td', {}, t.fechaInicio || '—'),
+      el('td', {}, fmtFechaDMY(t.fechaInicio)),
       el('td', {}, t.estado === 'finalizado' ? el('span', { class: 'chip chip-gold' }, 'Finalizado') : el('span', { class: 'chip' }, 'En curso')),
       el('td', {}, dias === null ? '—' : (dias === 0 ? 'mismo día' : dias + ' día(s)')),
       el('td', {}, String(numCats)),
@@ -3668,8 +3674,9 @@ function daysBetween(a, b) { return Math.round((b - a) / 86400000); }
 function weeksBetween(a, b) { return Math.max(0, Math.round(daysBetween(a, b) / 7)); }
 function fmtDate(s) {
   if (!s) return '—';
-  const d = parseDate(s);
-  return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+  const partes = String(s).slice(0, 10).split('-');
+  if (partes.length !== 3) return s;
+  return partes[2] + '/' + partes[1] + '/' + partes[0];
 }
 const TIPO_COLOR = {
   'Preparatorio General': '#2D6A4F',
@@ -4532,6 +4539,12 @@ function mailtoLink(email, subject, body) {
   return 'mailto:' + encodeURIComponent(email) + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
 }
 function euros(n) { return (Math.round(n * 100) / 100).toFixed(2) + ' €'; }
+function fmtFechaDMY(s) {
+  if (!s) return '—';
+  const partes = String(s).slice(0, 10).split('-');
+  if (partes.length !== 3) return s;
+  return partes[2] + '/' + partes[1] + '/' + partes[0];
+}
 function nombreCompletoPagos(j) {
   if (!j) return '';
   const apellidos = (j.apellido1 || j.apellido2) ? ((j.apellido1 || '') + ' ' + (j.apellido2 || '')).trim() : (j.apellidos || '');
@@ -4728,7 +4741,7 @@ function competicionResumenColapsado(comp) {
     el('div', { class: 'card-head' },
       el('span', { class: 'card-title' }, '▸ ' + (comp.nombre || '(sin nombre)'))),
     el('div', { class: 'sub', style: 'margin-top:4px;' },
-      (comp.fecha || 'Sin fecha') + ' · ' + comp.inscritos.length + ' inscrito(s) · Total ' + euros(total) + (pendiente > 0 ? ' · Pendiente ' + euros(pendiente) : ' · Todo cobrado')),
+      (comp.fecha ? fmtFechaDMY(comp.fecha) : 'Sin fecha') + ' · ' + comp.inscritos.length + ' inscrito(s) · Total ' + euros(total) + (pendiente > 0 ? ' · Pendiente ' + euros(pendiente) : ' · Todo cobrado')),
   );
 }
 function viewCompeticiones() {
@@ -4813,7 +4826,7 @@ function competicionCard(comp) {
           (jug && jug.email) ? el('a', {
             class: 'btn btn-gold btn-sm',
             href: mailtoLink(jug.email, 'Pago inscripción: ' + (comp.nombre || 'competición'),
-              'Hola ' + jug.nombre + ',\n\nInscripción en ' + (comp.nombre || 'la competición') + (comp.fecha ? ' (' + comp.fecha + ')' : '') + '.\nModalidades: ' + numMod + '.\nImporte a pagar: ' + euros(precio) + '\n\nUn saludo' + (typeof clubGlobal !== 'undefined' && clubGlobal.nombre ? ',\n' + clubGlobal.nombre : '.')),
+              'Hola ' + jug.nombre + ',\n\nInscripción en ' + (comp.nombre || 'la competición') + (comp.fecha ? ' (' + fmtFechaDMY(comp.fecha) + ')' : '') + '.\nModalidades: ' + numMod + '.\nImporte a pagar: ' + euros(precio) + '\n\nUn saludo' + (typeof clubGlobal !== 'undefined' && clubGlobal.nombre ? ',\n' + clubGlobal.nombre : '.')),
             target: '_blank',
           }, 'Aviso de pago') : null,
           el('button', { class: 'btn btn-danger btn-sm', onclick: () => { comp.inscritos = comp.inscritos.filter(x => x.id !== insc.id); render(); } }, 'Quitar'),
@@ -5863,7 +5876,7 @@ function trayectoriaJugadorPanel(j) {
     const tbody1 = el('tbody');
     deLaApp.forEach(r => {
       tbody1.appendChild(el('tr', {},
-        el('td', {}, r.torneo), el('td', {}, r.fecha || '—'), el('td', {}, r.categoria + (r.pareja ? ' (' + r.pareja + ')' : '')), el('td', {}, r.resultado),
+        el('td', {}, r.torneo), el('td', {}, fmtFechaDMYShell(r.fecha)), el('td', {}, r.categoria + (r.pareja ? ' (' + r.pareja + ')' : '')), el('td', {}, r.resultado),
       ));
     });
     tabla1.appendChild(tbody1);
@@ -5897,7 +5910,7 @@ function trayectoriaJugadorPanel(j) {
     const tbody2 = el('tbody');
     j.historialExterno.slice().sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '')).forEach(ext => {
       tbody2.appendChild(el('tr', {},
-        el('td', {}, ext.campeonato), el('td', {}, ext.fecha || '—'), el('td', {}, ext.categoria || '—'), el('td', {}, ext.resultado || '—'),
+        el('td', {}, ext.campeonato), el('td', {}, fmtFechaDMYShell(ext.fecha)), el('td', {}, ext.categoria || '—'), el('td', {}, ext.resultado || '—'),
         el('td', {}, el('button', {
           class: 'btn btn-danger btn-sm',
           onclick: () => { j.historialExterno = j.historialExterno.filter(x => x.id !== ext.id); saveJugadoresGlobal(); renderJugadores(); },
@@ -6569,6 +6582,12 @@ function nombreCompletoShell(j) {
   const apellidos = (j.apellido1 || j.apellido2) ? ((j.apellido1 || '') + ' ' + (j.apellido2 || '')).trim() : (j.apellidos || '');
   return (j.nombre + ' ' + apellidos).trim();
 }
+function fmtFechaDMYShell(s) {
+  if (!s) return '—';
+  const partes = String(s).slice(0, 10).split('-');
+  if (partes.length !== 3) return s;
+  return partes[2] + '/' + partes[1] + '/' + partes[0];
+}
 function renderJugadoresGeneral() {
   const root = document.getElementById('jugadoresGeneralScreen');
   root.innerHTML = '';
@@ -6592,7 +6611,7 @@ function renderJugadoresGeneral() {
         el('td', {}, f.nombre),
         el('td', {}, el('span', { class: 'chip chip-muted' }, f.club)),
         el('td', {}, f.sexo || '—'),
-        el('td', {}, f.fechaNacimiento || '—'),
+        el('td', {}, fmtFechaDMYShell(f.fechaNacimiento)),
         el('td', {}, [f.telefono, f.email].filter(Boolean).join(' · ') || '—'),
       ));
     });

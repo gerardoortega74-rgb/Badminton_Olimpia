@@ -5402,13 +5402,16 @@ function addCliente(datos) {
   return nuevo;
 }
 function removeCliente(id) { state.clientes = state.clientes.filter(c => c.id !== id); }
-function addArticulo() { state.articulos.push({ id: uid('art'), nombre: 'Nuevo artículo', tipo: 'Otro', precio: 0, stock: 0 }); }
+function addArticulo() { state.articulos.push({ id: uid('art'), nombre: 'Nuevo artículo', tipo: 'Otro', precioCoste: 0, precio: 0, stock: 0 }); }
 function removeArticulo(id) { state.articulos = state.articulos.filter(a => a.id !== id); }
-function addCordaje() { state.cordajes.push({ id: uid('cor'), nombre: 'Nuevo cordaje', precio: 0, stock: 0 }); }
+function addCordaje() { state.cordajes.push({ id: uid('cor'), nombre: 'Nuevo cordaje', precioCoste: 0, precio: 0, stock: 0 }); }
 function removeCordaje(id) { state.cordajes = state.cordajes.filter(c => c.id !== id); }
 
 function pedidosEnCola() {
-  return state.pedidos.filter(p => p.estado === 'pendiente' || p.estado === 'en_proceso').sort((a, b) => a.horaLlegada - b.horaLlegada);
+  return state.pedidos.filter(p => !p.aplazado && (p.estado === 'pendiente' || p.estado === 'en_proceso')).sort((a, b) => a.horaLlegada - b.horaLlegada);
+}
+function pedidosAplazados() {
+  return state.pedidos.filter(p => p.aplazado && (p.estado === 'pendiente' || p.estado === 'en_proceso')).sort((a, b) => a.horaLlegada - b.horaLlegada);
 }
 function horaEstimadaPara(pedidoId) {
   const cola = pedidosEnCola();
@@ -5428,6 +5431,7 @@ function addPedido(datos) {
     id: uid('ped'), clienteId: datos.clienteId, marcaModelo: datos.marcaModelo || '', cordajeId: datos.cordajeId || null,
     tensionVertical: datos.tensionVertical || null, tensionHorizontal: datos.tensionHorizontal || null, precio: datos.precio || 0, fotoAntes: datos.fotoAntes || null, fotoDespues: null,
     estado: 'pendiente', horaLlegada: Date.now(), horaInicio: null, horaFin: null, notas: datos.notas || '',
+    pagado: false, aplazado: false,
   };
   state.pedidos.push(nuevo);
   return nuevo;
@@ -5436,6 +5440,8 @@ function removePedido(id) { state.pedidos = state.pedidos.filter(p => p.id !== i
 function empezarPedido(p) { p.estado = 'en_proceso'; p.horaInicio = Date.now(); }
 function terminarPedido(p) { p.estado = 'terminado'; p.horaFin = Date.now(); }
 function entregarPedido(p) { p.estado = 'entregado'; }
+function aplazarPedido(p) { p.aplazado = true; }
+function reanudarPedido(p) { p.aplazado = false; p.horaLlegada = Date.now(); }
 
 function clienteDe(id) { return state.clientes.find(c => c.id === id); }
 function cordajeDe(id) { return state.cordajes.find(c => c.id === id); }
@@ -5478,7 +5484,7 @@ function renderTabsNav() {
     ['historial', '📚 Historial'],
   ];
   tabs.forEach(([id, label]) => {
-    nav.appendChild(el('button', { class: activeTab === id ? 'active' : '', onclick: () => { activeTab = id; render(); } }, label));
+    nav.appendChild(el('button', { class: activeTab === id ? 'active' : '', onclick: () => { if (id !== 'nuevo') clientePreseleccionadoId = null; activeTab = id; render(); } }, label));
   });
 }
 
@@ -5498,8 +5504,6 @@ function viewCola() {
   }
   if (!cola.length) {
     panel.appendChild(el('div', { class: 'empty-state' }, 'No hay ningún pedido en cola ahora mismo.'));
-    wrap.appendChild(panel);
-    return wrap;
   }
   cola.forEach((p, idx) => {
     const cli = clienteDe(p.clienteId);
@@ -5520,11 +5524,38 @@ function viewCola() {
     }
     if (p.estado === 'en_proceso' || p.estado === 'pendiente') {
       acciones.appendChild(el('button', { class: 'btn btn-gold btn-sm', onclick: () => { if (p.estado === 'pendiente') empezarPedido(p); abrirTerminarPedido(p); } }, '✅ Marcar terminado'));
+      acciones.appendChild(el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { if (confirm('¿El cliente no puede esperar? Se pasará a "Aplazados" y no contará para la hora estimada de los demás, hasta que la reanudes otro día.')) { aplazarPedido(p); render(); } } }, '📅 No puede esperar / aplazar'));
     }
     acciones.appendChild(el('button', { class: 'btn btn-danger btn-sm', onclick: () => { if (confirm('¿Quitar este pedido de la cola?')) { removePedido(p.id); render(); } } }, 'Quitar'));
     card.appendChild(acciones);
     panel.appendChild(card);
   });
+
+  const aplazados = pedidosAplazados();
+  if (aplazados.length) {
+    const panelAplazados = el('div', { class: 'panel', style: 'margin-top:16px;' },
+      el('h2', {}, '📅 Aplazados para otro día'),
+      el('div', { class: 'sub' }, 'No cuentan para la hora estimada de la cola de hoy. Pulsa "Reanudar hoy" cuando vayas a encordarlas.'),
+    );
+    aplazados.forEach(p => {
+      const cli = clienteDe(p.clienteId);
+      const cor = cordajeDe(p.cordajeId);
+      panelAplazados.appendChild(el('div', { class: 'card' },
+        el('div', { class: 'card-head' },
+          el('span', { class: 'card-title' }, cli ? cli.nombre : '(cliente eliminado)'),
+        ),
+        el('div', { class: 'sub' }, `${p.marcaModelo || 'Raqueta sin especificar'} · ${cor ? cor.nombre : 'sin cordaje'} · ${fmtTension(p)} · ${euros(p.precio)}`),
+        el('div', { class: 'toolbar', style: 'margin-top:8px;' },
+          el('button', { class: 'btn btn-primary btn-sm', onclick: () => { reanudarPedido(p); render(); } }, '▶️ Reanudar hoy'),
+          el('button', { class: 'btn btn-danger btn-sm', onclick: () => { if (confirm('¿Quitar este pedido?')) { removePedido(p.id); render(); } } }, 'Quitar'),
+        ),
+      ));
+    });
+    wrap.appendChild(panel);
+    wrap.appendChild(panelAplazados);
+    return wrap;
+  }
+
   wrap.appendChild(panel);
   return wrap;
 }
@@ -5579,15 +5610,17 @@ function abrirAvisoWhatsapp(p) {
   ));
 }
 
+let clientePreseleccionadoId = null;
 function viewNuevoPedido() {
   const wrap = document.createDocumentFragment();
   const panel = el('div', { class: 'panel' },
     el('h2', {}, '➕ Nuevo pedido de encordado'),
-    el('div', { class: 'sub' }, 'Busca al cliente por nombre o teléfono, o crea uno nuevo si no está.'),
+    el('div', { class: 'sub' }, 'Busca al cliente por nombre o teléfono, o crea uno nuevo si no está. Si te trae varias raquetas, puedes añadirlas una a una sin volver a buscarlo.'),
   );
 
-  let clienteElegidoId = null;
-  const buscadorInput = el('input', { type: 'text', placeholder: 'Nombre o teléfono del cliente' });
+  let clienteElegidoId = clientePreseleccionadoId;
+  const clientePre = clienteElegidoId ? clienteDe(clienteElegidoId) : null;
+  const buscadorInput = el('input', { type: 'text', placeholder: 'Nombre o teléfono del cliente', value: clientePre ? clientePre.nombre : '' });
   const resultadosDiv = el('div', { style: 'margin-top:8px;' });
   function pintarBusqueda() {
     resultadosDiv.innerHTML = '';
@@ -5601,7 +5634,7 @@ function viewNuevoPedido() {
     });
   }
   buscadorInput.addEventListener('input', pintarBusqueda);
-  const clienteChipDiv = el('div', { class: 'sub', style: 'margin-top:6px;font-weight:700;' }, 'Ningún cliente seleccionado todavía.');
+  const clienteChipDiv = el('div', { class: 'sub', style: 'margin-top:6px;font-weight:700;' }, clientePre ? 'Cliente: ' + clientePre.nombre : 'Ningún cliente seleccionado todavía.');
   panel.appendChild(field('Cliente', buscadorInput));
   panel.appendChild(resultadosDiv);
   panel.appendChild(clienteChipDiv);
@@ -5638,25 +5671,28 @@ function viewNuevoPedido() {
   ));
   panel.appendChild(field('Notas', notasInput));
 
+  async function guardarPedido(irACola) {
+    if (!clienteElegidoId) { alert('Elige o crea primero un cliente.'); return; }
+    let fotoAntes = null;
+    if (fotoInput.files[0]) {
+      try { fotoAntes = await comprimirImagen(fotoInput.files[0], 1100, 0.65); } catch (e) {}
+    }
+    const nuevo = addPedido({
+      clienteId: clienteElegidoId, marcaModelo: marcaInput.value.trim(), cordajeId: cordajeSelect.value || null,
+      tensionVertical: tensionVInput.value ? parseFloat(tensionVInput.value) : null,
+      tensionHorizontal: tensionHInput.value ? parseFloat(tensionHInput.value) : (tensionVInput.value ? parseFloat(tensionVInput.value) : null),
+      precio: parseFloat(precioInput.value) || 0,
+      fotoAntes, notas: notasInput.value.trim(),
+    });
+    if (window.guardarFotosTallerEnNube) window.guardarFotosTallerEnNube(nuevo.id, nuevo.fotoAntes, null);
+    clientePreseleccionadoId = irACola ? null : clienteElegidoId;
+    activeTab = irACola ? 'cola' : 'nuevo';
+    render();
+  }
+
   panel.appendChild(el('div', { class: 'toolbar', style: 'margin-top:16px;' },
-    el('button', { class: 'btn btn-primary', onclick: async () => {
-      if (!clienteElegidoId) { alert('Elige o crea primero un cliente.'); return; }
-      if (!state.cordajes.length) { /* permitir sin cordaje si aun no hay catalogo */ }
-      let fotoAntes = null;
-      if (fotoInput.files[0]) {
-        try { fotoAntes = await comprimirImagen(fotoInput.files[0], 1100, 0.65); } catch (e) {}
-      }
-      const nuevo = addPedido({
-        clienteId: clienteElegidoId, marcaModelo: marcaInput.value.trim(), cordajeId: cordajeSelect.value || null,
-        tensionVertical: tensionVInput.value ? parseFloat(tensionVInput.value) : null,
-        tensionHorizontal: tensionHInput.value ? parseFloat(tensionHInput.value) : (tensionVInput.value ? parseFloat(tensionVInput.value) : null),
-        precio: parseFloat(precioInput.value) || 0,
-        fotoAntes, notas: notasInput.value.trim(),
-      });
-      if (window.guardarFotosTallerEnNube) window.guardarFotosTallerEnNube(nuevo.id, nuevo.fotoAntes, null);
-      activeTab = 'cola';
-      render();
-    } }, '✅ Añadir a la cola de trabajo'),
+    el('button', { class: 'btn btn-gold', onclick: () => guardarPedido(false) }, '➕ Añadir y meter otra raqueta de este cliente'),
+    el('button', { class: 'btn btn-primary', onclick: () => guardarPedido(true) }, '✅ Añadir y terminar (ir a la cola)'),
   ));
   wrap.appendChild(panel);
   return wrap;
@@ -5707,7 +5743,7 @@ function viewClientes() {
           card.appendChild(el('div', { class: 'sub' }, 'Todavía no ha traído ninguna raqueta.'));
         } else {
           const tabla = el('table', {}, el('thead', {}, el('tr', {},
-            el('th', {}, 'Fecha'), el('th', {}, 'Raqueta'), el('th', {}, 'Cordaje'), el('th', {}, 'Tensión'), el('th', {}, 'Precio'), el('th', {}, 'Estado'))));
+            el('th', {}, 'Fecha'), el('th', {}, 'Raqueta'), el('th', {}, 'Cordaje'), el('th', {}, 'Tensión'), el('th', {}, 'Precio'), el('th', {}, 'Pago'), el('th', {}, 'Estado'))));
           const tbody = el('tbody');
           pedidos.forEach(p => {
             const cor = cordajeDe(p.cordajeId);
@@ -5717,7 +5753,8 @@ function viewClientes() {
               el('td', {}, cor ? cor.nombre : '—'),
               el('td', {}, fmtTension(p)),
               el('td', {}, euros(p.precio)),
-              el('td', {}, p.estado === 'entregado' ? el('span', { class: 'chip chip-gold' }, 'Entregado') : p.estado === 'terminado' ? el('span', { class: 'chip chip-gold' }, 'Terminado') : el('span', { class: 'chip chip-muted' }, 'En curso')),
+              el('td', {}, p.pagado ? el('span', { class: 'chip chip-gold' }, 'Pagado') : el('span', { class: 'chip chip-muted' }, 'Pendiente')),
+              el('td', {}, p.estado === 'entregado' ? el('span', { class: 'chip chip-gold' }, 'Entregado') : p.estado === 'terminado' ? el('span', { class: 'chip chip-gold' }, 'Terminado') : (p.aplazado ? el('span', { class: 'chip chip-muted' }, 'Aplazado') : el('span', { class: 'chip chip-muted' }, 'En curso'))),
             ));
           });
           tabla.appendChild(tbody);
@@ -5741,12 +5778,15 @@ function viewCatalogo() {
     panelCordajes.appendChild(el('div', { class: 'empty-state' }, 'Todavía no has añadido ningún cordaje.'));
   } else {
     state.cordajes.forEach(c => {
+      const beneficioUd = (c.precio || 0) - (c.precioCoste || 0);
       panelCordajes.appendChild(el('div', { class: 'card' },
         el('div', { class: 'grid' },
           field('Nombre', inputEl('text', c.nombre, v => { c.nombre = v; render(); })),
-          field('Precio (€)', inputEl('number', c.precio, v => { c.precio = parseFloat(v) || 0; }, { min: 0, step: '0.5' })),
-          field('Stock (metros o unidades)', inputEl('number', c.stock, v => { c.stock = parseFloat(v) || 0; }, { min: 0 })),
+          field('Precio de coste (€)', inputEl('number', c.precioCoste || 0, v => { c.precioCoste = parseFloat(v) || 0; render(); }, { min: 0, step: '0.5' })),
+          field('Precio de venta (€)', inputEl('number', c.precio, v => { c.precio = parseFloat(v) || 0; render(); }, { min: 0, step: '0.5' })),
+          field('Stock (metros o unidades)', inputEl('number', c.stock, v => { c.stock = parseFloat(v) || 0; render(); }, { min: 0 })),
         ),
+        el('div', { class: 'sub', style: 'margin-top:6px;' }, `Beneficio por unidad: ${euros(beneficioUd)} · Beneficio potencial del stock: ${euros(beneficioUd * (c.stock || 0))}`),
         el('div', { class: 'toolbar', style: 'margin-top:6px;' },
           el('button', { class: 'btn btn-danger btn-sm', onclick: () => { removeCordaje(c.id); render(); } }, 'Eliminar'),
         ),
@@ -5763,19 +5803,25 @@ function viewCatalogo() {
   if (!state.articulos.length) {
     panelArt.appendChild(el('div', { class: 'empty-state' }, 'Todavía no has añadido ningún artículo.'));
   } else {
+    let beneficioTotalPotencial = 0;
     state.articulos.forEach(a => {
+      const beneficioUd = (a.precio || 0) - (a.precioCoste || 0);
+      beneficioTotalPotencial += beneficioUd * (a.stock || 0);
       panelArt.appendChild(el('div', { class: 'card' },
         el('div', { class: 'grid' },
           field('Nombre', inputEl('text', a.nombre, v => { a.nombre = v; render(); })),
           field('Tipo', selectEl(['Raqueta', 'Mochila', 'Llavero', 'Grip', 'Calzado', 'Otro'].map(t => ({ value: t, label: t })), a.tipo, v => { a.tipo = v; })),
-          field('Precio (€)', inputEl('number', a.precio, v => { a.precio = parseFloat(v) || 0; }, { min: 0, step: '0.5' })),
-          field('Stock', inputEl('number', a.stock, v => { a.stock = parseFloat(v) || 0; }, { min: 0 })),
+          field('Precio de coste (€)', inputEl('number', a.precioCoste || 0, v => { a.precioCoste = parseFloat(v) || 0; render(); }, { min: 0, step: '0.5' })),
+          field('Precio de venta (€)', inputEl('number', a.precio, v => { a.precio = parseFloat(v) || 0; render(); }, { min: 0, step: '0.5' })),
+          field('Stock', inputEl('number', a.stock, v => { a.stock = parseFloat(v) || 0; render(); }, { min: 0 })),
         ),
+        el('div', { class: 'sub', style: 'margin-top:6px;' }, `Beneficio por unidad: ${euros(beneficioUd)} · Beneficio potencial del stock: ${euros(beneficioUd * (a.stock || 0))}`),
         el('div', { class: 'toolbar', style: 'margin-top:6px;' },
           el('button', { class: 'btn btn-danger btn-sm', onclick: () => { removeArticulo(a.id); render(); } }, 'Eliminar'),
         ),
       ));
     });
+    panelArt.appendChild(el('div', { class: 'msg msg-info', style: 'margin-top:10px;' }, `Beneficio potencial total de todo el stock de artículos: ${euros(beneficioTotalPotencial)}.`));
   }
   wrap.appendChild(panelArt);
 
@@ -5793,9 +5839,10 @@ function viewHistorial() {
   const wrap = document.createDocumentFragment();
   const terminados = state.pedidos.filter(p => p.estado === 'terminado' || p.estado === 'entregado').sort((a, b) => b.horaLlegada - a.horaLlegada);
   const total = terminados.reduce((s, p) => s + (p.precio || 0), 0);
+  const pendienteDeCobro = terminados.filter(p => !p.pagado).reduce((s, p) => s + (p.precio || 0), 0);
   const panel = el('div', { class: 'panel' },
     el('h2', {}, '📚 Historial de encordados'),
-    el('div', { class: 'sub' }, `${terminados.length} raqueta(s) entregadas · Total facturado: ${euros(total)}`),
+    el('div', { class: 'sub' }, `${terminados.length} raqueta(s) · Total facturado: ${euros(total)}${pendienteDeCobro > 0 ? ' · Pendiente de cobro: ' + euros(pendienteDeCobro) : ' · Todo cobrado'}`),
   );
   if (!terminados.length) {
     panel.appendChild(el('div', { class: 'empty-state' }, 'Todavía no has terminado ninguna raqueta.'));
@@ -5803,7 +5850,7 @@ function viewHistorial() {
     return wrap;
   }
   const table = el('table', {}, el('thead', {}, el('tr', {},
-    el('th', {}, 'Fecha'), el('th', {}, 'Cliente'), el('th', {}, 'Raqueta'), el('th', {}, 'Cordaje'), el('th', {}, 'Tensión'), el('th', {}, 'Duración'), el('th', {}, 'Precio'), el('th', {}, ''))));
+    el('th', {}, 'Fecha'), el('th', {}, 'Cliente'), el('th', {}, 'Raqueta'), el('th', {}, 'Cordaje'), el('th', {}, 'Tensión'), el('th', {}, 'Duración'), el('th', {}, 'Precio'), el('th', {}, 'Pago'), el('th', {}, 'Entrega'))));
   const tbody = el('tbody');
   terminados.forEach(p => {
     const cli = clienteDe(p.clienteId);
@@ -5817,6 +5864,7 @@ function viewHistorial() {
       el('td', {}, fmtTension(p)),
       el('td', {}, duracion),
       el('td', {}, euros(p.precio)),
+      el('td', {}, el('button', { class: 'btn btn-sm ' + (p.pagado ? 'btn-gold' : 'btn-ghost'), onclick: () => { p.pagado = !p.pagado; render(); } }, p.pagado ? '✓ Pagado' : 'Pendiente')),
       el('td', {}, p.estado === 'entregado' ? el('span', { class: 'chip chip-gold' }, 'Entregado') : el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { entregarPedido(p); render(); } }, 'Marcar entregado')),
     ));
   });

@@ -5754,38 +5754,41 @@ function viewNuevoPedido() {
     } }, '+ Crear como cliente nuevo'),
   ));
 
-  const marcaSelect = el('select', {});
-  const marcaLibreInput = el('input', { type: 'text', placeholder: 'Escribe marca y modelo', style: 'display:none;margin-top:6px;' });
-  function construirOpcionesMarca() {
-    marcaSelect.innerHTML = '';
-    marcaSelect.appendChild(el('option', { value: '' }, '— Elegir raqueta —'));
+  const marcaTextInput = el('input', { type: 'text', placeholder: 'Ej: Yonex Astrox 99' });
+  const marcaDropdownPanel = el('div', { style: 'display:none;position:absolute;top:100%;left:0;right:0;max-height:240px;overflow-y:auto;background:#fff;border:1px solid #ccc;border-radius:8px;box-shadow:0 4px 10px rgba(0,0,0,.15);z-index:20;' });
+  const marcaCampoDiv = el('div', { style: 'position:relative;' }, marcaTextInput, marcaDropdownPanel);
+  function listaRaquetasPlana() {
     const combinadas = raquetasMercadoCompleto();
+    const plana = [];
     Object.keys(combinadas).sort().forEach(marca => {
-      const grupo = el('optgroup', { label: marca });
-      combinadas[marca].forEach(r => {
-        grupo.appendChild(el('option', { value: marca + ' ' + r.modelo }, r.modelo + (r.tensionMaxKg ? ' (máx. ' + r.tensionMaxKg + ' kg)' : '')));
-      });
-      marcaSelect.appendChild(grupo);
+      combinadas[marca].forEach(r => plana.push({ marca, modelo: r.modelo, tensionMaxKg: r.tensionMaxKg }));
     });
-    marcaSelect.appendChild(el('option', { value: '__otra__' }, '✏️ Otra (escribir a mano)'));
+    return plana;
   }
-  construirOpcionesMarca();
-  marcaSelect.addEventListener('change', () => {
-    if (marcaSelect.value === '__otra__') {
-      marcaLibreInput.style.display = 'block';
-      marcaLibreInput.value = '';
-      marcaLibreInput.focus();
-    } else {
-      marcaLibreInput.style.display = 'none';
-      marcaLibreInput.value = '';
-    }
-    comprobarTensionMax();
-  });
-  marcaLibreInput.addEventListener('input', comprobarTensionMax);
+  function pintarDropdownRaqueta() {
+    marcaDropdownPanel.innerHTML = '';
+    const q = marcaTextInput.value.trim().toLowerCase();
+    const todas = listaRaquetasPlana();
+    const encontradas = q ? todas.filter(r => (r.marca + ' ' + r.modelo).toLowerCase().includes(q)) : todas;
+    if (!encontradas.length) { marcaDropdownPanel.style.display = 'none'; return; }
+    encontradas.slice(0, 40).forEach(r => {
+      marcaDropdownPanel.appendChild(el('div', {
+        style: 'padding:10px 12px;border-bottom:1px solid #eee;cursor:pointer;font-size:14px;',
+        onclick: () => {
+          marcaTextInput.value = r.marca + ' ' + r.modelo;
+          marcaDropdownPanel.style.display = 'none';
+          comprobarTensionMax();
+        },
+      }, r.marca + ' ' + r.modelo + (r.tensionMaxKg ? ' (máx. ' + r.tensionMaxKg + ' kg)' : '')));
+    });
+    marcaDropdownPanel.style.display = 'block';
+  }
+  marcaTextInput.addEventListener('focus', pintarDropdownRaqueta);
+  marcaTextInput.addEventListener('input', () => { pintarDropdownRaqueta(); comprobarTensionMax(); });
+  marcaTextInput.addEventListener('blur', () => { setTimeout(() => { marcaDropdownPanel.style.display = 'none'; }, 150); });
   function marcaModeloFinal() {
-    return marcaSelect.value === '__otra__' ? marcaLibreInput.value.trim() : marcaSelect.value;
+    return marcaTextInput.value.trim();
   }
-  const marcaCampoDiv = el('div', {}, marcaSelect, marcaLibreInput);
   const tensionVInput = el('input', { type: 'number', step: '0.5', min: '0', placeholder: 'Ej: 10.5' });
   const tensionHInput = el('input', { type: 'number', step: '0.5', min: '0', placeholder: 'Ej: 10' });
   const avisoTensionMaxDiv = el('div', {});
@@ -5875,10 +5878,7 @@ function viewNuevoPedido() {
       el('button', { class: 'btn btn-ghost btn-sm', onclick: () => {
         if (!nuevaMarcaInput.value.trim() || !nuevoModeloInput.value.trim()) { alert('Pon marca y modelo.'); return; }
         addRaquetaExtra(nuevaMarcaInput.value, nuevoModeloInput.value, nuevaTensionMaxInput.value ? parseFloat(nuevaTensionMaxInput.value) : null);
-        const valorNuevo = nuevaMarcaInput.value.trim() + ' ' + nuevoModeloInput.value.trim();
-        construirOpcionesMarca();
-        marcaSelect.value = valorNuevo;
-        marcaLibreInput.style.display = 'none';
+        marcaTextInput.value = nuevaMarcaInput.value.trim() + ' ' + nuevoModeloInput.value.trim();
         nuevaMarcaInput.value = ''; nuevoModeloInput.value = ''; nuevaTensionMaxInput.value = '';
         saveLocal();
         comprobarTensionMax();

@@ -5362,8 +5362,8 @@ function fmtFechaDMY(s) {
 function fmtTension(p) {
   const v = p.tensionVertical, h = p.tensionHorizontal;
   if (!v && !h) return '—';
-  if (v && h && v !== h) return v + '/' + h + ' lbs (V/H)';
-  return (v || h) + ' lbs';
+  if (v && h && v !== h) return v + '/' + h + ' kg (V/H)';
+  return (v || h) + ' kg';
 }
 function fmtHora(ts) {
   if (!ts) return '—';
@@ -5730,8 +5730,8 @@ function viewNuevoPedido() {
   ));
 
   const marcaInput = el('input', { type: 'text', placeholder: 'Ej: Yonex Astrox 99' });
-  const tensionVInput = el('input', { type: 'number', step: '0.5', min: '0', placeholder: 'Ej: 24' });
-  const tensionHInput = el('input', { type: 'number', step: '0.5', min: '0', placeholder: 'Ej: 22' });
+  const tensionVInput = el('input', { type: 'number', step: '0.5', min: '0', placeholder: 'Ej: 10.5' });
+  const tensionHInput = el('input', { type: 'number', step: '0.5', min: '0', placeholder: 'Ej: 10' });
   const cordajeSelect = el('select', {});
   const precioInput = el('input', { type: 'number', step: '0.5', min: '0', value: state.config.precioSinCordaje });
   const MOLESTIAS_JUGADOR_TALLER = [
@@ -5789,8 +5789,8 @@ function viewNuevoPedido() {
   panel.appendChild(el('div', { class: 'grid' },
     field('Marca y modelo de la raqueta', marcaInput),
     field('Cordaje', cordajeSelect),
-    field('Tensión vertical (lbs)', tensionVInput),
-    field('Tensión horizontal (lbs)', tensionHInput),
+    field('Tensión vertical (kg)', tensionVInput),
+    field('Tensión horizontal (kg)', tensionHInput),
     field('Precio (€)', precioInput),
     field('Foto de la raqueta (opcional)', fotoInput),
   ));

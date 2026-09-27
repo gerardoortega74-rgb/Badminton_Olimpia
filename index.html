@@ -5323,16 +5323,26 @@ function defaultState() {
 }
 function raquetasMercadoCompleto() {
   const combinado = {};
-  Object.keys(RAQUETAS_MERCADO_BASE).forEach(marca => { combinado[marca] = RAQUETAS_MERCADO_BASE[marca].slice(); });
+  Object.keys(RAQUETAS_MERCADO_BASE).forEach(marca => { combinado[marca] = RAQUETAS_MERCADO_BASE[marca].map(r => Object.assign({}, r)); });
   (state.raquetasExtra || []).forEach(r => {
     if (!combinado[r.marca]) combinado[r.marca] = [];
-    if (!combinado[r.marca].includes(r.modelo)) combinado[r.marca].push(r.modelo);
+    if (!combinado[r.marca].some(x => x.modelo === r.modelo)) combinado[r.marca].push({ modelo: r.modelo, tensionMaxKg: r.tensionMaxKg || null });
   });
   return combinado;
 }
-function addRaquetaExtra(marca, modelo) {
+function buscarRaquetaPorNombre(nombreCompleto) {
+  const combinado = raquetasMercadoCompleto();
+  const nombreNorm = String(nombreCompleto || '').trim().toLowerCase();
+  for (const marca in combinado) {
+    for (const r of combinado[marca]) {
+      if ((marca + ' ' + r.modelo).toLowerCase() === nombreNorm) return { marca, modelo: r.modelo, tensionMaxKg: r.tensionMaxKg };
+    }
+  }
+  return null;
+}
+function addRaquetaExtra(marca, modelo, tensionMaxKg) {
   if (!marca.trim() || !modelo.trim()) return;
-  state.raquetasExtra.push({ id: uid('rmod'), marca: marca.trim(), modelo: modelo.trim() });
+  state.raquetasExtra.push({ id: uid('rmod'), marca: marca.trim(), modelo: modelo.trim(), tensionMaxKg: tensionMaxKg || null });
 }
 function removeRaquetaExtra(id) { state.raquetasExtra = state.raquetasExtra.filter(r => r.id !== id); }
 let state = defaultState();
@@ -5754,12 +5764,28 @@ function viewNuevoPedido() {
   datalistRaquetas.innerHTML = '';
   const raquetasCombinadas = raquetasMercadoCompleto();
   Object.keys(raquetasCombinadas).forEach(marca => {
-    raquetasCombinadas[marca].forEach(modelo => {
-      datalistRaquetas.appendChild(el('option', { value: marca + ' ' + modelo }));
+    raquetasCombinadas[marca].forEach(r => {
+      datalistRaquetas.appendChild(el('option', { value: marca + ' ' + r.modelo + (r.tensionMaxKg ? ' (máx. ' + r.tensionMaxKg + ' kg)' : '') }));
     });
   });
   const tensionVInput = el('input', { type: 'number', step: '0.5', min: '0', placeholder: 'Ej: 10.5' });
   const tensionHInput = el('input', { type: 'number', step: '0.5', min: '0', placeholder: 'Ej: 10' });
+  const avisoTensionMaxDiv = el('div', {});
+  function comprobarTensionMax() {
+    avisoTensionMaxDiv.innerHTML = '';
+    const nombreEscrito = marcaInput.value.replace(/\s*\(máx\..*\)\s*$/, '');
+    const raqueta = buscarRaquetaPorNombre(nombreEscrito);
+    if (!raqueta || !raqueta.tensionMaxKg) return;
+    const vMax = Math.max(parseFloat(tensionVInput.value) || 0, parseFloat(tensionHInput.value) || 0);
+    if (vMax > raqueta.tensionMaxKg) {
+      avisoTensionMaxDiv.appendChild(el('div', { class: 'msg msg-warn' },
+        `⚠️ Esa raqueta (${raqueta.marca} ${raqueta.modelo}) tiene un máximo recomendado de ${raqueta.tensionMaxKg} kg. Estás poniendo más tensión de la recomendada por el fabricante.`));
+    }
+  }
+  marcaInput.addEventListener('change', comprobarTensionMax);
+  marcaInput.addEventListener('input', comprobarTensionMax);
+  tensionVInput.addEventListener('change', comprobarTensionMax);
+  tensionHInput.addEventListener('change', comprobarTensionMax);
   const cordajeSelect = el('select', {});
   const precioInput = el('input', { type: 'number', step: '0.5', min: '0', value: state.config.precioSinCordaje });
   const MOLESTIAS_JUGADOR_TALLER = [
@@ -5822,22 +5848,25 @@ function viewNuevoPedido() {
     field('Precio (€)', precioInput),
     field('Foto de la raqueta (opcional)', fotoInput),
   ));
+  panel.appendChild(avisoTensionMaxDiv);
 
   const nuevaMarcaInput = el('input', { type: 'text', placeholder: 'Marca (ej: Yonex)' });
   const nuevoModeloInput = el('input', { type: 'text', placeholder: 'Modelo (ej: Astrox 200)' });
+  const nuevaTensionMaxInput = el('input', { type: 'number', step: '0.5', min: '0', placeholder: 'Máx. kg (opcional)' });
   panel.appendChild(el('div', { class: 'card', style: 'padding:10px 14px;margin-bottom:16px;' },
     el('div', { class: 'sub', style: 'margin-bottom:6px;' }, '¿La raqueta no está en la lista? Añádela para que aparezca siempre a partir de ahora:'),
     el('div', { class: 'row', style: 'gap:8px;flex-wrap:wrap;' },
-      nuevaMarcaInput, nuevoModeloInput,
+      nuevaMarcaInput, nuevoModeloInput, nuevaTensionMaxInput,
       el('button', { class: 'btn btn-ghost btn-sm', onclick: () => {
         if (!nuevaMarcaInput.value.trim() || !nuevoModeloInput.value.trim()) { alert('Pon marca y modelo.'); return; }
-        addRaquetaExtra(nuevaMarcaInput.value, nuevoModeloInput.value);
+        addRaquetaExtra(nuevaMarcaInput.value, nuevoModeloInput.value, nuevaTensionMaxInput.value ? parseFloat(nuevaTensionMaxInput.value) : null);
         marcaInput.value = nuevaMarcaInput.value.trim() + ' ' + nuevoModeloInput.value.trim();
         datalistRaquetas.innerHTML = '';
         const combinadas = raquetasMercadoCompleto();
-        Object.keys(combinadas).forEach(marca => { combinadas[marca].forEach(modelo => { datalistRaquetas.appendChild(el('option', { value: marca + ' ' + modelo })); }); });
-        nuevaMarcaInput.value = ''; nuevoModeloInput.value = '';
+        Object.keys(combinadas).forEach(marca => { combinadas[marca].forEach(r => { datalistRaquetas.appendChild(el('option', { value: marca + ' ' + r.modelo + (r.tensionMaxKg ? ' (máx. ' + r.tensionMaxKg + ' kg)' : '') })); }); });
+        nuevaMarcaInput.value = ''; nuevoModeloInput.value = ''; nuevaTensionMaxInput.value = '';
         saveLocal();
+        comprobarTensionMax();
       } }, '+ Añadir modelo a la lista'),
     ),
   ));
@@ -5942,19 +5971,35 @@ function viewClientes() {
   return wrap;
 }
 
+function rm(modelo, tensionMaxKg) { return { modelo, tensionMaxKg }; }
 const RAQUETAS_MERCADO_BASE = {
-  'Yonex': ['Astrox 99 Pro', 'Astrox 99 Play', 'Astrox 100 ZZ', 'Astrox 88D Pro', 'Astrox 88S Pro', 'Astrox 77', 'Astrox 68D', 'Astrox 22', 'Astrox 2', 'Nanoflare 1000 Z', 'Nanoflare 800 Pro', 'Nanoflare 800', 'Nanoflare 700', 'Nanoflare Nextage', 'Nanoflare Drive', 'Arcsaber 11 Pro', 'Arcsaber 11', 'Arcsaber 7', 'Arcsaber 71', 'Duora 10', 'Duora Z-Strike', 'Voltric Z-Force II', 'Nanoray 900', 'GR-303i', 'ZR-100', 'Nanoray 10F', 'Nanoray 72 Light', 'Astrox Attack 9', 'Muscle Power 2', 'Nanoflare 001', 'Nanoflare Speed 7'],
-  'Victor': ['Thruster K Falcon', 'Thruster F', 'Thruster Ryuga Metallic', 'Thruster 1H H', 'Auraspeed 90K II', 'Auraspeed 90K', 'DriveX 12', 'DriveX 10 Metallic', 'Jetspeed S 12', 'Brave Sword 12'],
-  'Li-Ning': ['Axforce 90 Max Dragon', 'Axforce 100', 'Windstorm 78', 'Windstorm 72', 'Turbo Charging 75', 'Turbo Charging 70D', 'Aeronaut 9000', 'Aeronaut 7000', 'N90', 'N99', 'Bladex 900', 'Halbertec 9000', 'XP 901', 'G-Force 5900', 'G-Force Superlite'],
-  'Babolat': ['Satelite Gravity', 'Satelite Origin', 'X-Feel Fury Ti', 'X-Feel Lite'],
-  'Carlton': ['Kinesis Ultra X', 'Vapour Trail'],
-  'Apacs': ['Feather Weight X', 'Force II'],
-  'Hiqua': ['HQ-300', 'HQ-39', 'HQ-800 Champion 88', '7272', 'Winner Choice', 'Extra Power 88 Holes 2010', 'Super Max', 'Ultra Sonic'],
-  'Cosco': ['CB-150', 'CB-120', 'CB-80', 'Drive'],
-  "Silver's": ['Pro 79'],
-  'Nivia': ['Attack'],
-  'Hundred': ['N-ergy 80'],
-  'Woods': ['Hypalite'],
+  'Yonex': [
+    rm('Astrox 99 Pro', 13.5), rm('Astrox 99 Play', 12.5), rm('Astrox 100 ZZ', 13.5), rm('Astrox 88D Pro', 12.5), rm('Astrox 88S Pro', 12.5),
+    rm('Astrox 77', 12), rm('Astrox 68D', 11), rm('Astrox 22', 10), rm('Astrox 2', 9.5),
+    rm('Nanoflare 1000 Z', 13.5), rm('Nanoflare 800 Pro', 12.5), rm('Nanoflare 800', 12), rm('Nanoflare 700', 11.5), rm('Nanoflare Nextage', 10.5), rm('Nanoflare Drive', 10),
+    rm('Arcsaber 11 Pro', 12.5), rm('Arcsaber 11', 12), rm('Arcsaber 7', 11), rm('Arcsaber 71', 11),
+    rm('Duora 10', 12), rm('Duora Z-Strike', 12), rm('Voltric Z-Force II', 12.5), rm('Nanoray 900', 11.5),
+    rm('GR-303i', 9), rm('ZR-100', 8.5), rm('Nanoray 10F', 10), rm('Nanoray 72 Light', 9.5), rm('Astrox Attack 9', 10), rm('Muscle Power 2', 9.5), rm('Nanoflare 001', 9.5), rm('Nanoflare Speed 7', 9.5),
+  ],
+  'Victor': [
+    rm('Thruster K Falcon', 14.5), rm('Thruster F', 13.5), rm('Thruster Ryuga Metallic', 14.5), rm('Thruster 1H H', 12.5),
+    rm('Auraspeed 90K II', 13), rm('Auraspeed 90K', 13), rm('DriveX 12', 15), rm('DriveX 10 Metallic', 13.5), rm('Jetspeed S 12', 13), rm('Brave Sword 12', 13.5),
+  ],
+  'Li-Ning': [
+    rm('Axforce 90 Max Dragon', 15.5), rm('Axforce 100', 15.5), rm('Windstorm 78', 13), rm('Windstorm 72', 12.5),
+    rm('Turbo Charging 75', 12.5), rm('Turbo Charging 70D', 12), rm('Aeronaut 9000', 13), rm('Aeronaut 7000', 12.5),
+    rm('N90', 12.5), rm('N99', 13), rm('Bladex 900', 13.5), rm('Halbertec 9000', 13.5),
+    rm('XP 901', 9), rm('G-Force 5900', 10), rm('G-Force Superlite', 9.5),
+  ],
+  'Babolat': [rm('Satelite Gravity', 12.5), rm('Satelite Origin', 12), rm('X-Feel Fury Ti', 12.5), rm('X-Feel Lite', 10.5)],
+  'Carlton': [rm('Kinesis Ultra X', 11), rm('Vapour Trail', 10)],
+  'Apacs': [rm('Feather Weight X', 11.5), rm('Force II', 11)],
+  'Hiqua': [rm('HQ-300', 10), rm('HQ-39', 11.5), rm('HQ-800 Champion 88', 11), rm('7272', 8), rm('Winner Choice', 8), rm('Extra Power 88 Holes 2010', 13.5), rm('Super Max', 9), rm('Ultra Sonic', 9)],
+  'Cosco': [rm('CB-150', 9.5), rm('CB-120', 9), rm('CB-80', 8), rm('Drive', 9)],
+  "Silver's": [rm('Pro 79', 8.5)],
+  'Nivia': [rm('Attack', 9.5)],
+  'Hundred': [rm('N-ergy 80', 10.5)],
+  'Woods': [rm('Hypalite', 10)],
 };
 const NIVELES_JUGADOR_TALLER = [
   { value: 'todos', label: 'Cualquier nivel' },

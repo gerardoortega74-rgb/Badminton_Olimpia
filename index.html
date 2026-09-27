@@ -5405,7 +5405,7 @@ function addCliente(datos) {
 function removeCliente(id) { state.clientes = state.clientes.filter(c => c.id !== id); }
 function addArticulo() { state.articulos.push({ id: uid('art'), nombre: 'Nuevo artículo', tipo: 'Otro', precioCoste: 0, precio: 0, stock: 0 }); }
 function removeArticulo(id) { state.articulos = state.articulos.filter(a => a.id !== id); }
-function addCordaje() { state.cordajes.push({ id: uid('cor'), nombre: 'Nuevo cordaje', precioCoste: 0, precio: 0, stock: 0 }); }
+function addCordaje() { state.cordajes.push({ id: uid('cor'), nombre: 'Nuevo cordaje', precioCoste: 0, precio: 0, stock: 0, nivelRecomendado: 'todos', estiloRecomendado: 'todos', suave: false }); }
 function removeCordaje(id) { state.cordajes = state.cordajes.filter(c => c.id !== id); }
 
 function pedidosEnCola() {
@@ -5732,8 +5732,53 @@ function viewNuevoPedido() {
   const marcaInput = el('input', { type: 'text', placeholder: 'Ej: Yonex Astrox 99' });
   const tensionVInput = el('input', { type: 'number', step: '0.5', min: '0', placeholder: 'Ej: 24' });
   const tensionHInput = el('input', { type: 'number', step: '0.5', min: '0', placeholder: 'Ej: 22' });
-  const cordajeSelect = selectEl([{ value: '', label: '— Elegir cordaje —' }].concat(state.cordajes.map(c => ({ value: c.id, label: c.nombre + ' (' + euros(c.precio) + ', stock: ' + c.stock + ')' }))), '', () => {});
+  const cordajeSelect = el('select', {});
   const precioInput = el('input', { type: 'number', step: '0.5', min: '0', value: state.config.precioSinCordaje });
+  const MOLESTIAS_JUGADOR_TALLER = [
+    { value: 'ninguna', label: 'Ninguna' },
+    { value: 'codo', label: 'Codo de tenista' },
+    { value: 'muneca', label: 'Muñeca' },
+    { value: 'hombro', label: 'Hombro' },
+    { value: 'otra', label: 'Otra molestia' },
+  ];
+  function opcionesCordajeOrdenadas(nivel, estilo, molestia) {
+    if (molestia && molestia !== 'ninguna') {
+      const suaves = state.cordajes.filter(c => c.suave);
+      const resto = state.cordajes.filter(c => !c.suave);
+      return suaves.map(c => ({ c, rec: true })).concat(resto.map(c => ({ c, rec: false })));
+    }
+    const coincide = c => (nivel === 'todos' || (c.nivelRecomendado || 'todos') === 'todos' || (c.nivelRecomendado || 'todos') === nivel)
+      && (estilo === 'todos' || (c.estiloRecomendado || 'todos') === 'todos' || (c.estiloRecomendado || 'todos') === estilo);
+    const recomendados = state.cordajes.filter(coincide);
+    const resto = state.cordajes.filter(c => !coincide(c));
+    return recomendados.map(c => ({ c, rec: true })).concat(resto.map(c => ({ c, rec: false })));
+  }
+  function repintarCordajeSelect(nivel, estilo, molestia) {
+    cordajeSelect.innerHTML = '';
+    cordajeSelect.appendChild(el('option', { value: '' }, '— Elegir cordaje —'));
+    const hayFiltro = nivel !== 'todos' || estilo !== 'todos' || (molestia && molestia !== 'ninguna');
+    opcionesCordajeOrdenadas(nivel || 'todos', estilo || 'todos', molestia).forEach(({ c, rec }) => {
+      cordajeSelect.appendChild(el('option', { value: c.id }, (rec && hayFiltro ? '⭐ ' : '') + c.nombre + ' (' + euros(c.precio) + ', stock: ' + c.stock + ')'));
+    });
+  }
+  repintarCordajeSelect('todos', 'todos', 'ninguna');
+  const avisoMolestiaDiv = el('div', {});
+  const nivelJugadorSelect = selectEl(NIVELES_JUGADOR_TALLER, 'todos', () => { repintarCordajeSelect(nivelJugadorSelect.value, estiloJuegoSelect.value, molestiaSelect.value); });
+  const estiloJuegoSelect = selectEl(ESTILOS_JUEGO_TALLER, 'todos', () => { repintarCordajeSelect(nivelJugadorSelect.value, estiloJuegoSelect.value, molestiaSelect.value); });
+  const molestiaSelect = selectEl(MOLESTIAS_JUGADOR_TALLER, 'ninguna', () => {
+    repintarCordajeSelect(nivelJugadorSelect.value, estiloJuegoSelect.value, molestiaSelect.value);
+    avisoMolestiaDiv.innerHTML = '';
+    if (molestiaSelect.value !== 'ninguna') {
+      avisoMolestiaDiv.appendChild(el('div', { class: 'msg msg-warn' }, '⚠️ Con molestias, prioriza un cordaje suave/con amortiguación y baja también la tensión (vertical y horizontal) respecto a lo habitual.'));
+    }
+  });
+  panel.appendChild(el('div', { class: 'msg msg-info' }, '🎯 Cuéntame cómo es el jugador y te marco con ⭐ los cordajes de tu stock más adecuados:'));
+  panel.appendChild(el('div', { class: 'grid' },
+    field('Nivel del jugador', nivelJugadorSelect),
+    field('Estilo de juego', estiloJuegoSelect),
+    field('Molestias o lesiones', molestiaSelect),
+  ));
+  panel.appendChild(avisoMolestiaDiv);
   cordajeSelect.addEventListener('change', () => {
     const cor = cordajeDe(cordajeSelect.value);
     precioInput.value = cor ? ((state.config.precioBaseEncordado || 0) + cor.precio) : (state.config.precioSinCordaje || 0);
@@ -5850,8 +5895,35 @@ function viewClientes() {
   return wrap;
 }
 
+const NIVELES_JUGADOR_TALLER = [
+  { value: 'todos', label: 'Cualquier nivel' },
+  { value: 'iniciacion', label: 'Iniciación' },
+  { value: 'intermedio', label: 'Intermedio' },
+  { value: 'avanzado', label: 'Avanzado / Competición' },
+];
+const ESTILOS_JUEGO_TALLER = [
+  { value: 'todos', label: 'Cualquier estilo' },
+  { value: 'potencia', label: 'Ofensivo / Potencia' },
+  { value: 'control', label: 'Defensivo / Control' },
+  { value: 'equilibrado', label: 'Equilibrado' },
+];
+function labelDe(lista, valor) { const o = lista.find(x => x.value === valor); return o ? o.label : valor; }
+
 function viewCatalogo() {
   const wrap = document.createDocumentFragment();
+  const panelGuia = el('div', { class: 'panel' },
+    el('h2', {}, '📖 Guía rápida para etiquetar cordajes'),
+    el('div', { class: 'sub' },
+      '· Iniciación: cordaje grueso (más duradero), tensión baja, mayor punto dulce, más perdonavidas. ',
+      '· Intermedio: equilibrio entre potencia, control y sensación. ',
+      '· Avanzado: cordaje fino, tensión alta, más control y tacto, menos duración. ',
+      '· Potencia/ofensivo: cordajes de repulsión y buena durabilidad. ',
+      '· Control/defensivo: cordajes finos, con agarre para dejadas y cortes. ',
+      '· Equilibrado: cordaje versátil, todoterreno. ',
+      '· Molestias o lesiones (codo de tenista, muñeca, hombro): prioriza siempre un cordaje suave/con amortiguación, y baja la tensión, por encima de cualquier otra recomendación de nivel o estilo.'),
+  );
+  wrap.appendChild(panelGuia);
+
   const panelCordajes = el('div', { class: 'panel' },
     el('h2', {}, '🧵 Cordajes en stock'),
     el('div', { class: 'toolbar' }, el('button', { class: 'btn btn-gold btn-sm', onclick: () => { addCordaje(); render(); } }, '+ Añadir cordaje')),
@@ -5867,6 +5939,11 @@ function viewCatalogo() {
           field('Precio de coste (€)', inputEl('number', c.precioCoste || 0, v => { c.precioCoste = parseFloat(v) || 0; render(); }, { min: 0, step: '0.5' })),
           field('Precio de venta (€)', inputEl('number', c.precio, v => { c.precio = parseFloat(v) || 0; render(); }, { min: 0, step: '0.5' })),
           field('Stock (metros o unidades)', inputEl('number', c.stock, v => { c.stock = parseFloat(v) || 0; render(); }, { min: 0 })),
+          field('Nivel recomendado', selectEl(NIVELES_JUGADOR_TALLER, c.nivelRecomendado || 'todos', v => { c.nivelRecomendado = v; render(); })),
+          field('Estilo recomendado', selectEl(ESTILOS_JUEGO_TALLER, c.estiloRecomendado || 'todos', v => { c.estiloRecomendado = v; render(); })),
+        ),
+        el('div', { class: 'field', style: 'margin-top:8px;' },
+          el('label', {}, el('input', { type: 'checkbox', style: 'width:auto;margin-right:6px;', checked: c.suave ? 'checked' : null, onchange: e => { c.suave = e.target.checked; render(); } }), 'Cordaje suave / con amortiguación (recomendado para molestias de codo, muñeca u hombro)'),
         ),
         el('div', { class: 'sub', style: 'margin-top:6px;' }, `Beneficio por unidad: ${euros(beneficioUd)} · Beneficio potencial del stock: ${euros(beneficioUd * (c.stock || 0))}`),
         el('div', { class: 'toolbar', style: 'margin-top:6px;' },

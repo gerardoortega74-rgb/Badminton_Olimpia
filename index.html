@@ -5423,7 +5423,10 @@ function comprimirImagen(file, maxWidth, calidad) {
 }
 
 function addCliente(datos) {
-  const nuevo = { id: uid('cli'), nombre: datos.nombre || '', telefono: datos.telefono || '', email: datos.email || '', jugadorId: datos.jugadorId || null, notas: datos.notas || '' };
+  const nuevo = {
+    id: uid('cli'), nombre: datos.nombre || '', telefono: datos.telefono || '', email: datos.email || '', jugadorId: datos.jugadorId || null, notas: datos.notas || '',
+    direccion: datos.direccion || '', codigoPostal: datos.codigoPostal || '', localidad: datos.localidad || '', provincia: datos.provincia || '',
+  };
   state.clientes.push(nuevo);
   return nuevo;
 }
@@ -5927,13 +5930,21 @@ function viewClientes() {
   const nombreInput = el('input', { type: 'text', placeholder: 'Nombre' });
   const telInput = el('input', { type: 'tel', placeholder: 'Teléfono' });
   const emailInput = el('input', { type: 'email', placeholder: 'Email' });
+  const direccionInput = el('input', { type: 'text', placeholder: 'Calle y número' });
+  const cpInput = el('input', { type: 'text', placeholder: 'Código postal' });
+  const localidadInput = el('input', { type: 'text', placeholder: 'Localidad' });
+  const provinciaInput = el('input', { type: 'text', placeholder: 'Provincia' });
   panel.appendChild(el('div', { class: 'grid', style: 'margin-top:10px;' },
     field('Nombre', nombreInput), field('Teléfono', telInput), field('Email', emailInput),
+    field('Dirección', direccionInput), field('Código postal', cpInput), field('Localidad', localidadInput), field('Provincia', provinciaInput),
   ));
   panel.appendChild(el('div', { class: 'toolbar', style: 'margin-bottom:16px;' },
     el('button', { class: 'btn btn-gold btn-sm', onclick: () => {
       if (!nombreInput.value.trim()) { alert('Escribe al menos el nombre.'); return; }
-      addCliente({ nombre: nombreInput.value.trim(), telefono: telInput.value.trim(), email: emailInput.value.trim() });
+      addCliente({
+        nombre: nombreInput.value.trim(), telefono: telInput.value.trim(), email: emailInput.value.trim(),
+        direccion: direccionInput.value.trim(), codigoPostal: cpInput.value.trim(), localidad: localidadInput.value.trim(), provincia: provinciaInput.value.trim(),
+      });
       render();
     } }, '+ Añadir cliente'),
   ));
@@ -5953,6 +5964,16 @@ function viewClientes() {
         el('div', { class: 'sub' }, [c.telefono, c.email].filter(Boolean).join(' · ') || 'Sin contacto'),
       );
       if (expandido) {
+        card.appendChild(el('h4', { style: 'margin:12px 0 6px;' }, '📇 Datos de contacto y envío'));
+        card.appendChild(el('div', { class: 'grid', onclick: e => e.stopPropagation() },
+          field('Nombre', inputEl('text', c.nombre, v => { c.nombre = v; render(); })),
+          field('Teléfono', inputEl('tel', c.telefono, v => { c.telefono = v; render(); })),
+          field('Email', inputEl('email', c.email, v => { c.email = v; render(); })),
+          field('Dirección', inputEl('text', c.direccion || '', v => { c.direccion = v; render(); })),
+          field('Código postal', inputEl('text', c.codigoPostal || '', v => { c.codigoPostal = v; render(); })),
+          field('Localidad', inputEl('text', c.localidad || '', v => { c.localidad = v; render(); })),
+          field('Provincia', inputEl('text', c.provincia || '', v => { c.provincia = v; render(); })),
+        ));
         const pedidos = pedidosDeCliente(c.id);
         const totalGastado = pedidos.reduce((s, p) => s + (p.precio || 0), 0);
         const totalPendiente = pedidos.filter(p => !p.pagado).reduce((s, p) => s + (p.precio || 0), 0);

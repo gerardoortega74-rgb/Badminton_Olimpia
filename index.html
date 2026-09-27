@@ -265,9 +265,15 @@ if (window.pdfjsLib) { pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.c
     <div id="planMainArea"></div>
   </div>
 
+  <div id="tallerScreen" style="display:none;">
+    <nav class="tabs" id="tallerTabsNav" style="margin:-20px -16px 20px;"></nav>
+    <div id="tallerMainArea"></div>
+  </div>
+
 </main>
 
 <div id="torneoModalRoot"></div>
+<div id="tallerModalRoot"></div>
 <div id="areaImpresionActa"></div>
 
 <script>
@@ -5300,6 +5306,539 @@ function setState(s) {
 function mount() { tryLoadLocal(); migrarConfigCuotas(); render(); }
 return { render, mount, getState, setState, precioInscripcion, numModalidadesDe };
 })();
+
+window.TallerApp = (function () {
+function uid(prefix) { return prefix + '_' + (uidCounter++) + '_' + Math.random().toString(36).slice(2, 7); }
+let uidCounter = 1;
+function defaultState() {
+  return {
+    config: { tiempoMedioMinutos: 35, precioBaseEncordado: 12 },
+    clientes: [],
+    articulos: [],
+    cordajes: [],
+    pedidos: [],
+  };
+}
+let state = defaultState();
+let activeTab = 'cola';
+let clienteSeleccionadoId = null;
+let filtroClienteTexto = '';
+
+function el(tag, attrs, ...children) {
+  const node = document.createElement(tag);
+  attrs = attrs || {};
+  for (const k in attrs) {
+    if (k === 'class') node.className = attrs[k];
+    else if (k.startsWith('on') && typeof attrs[k] === 'function') node.addEventListener(k.slice(2), attrs[k]);
+    else if (attrs[k] !== null && attrs[k] !== undefined) node.setAttribute(k, attrs[k]);
+  }
+  children.flat(Infinity).forEach(c => {
+    if (c === null || c === undefined) return;
+    node.appendChild(typeof c === 'string' || typeof c === 'number' ? document.createTextNode(String(c)) : c);
+  });
+  return node;
+}
+function field(label, inputNode) { return el('div', { class: 'field' }, el('label', {}, label), inputNode); }
+function inputEl(type, value, onChange, extraAttrs) {
+  const attrs = Object.assign({ type, value: value === undefined || value === null ? '' : value }, extraAttrs || {});
+  const node = el('input', attrs);
+  node.addEventListener('change', (e) => onChange(e.target.value));
+  return node;
+}
+function selectEl(options, value, onChange) {
+  const node = el('select', {}, options.map(o => el('option', { value: o.value, selected: o.value === value ? 'selected' : null }, o.label)));
+  node.value = value;
+  node.addEventListener('change', (e) => onChange(e.target.value));
+  return node;
+}
+function euros(n) { return (Math.round((n || 0) * 100) / 100).toFixed(2) + ' €'; }
+function fmtFechaDMY(s) {
+  if (!s) return '—';
+  const partes = String(s).slice(0, 10).split('-');
+  if (partes.length !== 3) return s;
+  return partes[2] + '/' + partes[1] + '/' + partes[0];
+}
+function fmtHora(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+}
+function fmtFechaHora(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  return fmtFechaDMY(d.toISOString().slice(0, 10)) + ' ' + fmtHora(ts);
+}
+
+function comprimirImagen(file, maxWidth, calidad) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if (w > maxWidth) { h = Math.round(h * (maxWidth / w)); w = maxWidth; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', calidad));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function addCliente(datos) {
+  const nuevo = { id: uid('cli'), nombre: datos.nombre || '', telefono: datos.telefono || '', email: datos.email || '', jugadorId: datos.jugadorId || null, notas: datos.notas || '' };
+  state.clientes.push(nuevo);
+  return nuevo;
+}
+function removeCliente(id) { state.clientes = state.clientes.filter(c => c.id !== id); }
+function addArticulo() { state.articulos.push({ id: uid('art'), nombre: 'Nuevo artículo', tipo: 'Otro', precio: 0, stock: 0 }); }
+function removeArticulo(id) { state.articulos = state.articulos.filter(a => a.id !== id); }
+function addCordaje() { state.cordajes.push({ id: uid('cor'), nombre: 'Nuevo cordaje', precio: 0, stock: 0 }); }
+function removeCordaje(id) { state.cordajes = state.cordajes.filter(c => c.id !== id); }
+
+function pedidosEnCola() {
+  return state.pedidos.filter(p => p.estado === 'pendiente' || p.estado === 'en_proceso').sort((a, b) => a.horaLlegada - b.horaLlegada);
+}
+function horaEstimadaPara(pedidoId) {
+  const cola = pedidosEnCola();
+  const posicion = cola.findIndex(p => p.id === pedidoId);
+  if (posicion === -1) return null;
+  const minutos = (posicion + 1) * (state.config.tiempoMedioMinutos || 35);
+  return Date.now() + minutos * 60000;
+}
+function tiempoMedioReal() {
+  const terminados = state.pedidos.filter(p => p.estado !== 'pendiente' && p.estado !== 'en_proceso' && p.horaInicio && p.horaFin);
+  if (!terminados.length) return null;
+  const total = terminados.reduce((sum, p) => sum + (p.horaFin - p.horaInicio), 0);
+  return Math.round((total / terminados.length) / 60000);
+}
+function addPedido(datos) {
+  const nuevo = {
+    id: uid('ped'), clienteId: datos.clienteId, marcaModelo: datos.marcaModelo || '', cordajeId: datos.cordajeId || null,
+    tension: datos.tension || null, precio: datos.precio || 0, fotoAntes: datos.fotoAntes || null, fotoDespues: null,
+    estado: 'pendiente', horaLlegada: Date.now(), horaInicio: null, horaFin: null, notas: datos.notas || '',
+  };
+  state.pedidos.push(nuevo);
+  return nuevo;
+}
+function removePedido(id) { state.pedidos = state.pedidos.filter(p => p.id !== id); }
+function empezarPedido(p) { p.estado = 'en_proceso'; p.horaInicio = Date.now(); }
+function terminarPedido(p) { p.estado = 'terminado'; p.horaFin = Date.now(); }
+function entregarPedido(p) { p.estado = 'entregado'; }
+
+function clienteDe(id) { return state.clientes.find(c => c.id === id); }
+function cordajeDe(id) { return state.cordajes.find(c => c.id === id); }
+function pedidosDeCliente(clienteId) { return state.pedidos.filter(p => p.clienteId === clienteId).sort((a, b) => b.horaLlegada - a.horaLlegada); }
+
+function telefonoParaWhatsapp(tel) {
+  let digitos = String(tel || '').replace(/\D/g, '');
+  if (!digitos) return '';
+  if (digitos.length === 9) digitos = '34' + digitos;
+  return digitos;
+}
+
+function render() {
+  saveLocal();
+  renderTabsNav();
+  const main = document.getElementById('tallerMainArea');
+  if (!main) return;
+  main.innerHTML = '';
+  try {
+    if (activeTab === 'cola') main.appendChild(viewCola());
+    else if (activeTab === 'nuevo') main.appendChild(viewNuevoPedido());
+    else if (activeTab === 'clientes') main.appendChild(viewClientes());
+    else if (activeTab === 'catalogo') main.appendChild(viewCatalogo());
+    else if (activeTab === 'historial') main.appendChild(viewHistorial());
+  } catch (err) {
+    main.appendChild(el('div', { class: 'msg msg-warn' }, 'Ha ocurrido un error mostrando esta pestaña: ' + err.message));
+    console.error(err);
+  }
+}
+function renderTabsNav() {
+  const nav = document.getElementById('tallerTabsNav');
+  if (!nav) return;
+  nav.innerHTML = '';
+  const cola = pedidosEnCola().length;
+  const tabs = [
+    ['cola', '🎾 Cola de trabajo' + (cola ? ' (' + cola + ')' : '')],
+    ['nuevo', '➕ Nuevo pedido'],
+    ['clientes', '👤 Clientes'],
+    ['catalogo', '🏷️ Artículos y cordajes'],
+    ['historial', '📚 Historial'],
+  ];
+  tabs.forEach(([id, label]) => {
+    nav.appendChild(el('button', { class: activeTab === id ? 'active' : '', onclick: () => { activeTab = id; render(); } }, label));
+  });
+}
+
+function viewCola() {
+  const wrap = document.createDocumentFragment();
+  const cola = pedidosEnCola();
+  const panel = el('div', { class: 'panel' },
+    el('h2', {}, '🎾 Cola de trabajo'),
+    el('div', { class: 'sub' }, `Pedidos pendientes, en el orden en que llegaron. Tiempo medio actual: ${state.config.tiempoMedioMinutos} min/raqueta.`),
+  );
+  const tMedioReal = tiempoMedioReal();
+  if (tMedioReal !== null) {
+    panel.appendChild(el('div', { class: 'msg msg-info', style: 'margin-bottom:10px;' },
+      `Según tu historial, la media real está siendo de ${tMedioReal} min/raqueta. `,
+      el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { state.config.tiempoMedioMinutos = tMedioReal; render(); } }, 'Usar este valor'),
+    ));
+  }
+  if (!cola.length) {
+    panel.appendChild(el('div', { class: 'empty-state' }, 'No hay ningún pedido en cola ahora mismo.'));
+    wrap.appendChild(panel);
+    return wrap;
+  }
+  cola.forEach((p, idx) => {
+    const cli = clienteDe(p.clienteId);
+    const cor = cordajeDe(p.cordajeId);
+    const estimada = horaEstimadaPara(p.id);
+    const card = el('div', { class: 'card' },
+      el('div', { class: 'card-head' },
+        el('span', { class: 'card-title' }, '#' + (idx + 1) + ' · ' + (cli ? cli.nombre : '(cliente eliminado)')),
+        p.estado === 'en_proceso' ? el('span', { class: 'chip chip-gold' }, 'En proceso') : el('span', { class: 'chip chip-muted' }, 'Pendiente'),
+      ),
+      el('div', { class: 'sub' }, `${p.marcaModelo || 'Raqueta sin especificar'} · ${cor ? cor.nombre : 'sin cordaje'}${p.tension ? ' a ' + p.tension + ' lbs' : ''} · ${euros(p.precio)}`),
+      el('div', { class: 'sub' }, `Llegó a las ${fmtHora(p.horaLlegada)}${estimada ? ' · Estimado listo a las ' + fmtHora(estimada) : ''}`),
+    );
+    if (p.fotoAntes) card.appendChild(el('img', { src: p.fotoAntes, style: 'max-width:160px;border-radius:8px;margin-top:6px;display:block;' }));
+    const acciones = el('div', { class: 'toolbar', style: 'margin-top:8px;' });
+    if (p.estado === 'pendiente') {
+      acciones.appendChild(el('button', { class: 'btn btn-primary btn-sm', onclick: () => { empezarPedido(p); render(); } }, '▶️ Empezar'));
+    }
+    if (p.estado === 'en_proceso' || p.estado === 'pendiente') {
+      acciones.appendChild(el('button', { class: 'btn btn-gold btn-sm', onclick: () => { if (p.estado === 'pendiente') empezarPedido(p); abrirTerminarPedido(p); } }, '✅ Marcar terminado'));
+    }
+    acciones.appendChild(el('button', { class: 'btn btn-danger btn-sm', onclick: () => { if (confirm('¿Quitar este pedido de la cola?')) { removePedido(p.id); render(); } } }, 'Quitar'));
+    card.appendChild(acciones);
+    panel.appendChild(card);
+  });
+  wrap.appendChild(panel);
+  return wrap;
+}
+
+function abrirTerminarPedido(p) {
+  const root = document.getElementById('tallerModalRoot');
+  if (!root) { terminarPedido(p); render(); return; }
+  const fileInput = el('input', { type: 'file', accept: 'image/*', capture: 'environment' });
+  root.innerHTML = '';
+  root.appendChild(el('div', { class: 'modal-bg', onclick: (e) => { if (e.target.classList.contains('modal-bg')) root.innerHTML = ''; } },
+    el('div', { class: 'modal' },
+      el('h3', {}, '✅ Marcar como terminado'),
+      el('div', { class: 'sub', style: 'margin-bottom:10px;' }, 'Puedes hacer una foto de la raqueta terminada (opcional) antes de avisar al cliente.'),
+      field('Foto de la raqueta terminada (opcional)', fileInput),
+      el('div', { class: 'row', style: 'margin-top:16px;' },
+        el('button', { class: 'btn btn-primary', onclick: async () => {
+          if (fileInput.files[0]) {
+            try { p.fotoDespues = await comprimirImagen(fileInput.files[0], 1100, 0.65); } catch (e) {}
+          }
+          terminarPedido(p);
+          if (window.guardarFotosTallerEnNube) window.guardarFotosTallerEnNube(p.id, p.fotoAntes, p.fotoDespues);
+          root.innerHTML = '';
+          render();
+          abrirAvisoWhatsapp(p);
+        } }, 'Guardar y avisar al cliente'),
+        el('button', { class: 'btn btn-ghost', onclick: () => { root.innerHTML = ''; } }, 'Cancelar'),
+      ),
+    ),
+  ));
+}
+function abrirAvisoWhatsapp(p) {
+  const cli = clienteDe(p.clienteId);
+  const root = document.getElementById('tallerModalRoot');
+  if (!cli || !cli.telefono || !root) return;
+  const numero = telefonoParaWhatsapp(cli.telefono);
+  if (!numero) return;
+  const mensaje = `Hola ${cli.nombre}, ya tengo lista tu raqueta (${p.marcaModelo || ''}). Importe: ${euros(p.precio)}. Puedes pasar a recogerla cuando quieras.`;
+  root.innerHTML = '';
+  root.appendChild(el('div', { class: 'modal-bg', onclick: (e) => { if (e.target.classList.contains('modal-bg')) root.innerHTML = ''; } },
+    el('div', { class: 'modal' },
+      el('h3', {}, '💬 Avisar por WhatsApp'),
+      el('div', { class: 'sub', style: 'margin-bottom:10px;' }, 'WhatsApp no deja adjuntar la foto automáticamente desde una web: abre el chat con el mensaje ya escrito y, si quieres, descarga la foto antes para adjuntarla tú a mano.'),
+      p.fotoDespues ? el('div', {},
+        el('img', { src: p.fotoDespues, style: 'max-width:220px;border-radius:8px;margin-bottom:8px;display:block;' }),
+        el('a', { href: p.fotoDespues, download: 'raqueta_' + (cli.nombre || 'cliente') + '.jpg', class: 'btn btn-ghost btn-sm' }, '⬇ Descargar foto'),
+      ) : null,
+      el('div', { class: 'row', style: 'margin-top:16px;' },
+        el('a', { href: 'https://wa.me/' + numero + '?text=' + encodeURIComponent(mensaje), target: '_blank', class: 'btn btn-gold' }, '💬 Abrir chat de WhatsApp'),
+        el('button', { class: 'btn btn-ghost', onclick: () => { root.innerHTML = ''; } }, 'Cerrar'),
+      ),
+    ),
+  ));
+}
+
+function viewNuevoPedido() {
+  const wrap = document.createDocumentFragment();
+  const panel = el('div', { class: 'panel' },
+    el('h2', {}, '➕ Nuevo pedido de encordado'),
+    el('div', { class: 'sub' }, 'Busca al cliente por nombre o teléfono, o crea uno nuevo si no está.'),
+  );
+
+  let clienteElegidoId = null;
+  const buscadorInput = el('input', { type: 'text', placeholder: 'Nombre o teléfono del cliente' });
+  const resultadosDiv = el('div', { style: 'margin-top:8px;' });
+  function pintarBusqueda() {
+    resultadosDiv.innerHTML = '';
+    const q = buscadorInput.value.trim().toLowerCase();
+    const encontrados = q ? state.clientes.filter(c => (c.nombre || '').toLowerCase().includes(q) || (c.telefono || '').includes(q)) : [];
+    encontrados.slice(0, 6).forEach(c => {
+      resultadosDiv.appendChild(el('div', {
+        class: 'chip', style: 'cursor:pointer;margin:2px;display:inline-block;',
+        onclick: () => { clienteElegidoId = c.id; buscadorInput.value = c.nombre; resultadosDiv.innerHTML = ''; clienteChipDiv.textContent = 'Cliente: ' + c.nombre; },
+      }, c.nombre + (c.telefono ? ' · ' + c.telefono : '')));
+    });
+  }
+  buscadorInput.addEventListener('input', pintarBusqueda);
+  const clienteChipDiv = el('div', { class: 'sub', style: 'margin-top:6px;font-weight:700;' }, 'Ningún cliente seleccionado todavía.');
+  panel.appendChild(field('Cliente', buscadorInput));
+  panel.appendChild(resultadosDiv);
+  panel.appendChild(clienteChipDiv);
+  panel.appendChild(el('div', { class: 'toolbar', style: 'margin:8px 0 16px;' },
+    el('button', { class: 'btn btn-ghost btn-sm', onclick: () => {
+      const nombre = buscadorInput.value.trim();
+      if (!nombre) { alert('Escribe primero el nombre del cliente nuevo.'); return; }
+      const nuevo = addCliente({ nombre });
+      clienteElegidoId = nuevo.id;
+      clienteChipDiv.textContent = 'Cliente: ' + nuevo.nombre + ' (nuevo)';
+      resultadosDiv.innerHTML = '';
+    } }, '+ Crear como cliente nuevo'),
+  ));
+
+  const marcaInput = el('input', { type: 'text', placeholder: 'Ej: Yonex Astrox 99' });
+  const tensionInput = el('input', { type: 'number', step: '0.5', min: '0', placeholder: 'Ej: 24' });
+  const cordajeSelect = selectEl([{ value: '', label: '— Elegir cordaje —' }].concat(state.cordajes.map(c => ({ value: c.id, label: c.nombre + ' (' + euros(c.precio) + ', stock: ' + c.stock + ')' }))), '', () => {});
+  const precioInput = el('input', { type: 'number', step: '0.5', min: '0', value: state.config.precioBaseEncordado });
+  cordajeSelect.addEventListener('change', () => {
+    const cor = cordajeDe(cordajeSelect.value);
+    precioInput.value = (state.config.precioBaseEncordado || 0) + (cor ? cor.precio : 0);
+  });
+  const fotoInput = el('input', { type: 'file', accept: 'image/*', capture: 'environment' });
+  const notasInput = el('textarea', { rows: '2', placeholder: 'Notas (opcional)' });
+
+  panel.appendChild(el('div', { class: 'grid' },
+    field('Marca y modelo de la raqueta', marcaInput),
+    field('Cordaje', cordajeSelect),
+    field('Tensión (lbs)', tensionInput),
+    field('Precio (€)', precioInput),
+    field('Foto de la raqueta (opcional)', fotoInput),
+  ));
+  panel.appendChild(field('Notas', notasInput));
+
+  panel.appendChild(el('div', { class: 'toolbar', style: 'margin-top:16px;' },
+    el('button', { class: 'btn btn-primary', onclick: async () => {
+      if (!clienteElegidoId) { alert('Elige o crea primero un cliente.'); return; }
+      if (!state.cordajes.length) { /* permitir sin cordaje si aun no hay catalogo */ }
+      let fotoAntes = null;
+      if (fotoInput.files[0]) {
+        try { fotoAntes = await comprimirImagen(fotoInput.files[0], 1100, 0.65); } catch (e) {}
+      }
+      const nuevo = addPedido({
+        clienteId: clienteElegidoId, marcaModelo: marcaInput.value.trim(), cordajeId: cordajeSelect.value || null,
+        tension: tensionInput.value ? parseFloat(tensionInput.value) : null, precio: parseFloat(precioInput.value) || 0,
+        fotoAntes, notas: notasInput.value.trim(),
+      });
+      if (window.guardarFotosTallerEnNube) window.guardarFotosTallerEnNube(nuevo.id, nuevo.fotoAntes, null);
+      activeTab = 'cola';
+      render();
+    } }, '✅ Añadir a la cola de trabajo'),
+  ));
+  wrap.appendChild(panel);
+  return wrap;
+}
+
+function viewClientes() {
+  const wrap = document.createDocumentFragment();
+  const panel = el('div', { class: 'panel' },
+    el('h2', {}, '👤 Clientes'),
+    el('div', { class: 'sub' }, 'Clientes del taller (pueden coincidir o no con jugadores del club). Pincha en uno para ver su historial.'),
+  );
+  const buscador = el('input', { type: 'text', placeholder: 'Buscar por nombre o teléfono…', value: filtroClienteTexto });
+  buscador.addEventListener('input', (e) => { filtroClienteTexto = e.target.value; render(); });
+  panel.appendChild(field('Buscar', buscador));
+
+  const nombreInput = el('input', { type: 'text', placeholder: 'Nombre' });
+  const telInput = el('input', { type: 'tel', placeholder: 'Teléfono' });
+  const emailInput = el('input', { type: 'email', placeholder: 'Email' });
+  panel.appendChild(el('div', { class: 'grid', style: 'margin-top:10px;' },
+    field('Nombre', nombreInput), field('Teléfono', telInput), field('Email', emailInput),
+  ));
+  panel.appendChild(el('div', { class: 'toolbar', style: 'margin-bottom:16px;' },
+    el('button', { class: 'btn btn-gold btn-sm', onclick: () => {
+      if (!nombreInput.value.trim()) { alert('Escribe al menos el nombre.'); return; }
+      addCliente({ nombre: nombreInput.value.trim(), telefono: telInput.value.trim(), email: emailInput.value.trim() });
+      render();
+    } }, '+ Añadir cliente'),
+  ));
+
+  const q = filtroClienteTexto.trim().toLowerCase();
+  const lista = q ? state.clientes.filter(c => (c.nombre || '').toLowerCase().includes(q) || (c.telefono || '').includes(q)) : state.clientes;
+  if (!lista.length) {
+    panel.appendChild(el('div', { class: 'empty-state' }, q ? 'No hay clientes que coincidan.' : 'Todavía no hay clientes guardados.'));
+  } else {
+    lista.forEach(c => {
+      const expandido = clienteSeleccionadoId === c.id;
+      const card = el('div', { class: 'card', style: 'cursor:pointer;' },
+        el('div', { class: 'card-head', onclick: () => { clienteSeleccionadoId = expandido ? null : c.id; render(); } },
+          el('span', { class: 'card-title' }, (expandido ? '▾ ' : '▸ ') + c.nombre),
+          el('button', { class: 'btn btn-danger btn-sm', onclick: (e) => { e.stopPropagation(); if (confirm('¿Eliminar este cliente?')) { removeCliente(c.id); render(); } } }, 'Eliminar'),
+        ),
+        el('div', { class: 'sub' }, [c.telefono, c.email].filter(Boolean).join(' · ') || 'Sin contacto'),
+      );
+      if (expandido) {
+        const pedidos = pedidosDeCliente(c.id);
+        card.appendChild(el('h4', { style: 'margin:12px 0 6px;' }, 'Historial (' + pedidos.length + ' raqueta(s))'));
+        if (!pedidos.length) {
+          card.appendChild(el('div', { class: 'sub' }, 'Todavía no ha traído ninguna raqueta.'));
+        } else {
+          const tabla = el('table', {}, el('thead', {}, el('tr', {},
+            el('th', {}, 'Fecha'), el('th', {}, 'Raqueta'), el('th', {}, 'Cordaje'), el('th', {}, 'Tensión'), el('th', {}, 'Precio'), el('th', {}, 'Estado'))));
+          const tbody = el('tbody');
+          pedidos.forEach(p => {
+            const cor = cordajeDe(p.cordajeId);
+            tbody.appendChild(el('tr', {},
+              el('td', {}, fmtFechaHora(p.horaLlegada)),
+              el('td', {}, p.marcaModelo || '—'),
+              el('td', {}, cor ? cor.nombre : '—'),
+              el('td', {}, p.tension ? p.tension + ' lbs' : '—'),
+              el('td', {}, euros(p.precio)),
+              el('td', {}, p.estado === 'entregado' ? el('span', { class: 'chip chip-gold' }, 'Entregado') : p.estado === 'terminado' ? el('span', { class: 'chip chip-gold' }, 'Terminado') : el('span', { class: 'chip chip-muted' }, 'En curso')),
+            ));
+          });
+          tabla.appendChild(tbody);
+          card.appendChild(tabla);
+        }
+      }
+      panel.appendChild(card);
+    });
+  }
+  wrap.appendChild(panel);
+  return wrap;
+}
+
+function viewCatalogo() {
+  const wrap = document.createDocumentFragment();
+  const panelCordajes = el('div', { class: 'panel' },
+    el('h2', {}, '🧵 Cordajes en stock'),
+    el('div', { class: 'toolbar' }, el('button', { class: 'btn btn-gold btn-sm', onclick: () => { addCordaje(); render(); } }, '+ Añadir cordaje')),
+  );
+  if (!state.cordajes.length) {
+    panelCordajes.appendChild(el('div', { class: 'empty-state' }, 'Todavía no has añadido ningún cordaje.'));
+  } else {
+    state.cordajes.forEach(c => {
+      panelCordajes.appendChild(el('div', { class: 'card' },
+        el('div', { class: 'grid' },
+          field('Nombre', inputEl('text', c.nombre, v => { c.nombre = v; render(); })),
+          field('Precio (€)', inputEl('number', c.precio, v => { c.precio = parseFloat(v) || 0; }, { min: 0, step: '0.5' })),
+          field('Stock (metros o unidades)', inputEl('number', c.stock, v => { c.stock = parseFloat(v) || 0; }, { min: 0 })),
+        ),
+        el('div', { class: 'toolbar', style: 'margin-top:6px;' },
+          el('button', { class: 'btn btn-danger btn-sm', onclick: () => { removeCordaje(c.id); render(); } }, 'Eliminar'),
+        ),
+      ));
+    });
+  }
+  wrap.appendChild(panelCordajes);
+
+  const panelArt = el('div', { class: 'panel' },
+    el('h2', {}, '🏷️ Artículos a la venta'),
+    el('div', { class: 'sub' }, 'Llaveros, mochilas, raquetas, grips y demás artículos.'),
+    el('div', { class: 'toolbar' }, el('button', { class: 'btn btn-gold btn-sm', onclick: () => { addArticulo(); render(); } }, '+ Añadir artículo')),
+  );
+  if (!state.articulos.length) {
+    panelArt.appendChild(el('div', { class: 'empty-state' }, 'Todavía no has añadido ningún artículo.'));
+  } else {
+    state.articulos.forEach(a => {
+      panelArt.appendChild(el('div', { class: 'card' },
+        el('div', { class: 'grid' },
+          field('Nombre', inputEl('text', a.nombre, v => { a.nombre = v; render(); })),
+          field('Tipo', selectEl(['Raqueta', 'Mochila', 'Llavero', 'Grip', 'Calzado', 'Otro'].map(t => ({ value: t, label: t })), a.tipo, v => { a.tipo = v; })),
+          field('Precio (€)', inputEl('number', a.precio, v => { a.precio = parseFloat(v) || 0; }, { min: 0, step: '0.5' })),
+          field('Stock', inputEl('number', a.stock, v => { a.stock = parseFloat(v) || 0; }, { min: 0 })),
+        ),
+        el('div', { class: 'toolbar', style: 'margin-top:6px;' },
+          el('button', { class: 'btn btn-danger btn-sm', onclick: () => { removeArticulo(a.id); render(); } }, 'Eliminar'),
+        ),
+      ));
+    });
+  }
+  wrap.appendChild(panelArt);
+
+  wrap.appendChild(el('div', { class: 'panel' },
+    el('h2', {}, '⚙️ Configuración del taller'),
+    el('div', { class: 'grid' },
+      field('Tiempo medio por raqueta (min)', inputEl('number', state.config.tiempoMedioMinutos, v => { state.config.tiempoMedioMinutos = Math.max(5, parseInt(v) || 35); }, { min: 5 })),
+      field('Precio base de encordado (€, sin cordaje)', inputEl('number', state.config.precioBaseEncordado, v => { state.config.precioBaseEncordado = parseFloat(v) || 0; }, { min: 0, step: '0.5' })),
+    ),
+  ));
+  return wrap;
+}
+
+function viewHistorial() {
+  const wrap = document.createDocumentFragment();
+  const terminados = state.pedidos.filter(p => p.estado === 'terminado' || p.estado === 'entregado').sort((a, b) => b.horaLlegada - a.horaLlegada);
+  const total = terminados.reduce((s, p) => s + (p.precio || 0), 0);
+  const panel = el('div', { class: 'panel' },
+    el('h2', {}, '📚 Historial de encordados'),
+    el('div', { class: 'sub' }, `${terminados.length} raqueta(s) entregadas · Total facturado: ${euros(total)}`),
+  );
+  if (!terminados.length) {
+    panel.appendChild(el('div', { class: 'empty-state' }, 'Todavía no has terminado ninguna raqueta.'));
+    wrap.appendChild(panel);
+    return wrap;
+  }
+  const table = el('table', {}, el('thead', {}, el('tr', {},
+    el('th', {}, 'Fecha'), el('th', {}, 'Cliente'), el('th', {}, 'Raqueta'), el('th', {}, 'Cordaje'), el('th', {}, 'Tensión'), el('th', {}, 'Duración'), el('th', {}, 'Precio'), el('th', {}, ''))));
+  const tbody = el('tbody');
+  terminados.forEach(p => {
+    const cli = clienteDe(p.clienteId);
+    const cor = cordajeDe(p.cordajeId);
+    const duracion = (p.horaInicio && p.horaFin) ? Math.round((p.horaFin - p.horaInicio) / 60000) + ' min' : '—';
+    tbody.appendChild(el('tr', {},
+      el('td', {}, fmtFechaHora(p.horaLlegada)),
+      el('td', {}, cli ? cli.nombre : '(eliminado)'),
+      el('td', {}, p.marcaModelo || '—'),
+      el('td', {}, cor ? cor.nombre : '—'),
+      el('td', {}, p.tension ? p.tension + ' lbs' : '—'),
+      el('td', {}, duracion),
+      el('td', {}, euros(p.precio)),
+      el('td', {}, p.estado === 'entregado' ? el('span', { class: 'chip chip-gold' }, 'Entregado') : el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { entregarPedido(p); render(); } }, 'Marcar entregado')),
+    ));
+  });
+  table.appendChild(tbody);
+  panel.appendChild(table);
+  wrap.appendChild(panel);
+  return wrap;
+}
+
+function getState() { return state; }
+function setState(s) {
+  state = Object.assign(defaultState(), s || {});
+  state.config = Object.assign(defaultState().config, state.config || {});
+  if (!Array.isArray(state.clientes)) state.clientes = [];
+  if (!Array.isArray(state.articulos)) state.articulos = [];
+  if (!Array.isArray(state.cordajes)) state.cordajes = [];
+  if (!Array.isArray(state.pedidos)) state.pedidos = [];
+}
+function tryLoadLocal() {
+  try {
+    const raw = localStorage.getItem('badmintonTallerState');
+    if (raw) setState(JSON.parse(raw));
+  } catch (e) {}
+}
+function saveLocal() {
+  try { localStorage.setItem('badmintonTallerState', JSON.stringify(state)); } catch (e) {}
+  if (typeof programarSyncNube === 'function') programarSyncNube();
+}
+function mount() { tryLoadLocal(); render(); }
+return { render, mount, getState, setState, saveLocal };
+})();
+
 </script>
 <script>
 function el(tag, attrs) {
@@ -6056,8 +6595,8 @@ window.JugadoresGlobal = {
 };
 
 let accessControl = { usuarios: [], permisos: {
-  usuario: { torneo: true, planificacion: true, jugadores: true, pagos: false, club: false },
-  lectura: { torneo: true, planificacion: true, jugadores: true, pagos: false, club: false },
+  usuario: { torneo: true, planificacion: true, jugadores: true, pagos: false, club: false, taller: false },
+  lectura: { torneo: true, planificacion: true, jugadores: true, pagos: false, club: false, taller: false },
 } };
 function saveAccessControl() { try { localStorage.setItem('badmintonAccessControl', JSON.stringify(accessControl)); } catch (e) {} if (typeof programarSyncNube === 'function') programarSyncNube(); }
 function loadAccessControl() {
@@ -6510,7 +7049,7 @@ function iniciarAppTrasLogin() {
   }
 }
 let currentSection = 'home';
-const SCREENS = ['onboardingScreen', 'homeScreen', 'clubGestionScreen', 'torneoScreen', 'planScreen'];
+const SCREENS = ['onboardingScreen', 'homeScreen', 'clubGestionScreen', 'torneoScreen', 'planScreen', 'tallerScreen'];
 let clubGestionTab = 'datos';
 
 const AYUDA_INDICE = [
@@ -6587,6 +7126,7 @@ function showSection(sec) {
   else if (sec === 'clubgestion') showClubGestionTab(clubGestionTab);
   else if (sec === 'torneo') TorneoApp.render();
   else if (sec === 'planificacion') PlanApp.render();
+  else if (sec === 'taller') TallerApp.render();
   window.scrollTo(0, 0);
 }
 
@@ -7061,6 +7601,7 @@ function renderControlAcceso() {
     ['jugadores', 'Jugadores'],
     ['pagos', 'Pagos y Cuotas'],
     ['club', 'Datos del club'],
+    ['taller', 'Taller de Raquetas'],
   ];
   const permTable = el('table', {}, el('thead', {}, el('tr', {},
     el('th', {}, 'Sección'), el('th', {}, 'Usuario'), el('th', {}, 'Solo lectura'))));
@@ -7098,6 +7639,7 @@ function renderHome() {
     { icon: '🏆', title: 'Gestor de Torneos', desc: 'Grupos, sorteo, calendario, resultados y eliminatoria.', sec: 'torneo', permiso: 'torneo' },
     { icon: '📅', title: 'Planificación Anual', desc: 'De la iniciación a la tecnificación: macrociclo, microciclo y evaluación.', sec: 'planificacion', permiso: 'planificacion' },
     { icon: '🏛️', title: 'Gestión de Club', desc: 'Datos del club, jugadores, y pagos y cuotas.', sec: 'clubgestion', permiso: null },
+    { icon: '🎾', title: 'Taller de Raquetas', desc: 'Cola de encordado, clientes, artículos y cordajes, e historial.', sec: 'taller', permiso: 'taller' },
   ];
   if (esAdmin()) {
     cards.push({ icon: '🔐', title: 'Control de acceso', desc: 'Usuarios, roles y qué puede ver cada uno.', sec: 'acceso', permiso: null });
@@ -7139,6 +7681,7 @@ function exportAll() {
     torneoActivoId: TorneoApp.getTorneoActivoId(),
     planificacion: PlanApp.getState(),
     pagos: PagosApp.getState(),
+    taller: TallerApp.getState(),
   };
   const blob = new Blob([JSON.stringify(combined, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -7165,6 +7708,7 @@ function importAll(file) {
       if (parsed.torneoActivoId) TorneoApp.setTorneoActivoId(parsed.torneoActivoId);
       PlanApp.setState(parsed.planificacion);
       if (parsed.pagos) PagosApp.setState(parsed.pagos);
+      if (parsed.taller) TallerApp.setState(parsed.taller);
       showSection('home');
     } catch (err) {
       alert('No se ha podido importar el fichero: formato no válido.');
@@ -7219,6 +7763,15 @@ function estadoCompletoParaNube() {
       }
     });
   }
+  const tallerParaNube = JSON.parse(JSON.stringify(TallerApp.getState()));
+  if (Array.isArray(tallerParaNube.pedidos)) {
+    tallerParaNube.pedidos.forEach(p => {
+      p.tieneFotoAntes = !!p.fotoAntes;
+      p.tieneFotoDespues = !!p.fotoDespues;
+      p.fotoAntes = null;
+      p.fotoDespues = null;
+    });
+  }
   return {
     club: clubGlobal,
     jugadoresGlobal: jugadoresGlobal,
@@ -7228,10 +7781,33 @@ function estadoCompletoParaNube() {
     torneoActivoId: TorneoApp.getTorneoActivoId(),
     planificacion: PlanApp.getState(),
     pagos: pagosParaNube,
+    taller: tallerParaNube,
     accessControl: accessControl,
     actualizadoEn: Date.now(),
   };
 }
+function coleccionFotosTaller() { return docNube().collection('taller_fotos'); }
+function guardarFotosTallerEnNube(pedidoId, fotoAntes, fotoDespues) {
+  if (!firebaseDisponible || !sincronizacionInicialLista || (!fotoAntes && !fotoDespues)) return;
+  coleccionFotosTaller().doc(pedidoId).set({ fotoAntes: fotoAntes || null, fotoDespues: fotoDespues || null }).catch(err => {
+    console.warn('Error guardando fotos del taller en la nube:', err);
+    marcarEstadoNube('⚠️ No se pudo guardar la foto de la raqueta: ' + (err && err.message ? err.message : 'error desconocido'));
+  });
+}
+function cargarFotosTallerDeNube() {
+  if (!firebaseDisponible) return Promise.resolve();
+  return coleccionFotosTaller().get().then(snap => {
+    const mapa = {};
+    snap.forEach(doc => { mapa[doc.id] = doc.data(); });
+    const tallerState = TallerApp.getState();
+    if (Array.isArray(tallerState.pedidos)) {
+      tallerState.pedidos.forEach(p => {
+        if (mapa[p.id]) { p.fotoAntes = mapa[p.id].fotoAntes || null; p.fotoDespues = mapa[p.id].fotoDespues || null; }
+      });
+    }
+  }).catch(err => { console.warn('No se pudieron cargar las fotos del taller:', err); });
+}
+window.guardarFotosTallerEnNube = guardarFotosTallerEnNube;
 function coleccionRecibos() {
   return docNube().collection('recibos');
 }
@@ -7315,6 +7891,7 @@ function aplicarDatosDeNube(dataOriginal) {
   if (data.torneoActivoId) TorneoApp.setTorneoActivoId(data.torneoActivoId);
   if (data.planificacion) PlanApp.setState(data.planificacion);
   if (data.pagos) PagosApp.setState(data.pagos);
+  if (data.taller) TallerApp.setState(data.taller);
   if (data.accessControl) { accessControl = data.accessControl; saveAccessControl(); }
 }
 function arrancarAppLocal() {
@@ -7363,6 +7940,7 @@ loadSesion();
 TorneoApp.mount();
 PlanApp.mount();
 PagosApp.mount();
+TallerApp.mount();
 
 inicializarFirebase();
 if (firebaseDisponible) {
@@ -7380,6 +7958,10 @@ if (firebaseDisponible) {
     cargarRecibosDeNube().then(() => {
       const pagosScreen = document.getElementById('pagosScreen');
       if (pagosScreen && pagosScreen.style.display !== 'none') PagosApp.render();
+    });
+    cargarFotosTallerDeNube().then(() => {
+      const tallerScreen = document.getElementById('tallerScreen');
+      if (tallerScreen && tallerScreen.style.display !== 'none') TallerApp.render();
     });
     if (esVistaPublica()) {
       let timerVistaPublica = null;

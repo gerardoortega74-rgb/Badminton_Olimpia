@@ -236,6 +236,7 @@ if (window.pdfjsLib) { pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.c
 <main id="shellMain">
 
   <div id="publicoScreen" style="display:none;"></div>
+  <div id="tallerPublicoScreen" style="display:none;"></div>
 
   <div id="loginScreen" style="display:none;"></div>
 
@@ -5622,6 +5623,7 @@ function viewCola() {
     if (p.estado === 'en_proceso' || p.estado === 'pendiente') {
       acciones.appendChild(el('button', { class: 'btn btn-gold btn-sm', onclick: () => { if (p.estado === 'pendiente') empezarPedido(p); abrirTerminarPedido(p); } }, '✅ Marcar terminado'));
       acciones.appendChild(el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { if (confirm('¿El cliente no puede esperar? Se pasará a "Aplazados" y no contará para la hora estimada de los demás, hasta que la reanudes otro día.')) { aplazarPedido(p); render(); } } }, '📅 No puede esperar / aplazar'));
+      acciones.appendChild(el('button', { class: 'btn btn-ghost btn-sm', onclick: () => abrirEnviarEnlaceSeguimiento(p) }, '🔗 Enviar enlace de seguimiento'));
     }
     acciones.appendChild(el('button', { class: 'btn btn-danger btn-sm', onclick: () => { if (confirm('¿Quitar este pedido de la cola?')) { removePedido(p.id); render(); } } }, 'Quitar'));
     card.appendChild(acciones);
@@ -5704,18 +5706,25 @@ function abrirModalWhatsapp(titulo, cli, mensaje, fotoParaDescargar) {
     ),
   ));
 }
+function enlaceTallerDe(p) { return window.enlacePublicoPedidoTaller ? window.enlacePublicoPedidoTaller(p.id) : ''; }
 function abrirAvisoWhatsapp(p) {
   const cli = clienteDe(p.clienteId);
   if (!cli) return;
-  const mensaje = `Hola ${cli.nombre}, ya tengo lista tu raqueta (${p.marcaModelo || ''}). Importe: ${euros(p.precio)}. Puedes pasar a recogerla cuando quieras.`;
+  const mensaje = `Hola ${cli.nombre}, ya tengo lista tu raqueta (${p.marcaModelo || ''}). Importe: ${euros(p.precio)}. Puedes pasar a recogerla cuando quieras.\n\n${enlaceTallerDe(p)}`;
   abrirModalWhatsapp('💬 Avisar por WhatsApp', cli, mensaje, p.fotoDespues);
 }
 function abrirAvisoEmpezado(p) {
   const cli = clienteDe(p.clienteId);
   if (!cli || !cli.telefono) return;
   const estimada = horaEstimadaPara(p.id);
-  const mensaje = `Hola ${cli.nombre}, ya he empezado a encordar tu raqueta (${p.marcaModelo || ''}). Tiempo aproximado: ${state.config.tiempoMedioMinutos} min${estimada ? ', estará lista sobre las ' + fmtHora(estimada) : ''}.`;
+  const mensaje = `Hola ${cli.nombre}, ya he empezado a encordar tu raqueta (${p.marcaModelo || ''}). Tiempo aproximado: ${state.config.tiempoMedioMinutos} min${estimada ? ', estará lista sobre las ' + fmtHora(estimada) : ''}.\n\nSigue el estado en directo aquí: ${enlaceTallerDe(p)}`;
   abrirModalWhatsapp('💬 Avisar que se ha empezado', cli, mensaje, null);
+}
+function abrirEnviarEnlaceSeguimiento(p) {
+  const cli = clienteDe(p.clienteId);
+  if (!cli || !cli.telefono) { alert('Este cliente no tiene teléfono guardado.'); return; }
+  const mensaje = `Hola ${cli.nombre}, aquí puedes ver en directo cómo va tu raqueta (${p.marcaModelo || ''}): ${enlaceTallerDe(p)}`;
+  abrirModalWhatsapp('🔗 Enviar enlace de seguimiento', cli, mensaje, null);
 }
 
 let clientePreseleccionadoId = null;
@@ -7056,9 +7065,84 @@ function cerrarSesion() {
   saveSesion();
   mostrarLogin();
 }
-function esVistaPublica() {
-  try { return new URLSearchParams(location.search).get('publico') === '1'; } catch (e) { return false; }
+function esVistaPublicaTaller() {
+  try { return new URLSearchParams(location.search).get('tallerpublico') === '1'; } catch (e) { return false; }
 }
+function esVistaPublica() {
+  try { return new URLSearchParams(location.search).get('publico') === '1' || esVistaPublicaTaller(); } catch (e) { return false; }
+}
+function fmtHoraShell(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+}
+function enlacePublicoPedidoTaller(pedidoId) {
+  return location.origin + location.pathname + '?tallerpublico=1&pedido=' + pedidoId;
+}
+window.enlacePublicoPedidoTaller = enlacePublicoPedidoTaller;
+function renderVistaPublicaTaller() {
+  const headerActions = document.getElementById('headerActions');
+  if (headerActions) headerActions.style.display = 'none';
+  ['loginScreen', 'onboardingScreen', 'homeScreen', 'clubGestionScreen', 'torneoScreen', 'planScreen', 'tallerScreen', 'publicoScreen'].forEach(id => {
+    const e = document.getElementById(id); if (e) e.style.display = 'none';
+  });
+  const root = document.getElementById('tallerPublicoScreen');
+  root.style.display = 'block';
+  root.innerHTML = '';
+  document.getElementById('shellTitle').textContent = clubGlobal.nombre || 'Taller de raquetas';
+  document.getElementById('shellSubtitle').textContent = 'Sigue tu reparación en directo · se actualiza sola';
+  document.body.classList.remove('solo-lectura');
+
+  const pedidoId = new URLSearchParams(location.search).get('pedido');
+  const taller = TallerApp.getState();
+  const pedido = (taller.pedidos || []).find(p => p.id === pedidoId);
+  if (!pedido) {
+    root.appendChild(el('div', { class: 'panel' }, el('div', { class: 'empty-state' }, 'No se encuentra esa reparación. Puede que el enlace no sea correcto o que se haya eliminado.')));
+    return;
+  }
+  const cliente = (taller.clientes || []).find(c => c.id === pedido.clienteId);
+  const cordaje = (taller.cordajes || []).find(c => c.id === pedido.cordajeId);
+
+  const panel = el('div', { class: 'panel' },
+    el('h2', {}, '🏸 ' + (pedido.marcaModelo || 'Tu raqueta')),
+    cliente ? el('div', { class: 'sub' }, 'Cliente: ' + cliente.nombre) : null,
+  );
+
+  if (pedido.estado === 'pendiente' || pedido.estado === 'en_proceso') {
+    const cola = (taller.pedidos || []).filter(p => !p.aplazado && (p.estado === 'pendiente' || p.estado === 'en_proceso')).sort((a, b) => a.horaLlegada - b.horaLlegada);
+    const posicion = cola.findIndex(p => p.id === pedido.id);
+    const delante = Math.max(0, posicion);
+    const tiempoMedio = taller.config.tiempoMedioMinutos || 35;
+    const minutosEstimados = (posicion + 1) * tiempoMedio;
+    const horaEstimada = fmtHoraShell(Date.now() + minutosEstimados * 60000);
+    if (pedido.estado === 'en_proceso') {
+      panel.appendChild(el('div', { class: 'msg msg-info', style: 'font-size:16px;font-weight:700;' }, '🔧 ¡Ya se ha empezado a encordar tu raqueta!'));
+    } else {
+      panel.appendChild(el('div', { class: 'msg msg-info' },
+        delante > 0
+          ? `📋 Tienes ${delante} raqueta(s) por delante de la tuya en la cola.`
+          : '📋 ¡Eres el siguiente! Tu raqueta empezará enseguida.'));
+    }
+    panel.appendChild(el('div', { class: 'stat-cards' },
+      statCardShell(fmtHoraShell(pedido.horaLlegada), 'Hora de entrada'),
+      statCardShell(horaEstimada, 'Hora aproximada de fin'),
+    ));
+  } else if (pedido.estado === 'terminado' || pedido.estado === 'entregado') {
+    panel.appendChild(el('div', { class: 'msg msg-info', style: 'font-size:16px;font-weight:700;' },
+      pedido.estado === 'entregado' ? '✅ Raqueta entregada' : '✅ ¡Tu raqueta ya está lista para recoger!'));
+    const duracion = (pedido.horaInicio && pedido.horaFin) ? Math.round((pedido.horaFin - pedido.horaInicio) / 60000) + ' min' : '—';
+    panel.appendChild(el('div', { class: 'stat-cards' },
+      statCardShell(euros(pedido.precio), 'Precio'),
+      statCardShell(pedido.pagado ? 'Pagado' : 'Pendiente de pago', 'Pago'),
+      statCardShell(duracion, 'Tiempo de encordado'),
+    ));
+  }
+
+  panel.appendChild(el('div', { class: 'sub', style: 'margin-top:12px;' },
+    'Cordaje: ' + (cordaje ? cordaje.nombre : 'sin especificar') + (pedido.tensionVertical || pedido.tensionHorizontal ? ' · Tensión: ' + (pedido.tensionVertical || '') + '/' + (pedido.tensionHorizontal || '') + ' kg' : '')));
+  root.appendChild(panel);
+}
+function statCardShell(num, lab) { return el('div', { class: 'stat-card' }, el('div', { class: 'num' }, num), el('div', { class: 'lab' }, lab)); }
 function nombreParticipantePublico(cat, id) {
   if (!id) return 'Por determinar';
   const p = (cat.players || []).find(x => x.id === id);
@@ -8324,6 +8408,10 @@ function aplicarDatosDeNube(dataOriginal) {
   if (data.accessControl) { accessControl = data.accessControl; saveAccessControl(); }
 }
 function arrancarAppLocal() {
+  if (esVistaPublicaTaller()) {
+    renderVistaPublicaTaller();
+    return;
+  }
   if (esVistaPublica()) {
     renderVistaPublica();
     return;
@@ -8402,7 +8490,7 @@ if (firebaseDisponible) {
           const ocupado = activo && (activo.tagName === 'SELECT' || activo.tagName === 'INPUT');
           if (ocupado) { timerVistaPublica = setTimeout(intentarActualizar, 1500); return; }
           aplicarDatosDeNube(snap.data());
-          renderVistaPublica();
+          if (esVistaPublicaTaller()) renderVistaPublicaTaller(); else renderVistaPublica();
         };
         timerVistaPublica = setTimeout(intentarActualizar, 1500);
       });

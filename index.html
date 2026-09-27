@@ -5754,39 +5754,44 @@ function viewNuevoPedido() {
     } }, '+ Crear como cliente nuevo'),
   ));
 
-  const marcaInput = el('input', { type: 'text', placeholder: 'Ej: Yonex Astrox 99' });
-  const resultadosRaquetaDiv = el('div', { style: 'margin-top:6px;' });
-  function listaRaquetasPlana() {
+  const marcaSelect = el('select', {});
+  const marcaLibreInput = el('input', { type: 'text', placeholder: 'Escribe marca y modelo', style: 'display:none;margin-top:6px;' });
+  function construirOpcionesMarca() {
+    marcaSelect.innerHTML = '';
+    marcaSelect.appendChild(el('option', { value: '' }, '— Elegir raqueta —'));
     const combinadas = raquetasMercadoCompleto();
-    const plana = [];
-    Object.keys(combinadas).forEach(marca => {
-      combinadas[marca].forEach(r => plana.push({ marca, modelo: r.modelo, tensionMaxKg: r.tensionMaxKg }));
+    Object.keys(combinadas).sort().forEach(marca => {
+      const grupo = el('optgroup', { label: marca });
+      combinadas[marca].forEach(r => {
+        grupo.appendChild(el('option', { value: marca + ' ' + r.modelo }, r.modelo + (r.tensionMaxKg ? ' (máx. ' + r.tensionMaxKg + ' kg)' : '')));
+      });
+      marcaSelect.appendChild(grupo);
     });
-    return plana;
+    marcaSelect.appendChild(el('option', { value: '__otra__' }, '✏️ Otra (escribir a mano)'));
   }
-  function pintarResultadosRaqueta() {
-    resultadosRaquetaDiv.innerHTML = '';
-    const q = marcaInput.value.trim().toLowerCase();
-    if (!q) return;
-    const encontradas = listaRaquetasPlana().filter(r => (r.marca + ' ' + r.modelo).toLowerCase().includes(q));
-    encontradas.slice(0, 8).forEach(r => {
-      resultadosRaquetaDiv.appendChild(el('div', {
-        class: 'chip', style: 'cursor:pointer;margin:2px;display:inline-block;',
-        onclick: () => {
-          marcaInput.value = r.marca + ' ' + r.modelo;
-          resultadosRaquetaDiv.innerHTML = '';
-          comprobarTensionMax();
-        },
-      }, r.marca + ' ' + r.modelo + (r.tensionMaxKg ? ' (máx. ' + r.tensionMaxKg + ' kg)' : '')));
-    });
+  construirOpcionesMarca();
+  marcaSelect.addEventListener('change', () => {
+    if (marcaSelect.value === '__otra__') {
+      marcaLibreInput.style.display = 'block';
+      marcaLibreInput.value = '';
+      marcaLibreInput.focus();
+    } else {
+      marcaLibreInput.style.display = 'none';
+      marcaLibreInput.value = '';
+    }
+    comprobarTensionMax();
+  });
+  marcaLibreInput.addEventListener('input', comprobarTensionMax);
+  function marcaModeloFinal() {
+    return marcaSelect.value === '__otra__' ? marcaLibreInput.value.trim() : marcaSelect.value;
   }
-  marcaInput.addEventListener('input', () => { pintarResultadosRaqueta(); comprobarTensionMax(); });
+  const marcaCampoDiv = el('div', {}, marcaSelect, marcaLibreInput);
   const tensionVInput = el('input', { type: 'number', step: '0.5', min: '0', placeholder: 'Ej: 10.5' });
   const tensionHInput = el('input', { type: 'number', step: '0.5', min: '0', placeholder: 'Ej: 10' });
   const avisoTensionMaxDiv = el('div', {});
   function comprobarTensionMax() {
     avisoTensionMaxDiv.innerHTML = '';
-    const raqueta = buscarRaquetaPorNombre(marcaInput.value);
+    const raqueta = buscarRaquetaPorNombre(marcaModeloFinal());
     if (!raqueta || !raqueta.tensionMaxKg) return;
     const vMax = Math.max(parseFloat(tensionVInput.value) || 0, parseFloat(tensionHInput.value) || 0);
     if (vMax > raqueta.tensionMaxKg) {
@@ -5851,27 +5856,29 @@ function viewNuevoPedido() {
   const notasInput = el('textarea', { rows: '2', placeholder: 'Notas (opcional)' });
 
   panel.appendChild(el('div', { class: 'grid' },
-    field('Marca y modelo de la raqueta', marcaInput),
+    field('Marca y modelo de la raqueta', marcaCampoDiv),
     field('Cordaje', cordajeSelect),
     field('Tensión vertical (kg)', tensionVInput),
     field('Tensión horizontal (kg)', tensionHInput),
     field('Precio (€)', precioInput),
     field('Foto de la raqueta (opcional)', fotoInput),
   ));
-  panel.appendChild(resultadosRaquetaDiv);
   panel.appendChild(avisoTensionMaxDiv);
 
   const nuevaMarcaInput = el('input', { type: 'text', placeholder: 'Marca (ej: Yonex)' });
   const nuevoModeloInput = el('input', { type: 'text', placeholder: 'Modelo (ej: Astrox 200)' });
   const nuevaTensionMaxInput = el('input', { type: 'number', step: '0.5', min: '0', placeholder: 'Máx. kg (opcional)' });
   panel.appendChild(el('div', { class: 'card', style: 'padding:10px 14px;margin-bottom:16px;' },
-    el('div', { class: 'sub', style: 'margin-bottom:6px;' }, '¿La raqueta no está en la lista? Añádela para que aparezca siempre a partir de ahora:'),
+    el('div', { class: 'sub', style: 'margin-bottom:6px;' }, '¿La raqueta no está en la lista? Añádela para que aparezca siempre en el desplegable a partir de ahora:'),
     el('div', { class: 'row', style: 'gap:8px;flex-wrap:wrap;' },
       nuevaMarcaInput, nuevoModeloInput, nuevaTensionMaxInput,
       el('button', { class: 'btn btn-ghost btn-sm', onclick: () => {
         if (!nuevaMarcaInput.value.trim() || !nuevoModeloInput.value.trim()) { alert('Pon marca y modelo.'); return; }
         addRaquetaExtra(nuevaMarcaInput.value, nuevoModeloInput.value, nuevaTensionMaxInput.value ? parseFloat(nuevaTensionMaxInput.value) : null);
-        marcaInput.value = nuevaMarcaInput.value.trim() + ' ' + nuevoModeloInput.value.trim();
+        const valorNuevo = nuevaMarcaInput.value.trim() + ' ' + nuevoModeloInput.value.trim();
+        construirOpcionesMarca();
+        marcaSelect.value = valorNuevo;
+        marcaLibreInput.style.display = 'none';
         nuevaMarcaInput.value = ''; nuevoModeloInput.value = ''; nuevaTensionMaxInput.value = '';
         saveLocal();
         comprobarTensionMax();
@@ -5887,7 +5894,7 @@ function viewNuevoPedido() {
       try { fotoAntes = await comprimirImagen(fotoInput.files[0], 1100, 0.65); } catch (e) {}
     }
     const nuevo = addPedido({
-      clienteId: clienteElegidoId, marcaModelo: marcaInput.value.trim(), cordajeId: cordajeSelect.value || null,
+      clienteId: clienteElegidoId, marcaModelo: marcaModeloFinal(), cordajeId: cordajeSelect.value || null,
       tensionVertical: tensionVInput.value ? parseFloat(tensionVInput.value) : null,
       tensionHorizontal: tensionHInput.value ? parseFloat(tensionHInput.value) : (tensionVInput.value ? parseFloat(tensionVInput.value) : null),
       precio: parseFloat(precioInput.value) || 0,

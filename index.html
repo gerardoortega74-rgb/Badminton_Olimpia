@@ -5313,7 +5313,7 @@ function uid(prefix) { return prefix + '_' + (uidCounter++) + '_' + Math.random(
 let uidCounter = 1;
 function defaultState() {
   return {
-    config: { tiempoMedioMinutos: 35, precioBaseEncordado: 12, precioSinCordaje: 12 },
+    config: { tiempoMedioMinutos: 35, precioBaseEncordado: 12, precioSinCordaje: 12, tarjetaVisitaFoto: null },
     clientes: [],
     articulos: [],
     cordajes: [],
@@ -6135,7 +6135,7 @@ function viewCatalogo() {
   }
   wrap.appendChild(panelArt);
 
-  wrap.appendChild(el('div', { class: 'panel' },
+  const panelConfig = el('div', { class: 'panel' },
     el('h2', {}, '⚙️ Configuración del taller'),
     el('div', { class: 'sub' }, 'La mano de obra se suma al precio del cordaje elegido del stock. El precio "sin cordaje" es el que cobras cuando el cliente trae su propio cordaje (normalmente algo más caro que la mano de obra sola, para no salir más barato que comprarte el cordaje más económico).'),
     el('div', { class: 'grid' },
@@ -6143,12 +6143,40 @@ function viewCatalogo() {
       field('Mano de obra con cordaje del stock (€)', inputEl('number', state.config.precioBaseEncordado, v => { state.config.precioBaseEncordado = parseFloat(v) || 0; }, { min: 0, step: '0.5' })),
       field('Precio si el cliente trae su propio cordaje (€)', inputEl('number', state.config.precioSinCordaje, v => { state.config.precioSinCordaje = parseFloat(v) || 0; }, { min: 0, step: '0.5' })),
     ),
+  );
+  panelConfig.appendChild(el('h3', { style: 'margin-top:16px;' }, '📇 Tu publicidad (tarjeta de visita)'));
+  panelConfig.appendChild(el('div', { class: 'sub', style: 'margin-bottom:8px;' }, 'Sube una foto de tu tarjeta de visita. Saldrá en el historial y en la página que ve cada cliente al seguir su raqueta.'));
+  if (state.config.tarjetaVisitaFoto) {
+    panelConfig.appendChild(el('img', { src: state.config.tarjetaVisitaFoto, style: 'max-width:280px;border-radius:8px;display:block;margin-bottom:8px;' }));
+  }
+  const tarjetaInput = el('input', { type: 'file', accept: 'image/*' });
+  panelConfig.appendChild(el('div', { class: 'toolbar' },
+    tarjetaInput,
+    el('button', { class: 'btn btn-gold btn-sm', onclick: async () => {
+      if (!tarjetaInput.files[0]) { alert('Elige antes una foto.'); return; }
+      try {
+        state.config.tarjetaVisitaFoto = await comprimirImagen(tarjetaInput.files[0], 900, 0.7);
+        if (window.guardarTarjetaVisitaTallerEnNube) window.guardarTarjetaVisitaTallerEnNube(state.config.tarjetaVisitaFoto);
+        render();
+      } catch (e) { alert('No se pudo procesar la foto.'); }
+    } }, '+ Guardar foto'),
+    state.config.tarjetaVisitaFoto ? el('button', { class: 'btn btn-danger btn-sm', onclick: () => {
+      state.config.tarjetaVisitaFoto = null;
+      if (window.guardarTarjetaVisitaTallerEnNube) window.guardarTarjetaVisitaTallerEnNube(null);
+      render();
+    } }, 'Quitar foto') : null,
   ));
+  wrap.appendChild(panelConfig);
   return wrap;
 }
 
 function viewHistorial() {
   const wrap = document.createDocumentFragment();
+  if (state.config.tarjetaVisitaFoto) {
+    wrap.appendChild(el('div', { class: 'panel', style: 'text-align:center;' },
+      el('img', { src: state.config.tarjetaVisitaFoto, style: 'max-width:280px;border-radius:8px;' }),
+    ));
+  }
   const terminados = state.pedidos.filter(p => p.estado === 'terminado' || p.estado === 'entregado').sort((a, b) => b.horaLlegada - a.horaLlegada);
   const total = terminados.reduce((s, p) => s + (p.precio || 0), 0);
   const pendienteDeCobro = terminados.filter(p => !p.pagado).reduce((s, p) => s + (p.precio || 0), 0);
@@ -6274,7 +6302,8 @@ function saveLocal() {
   if (typeof programarSyncNube === 'function') programarSyncNube();
 }
 function mount() { tryLoadLocal(); render(); }
-return { render, mount, getState, setState, saveLocal };
+function irATab(tabId) { activeTab = tabId; render(); }
+return { render, mount, getState, setState, saveLocal, irATab };
 })();
 
 </script>
@@ -7141,6 +7170,11 @@ function renderVistaPublicaTaller() {
   panel.appendChild(el('div', { class: 'sub', style: 'margin-top:12px;' },
     'Cordaje: ' + (cordaje ? cordaje.nombre : 'sin especificar') + (pedido.tensionVertical || pedido.tensionHorizontal ? ' · Tensión: ' + (pedido.tensionVertical || '') + '/' + (pedido.tensionHorizontal || '') + ' kg' : '')));
   root.appendChild(panel);
+  if (taller.config && taller.config.tarjetaVisitaFoto) {
+    root.appendChild(el('div', { class: 'panel', style: 'text-align:center;' },
+      el('img', { src: taller.config.tarjetaVisitaFoto, style: 'max-width:280px;border-radius:8px;' }),
+    ));
+  }
 }
 function statCardShell(num, lab) { return el('div', { class: 'stat-card' }, el('div', { class: 'num' }, num), el('div', { class: 'lab' }, lab)); }
 function nombreParticipantePublico(cat, id) {
@@ -8153,6 +8187,7 @@ function renderHome() {
     { icon: '📅', title: 'Planificación Anual', desc: 'De la iniciación a la tecnificación: macrociclo, microciclo y evaluación.', sec: 'planificacion', permiso: 'planificacion' },
     { icon: '🏛️', title: 'Gestión de Club', desc: 'Datos del club, jugadores, y pagos y cuotas.', sec: 'clubgestion', permiso: null },
     { icon: '🏸', title: 'Taller de Raquetas', desc: 'Cola de encordado, clientes, artículos y cordajes, e historial.', sec: 'taller', permiso: 'taller' },
+    { icon: '💰', title: 'Contabilidad del Taller', desc: 'Encordado y venta de artículos: grips, llaveros, mochilas y más.', sec: 'taller-contabilidad', permiso: 'taller' },
   ];
   if (esAdmin()) {
     cards.push({ icon: '🔐', title: 'Control de acceso', desc: 'Usuarios, roles y qué puede ver cada uno.', sec: 'acceso', permiso: null });
@@ -8163,6 +8198,7 @@ function renderHome() {
     if (!visible) return;
     grid.appendChild(el('div', { class: 'home-card', onclick: () => {
       if (c.sec === 'acceso') { goToClubGestion('acceso'); return; }
+      if (c.sec === 'taller-contabilidad') { showSection('taller'); TallerApp.irATab('contabilidad'); return; }
       if (c.sec !== 'clubgestion') { showSection(c.sec); return; }
       const primerTab = tienePermiso('club') ? 'datos' : tienePermiso('jugadores') ? 'jugadores' : 'pagos';
       goToClubGestion(primerTab);
@@ -8285,6 +8321,10 @@ function estadoCompletoParaNube() {
       p.fotoDespues = null;
     });
   }
+  if (tallerParaNube.config) {
+    tallerParaNube.config.tieneTarjetaVisita = !!tallerParaNube.config.tarjetaVisitaFoto;
+    tallerParaNube.config.tarjetaVisitaFoto = null;
+  }
   return {
     club: clubGlobal,
     jugadoresGlobal: jugadoresGlobal,
@@ -8318,9 +8358,20 @@ function cargarFotosTallerDeNube() {
         if (mapa[p.id]) { p.fotoAntes = mapa[p.id].fotoAntes || null; p.fotoDespues = mapa[p.id].fotoDespues || null; }
       });
     }
+    if (mapa['_config_tarjeta'] && tallerState.config) {
+      tallerState.config.tarjetaVisitaFoto = mapa['_config_tarjeta'].foto || null;
+    }
   }).catch(err => { console.warn('No se pudieron cargar las fotos del taller:', err); });
 }
+function guardarTarjetaVisitaTallerEnNube(foto) {
+  if (!firebaseDisponible || !sincronizacionInicialLista) return;
+  coleccionFotosTaller().doc('_config_tarjeta').set({ foto: foto || null }).catch(err => {
+    console.warn('Error guardando la tarjeta de visita en la nube:', err);
+    marcarEstadoNube('⚠️ No se pudo guardar la tarjeta de visita: ' + (err && err.message ? err.message : 'error desconocido'));
+  });
+}
 window.guardarFotosTallerEnNube = guardarFotosTallerEnNube;
+window.guardarTarjetaVisitaTallerEnNube = guardarTarjetaVisitaTallerEnNube;
 function coleccionRecibos() {
   return docNube().collection('recibos');
 }

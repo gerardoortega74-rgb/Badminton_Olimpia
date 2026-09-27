@@ -5465,7 +5465,7 @@ function renderTabsNav() {
   nav.innerHTML = '';
   const cola = pedidosEnCola().length;
   const tabs = [
-    ['cola', '🎾 Cola de trabajo' + (cola ? ' (' + cola + ')' : '')],
+    ['cola', '🏸 Cola de trabajo' + (cola ? ' (' + cola + ')' : '')],
     ['nuevo', '➕ Nuevo pedido'],
     ['clientes', '👤 Clientes'],
     ['catalogo', '🏷️ Artículos y cordajes'],
@@ -5480,7 +5480,7 @@ function viewCola() {
   const wrap = document.createDocumentFragment();
   const cola = pedidosEnCola();
   const panel = el('div', { class: 'panel' },
-    el('h2', {}, '🎾 Cola de trabajo'),
+    el('h2', {}, '🏸 Cola de trabajo'),
     el('div', { class: 'sub' }, `Pedidos pendientes, en el orden en que llegaron. Tiempo medio actual: ${state.config.tiempoMedioMinutos} min/raqueta.`),
   );
   const tMedioReal = tiempoMedioReal();
@@ -7639,7 +7639,7 @@ function renderHome() {
     { icon: '🏆', title: 'Gestor de Torneos', desc: 'Grupos, sorteo, calendario, resultados y eliminatoria.', sec: 'torneo', permiso: 'torneo' },
     { icon: '📅', title: 'Planificación Anual', desc: 'De la iniciación a la tecnificación: macrociclo, microciclo y evaluación.', sec: 'planificacion', permiso: 'planificacion' },
     { icon: '🏛️', title: 'Gestión de Club', desc: 'Datos del club, jugadores, y pagos y cuotas.', sec: 'clubgestion', permiso: null },
-    { icon: '🎾', title: 'Taller de Raquetas', desc: 'Cola de encordado, clientes, artículos y cordajes, e historial.', sec: 'taller', permiso: 'taller' },
+    { icon: '🏸', title: 'Taller de Raquetas', desc: 'Cola de encordado, clientes, artículos y cordajes, e historial.', sec: 'taller', permiso: 'taller' },
   ];
   if (esAdmin()) {
     cards.push({ icon: '🔐', title: 'Control de acceso', desc: 'Usuarios, roles y qué puede ver cada uno.', sec: 'acceso', permiso: null });

@@ -5729,7 +5729,17 @@ function viewNuevoPedido() {
     } }, '+ Crear como cliente nuevo'),
   ));
 
-  const marcaInput = el('input', { type: 'text', placeholder: 'Ej: Yonex Astrox 99' });
+  const listaRaquetasId = 'lista-raquetas-mercado';
+  const marcaInput = el('input', { type: 'text', placeholder: 'Ej: Yonex Astrox 99', list: listaRaquetasId });
+  if (!document.getElementById(listaRaquetasId)) {
+    const datalist = el('datalist', { id: listaRaquetasId });
+    Object.keys(RAQUETAS_MERCADO).forEach(marca => {
+      RAQUETAS_MERCADO[marca].forEach(modelo => {
+        datalist.appendChild(el('option', { value: marca + ' ' + modelo }));
+      });
+    });
+    document.body.appendChild(datalist);
+  }
   const tensionVInput = el('input', { type: 'number', step: '0.5', min: '0', placeholder: 'Ej: 10.5' });
   const tensionHInput = el('input', { type: 'number', step: '0.5', min: '0', placeholder: 'Ej: 10' });
   const cordajeSelect = el('select', {});
@@ -5895,6 +5905,14 @@ function viewClientes() {
   return wrap;
 }
 
+const RAQUETAS_MERCADO = {
+  'Yonex': ['Astrox 99 Pro', 'Astrox 99 Play', 'Astrox 100 ZZ', 'Astrox 88D Pro', 'Astrox 88S Pro', 'Astrox 77', 'Astrox 68D', 'Astrox 22', 'Astrox 2', 'Nanoflare 1000 Z', 'Nanoflare 800 Pro', 'Nanoflare 800', 'Nanoflare 700', 'Nanoflare Nextage', 'Nanoflare Drive', 'Arcsaber 11 Pro', 'Arcsaber 11', 'Arcsaber 7', 'Arcsaber 71', 'Duora 10', 'Duora Z-Strike', 'Voltric Z-Force II', 'Nanoray 900'],
+  'Victor': ['Thruster K Falcon', 'Thruster F', 'Thruster Ryuga Metallic', 'Thruster 1H H', 'Auraspeed 90K II', 'Auraspeed 90K', 'DriveX 12', 'DriveX 10 Metallic', 'Jetspeed S 12', 'Brave Sword 12'],
+  'Li-Ning': ['Axforce 90 Max Dragon', 'Axforce 100', 'Windstorm 78', 'Windstorm 72', 'Turbo Charging 75', 'Turbo Charging 70D', 'Aeronaut 9000', 'Aeronaut 7000', 'N90', 'N99', 'Bladex 900', 'Halbertec 9000'],
+  'Babolat': ['Satelite Gravity', 'Satelite Origin', 'X-Feel Fury Ti', 'X-Feel Lite'],
+  'Carlton': ['Kinesis Ultra X', 'Vapour Trail'],
+  'Apacs': ['Feather Weight X', 'Force II'],
+};
 const NIVELES_JUGADOR_TALLER = [
   { value: 'todos', label: 'Cualquier nivel' },
   { value: 'iniciacion', label: 'Iniciación' },

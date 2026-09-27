@@ -5754,27 +5754,39 @@ function viewNuevoPedido() {
     } }, '+ Crear como cliente nuevo'),
   ));
 
-  const listaRaquetasId = 'lista-raquetas-mercado';
-  const marcaInput = el('input', { type: 'text', placeholder: 'Ej: Yonex Astrox 99', list: listaRaquetasId });
-  let datalistRaquetas = document.getElementById(listaRaquetasId);
-  if (!datalistRaquetas) {
-    datalistRaquetas = el('datalist', { id: listaRaquetasId });
-    document.body.appendChild(datalistRaquetas);
-  }
-  datalistRaquetas.innerHTML = '';
-  const raquetasCombinadas = raquetasMercadoCompleto();
-  Object.keys(raquetasCombinadas).forEach(marca => {
-    raquetasCombinadas[marca].forEach(r => {
-      datalistRaquetas.appendChild(el('option', { value: marca + ' ' + r.modelo + (r.tensionMaxKg ? ' (máx. ' + r.tensionMaxKg + ' kg)' : '') }));
+  const marcaInput = el('input', { type: 'text', placeholder: 'Ej: Yonex Astrox 99' });
+  const resultadosRaquetaDiv = el('div', { style: 'margin-top:6px;' });
+  function listaRaquetasPlana() {
+    const combinadas = raquetasMercadoCompleto();
+    const plana = [];
+    Object.keys(combinadas).forEach(marca => {
+      combinadas[marca].forEach(r => plana.push({ marca, modelo: r.modelo, tensionMaxKg: r.tensionMaxKg }));
     });
-  });
+    return plana;
+  }
+  function pintarResultadosRaqueta() {
+    resultadosRaquetaDiv.innerHTML = '';
+    const q = marcaInput.value.trim().toLowerCase();
+    if (!q) return;
+    const encontradas = listaRaquetasPlana().filter(r => (r.marca + ' ' + r.modelo).toLowerCase().includes(q));
+    encontradas.slice(0, 8).forEach(r => {
+      resultadosRaquetaDiv.appendChild(el('div', {
+        class: 'chip', style: 'cursor:pointer;margin:2px;display:inline-block;',
+        onclick: () => {
+          marcaInput.value = r.marca + ' ' + r.modelo;
+          resultadosRaquetaDiv.innerHTML = '';
+          comprobarTensionMax();
+        },
+      }, r.marca + ' ' + r.modelo + (r.tensionMaxKg ? ' (máx. ' + r.tensionMaxKg + ' kg)' : '')));
+    });
+  }
+  marcaInput.addEventListener('input', () => { pintarResultadosRaqueta(); comprobarTensionMax(); });
   const tensionVInput = el('input', { type: 'number', step: '0.5', min: '0', placeholder: 'Ej: 10.5' });
   const tensionHInput = el('input', { type: 'number', step: '0.5', min: '0', placeholder: 'Ej: 10' });
   const avisoTensionMaxDiv = el('div', {});
   function comprobarTensionMax() {
     avisoTensionMaxDiv.innerHTML = '';
-    const nombreEscrito = marcaInput.value.replace(/\s*\(máx\..*\)\s*$/, '');
-    const raqueta = buscarRaquetaPorNombre(nombreEscrito);
+    const raqueta = buscarRaquetaPorNombre(marcaInput.value);
     if (!raqueta || !raqueta.tensionMaxKg) return;
     const vMax = Math.max(parseFloat(tensionVInput.value) || 0, parseFloat(tensionHInput.value) || 0);
     if (vMax > raqueta.tensionMaxKg) {
@@ -5782,8 +5794,6 @@ function viewNuevoPedido() {
         `⚠️ Esa raqueta (${raqueta.marca} ${raqueta.modelo}) tiene un máximo recomendado de ${raqueta.tensionMaxKg} kg. Estás poniendo más tensión de la recomendada por el fabricante.`));
     }
   }
-  marcaInput.addEventListener('change', comprobarTensionMax);
-  marcaInput.addEventListener('input', comprobarTensionMax);
   tensionVInput.addEventListener('change', comprobarTensionMax);
   tensionHInput.addEventListener('change', comprobarTensionMax);
   const cordajeSelect = el('select', {});
@@ -5848,6 +5858,7 @@ function viewNuevoPedido() {
     field('Precio (€)', precioInput),
     field('Foto de la raqueta (opcional)', fotoInput),
   ));
+  panel.appendChild(resultadosRaquetaDiv);
   panel.appendChild(avisoTensionMaxDiv);
 
   const nuevaMarcaInput = el('input', { type: 'text', placeholder: 'Marca (ej: Yonex)' });
@@ -5861,9 +5872,6 @@ function viewNuevoPedido() {
         if (!nuevaMarcaInput.value.trim() || !nuevoModeloInput.value.trim()) { alert('Pon marca y modelo.'); return; }
         addRaquetaExtra(nuevaMarcaInput.value, nuevoModeloInput.value, nuevaTensionMaxInput.value ? parseFloat(nuevaTensionMaxInput.value) : null);
         marcaInput.value = nuevaMarcaInput.value.trim() + ' ' + nuevoModeloInput.value.trim();
-        datalistRaquetas.innerHTML = '';
-        const combinadas = raquetasMercadoCompleto();
-        Object.keys(combinadas).forEach(marca => { combinadas[marca].forEach(r => { datalistRaquetas.appendChild(el('option', { value: marca + ' ' + r.modelo + (r.tensionMaxKg ? ' (máx. ' + r.tensionMaxKg + ' kg)' : '') })); }); });
         nuevaMarcaInput.value = ''; nuevoModeloInput.value = ''; nuevaTensionMaxInput.value = '';
         saveLocal();
         comprobarTensionMax();
@@ -5992,14 +6000,14 @@ const RAQUETAS_MERCADO_BASE = {
     rm('XP 901', 9), rm('G-Force 5900', 10), rm('G-Force Superlite', 9.5),
   ],
   'Babolat': [rm('Satelite Gravity', 12.5), rm('Satelite Origin', 12), rm('X-Feel Fury Ti', 12.5), rm('X-Feel Lite', 10.5)],
-  'Carlton': [rm('Kinesis Ultra X', 11), rm('Vapour Trail', 10)],
-  'Apacs': [rm('Feather Weight X', 11.5), rm('Force II', 11)],
+  'Carlton': [rm('Kinesis Ultra X', 11), rm('Vapour Trail 82', 10.5), rm('Vapour Trail 78', 10), rm('Airblade', 10.5), rm('Powerblade', 11)],
+  'Apacs': [rm('Feather Weight X', 11.5), rm('Force II', 11), rm('Fantala Pro 101', 12), rm('Virtuoso Pro II', 12.5), rm('Thunderdome Pro 6.2', 12), rm('Slayer 95 II', 12.5)],
   'Hiqua': [rm('HQ-300', 10), rm('HQ-39', 11.5), rm('HQ-800 Champion 88', 11), rm('7272', 8), rm('Winner Choice', 8), rm('Extra Power 88 Holes 2010', 13.5), rm('Super Max', 9), rm('Ultra Sonic', 9)],
   'Cosco': [rm('CB-150', 9.5), rm('CB-120', 9), rm('CB-80', 8), rm('Drive', 9)],
-  "Silver's": [rm('Pro 79', 8.5)],
-  'Nivia': [rm('Attack', 9.5)],
-  'Hundred': [rm('N-ergy 80', 10.5)],
-  'Woods': [rm('Hypalite', 10)],
+  "Silver's": [rm('Pro 79', 8.5), rm('Fire', 9), rm('Pro-170', 9), rm('SB-414', 8.5), rm('Reflex', 8.5)],
+  'Nivia': [rm('Attack', 9.5), rm('N-Ray 100', 9.5), rm('Wave Tech 2900', 10)],
+  'Hundred': [rm('N-ergy 80', 10.5), rm('Nitrix Pro', 13), rm('Nitrix 70 Volta', 13), rm('Flareon Typhoon', 12), rm('Cult 79', 11.5), rm('Cult 77', 11)],
+  'Woods': [rm('Hypalite', 10), rm('Breakthru', 10), rm('Carbolite Pro', 12), rm('Trimach 2', 12.5)],
 };
 const NIVELES_JUGADOR_TALLER = [
   { value: 'todos', label: 'Cualquier nivel' },

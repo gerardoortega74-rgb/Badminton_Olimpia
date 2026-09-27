@@ -5358,6 +5358,12 @@ function fmtFechaDMY(s) {
   if (partes.length !== 3) return s;
   return partes[2] + '/' + partes[1] + '/' + partes[0];
 }
+function fmtTension(p) {
+  const v = p.tensionVertical, h = p.tensionHorizontal;
+  if (!v && !h) return '—';
+  if (v && h && v !== h) return v + '/' + h + ' lbs (V/H)';
+  return (v || h) + ' lbs';
+}
 function fmtHora(ts) {
   if (!ts) return '—';
   const d = new Date(ts);
@@ -5420,7 +5426,7 @@ function tiempoMedioReal() {
 function addPedido(datos) {
   const nuevo = {
     id: uid('ped'), clienteId: datos.clienteId, marcaModelo: datos.marcaModelo || '', cordajeId: datos.cordajeId || null,
-    tension: datos.tension || null, precio: datos.precio || 0, fotoAntes: datos.fotoAntes || null, fotoDespues: null,
+    tensionVertical: datos.tensionVertical || null, tensionHorizontal: datos.tensionHorizontal || null, precio: datos.precio || 0, fotoAntes: datos.fotoAntes || null, fotoDespues: null,
     estado: 'pendiente', horaLlegada: Date.now(), horaInicio: null, horaFin: null, notas: datos.notas || '',
   };
   state.pedidos.push(nuevo);
@@ -5504,7 +5510,7 @@ function viewCola() {
         el('span', { class: 'card-title' }, '#' + (idx + 1) + ' · ' + (cli ? cli.nombre : '(cliente eliminado)')),
         p.estado === 'en_proceso' ? el('span', { class: 'chip chip-gold' }, 'En proceso') : el('span', { class: 'chip chip-muted' }, 'Pendiente'),
       ),
-      el('div', { class: 'sub' }, `${p.marcaModelo || 'Raqueta sin especificar'} · ${cor ? cor.nombre : 'sin cordaje'}${p.tension ? ' a ' + p.tension + ' lbs' : ''} · ${euros(p.precio)}`),
+      el('div', { class: 'sub' }, `${p.marcaModelo || 'Raqueta sin especificar'} · ${cor ? cor.nombre : 'sin cordaje'} · ${fmtTension(p)} · ${euros(p.precio)}`),
       el('div', { class: 'sub' }, `Llegó a las ${fmtHora(p.horaLlegada)}${estimada ? ' · Estimado listo a las ' + fmtHora(estimada) : ''}`),
     );
     if (p.fotoAntes) card.appendChild(el('img', { src: p.fotoAntes, style: 'max-width:160px;border-radius:8px;margin-top:6px;display:block;' }));
@@ -5611,7 +5617,8 @@ function viewNuevoPedido() {
   ));
 
   const marcaInput = el('input', { type: 'text', placeholder: 'Ej: Yonex Astrox 99' });
-  const tensionInput = el('input', { type: 'number', step: '0.5', min: '0', placeholder: 'Ej: 24' });
+  const tensionVInput = el('input', { type: 'number', step: '0.5', min: '0', placeholder: 'Ej: 24' });
+  const tensionHInput = el('input', { type: 'number', step: '0.5', min: '0', placeholder: 'Ej: 22' });
   const cordajeSelect = selectEl([{ value: '', label: '— Elegir cordaje —' }].concat(state.cordajes.map(c => ({ value: c.id, label: c.nombre + ' (' + euros(c.precio) + ', stock: ' + c.stock + ')' }))), '', () => {});
   const precioInput = el('input', { type: 'number', step: '0.5', min: '0', value: state.config.precioBaseEncordado });
   cordajeSelect.addEventListener('change', () => {
@@ -5624,7 +5631,8 @@ function viewNuevoPedido() {
   panel.appendChild(el('div', { class: 'grid' },
     field('Marca y modelo de la raqueta', marcaInput),
     field('Cordaje', cordajeSelect),
-    field('Tensión (lbs)', tensionInput),
+    field('Tensión vertical (lbs)', tensionVInput),
+    field('Tensión horizontal (lbs)', tensionHInput),
     field('Precio (€)', precioInput),
     field('Foto de la raqueta (opcional)', fotoInput),
   ));
@@ -5640,7 +5648,9 @@ function viewNuevoPedido() {
       }
       const nuevo = addPedido({
         clienteId: clienteElegidoId, marcaModelo: marcaInput.value.trim(), cordajeId: cordajeSelect.value || null,
-        tension: tensionInput.value ? parseFloat(tensionInput.value) : null, precio: parseFloat(precioInput.value) || 0,
+        tensionVertical: tensionVInput.value ? parseFloat(tensionVInput.value) : null,
+        tensionHorizontal: tensionHInput.value ? parseFloat(tensionHInput.value) : (tensionVInput.value ? parseFloat(tensionVInput.value) : null),
+        precio: parseFloat(precioInput.value) || 0,
         fotoAntes, notas: notasInput.value.trim(),
       });
       if (window.guardarFotosTallerEnNube) window.guardarFotosTallerEnNube(nuevo.id, nuevo.fotoAntes, null);
@@ -5705,7 +5715,7 @@ function viewClientes() {
               el('td', {}, fmtFechaHora(p.horaLlegada)),
               el('td', {}, p.marcaModelo || '—'),
               el('td', {}, cor ? cor.nombre : '—'),
-              el('td', {}, p.tension ? p.tension + ' lbs' : '—'),
+              el('td', {}, fmtTension(p)),
               el('td', {}, euros(p.precio)),
               el('td', {}, p.estado === 'entregado' ? el('span', { class: 'chip chip-gold' }, 'Entregado') : p.estado === 'terminado' ? el('span', { class: 'chip chip-gold' }, 'Terminado') : el('span', { class: 'chip chip-muted' }, 'En curso')),
             ));
@@ -5804,7 +5814,7 @@ function viewHistorial() {
       el('td', {}, cli ? cli.nombre : '(eliminado)'),
       el('td', {}, p.marcaModelo || '—'),
       el('td', {}, cor ? cor.nombre : '—'),
-      el('td', {}, p.tension ? p.tension + ' lbs' : '—'),
+      el('td', {}, fmtTension(p)),
       el('td', {}, duracion),
       el('td', {}, euros(p.precio)),
       el('td', {}, p.estado === 'entregado' ? el('span', { class: 'chip chip-gold' }, 'Entregado') : el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { entregarPedido(p); render(); } }, 'Marcar entregado')),

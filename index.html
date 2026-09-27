@@ -5317,6 +5317,7 @@ function defaultState() {
     articulos: [],
     cordajes: [],
     pedidos: [],
+    contabilidad: { movimientos: [] },
   };
 }
 let state = defaultState();
@@ -5477,6 +5478,7 @@ function render() {
     else if (activeTab === 'clientes') main.appendChild(viewClientes());
     else if (activeTab === 'catalogo') main.appendChild(viewCatalogo());
     else if (activeTab === 'historial') main.appendChild(viewHistorial());
+    else if (activeTab === 'contabilidad') main.appendChild(viewContabilidadTaller());
   } catch (err) {
     main.appendChild(el('div', { class: 'msg msg-warn' }, 'Ha ocurrido un error mostrando esta pestaña: ' + err.message));
     console.error(err);
@@ -5493,6 +5495,7 @@ function renderTabsNav() {
     ['clientes', '👤 Clientes'],
     ['catalogo', '🏷️ Artículos y cordajes'],
     ['historial', '📚 Historial'],
+    ['contabilidad', '💰 Contabilidad'],
   ];
   tabs.forEach(([id, label]) => {
     nav.appendChild(el('button', { class: activeTab === id ? 'active' : '', onclick: () => { if (id !== 'nuevo') clientePreseleccionadoId = null; activeTab = id; render(); } }, label));
@@ -5815,7 +5818,9 @@ function viewClientes() {
       );
       if (expandido) {
         const pedidos = pedidosDeCliente(c.id);
-        card.appendChild(el('h4', { style: 'margin:12px 0 6px;' }, 'Historial (' + pedidos.length + ' raqueta(s))'));
+        const totalGastado = pedidos.reduce((s, p) => s + (p.precio || 0), 0);
+        const totalPendiente = pedidos.filter(p => !p.pagado).reduce((s, p) => s + (p.precio || 0), 0);
+        card.appendChild(el('h4', { style: 'margin:12px 0 6px;' }, `Historial (${pedidos.length} raqueta(s)) · Total: ${euros(totalGastado)}${totalPendiente > 0 ? ' · Pendiente: ' + euros(totalPendiente) : ''}`));
         if (!pedidos.length) {
           card.appendChild(el('div', { class: 'sub' }, 'Todavía no ha traído ninguna raqueta.'));
         } else {
@@ -5953,6 +5958,70 @@ function viewHistorial() {
   return wrap;
 }
 
+function addMovimientoTaller(datos) {
+  state.contabilidad.movimientos.push({ id: uid('mov'), fecha: datos.fecha || new Date().toISOString().slice(0, 10), tipo: datos.tipo || 'gasto', categoria: datos.categoria || '', concepto: datos.concepto || '', importe: datos.importe || 0 });
+}
+function removeMovimientoTaller(id) { state.contabilidad.movimientos = state.contabilidad.movimientos.filter(m => m.id !== id); }
+function statCardTaller(num, lab) { return el('div', { class: 'stat-card' }, el('div', { class: 'num' }, num), el('div', { class: 'lab' }, lab)); }
+
+function viewContabilidadTaller() {
+  const wrap = document.createDocumentFragment();
+  const panel = el('div', { class: 'panel' },
+    el('h2', {}, '💰 Contabilidad del taller'),
+    el('div', { class: 'sub' }, 'Las raquetas ya cobradas cuentan como ingreso automático. Aquí apuntas a mano el resto: material, gasolina, viajes, hoteles, lo que necesites — puedes ir ampliándolo con el tiempo.'),
+  );
+
+  const ingresosAuto = state.pedidos.filter(p => p.pagado).reduce((s, p) => s + (p.precio || 0), 0);
+  const manualIngresos = state.contabilidad.movimientos.filter(m => m.tipo === 'ingreso').reduce((s, m) => s + (m.importe || 0), 0);
+  const manualGastos = state.contabilidad.movimientos.filter(m => m.tipo === 'gasto').reduce((s, m) => s + (m.importe || 0), 0);
+  const totalIngresos = ingresosAuto + manualIngresos;
+  const balance = totalIngresos - manualGastos;
+
+  panel.appendChild(el('div', { class: 'stat-cards' },
+    statCardTaller(euros(totalIngresos), 'Ingresos (' + euros(ingresosAuto) + ' de raquetas)'),
+    statCardTaller(euros(manualGastos), 'Gastos'),
+    statCardTaller(euros(balance), 'Balance'),
+  ));
+
+  const fechaInput = el('input', { type: 'date', value: new Date().toISOString().slice(0, 10) });
+  const tipoSelect = selectEl([{ value: 'gasto', label: 'Gasto' }, { value: 'ingreso', label: 'Ingreso' }], 'gasto', () => {});
+  const categoriaInput = el('input', { type: 'text', placeholder: 'Ej: Gasolina, Hotel, Material, Viaje…' });
+  const conceptoInput = el('input', { type: 'text', placeholder: 'Concepto' });
+  const importeInput = el('input', { type: 'number', step: '0.5', min: '0', placeholder: '0' });
+  panel.appendChild(el('div', { class: 'grid' },
+    field('Fecha', fechaInput), field('Tipo', tipoSelect), field('Categoría', categoriaInput), field('Concepto', conceptoInput), field('Importe (€)', importeInput),
+  ));
+  panel.appendChild(el('div', { class: 'toolbar', style: 'margin:10px 0 16px;' },
+    el('button', { class: 'btn btn-gold btn-sm', onclick: () => {
+      addMovimientoTaller({ fecha: fechaInput.value, tipo: tipoSelect.value, categoria: categoriaInput.value.trim(), concepto: conceptoInput.value.trim(), importe: parseFloat(importeInput.value) || 0 });
+      render();
+    } }, '+ Añadir movimiento'),
+  ));
+
+  const movimientos = state.contabilidad.movimientos.slice().sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+  if (!movimientos.length) {
+    panel.appendChild(el('div', { class: 'empty-state' }, 'Todavía no has apuntado ningún gasto o ingreso a mano.'));
+  } else {
+    const table = el('table', {}, el('thead', {}, el('tr', {},
+      el('th', {}, 'Fecha'), el('th', {}, 'Tipo'), el('th', {}, 'Categoría'), el('th', {}, 'Concepto'), el('th', {}, 'Importe'), el('th', {}, ''))));
+    const tbody = el('tbody');
+    movimientos.forEach(m => {
+      tbody.appendChild(el('tr', {},
+        el('td', {}, fmtFechaDMY(m.fecha)),
+        el('td', {}, m.tipo === 'ingreso' ? el('span', { class: 'chip chip-gold' }, 'Ingreso') : el('span', { class: 'chip' }, 'Gasto')),
+        el('td', {}, m.categoria || '—'),
+        el('td', {}, m.concepto || '—'),
+        el('td', {}, euros(m.importe)),
+        el('td', {}, el('button', { class: 'btn btn-danger btn-sm', onclick: () => { removeMovimientoTaller(m.id); render(); } }, 'Eliminar')),
+      ));
+    });
+    table.appendChild(tbody);
+    panel.appendChild(table);
+  }
+  wrap.appendChild(panel);
+  return wrap;
+}
+
 function getState() { return state; }
 function setState(s) {
   state = Object.assign(defaultState(), s || {});
@@ -5961,6 +6030,8 @@ function setState(s) {
   if (!Array.isArray(state.articulos)) state.articulos = [];
   if (!Array.isArray(state.cordajes)) state.cordajes = [];
   if (!Array.isArray(state.pedidos)) state.pedidos = [];
+  if (!state.contabilidad) state.contabilidad = { movimientos: [] };
+  if (!Array.isArray(state.contabilidad.movimientos)) state.contabilidad.movimientos = [];
 }
 function tryLoadLocal() {
   try {

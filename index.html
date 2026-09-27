@@ -5434,9 +5434,20 @@ function addPedido(datos) {
     pagado: false, aplazado: false,
   };
   state.pedidos.push(nuevo);
+  if (nuevo.cordajeId) {
+    const cor = cordajeDe(nuevo.cordajeId);
+    if (cor) cor.stock = Math.max(0, (cor.stock || 0) - 1);
+  }
   return nuevo;
 }
-function removePedido(id) { state.pedidos = state.pedidos.filter(p => p.id !== id); }
+function removePedido(id) {
+  const p = state.pedidos.find(x => x.id === id);
+  if (p && p.cordajeId) {
+    const cor = cordajeDe(p.cordajeId);
+    if (cor) cor.stock = (cor.stock || 0) + 1;
+  }
+  state.pedidos = state.pedidos.filter(x => x.id !== id);
+}
 function empezarPedido(p) { p.estado = 'en_proceso'; p.horaInicio = Date.now(); }
 function terminarPedido(p) { p.estado = 'terminado'; p.horaFin = Date.now(); }
 function entregarPedido(p) { p.estado = 'entregado'; }
@@ -5488,6 +5499,48 @@ function renderTabsNav() {
   });
 }
 
+let pedidosYaAvisados5min = new Set();
+let avisosPersonalesPendientes = [];
+function permisoNotificacionesConcedido() { return typeof Notification !== 'undefined' && Notification.permission === 'granted'; }
+function pedirPermisoNotificaciones() {
+  if (typeof Notification === 'undefined') { alert('Tu navegador no admite notificaciones.'); return; }
+  Notification.requestPermission().then(() => render());
+}
+function reproducirPitido() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.frequency.value = 880;
+    gain.gain.value = 0.15;
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start();
+    setTimeout(() => { osc.stop(); ctx.close(); }, 350);
+  } catch (e) {}
+}
+function dispararAviso5min(p) {
+  const cli = clienteDe(p.clienteId);
+  const texto = `Quedan 5 min para terminar la raqueta de ${cli ? cli.nombre : '(cliente eliminado)'} (${p.marcaModelo || ''}). Prepara la siguiente.`;
+  if (permisoNotificacionesConcedido()) {
+    try { new Notification('🏸 5 minutos para terminar', { body: texto }); } catch (e) {}
+  }
+  reproducirPitido();
+  avisosPersonalesPendientes.push({ id: p.id, texto });
+  render();
+}
+function comprobarAvisos5min() {
+  const enProceso = state.pedidos.filter(p => p.estado === 'en_proceso' && p.horaInicio);
+  enProceso.forEach(p => {
+    const finEstimado = p.horaInicio + (state.config.tiempoMedioMinutos || 35) * 60000;
+    const faltan = finEstimado - Date.now();
+    if (faltan <= 5 * 60000 && faltan > -5 * 60000 && !pedidosYaAvisados5min.has(p.id)) {
+      pedidosYaAvisados5min.add(p.id);
+      dispararAviso5min(p);
+    }
+  });
+}
+if (typeof window !== 'undefined') setInterval(comprobarAvisos5min, 20000);
+
 function viewCola() {
   const wrap = document.createDocumentFragment();
   const cola = pedidosEnCola();
@@ -5495,6 +5548,19 @@ function viewCola() {
     el('h2', {}, '🏸 Cola de trabajo'),
     el('div', { class: 'sub' }, `Pedidos pendientes, en el orden en que llegaron. Tiempo medio actual: ${state.config.tiempoMedioMinutos} min/raqueta.`),
   );
+  if (avisosPersonalesPendientes.length) {
+    avisosPersonalesPendientes.forEach(a => {
+      panel.appendChild(el('div', { class: 'msg msg-warn', style: 'margin-bottom:10px;font-weight:700;' },
+        '⏰ ' + a.texto + ' ',
+        el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { avisosPersonalesPendientes = avisosPersonalesPendientes.filter(x => x.id !== a.id); render(); } }, 'Descartar'),
+      ));
+    });
+  }
+  if (!permisoNotificacionesConcedido()) {
+    panel.appendChild(el('div', { class: 'toolbar', style: 'margin-bottom:10px;' },
+      el('button', { class: 'btn btn-ghost btn-sm', onclick: () => pedirPermisoNotificaciones() }, '🔔 Activar aviso de "quedan 5 minutos" (necesita la app abierta o reciente)'),
+    ));
+  }
   const tMedioReal = tiempoMedioReal();
   if (tMedioReal !== null) {
     panel.appendChild(el('div', { class: 'msg msg-info', style: 'margin-bottom:10px;' },
@@ -5520,7 +5586,7 @@ function viewCola() {
     if (p.fotoAntes) card.appendChild(el('img', { src: p.fotoAntes, style: 'max-width:160px;border-radius:8px;margin-top:6px;display:block;' }));
     const acciones = el('div', { class: 'toolbar', style: 'margin-top:8px;' });
     if (p.estado === 'pendiente') {
-      acciones.appendChild(el('button', { class: 'btn btn-primary btn-sm', onclick: () => { empezarPedido(p); render(); } }, '▶️ Empezar'));
+      acciones.appendChild(el('button', { class: 'btn btn-primary btn-sm', onclick: () => { empezarPedido(p); render(); abrirAvisoEmpezado(p); } }, '▶️ Empezar'));
     }
     if (p.estado === 'en_proceso' || p.estado === 'pendiente') {
       acciones.appendChild(el('button', { class: 'btn btn-gold btn-sm', onclick: () => { if (p.estado === 'pendiente') empezarPedido(p); abrirTerminarPedido(p); } }, '✅ Marcar terminado'));
@@ -5586,21 +5652,19 @@ function abrirTerminarPedido(p) {
     ),
   ));
 }
-function abrirAvisoWhatsapp(p) {
-  const cli = clienteDe(p.clienteId);
+function abrirModalWhatsapp(titulo, cli, mensaje, fotoParaDescargar) {
   const root = document.getElementById('tallerModalRoot');
   if (!cli || !cli.telefono || !root) return;
   const numero = telefonoParaWhatsapp(cli.telefono);
   if (!numero) return;
-  const mensaje = `Hola ${cli.nombre}, ya tengo lista tu raqueta (${p.marcaModelo || ''}). Importe: ${euros(p.precio)}. Puedes pasar a recogerla cuando quieras.`;
   root.innerHTML = '';
   root.appendChild(el('div', { class: 'modal-bg', onclick: (e) => { if (e.target.classList.contains('modal-bg')) root.innerHTML = ''; } },
     el('div', { class: 'modal' },
-      el('h3', {}, '💬 Avisar por WhatsApp'),
-      el('div', { class: 'sub', style: 'margin-bottom:10px;' }, 'WhatsApp no deja adjuntar la foto automáticamente desde una web: abre el chat con el mensaje ya escrito y, si quieres, descarga la foto antes para adjuntarla tú a mano.'),
-      p.fotoDespues ? el('div', {},
-        el('img', { src: p.fotoDespues, style: 'max-width:220px;border-radius:8px;margin-bottom:8px;display:block;' }),
-        el('a', { href: p.fotoDespues, download: 'raqueta_' + (cli.nombre || 'cliente') + '.jpg', class: 'btn btn-ghost btn-sm' }, '⬇ Descargar foto'),
+      el('h3', {}, titulo),
+      fotoParaDescargar ? el('div', { class: 'sub', style: 'margin-bottom:10px;' }, 'WhatsApp no deja adjuntar la foto automáticamente desde una web: abre el chat con el mensaje ya escrito y, si quieres, descarga la foto antes para adjuntarla tú a mano.') : null,
+      fotoParaDescargar ? el('div', {},
+        el('img', { src: fotoParaDescargar, style: 'max-width:220px;border-radius:8px;margin-bottom:8px;display:block;' }),
+        el('a', { href: fotoParaDescargar, download: 'raqueta_' + (cli.nombre || 'cliente') + '.jpg', class: 'btn btn-ghost btn-sm' }, '⬇ Descargar foto'),
       ) : null,
       el('div', { class: 'row', style: 'margin-top:16px;' },
         el('a', { href: 'https://wa.me/' + numero + '?text=' + encodeURIComponent(mensaje), target: '_blank', class: 'btn btn-gold' }, '💬 Abrir chat de WhatsApp'),
@@ -5608,6 +5672,19 @@ function abrirAvisoWhatsapp(p) {
       ),
     ),
   ));
+}
+function abrirAvisoWhatsapp(p) {
+  const cli = clienteDe(p.clienteId);
+  if (!cli) return;
+  const mensaje = `Hola ${cli.nombre}, ya tengo lista tu raqueta (${p.marcaModelo || ''}). Importe: ${euros(p.precio)}. Puedes pasar a recogerla cuando quieras.`;
+  abrirModalWhatsapp('💬 Avisar por WhatsApp', cli, mensaje, p.fotoDespues);
+}
+function abrirAvisoEmpezado(p) {
+  const cli = clienteDe(p.clienteId);
+  if (!cli || !cli.telefono) return;
+  const estimada = horaEstimadaPara(p.id);
+  const mensaje = `Hola ${cli.nombre}, ya he empezado a encordar tu raqueta (${p.marcaModelo || ''}). Tiempo aproximado: ${state.config.tiempoMedioMinutos} min${estimada ? ', estará lista sobre las ' + fmtHora(estimada) : ''}.`;
+  abrirModalWhatsapp('💬 Avisar que se ha empezado', cli, mensaje, null);
 }
 
 let clientePreseleccionadoId = null;

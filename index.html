@@ -5312,7 +5312,7 @@ function uid(prefix) { return prefix + '_' + (uidCounter++) + '_' + Math.random(
 let uidCounter = 1;
 function defaultState() {
   return {
-    config: { tiempoMedioMinutos: 35, precioBaseEncordado: 12 },
+    config: { tiempoMedioMinutos: 35, precioBaseEncordado: 12, precioSinCordaje: 12 },
     clientes: [],
     articulos: [],
     cordajes: [],
@@ -5653,10 +5653,10 @@ function viewNuevoPedido() {
   const tensionVInput = el('input', { type: 'number', step: '0.5', min: '0', placeholder: 'Ej: 24' });
   const tensionHInput = el('input', { type: 'number', step: '0.5', min: '0', placeholder: 'Ej: 22' });
   const cordajeSelect = selectEl([{ value: '', label: '— Elegir cordaje —' }].concat(state.cordajes.map(c => ({ value: c.id, label: c.nombre + ' (' + euros(c.precio) + ', stock: ' + c.stock + ')' }))), '', () => {});
-  const precioInput = el('input', { type: 'number', step: '0.5', min: '0', value: state.config.precioBaseEncordado });
+  const precioInput = el('input', { type: 'number', step: '0.5', min: '0', value: state.config.precioSinCordaje });
   cordajeSelect.addEventListener('change', () => {
     const cor = cordajeDe(cordajeSelect.value);
-    precioInput.value = (state.config.precioBaseEncordado || 0) + (cor ? cor.precio : 0);
+    precioInput.value = cor ? ((state.config.precioBaseEncordado || 0) + cor.precio) : (state.config.precioSinCordaje || 0);
   });
   const fotoInput = el('input', { type: 'file', accept: 'image/*', capture: 'environment' });
   const notasInput = el('textarea', { rows: '2', placeholder: 'Notas (opcional)' });
@@ -5827,9 +5827,11 @@ function viewCatalogo() {
 
   wrap.appendChild(el('div', { class: 'panel' },
     el('h2', {}, '⚙️ Configuración del taller'),
+    el('div', { class: 'sub' }, 'La mano de obra se suma al precio del cordaje elegido del stock. El precio "sin cordaje" es el que cobras cuando el cliente trae su propio cordaje (normalmente algo más caro que la mano de obra sola, para no salir más barato que comprarte el cordaje más económico).'),
     el('div', { class: 'grid' },
       field('Tiempo medio por raqueta (min)', inputEl('number', state.config.tiempoMedioMinutos, v => { state.config.tiempoMedioMinutos = Math.max(5, parseInt(v) || 35); }, { min: 5 })),
-      field('Precio base de encordado (€, sin cordaje)', inputEl('number', state.config.precioBaseEncordado, v => { state.config.precioBaseEncordado = parseFloat(v) || 0; }, { min: 0, step: '0.5' })),
+      field('Mano de obra con cordaje del stock (€)', inputEl('number', state.config.precioBaseEncordado, v => { state.config.precioBaseEncordado = parseFloat(v) || 0; }, { min: 0, step: '0.5' })),
+      field('Precio si el cliente trae su propio cordaje (€)', inputEl('number', state.config.precioSinCordaje, v => { state.config.precioSinCordaje = parseFloat(v) || 0; }, { min: 0, step: '0.5' })),
     ),
   ));
   return wrap;

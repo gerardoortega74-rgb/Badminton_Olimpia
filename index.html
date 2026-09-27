@@ -5318,8 +5318,23 @@ function defaultState() {
     cordajes: [],
     pedidos: [],
     contabilidad: { movimientos: [] },
+    raquetasExtra: [],
   };
 }
+function raquetasMercadoCompleto() {
+  const combinado = {};
+  Object.keys(RAQUETAS_MERCADO_BASE).forEach(marca => { combinado[marca] = RAQUETAS_MERCADO_BASE[marca].slice(); });
+  (state.raquetasExtra || []).forEach(r => {
+    if (!combinado[r.marca]) combinado[r.marca] = [];
+    if (!combinado[r.marca].includes(r.modelo)) combinado[r.marca].push(r.modelo);
+  });
+  return combinado;
+}
+function addRaquetaExtra(marca, modelo) {
+  if (!marca.trim() || !modelo.trim()) return;
+  state.raquetasExtra.push({ id: uid('rmod'), marca: marca.trim(), modelo: modelo.trim() });
+}
+function removeRaquetaExtra(id) { state.raquetasExtra = state.raquetasExtra.filter(r => r.id !== id); }
 let state = defaultState();
 let activeTab = 'cola';
 let clienteSeleccionadoId = null;
@@ -5731,15 +5746,18 @@ function viewNuevoPedido() {
 
   const listaRaquetasId = 'lista-raquetas-mercado';
   const marcaInput = el('input', { type: 'text', placeholder: 'Ej: Yonex Astrox 99', list: listaRaquetasId });
-  if (!document.getElementById(listaRaquetasId)) {
-    const datalist = el('datalist', { id: listaRaquetasId });
-    Object.keys(RAQUETAS_MERCADO).forEach(marca => {
-      RAQUETAS_MERCADO[marca].forEach(modelo => {
-        datalist.appendChild(el('option', { value: marca + ' ' + modelo }));
-      });
-    });
-    document.body.appendChild(datalist);
+  let datalistRaquetas = document.getElementById(listaRaquetasId);
+  if (!datalistRaquetas) {
+    datalistRaquetas = el('datalist', { id: listaRaquetasId });
+    document.body.appendChild(datalistRaquetas);
   }
+  datalistRaquetas.innerHTML = '';
+  const raquetasCombinadas = raquetasMercadoCompleto();
+  Object.keys(raquetasCombinadas).forEach(marca => {
+    raquetasCombinadas[marca].forEach(modelo => {
+      datalistRaquetas.appendChild(el('option', { value: marca + ' ' + modelo }));
+    });
+  });
   const tensionVInput = el('input', { type: 'number', step: '0.5', min: '0', placeholder: 'Ej: 10.5' });
   const tensionHInput = el('input', { type: 'number', step: '0.5', min: '0', placeholder: 'Ej: 10' });
   const cordajeSelect = el('select', {});
@@ -5803,6 +5821,25 @@ function viewNuevoPedido() {
     field('Tensión horizontal (kg)', tensionHInput),
     field('Precio (€)', precioInput),
     field('Foto de la raqueta (opcional)', fotoInput),
+  ));
+
+  const nuevaMarcaInput = el('input', { type: 'text', placeholder: 'Marca (ej: Yonex)' });
+  const nuevoModeloInput = el('input', { type: 'text', placeholder: 'Modelo (ej: Astrox 200)' });
+  panel.appendChild(el('div', { class: 'card', style: 'padding:10px 14px;margin-bottom:16px;' },
+    el('div', { class: 'sub', style: 'margin-bottom:6px;' }, '¿La raqueta no está en la lista? Añádela para que aparezca siempre a partir de ahora:'),
+    el('div', { class: 'row', style: 'gap:8px;flex-wrap:wrap;' },
+      nuevaMarcaInput, nuevoModeloInput,
+      el('button', { class: 'btn btn-ghost btn-sm', onclick: () => {
+        if (!nuevaMarcaInput.value.trim() || !nuevoModeloInput.value.trim()) { alert('Pon marca y modelo.'); return; }
+        addRaquetaExtra(nuevaMarcaInput.value, nuevoModeloInput.value);
+        marcaInput.value = nuevaMarcaInput.value.trim() + ' ' + nuevoModeloInput.value.trim();
+        datalistRaquetas.innerHTML = '';
+        const combinadas = raquetasMercadoCompleto();
+        Object.keys(combinadas).forEach(marca => { combinadas[marca].forEach(modelo => { datalistRaquetas.appendChild(el('option', { value: marca + ' ' + modelo })); }); });
+        nuevaMarcaInput.value = ''; nuevoModeloInput.value = '';
+        saveLocal();
+      } }, '+ Añadir modelo a la lista'),
+    ),
   ));
   panel.appendChild(field('Notas', notasInput));
 
@@ -5905,7 +5942,7 @@ function viewClientes() {
   return wrap;
 }
 
-const RAQUETAS_MERCADO = {
+const RAQUETAS_MERCADO_BASE = {
   'Yonex': ['Astrox 99 Pro', 'Astrox 99 Play', 'Astrox 100 ZZ', 'Astrox 88D Pro', 'Astrox 88S Pro', 'Astrox 77', 'Astrox 68D', 'Astrox 22', 'Astrox 2', 'Nanoflare 1000 Z', 'Nanoflare 800 Pro', 'Nanoflare 800', 'Nanoflare 700', 'Nanoflare Nextage', 'Nanoflare Drive', 'Arcsaber 11 Pro', 'Arcsaber 11', 'Arcsaber 7', 'Arcsaber 71', 'Duora 10', 'Duora Z-Strike', 'Voltric Z-Force II', 'Nanoray 900'],
   'Victor': ['Thruster K Falcon', 'Thruster F', 'Thruster Ryuga Metallic', 'Thruster 1H H', 'Auraspeed 90K II', 'Auraspeed 90K', 'DriveX 12', 'DriveX 10 Metallic', 'Jetspeed S 12', 'Brave Sword 12'],
   'Li-Ning': ['Axforce 90 Max Dragon', 'Axforce 100', 'Windstorm 78', 'Windstorm 72', 'Turbo Charging 75', 'Turbo Charging 70D', 'Aeronaut 9000', 'Aeronaut 7000', 'N90', 'N99', 'Bladex 900', 'Halbertec 9000'],
@@ -6127,6 +6164,7 @@ function setState(s) {
   if (!Array.isArray(state.pedidos)) state.pedidos = [];
   if (!state.contabilidad) state.contabilidad = { movimientos: [] };
   if (!Array.isArray(state.contabilidad.movimientos)) state.contabilidad.movimientos = [];
+  if (!Array.isArray(state.raquetasExtra)) state.raquetasExtra = [];
 }
 function tryLoadLocal() {
   try {

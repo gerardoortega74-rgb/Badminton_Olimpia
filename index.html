@@ -5508,6 +5508,7 @@ function render() {
     else if (activeTab === 'catalogo') main.appendChild(viewCatalogo());
     else if (activeTab === 'historial') main.appendChild(viewHistorial());
     else if (activeTab === 'contabilidad') main.appendChild(viewContabilidadTaller());
+    else if (activeTab === 'config') main.appendChild(viewConfigTaller());
   } catch (err) {
     main.appendChild(el('div', { class: 'msg msg-warn' }, 'Ha ocurrido un error mostrando esta pestaña: ' + err.message));
     console.error(err);
@@ -5525,6 +5526,7 @@ function renderTabsNav() {
     ['catalogo', '🏷️ Artículos y cordajes'],
     ['historial', '📚 Historial'],
     ['contabilidad', '💰 Contabilidad'],
+    ['config', '⚙️ Configuración'],
   ];
   tabs.forEach(([id, label]) => {
     nav.appendChild(el('button', { class: activeTab === id ? 'active' : '', onclick: () => { if (id !== 'nuevo') clientePreseleccionadoId = null; activeTab = id; render(); } }, label));
@@ -6134,7 +6136,11 @@ function viewCatalogo() {
     panelArt.appendChild(el('div', { class: 'msg msg-info', style: 'margin-top:10px;' }, `Beneficio potencial total de todo el stock de artículos: ${euros(beneficioTotalPotencial)}.`));
   }
   wrap.appendChild(panelArt);
+  return wrap;
+}
 
+function viewConfigTaller() {
+  const wrap = document.createDocumentFragment();
   const panelConfig = el('div', { class: 'panel' },
     el('h2', {}, '⚙️ Configuración del taller'),
     el('div', { class: 'sub' }, 'La mano de obra se suma al precio del cordaje elegido del stock. El precio "sin cordaje" es el que cobras cuando el cliente trae su propio cordaje (normalmente algo más caro que la mano de obra sola, para no salir más barato que comprarte el cordaje más económico).'),

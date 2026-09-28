@@ -6266,7 +6266,6 @@ function viewConfigTaller() {
   return wrap;
 }
 
-let filtroHistorial = 'todas';
 function pedidosPendientesDeCobro() {
   return state.pedidos
     .filter(p => (p.estado === 'terminado' || p.estado === 'entregado') && !p.pagado)
@@ -6484,17 +6483,7 @@ function viewHistorial() {
     wrap.appendChild(panel);
     return wrap;
   }
-  panel.appendChild(el('div', { class: 'row', style: 'gap:8px;margin:10px 0 12px;flex-wrap:wrap;' },
-    el('button', { class: 'btn btn-sm ' + (filtroHistorial === 'todas' ? 'btn-primary' : 'btn-ghost'), onclick: () => { filtroHistorial = 'todas'; render(); } }, '📚 Todas'),
-    el('button', { class: 'btn btn-sm ' + (filtroHistorial === 'pendientes' ? 'btn-primary' : 'btn-ghost'), onclick: () => { filtroHistorial = 'pendientes'; render(); } }, '💶 Pendientes de cobro (' + pendientes.length + ')'),
-    (filtroHistorial === 'pendientes' && pendientes.length) ? el('button', { class: 'btn btn-gold btn-sm', onclick: () => abrirPdfPendientes() }, '📄 Listado en PDF') : null,
-  ));
-  const lista = filtroHistorial === 'pendientes' ? pendientes : terminados;
-  if (!lista.length) {
-    panel.appendChild(el('div', { class: 'empty-state' }, 'No hay ninguna raqueta pendiente de cobro. 🎉'));
-    wrap.appendChild(panel);
-    return wrap;
-  }
+  const lista = terminados;
   const table = el('table', {}, el('thead', {}, el('tr', {},
     el('th', {}, 'Fecha'), el('th', {}, 'Cliente'), el('th', {}, 'Raqueta'), el('th', {}, 'Cordaje'), el('th', {}, 'Tensión'), el('th', {}, 'Duración'), el('th', {}, 'Precio'), el('th', {}, 'Pago'), el('th', {}, 'Entrega'), el('th', {}, ''))));
   const tbody = el('tbody');
@@ -6529,7 +6518,55 @@ function addMovimientoTaller(datos) {
 function removeMovimientoTaller(id) { state.contabilidad.movimientos = state.contabilidad.movimientos.filter(m => m.id !== id); }
 function statCardTaller(num, lab) { return el('div', { class: 'stat-card' }, el('div', { class: 'num' }, num), el('div', { class: 'lab' }, lab)); }
 
+let subTabContab = 'movimientos';
 function viewContabilidadTaller() {
+  const wrap = document.createDocumentFragment();
+  const nPend = pedidosPendientesDeCobro().length;
+  wrap.appendChild(el('div', { class: 'row', style: 'gap:8px;margin-bottom:12px;flex-wrap:wrap;' },
+    el('button', { class: 'btn ' + (subTabContab === 'movimientos' ? 'btn-primary' : 'btn-ghost'), onclick: () => { subTabContab = 'movimientos'; render(); } }, '💰 Ingresos y gastos'),
+    el('button', { class: 'btn ' + (subTabContab === 'pendientes' ? 'btn-primary' : 'btn-ghost'), onclick: () => { subTabContab = 'pendientes'; render(); } }, '💶 Pendientes de cobro (' + nPend + ')'),
+  ));
+  wrap.appendChild(subTabContab === 'pendientes' ? viewPendientesCobro() : viewMovimientosTaller());
+  return wrap;
+}
+function viewPendientesCobro() {
+  const wrap = document.createDocumentFragment();
+  const pend = pedidosPendientesDeCobro();
+  const total = pend.reduce((sum, p) => sum + (p.precio || 0), 0);
+  const panel = el('div', { class: 'panel' },
+    el('h2', {}, '💶 Pendientes de cobro'),
+    el('div', { class: 'sub' }, 'Raquetas ya reparadas que todavía no están pagadas (se las hayan llevado o no). Pulsa "Cobrado" cuando te paguen.'),
+  );
+  if (!pend.length) {
+    panel.appendChild(el('div', { class: 'empty-state' }, '¡No hay nada pendiente de cobro! 🎉'));
+    wrap.appendChild(panel);
+    return wrap;
+  }
+  panel.appendChild(el('div', { class: 'row', style: 'gap:12px;align-items:center;margin:8px 0 12px;flex-wrap:wrap;' },
+    el('div', { class: 'sub', style: 'font-weight:700;' }, `${pend.length} raqueta(s) · Total pendiente: ${euros(total)}`),
+    el('button', { class: 'btn btn-gold btn-sm', onclick: () => abrirPdfPendientes() }, '📄 Listado en PDF'),
+  ));
+  const table = el('table', {}, el('thead', {}, el('tr', {},
+    el('th', {}, 'Fecha'), el('th', {}, 'Cliente'), el('th', {}, 'Teléfono'), el('th', {}, 'Raqueta'), el('th', {}, 'Estado'), el('th', {}, 'Importe'), el('th', {}, ''))));
+  const tbody = el('tbody');
+  pend.forEach(p => {
+    const cli = clienteDe(p.clienteId);
+    tbody.appendChild(el('tr', {},
+      el('td', {}, fmtFechaTs(p.horaLlegada)),
+      el('td', {}, cli ? cli.nombre : '(eliminado)'),
+      el('td', {}, cli && cli.telefono ? cli.telefono : '—'),
+      el('td', {}, p.marcaModelo || '—'),
+      el('td', {}, p.estado === 'entregado' ? el('span', { class: 'chip chip-gold' }, 'Entregada ' + fmtFechaTs(p.fechaEntrega)) : el('span', { class: 'chip chip-muted' }, 'Sin recoger')),
+      el('td', {}, euros(p.precio)),
+      el('td', {}, el('button', { class: 'btn btn-primary btn-sm', onclick: () => { p.pagado = true; p.fechaPago = Date.now(); render(); } }, '✓ Cobrado')),
+    ));
+  });
+  table.appendChild(tbody);
+  panel.appendChild(table);
+  wrap.appendChild(panel);
+  return wrap;
+}
+function viewMovimientosTaller() {
   const wrap = document.createDocumentFragment();
   const panel = el('div', { class: 'panel' },
     el('h2', {}, '💰 Contabilidad del taller'),
@@ -6546,6 +6583,7 @@ function viewContabilidadTaller() {
     statCardTaller(euros(totalIngresos), 'Ingresos (' + euros(ingresosAuto) + ' de raquetas)'),
     statCardTaller(euros(manualGastos), 'Gastos'),
     statCardTaller(euros(balance), 'Balance'),
+    statCardTaller(euros(pedidosPendientesDeCobro().reduce((sum, p) => sum + (p.precio || 0), 0)), 'Pendiente de cobro'),
   ));
 
   const fechaInput = el('input', { type: 'date', value: new Date().toISOString().slice(0, 10) });

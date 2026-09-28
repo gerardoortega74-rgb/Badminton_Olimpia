@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<meta name="build-id" content="v20260928-081849">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -8903,6 +8904,37 @@ if (firebaseDisponible) {
 } else {
   arrancarAppLocal();
 }
+
+// ===== Aviso de nueva versión (evita quedarse con la versión antigua en caché) =====
+function mostrarAvisoNuevaVersion() {
+  if (document.getElementById('avisoNuevaVersion')) return;
+  document.body.appendChild(el('div', { id: 'avisoNuevaVersion', style: 'position:fixed;left:12px;right:12px;bottom:12px;z-index:100;background:#E8B924;color:#0F2A1E;padding:12px 14px;border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.3);display:flex;gap:10px;align-items:center;justify-content:space-between;font-weight:700;' },
+    el('span', {}, '🔄 Hay una versión nueva de la app.'),
+    el('button', { class: 'btn btn-primary btn-sm', onclick: () => location.reload() }, 'Actualizar ahora'),
+  ));
+}
+(function comprobarNuevaVersion() {
+  const meta = document.querySelector('meta[name="build-id"]');
+  const actual = meta ? meta.content : '';
+  if (!actual || actual === '__BUILD_ID__' || location.protocol === 'file:') return;
+  async function buscar() {
+    try {
+      const r = await fetch(location.pathname + '?chk=' + Date.now(), { cache: 'no-store' });
+      const t = await r.text();
+      const m = t.match(/<meta name="build-id" content="([^"]*)"/);
+      if (!m || m[1] === actual || m[1] === '__BUILD_ID__') return;
+      await fetch(location.pathname, { cache: 'reload' }).catch(() => {});
+      if (esVistaPublica()) {
+        if (sessionStorage.getItem('buildRecargada') !== m[1]) { sessionStorage.setItem('buildRecargada', m[1]); location.reload(); }
+      } else {
+        mostrarAvisoNuevaVersion();
+      }
+    } catch (e) {}
+  }
+  setTimeout(buscar, 3000);
+  setInterval(buscar, 5 * 60 * 1000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) buscar(); });
+})();
 </script>
 </body>
 </html>

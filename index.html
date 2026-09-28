@@ -6266,6 +6266,204 @@ function viewConfigTaller() {
   return wrap;
 }
 
+let filtroHistorial = 'todas';
+function pedidosPendientesDeCobro() {
+  return state.pedidos
+    .filter(p => (p.estado === 'terminado' || p.estado === 'entregado') && !p.pagado)
+    .sort((a, b) => {
+      const ca = (clienteDe(a.clienteId) || {}).nombre || '';
+      const cb = (clienteDe(b.clienteId) || {}).nombre || '';
+      return ca.localeCompare(cb, 'es') || (a.horaLlegada - b.horaLlegada);
+    });
+}
+
+// ===== Generador de PDF sin librerías (Helvetica estándar, codificación WinAnsi) =====
+function pdfBin(s) {
+  let out = '';
+  for (const ch of String(s)) {
+    const c = ch.codePointAt(0);
+    if (c < 128 || (c >= 160 && c < 256)) out += String.fromCharCode(c);
+    else if (c === 0x20AC) out += '\x80';
+    else if (c === 0x2026) out += '\x85';
+    else if (c === 0x2013) out += '\x96';
+    else if (c === 0x2014) out += '\x97';
+    else out += '?';
+  }
+  return out;
+}
+function pdfEsc(s) { return pdfBin(s).replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)'); }
+function pdfAnchoNumero(str, size) {
+  let w = 0;
+  for (const ch of String(str)) w += (ch === '.' || ch === ',' || ch === ' ') ? 0.278 : 0.556;
+  return w * size;
+}
+function pdfRecortar(str, max) { str = String(str || ''); return str.length > max ? str.slice(0, max - 3) + '...' : str; }
+function pdfInfoJpeg(bin) {
+  if (bin.charCodeAt(0) !== 0xFF || bin.charCodeAt(1) !== 0xD8) return null;
+  let i = 2;
+  while (i < bin.length) {
+    if (bin.charCodeAt(i) !== 0xFF) { i++; continue; }
+    const m = bin.charCodeAt(i + 1);
+    if (m === 0xFF) { i++; continue; }
+    if (m >= 0xC0 && m <= 0xCF && m !== 0xC4 && m !== 0xC8 && m !== 0xCC) {
+      return { bits: bin.charCodeAt(i + 4), h: (bin.charCodeAt(i + 5) << 8) | bin.charCodeAt(i + 6), w: (bin.charCodeAt(i + 7) << 8) | bin.charCodeAt(i + 8), comp: bin.charCodeAt(i + 9) };
+    }
+    if (m === 0xD8 || m === 0x01 || (m >= 0xD0 && m <= 0xD7)) { i += 2; continue; }
+    i += 2 + ((bin.charCodeAt(i + 2) << 8) | bin.charCodeAt(i + 3));
+  }
+  return null;
+}
+function pdfPendientesDeCobro() {
+  const PW = 595.28, PH = 841.89, M = 40;
+  const pend = pedidosPendientesDeCobro();
+  const total = pend.reduce((sum, p) => sum + (p.precio || 0), 0);
+  let img = null;
+  try {
+    const foto = state.config.tarjetaVisitaFoto;
+    if (foto && foto.indexOf('data:image/jpeg') === 0) {
+      const bin = atob(foto.split(',')[1]);
+      const info = pdfInfoJpeg(bin);
+      if (info && (info.comp === 1 || info.comp === 3) && info.bits === 8 && info.w > 0 && info.h > 0) img = { bin, w: info.w, h: info.h, comp: info.comp };
+    }
+  } catch (e) { img = null; }
+
+  const pages = [];
+  let ops = [];
+  let y = 0;
+  const cols = [
+    { t: 'Fecha', x: M, max: 10 }, { t: 'Cliente', x: M + 52, max: 24 }, { t: 'Teléfono', x: M + 170, max: 13 },
+    { t: 'Raqueta', x: M + 236, max: 26 }, { t: 'Estado', x: M + 366, max: 12 },
+  ];
+  const T = (x, yy, str, size, bold) => ops.push('BT /' + (bold ? 'F2' : 'F1') + ' ' + size + ' Tf ' + x.toFixed(2) + ' ' + yy.toFixed(2) + ' Td (' + pdfEsc(str) + ') Tj ET');
+  const TR = (xr, yy, str, size, bold) => T(xr - pdfAnchoNumero(str, size), yy, str, size, bold);
+  const LINE = (x1, yy, x2, gris) => ops.push(gris + ' G 0.5 w ' + x1.toFixed(2) + ' ' + yy.toFixed(2) + ' m ' + x2.toFixed(2) + ' ' + yy.toFixed(2) + ' l S');
+  const RECT = (x, yy, w, h, gris) => ops.push(gris + ' g ' + x.toFixed(2) + ' ' + yy.toFixed(2) + ' ' + w.toFixed(2) + ' ' + h.toFixed(2) + ' re f 0 g');
+  function cabeceraTabla() {
+    RECT(M, y - 4, PW - 2 * M, 16, '0.9');
+    cols.forEach(c => T(c.x + 2, y, c.t, 9, true));
+    TR(PW - M - 2, y, 'Importe', 9, true);
+    y -= 18;
+  }
+  function nuevaPagina(primera) {
+    ops = []; pages.push(ops); y = PH - M;
+    if (primera) {
+      let altoCab = 0;
+      if (img) {
+        const esc = Math.min(180 / img.w, 70 / img.h);
+        const iw = img.w * esc, ih = img.h * esc;
+        ops.push('q ' + iw.toFixed(2) + ' 0 0 ' + ih.toFixed(2) + ' ' + (PW - M - iw).toFixed(2) + ' ' + (PH - M - ih).toFixed(2) + ' cm /Im1 Do Q');
+        altoCab = ih;
+      }
+      T(M, PH - M - 14, 'Pendientes de cobro', 18, true);
+      T(M, PH - M - 32, 'Taller de raquetas · Generado el ' + fmtFechaTs(Date.now()), 10, false);
+      y = PH - M - Math.max(altoCab, 40) - 14;
+    }
+  }
+
+  nuevaPagina(true);
+  if (!pend.length) {
+    T(M, y, 'No hay ninguna raqueta pendiente de cobro.', 11, false);
+  } else {
+    cabeceraTabla();
+    pend.forEach(p => {
+      if (y < M + 50) { nuevaPagina(false); cabeceraTabla(); }
+      const cli = clienteDe(p.clienteId);
+      T(cols[0].x + 2, y, fmtFechaTs(p.horaLlegada), 9, false);
+      T(cols[1].x + 2, y, pdfRecortar(cli ? cli.nombre : '(cliente eliminado)', cols[1].max), 9, false);
+      T(cols[2].x + 2, y, pdfRecortar(cli && cli.telefono ? cli.telefono : '', cols[2].max), 9, false);
+      T(cols[3].x + 2, y, pdfRecortar(p.marcaModelo || '—', cols[3].max), 9, false);
+      T(cols[4].x + 2, y, p.estado === 'entregado' ? 'Entregada' : 'Sin recoger', 9, false);
+      TR(PW - M - 2, y, euros(p.precio), 9, false);
+      LINE(M, y - 5, PW - M, '0.85');
+      y -= 16;
+    });
+    if (y < M + 90) nuevaPagina(false);
+    y -= 8;
+    T(cols[3].x + 2, y, 'TOTAL PENDIENTE', 12, true);
+    TR(PW - M - 2, y, euros(total), 12, true);
+    y -= 30;
+
+    const porCliente = {};
+    pend.forEach(p => {
+      const cli = clienteDe(p.clienteId);
+      const clave = p.clienteId || '_';
+      if (!porCliente[clave]) porCliente[clave] = { nombre: cli ? cli.nombre : '(cliente eliminado)', n: 0, total: 0 };
+      porCliente[clave].n += 1; porCliente[clave].total += (p.precio || 0);
+    });
+    const grupos = Object.keys(porCliente).map(k => porCliente[k]);
+    if (y < M + 60) nuevaPagina(false);
+    T(M, y, 'Resumen por cliente', 12, true);
+    y -= 20;
+    grupos.forEach(g => {
+      if (y < M + 30) nuevaPagina(false);
+      T(M + 2, y, pdfRecortar(g.nombre, 34), 10, false);
+      T(cols[3].x + 2, y, g.n + ' raqueta(s)', 10, false);
+      TR(PW - M - 2, y, euros(g.total), 10, true);
+      LINE(M, y - 5, PW - M, '0.9');
+      y -= 16;
+    });
+  }
+  pages.forEach((pg, i) => {
+    ops = pg;
+    T(PW - M - 60, 22, 'Página ' + (i + 1) + ' de ' + pages.length, 8, false);
+  });
+
+  const objs = [];
+  const nImg = img ? 5 : 0;
+  const primeraPag = img ? 6 : 5;
+  const kids = pages.map((_, i) => (primeraPag + 2 * i + 1) + ' 0 R').join(' ');
+  objs.push('<< /Type /Catalog /Pages 2 0 R >>');
+  objs.push('<< /Type /Pages /Kids [ ' + kids + ' ] /Count ' + pages.length + ' >>');
+  objs.push('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>');
+  objs.push('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>');
+  if (img) {
+    objs.push('<< /Type /XObject /Subtype /Image /Width ' + img.w + ' /Height ' + img.h + ' /ColorSpace /' + (img.comp === 1 ? 'DeviceGray' : 'DeviceRGB') + ' /BitsPerComponent 8 /Filter /DCTDecode /Length ' + img.bin.length + ' >>\nstream\n' + img.bin + '\nendstream');
+  }
+  const recursos = '/Resources << /Font << /F1 3 0 R /F2 4 0 R >>' + (img ? ' /XObject << /Im1 ' + nImg + ' 0 R >>' : '') + ' >>';
+  pages.forEach((pg, i) => {
+    const cs = pg.join('\n');
+    objs.push('<< /Length ' + cs.length + ' >>\nstream\n' + cs + '\nendstream');
+    objs.push('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + PW + ' ' + PH + '] ' + recursos + ' /Contents ' + (primeraPag + 2 * i) + ' 0 R >>');
+  });
+  let out = '%PDF-1.4\n%\xE2\xE3\xCF\xD3\n';
+  const offsets = [];
+  objs.forEach((body, i) => { offsets.push(out.length); out += (i + 1) + ' 0 obj\n' + body + '\nendobj\n'; });
+  const xrefPos = out.length;
+  out += 'xref\n0 ' + (objs.length + 1) + '\n0000000000 65535 f \n';
+  offsets.forEach(o => { out += String(o).padStart(10, '0') + ' 00000 n \n'; });
+  out += 'trailer\n<< /Size ' + (objs.length + 1) + ' /Root 1 0 R >>\nstartxref\n' + xrefPos + '\n%%EOF';
+  const u8 = new Uint8Array(out.length);
+  for (let i = 0; i < out.length; i++) u8[i] = out.charCodeAt(i) & 255;
+  return u8;
+}
+function abrirPdfPendientes() {
+  const root = document.getElementById('tallerModalRoot');
+  const pend = pedidosPendientesDeCobro();
+  const total = pend.reduce((sum, p) => sum + (p.precio || 0), 0);
+  let bytes;
+  try { bytes = pdfPendientesDeCobro(); } catch (e) { alert('No se pudo generar el PDF: ' + e.message); return; }
+  const blob = new Blob([bytes], { type: 'application/pdf' });
+  const nombre = 'pendientes-de-cobro-' + hoyISO() + '.pdf';
+  const url = URL.createObjectURL(blob);
+  const cerrar = () => { root.innerHTML = ''; setTimeout(() => URL.revokeObjectURL(url), 60000); };
+  let archivo = null;
+  try { archivo = new File([blob], nombre, { type: 'application/pdf' }); } catch (e) {}
+  const puedeCompartir = archivo && navigator.canShare && navigator.canShare({ files: [archivo] });
+  root.innerHTML = '';
+  root.appendChild(el('div', { class: 'modal-bg', onclick: (e) => { if (e.target.classList.contains('modal-bg')) cerrar(); } },
+    el('div', { class: 'modal' },
+      el('h3', {}, '📄 Listado de pendientes de cobro'),
+      el('div', { class: 'sub', style: 'margin-bottom:10px;' }, pend.length + ' raqueta(s) · Total pendiente: ' + euros(total)),
+      el('div', { class: 'row', style: 'margin-top:12px;gap:8px;flex-wrap:wrap;' },
+        puedeCompartir ? el('button', { class: 'btn btn-gold', onclick: () => { navigator.share({ files: [archivo], title: nombre }).catch(() => {}); } }, '📤 Compartir / guardar') : null,
+        el('a', { href: url, download: nombre, class: 'btn ' + (puedeCompartir ? 'btn-ghost' : 'btn-gold') }, '⬇ Descargar PDF'),
+        el('a', { href: url, target: '_blank', class: 'btn btn-ghost' }, '👁 Ver'),
+        el('button', { class: 'btn btn-ghost', onclick: cerrar }, 'Cerrar'),
+      ),
+    ),
+  ));
+}
+
 function viewHistorial() {
   const wrap = document.createDocumentFragment();
   if (state.config.tarjetaVisitaFoto) {
@@ -6274,8 +6472,9 @@ function viewHistorial() {
     ));
   }
   const terminados = state.pedidos.filter(p => p.estado === 'terminado' || p.estado === 'entregado').sort((a, b) => b.horaLlegada - a.horaLlegada);
+  const pendientes = pedidosPendientesDeCobro();
   const total = terminados.reduce((s, p) => s + (p.precio || 0), 0);
-  const pendienteDeCobro = terminados.filter(p => !p.pagado).reduce((s, p) => s + (p.precio || 0), 0);
+  const pendienteDeCobro = pendientes.reduce((s, p) => s + (p.precio || 0), 0);
   const panel = el('div', { class: 'panel' },
     el('h2', {}, '📚 Historial de encordados'),
     el('div', { class: 'sub' }, `${terminados.length} raqueta(s) · Total facturado: ${euros(total)}${pendienteDeCobro > 0 ? ' · Pendiente de cobro: ' + euros(pendienteDeCobro) : ' · Todo cobrado'}`),
@@ -6285,10 +6484,21 @@ function viewHistorial() {
     wrap.appendChild(panel);
     return wrap;
   }
+  panel.appendChild(el('div', { class: 'row', style: 'gap:8px;margin:10px 0 12px;flex-wrap:wrap;' },
+    el('button', { class: 'btn btn-sm ' + (filtroHistorial === 'todas' ? 'btn-primary' : 'btn-ghost'), onclick: () => { filtroHistorial = 'todas'; render(); } }, '📚 Todas'),
+    el('button', { class: 'btn btn-sm ' + (filtroHistorial === 'pendientes' ? 'btn-primary' : 'btn-ghost'), onclick: () => { filtroHistorial = 'pendientes'; render(); } }, '💶 Pendientes de cobro (' + pendientes.length + ')'),
+    (filtroHistorial === 'pendientes' && pendientes.length) ? el('button', { class: 'btn btn-gold btn-sm', onclick: () => abrirPdfPendientes() }, '📄 Listado en PDF') : null,
+  ));
+  const lista = filtroHistorial === 'pendientes' ? pendientes : terminados;
+  if (!lista.length) {
+    panel.appendChild(el('div', { class: 'empty-state' }, 'No hay ninguna raqueta pendiente de cobro. 🎉'));
+    wrap.appendChild(panel);
+    return wrap;
+  }
   const table = el('table', {}, el('thead', {}, el('tr', {},
     el('th', {}, 'Fecha'), el('th', {}, 'Cliente'), el('th', {}, 'Raqueta'), el('th', {}, 'Cordaje'), el('th', {}, 'Tensión'), el('th', {}, 'Duración'), el('th', {}, 'Precio'), el('th', {}, 'Pago'), el('th', {}, 'Entrega'), el('th', {}, ''))));
   const tbody = el('tbody');
-  terminados.forEach(p => {
+  lista.forEach(p => {
     const cli = clienteDe(p.clienteId);
     const cor = cordajeDe(p.cordajeId);
     const duracion = (p.horaInicio && p.horaFin) ? Math.round((p.horaFin - p.horaInicio) / 60000) + ' min' : '—';
@@ -6401,7 +6611,7 @@ function saveLocal() {
 }
 function mount() { tryLoadLocal(); render(); }
 function irATab(tabId) { activeTab = tabId; render(); }
-return { render, mount, getState, setState, saveLocal, irATab };
+return { render, mount, getState, setState, saveLocal, irATab, pdfPendientesDeCobro };
 })();
 
 </script>

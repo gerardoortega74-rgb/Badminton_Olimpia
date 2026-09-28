@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20260928-113754">
+<meta name="build-id" content="v20260928-134726">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -4499,6 +4499,10 @@ const DOCS_ALUMNO = [
   { key: 'asistenciaJuegosEscolares', titulo: 'Confirmación de asistencia a Juegos Escolares' },
   { key: 'permisoSalida', titulo: 'Permiso de salida de la instalación solo' },
 ];
+const CONFIRMACIONES_ALUMNO = [
+  { key: 'matriculaEDM', titulo: 'Matrícula EDM' },
+  { key: 'justificantePagoMatricula', titulo: 'Justificante pago matrícula' },
+];
 const SUBTABS_GRUPO = [
   ['datos', '⚙ Datos y horario'],
   ['alumnos', '👥 Alumnos y asistencia'],
@@ -4823,6 +4827,7 @@ function cardAlumno(g, a) {
     ),
     el('div', { class: 'row', style: 'gap:6px;flex-wrap:wrap;margin-top:4px;' },
       el('span', { class: nDocs === DOCS_ALUMNO.length ? 'chip chip-gold' : 'chip chip-muted' }, `📝 Documentos ${nDocs}/${DOCS_ALUMNO.length}`),
+      (() => { const n = CONFIRMACIONES_ALUMNO.filter(d => a.docs[d.key]).length; return el('span', { class: n === CONFIRMACIONES_ALUMNO.length ? 'chip chip-gold' : 'chip chip-muted' }, `🎫 Matrícula ${n}/${CONFIRMACIONES_ALUMNO.length}`); })(),
       el('span', { class: 'chip chip-muted' }, res.ses ? `Asistencia ${res.pres}/${res.ses} (${res.pct}%)` : 'Sin asistencia registrada'),
       a.telefonoEmergencia ? el('span', { class: 'chip chip-muted' }, '☎ ' + a.telefonoEmergencia) : el('span', { class: 'chip chip-muted' }, '⚠️ Sin teléfono de emergencia'),
     ),
@@ -4845,6 +4850,14 @@ function cardAlumno(g, a) {
     ));
   });
 
+  card.appendChild(el('h4', { style: 'margin:14px 0 6px;' }, '🎫 Matrícula'));
+  CONFIRMACIONES_ALUMNO.forEach(d => {
+    const hecho = a.docs[d.key];
+    card.appendChild(el('div', { class: 'row', style: 'align-items:center;gap:8px;margin-bottom:6px;' },
+      el('label', { style: 'display:flex;align-items:center;gap:8px;text-transform:none;cursor:pointer;' },
+        el('input', { type: 'checkbox', style: 'width:auto;', checked: hecho ? 'checked' : null, onchange: (e) => { a.docs[d.key] = e.target.checked ? Date.now() : null; render(); } }),
+        el('span', {}, d.titulo + (hecho ? '  ✓ ' + fmtFechaMs(hecho) : '')))));
+  });
   card.appendChild(el('div', { class: 'row', style: 'align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0 6px;' },
     el('span', { style: 'flex:1;min-width:220px;' }, '☎️ Teléfono de emergencia: ' + (a.telefonoEmergencia || 'sin indicar')),
     el('button', { class: 'btn btn-ghost btn-sm', onclick: () => abrirModalTelefono(a) }, a.telefonoEmergencia ? 'Editar' : 'Añadir')));

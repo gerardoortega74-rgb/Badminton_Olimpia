@@ -5461,7 +5461,7 @@ function addPedido(datos) {
     id: uid('ped'), clienteId: datos.clienteId, marcaModelo: datos.marcaModelo || '', cordajeId: datos.cordajeId || null,
     tensionVertical: datos.tensionVertical || null, tensionHorizontal: datos.tensionHorizontal || null, precio: datos.precio || 0, fotoAntes: datos.fotoAntes || null, fotoDespues: null,
     estado: 'pendiente', horaLlegada: Date.now(), horaInicio: null, horaFin: null, notas: datos.notas || '',
-    pagado: !!datos.pagado, fechaPago: datos.pagado ? Date.now() : null, fechaEntrega: null, aplazado: false,
+    pagado: !!datos.pagado, fechaPago: datos.pagado ? Date.now() : null, fechaEntrega: null, aplazado: false, pagoPrevisto: datos.pagoPrevisto || (datos.pagado ? 'adelantado' : 'alRecoger'),
   };
   state.pedidos.push(nuevo);
   if (nuevo.cordajeId) {
@@ -5500,7 +5500,7 @@ function abrirEntregaPedido(p) {
   const opciones = p.pagado
     ? [{ value: 'yaPagado', label: 'Ya estaba pagada' }]
     : [{ value: 'pagaAhora', label: 'Me paga ahora (' + euros(p.precio) + ')' }, { value: 'sinPagar', label: 'Se la lleva sin pagar (queda pendiente de cobro)' }];
-  const pagoEntregaSelect = selectEl(opciones, opciones[0].value, () => {});
+  const pagoEntregaSelect = selectEl(opciones, (!p.pagado && p.pagoPrevisto === 'sinPagar') ? 'sinPagar' : opciones[0].value, () => {});
   root.innerHTML = '';
   root.appendChild(el('div', { class: 'modal-bg', onclick: (e) => { if (e.target.classList.contains('modal-bg')) root.innerHTML = ''; } },
     el('div', { class: 'modal' },
@@ -5680,6 +5680,7 @@ function viewCola() {
       el('div', { class: 'card-head' },
         el('span', { class: 'card-title' }, '#' + (idx + 1) + ' · ' + (cli ? cli.nombre : '(cliente eliminado)')),
         p.estado === 'en_proceso' ? el('span', { class: 'chip chip-gold' }, 'En proceso') : el('span', { class: 'chip chip-muted' }, 'Pendiente'),
+        p.pagado ? el('span', { class: 'chip chip-gold' }, 'Pagada') : (p.pagoPrevisto === 'sinPagar' ? el('span', { class: 'chip chip-muted' }, 'Recoge sin pagar') : null),
       ),
       el('div', { class: 'sub' }, `${p.marcaModelo || 'Raqueta sin especificar'} · ${cor ? cor.nombre : 'sin cordaje'} · ${fmtTension(p)} · ${euros(p.precio)}`),
       el('div', { class: 'sub' }, `Llegó a las ${fmtHora(p.horaLlegada)}${estimada ? ' · Estimado listo a las ' + fmtHora(estimada) : ''}`),
@@ -5891,7 +5892,7 @@ function viewNuevoPedido() {
   tensionHInput.addEventListener('change', comprobarTensionMax);
   const cordajeSelect = el('select', {});
   const precioInput = el('input', { type: 'number', step: '0.5', min: '0', value: state.config.precioSinCordaje });
-  const pagoSelect = selectEl([{ value: 'alRecoger', label: 'Paga al recoger' }, { value: 'adelantado', label: 'Ya ha pagado por adelantado' }], 'alRecoger', () => {});
+  const pagoSelect = selectEl([{ value: 'alRecoger', label: 'Paga al recoger' }, { value: 'adelantado', label: 'Ya ha pagado por adelantado' }, { value: 'sinPagar', label: 'Recoge sin pagar (pagará más adelante)' }], 'alRecoger', () => {});
   const MOLESTIAS_JUGADOR_TALLER = [
     { value: 'ninguna', label: 'Ninguna' },
     { value: 'codo', label: 'Codo de tenista' },
@@ -5986,6 +5987,7 @@ function viewNuevoPedido() {
       tensionHorizontal: tensionHInput.value ? parseFloat(tensionHInput.value) : (tensionVInput.value ? parseFloat(tensionVInput.value) : null),
       precio: parseFloat(precioInput.value) || 0,
       pagado: pagoSelect.value === 'adelantado',
+      pagoPrevisto: pagoSelect.value,
       fotoAntes, notas: notasInput.value.trim(),
     });
     if (window.guardarFotosTallerEnNube) window.guardarFotosTallerEnNube(nuevo.id, nuevo.fotoAntes, null);

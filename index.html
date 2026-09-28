@@ -6062,7 +6062,17 @@ const ESTILOS_JUEGO_TALLER = [
 ];
 function labelDe(lista, valor) { const o = lista.find(x => x.value === valor); return o ? o.label : valor; }
 
+let subTabCatalogo = 'cordajes';
 function viewCatalogo() {
+  const wrap = document.createDocumentFragment();
+  wrap.appendChild(el('div', { class: 'row', style: 'gap:8px;margin-bottom:12px;' },
+    el('button', { class: 'btn ' + (subTabCatalogo === 'cordajes' ? 'btn-primary' : 'btn-ghost'), onclick: () => { subTabCatalogo = 'cordajes'; render(); } }, '🧵 Cordajes'),
+    el('button', { class: 'btn ' + (subTabCatalogo === 'articulos' ? 'btn-primary' : 'btn-ghost'), onclick: () => { subTabCatalogo = 'articulos'; render(); } }, '🏷️ Artículos'),
+  ));
+  wrap.appendChild(subTabCatalogo === 'articulos' ? viewArticulos() : viewCordajes());
+  return wrap;
+}
+function viewCordajes() {
   const wrap = document.createDocumentFragment();
   const panelGuia = el('div', { class: 'panel' },
     el('h2', {}, '📖 Guía rápida para etiquetar cordajes'),
@@ -6106,7 +6116,11 @@ function viewCatalogo() {
     });
   }
   wrap.appendChild(panelCordajes);
+  return wrap;
+}
 
+function viewArticulos() {
+  const wrap = document.createDocumentFragment();
   const panelArt = el('div', { class: 'panel' },
     el('h2', {}, '🏷️ Artículos a la venta'),
     el('div', { class: 'sub' }, 'Llaveros, mochilas, raquetas, grips y demás artículos.'),

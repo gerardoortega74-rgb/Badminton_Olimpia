@@ -5461,7 +5461,7 @@ function addPedido(datos) {
     id: uid('ped'), clienteId: datos.clienteId, marcaModelo: datos.marcaModelo || '', cordajeId: datos.cordajeId || null,
     tensionVertical: datos.tensionVertical || null, tensionHorizontal: datos.tensionHorizontal || null, precio: datos.precio || 0, fotoAntes: datos.fotoAntes || null, fotoDespues: null,
     estado: 'pendiente', horaLlegada: Date.now(), horaInicio: null, horaFin: null, notas: datos.notas || '',
-    pagado: false, aplazado: false,
+    pagado: !!datos.pagado, fechaPago: datos.pagado ? Date.now() : null, fechaEntrega: null, aplazado: false,
   };
   state.pedidos.push(nuevo);
   if (nuevo.cordajeId) {
@@ -5480,7 +5480,74 @@ function removePedido(id) {
 }
 function empezarPedido(p) { p.estado = 'en_proceso'; p.horaInicio = Date.now(); }
 function terminarPedido(p) { p.estado = 'terminado'; p.horaFin = Date.now(); }
-function entregarPedido(p) { p.estado = 'entregado'; }
+function entregarPedido(p) { p.estado = 'entregado'; if (!p.fechaEntrega) p.fechaEntrega = Date.now(); }
+function hoyISO() { return new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10); }
+function tsDeFechaISO(iso) {
+  if (!iso || iso === hoyISO()) return Date.now();
+  return new Date(iso + 'T12:00:00').getTime();
+}
+function fmtFechaTs(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
+}
+function diasDesde(ts) { return Math.max(0, Math.floor((Date.now() - ts) / 86400000)); }
+function abrirEntregaPedido(p) {
+  const root = document.getElementById('tallerModalRoot');
+  const cli = clienteDe(p.clienteId);
+  if (!root) { entregarPedido(p); render(); return; }
+  const fechaInput = el('input', { type: 'date', value: hoyISO() });
+  const opciones = p.pagado
+    ? [{ value: 'yaPagado', label: 'Ya estaba pagada' }]
+    : [{ value: 'pagaAhora', label: 'Me paga ahora (' + euros(p.precio) + ')' }, { value: 'sinPagar', label: 'Se la lleva sin pagar (queda pendiente de cobro)' }];
+  const pagoEntregaSelect = selectEl(opciones, opciones[0].value, () => {});
+  root.innerHTML = '';
+  root.appendChild(el('div', { class: 'modal-bg', onclick: (e) => { if (e.target.classList.contains('modal-bg')) root.innerHTML = ''; } },
+    el('div', { class: 'modal' },
+      el('h3', {}, '📦 Entregar raqueta'),
+      el('div', { class: 'sub', style: 'margin-bottom:10px;' }, (cli ? cli.nombre + ' · ' : '') + (p.marcaModelo || 'Raqueta') + (p.horaFin ? ' · terminada el ' + fmtFechaTs(p.horaFin) : '')),
+      el('div', { class: 'grid' },
+        field('Fecha de entrega', fechaInput),
+        field('Pago', pagoEntregaSelect),
+      ),
+      el('div', { class: 'row', style: 'margin-top:16px;' },
+        el('button', { class: 'btn btn-primary', onclick: () => {
+          const ts = tsDeFechaISO(fechaInput.value);
+          p.estado = 'entregado';
+          p.fechaEntrega = ts;
+          if (pagoEntregaSelect.value === 'pagaAhora') { p.pagado = true; p.fechaPago = ts; }
+          root.innerHTML = '';
+          render();
+        } }, 'Confirmar entrega'),
+        el('button', { class: 'btn btn-ghost', onclick: () => { root.innerHTML = ''; } }, 'Cancelar'),
+      ),
+    ),
+  ));
+}
+function construirPanelPorRecoger() {
+  const porRecoger = state.pedidos.filter(p => p.estado === 'terminado').sort((a, b) => (a.horaFin || 0) - (b.horaFin || 0));
+  if (!porRecoger.length) return null;
+  const panelR = el('div', { class: 'panel', style: 'margin-top:16px;' },
+    el('h2', {}, '📦 Terminadas, pendientes de recoger'),
+    el('div', { class: 'sub' }, 'Raquetas ya reparadas que el cliente todavía no se ha llevado.'),
+  );
+  porRecoger.forEach(p => {
+    const cli = clienteDe(p.clienteId);
+    const dias = p.horaFin ? diasDesde(p.horaFin) : 0;
+    panelR.appendChild(el('div', { class: 'card' },
+      el('div', { class: 'card-head' },
+        el('span', { class: 'card-title' }, cli ? cli.nombre : '(cliente eliminado)'),
+        p.pagado ? el('span', { class: 'chip chip-gold' }, 'Pagada') : el('span', { class: 'chip chip-muted' }, 'Sin pagar'),
+      ),
+      el('div', { class: 'sub' }, `${p.marcaModelo || 'Raqueta sin especificar'} · ${euros(p.precio)} · lista desde el ${fmtFechaTs(p.horaFin)}${dias > 0 ? ' (hace ' + dias + ' día(s))' : ' (hoy)'}`),
+      el('div', { class: 'toolbar', style: 'margin-top:8px;' },
+        el('button', { class: 'btn btn-primary btn-sm', onclick: () => abrirEntregaPedido(p) }, '📦 Entregar'),
+        el('button', { class: 'btn btn-ghost btn-sm', onclick: () => abrirAvisoWhatsapp(p) }, '💬 Avisar por WhatsApp'),
+      ),
+    ));
+  });
+  return panelR;
+}
 function aplazarPedido(p) { p.aplazado = true; }
 function reanudarPedido(p) { p.aplazado = false; p.horaLlegada = Date.now(); }
 
@@ -5654,10 +5721,14 @@ function viewCola() {
     });
     wrap.appendChild(panel);
     wrap.appendChild(panelAplazados);
+    const panelRecogerA = construirPanelPorRecoger();
+    if (panelRecogerA) wrap.appendChild(panelRecogerA);
     return wrap;
   }
 
   wrap.appendChild(panel);
+  const panelRecogerB = construirPanelPorRecoger();
+  if (panelRecogerB) wrap.appendChild(panelRecogerB);
   return wrap;
 }
 
@@ -5820,6 +5891,7 @@ function viewNuevoPedido() {
   tensionHInput.addEventListener('change', comprobarTensionMax);
   const cordajeSelect = el('select', {});
   const precioInput = el('input', { type: 'number', step: '0.5', min: '0', value: state.config.precioSinCordaje });
+  const pagoSelect = selectEl([{ value: 'alRecoger', label: 'Paga al recoger' }, { value: 'adelantado', label: 'Ya ha pagado por adelantado' }], 'alRecoger', () => {});
   const MOLESTIAS_JUGADOR_TALLER = [
     { value: 'ninguna', label: 'Ninguna' },
     { value: 'codo', label: 'Codo de tenista' },
@@ -5878,6 +5950,7 @@ function viewNuevoPedido() {
     field('Tensión vertical (kg)', tensionVInput),
     field('Tensión horizontal (kg)', tensionHInput),
     field('Precio (€)', precioInput),
+    field('Pago', pagoSelect),
     field('Foto de la raqueta (opcional)', fotoInput),
   ));
   panel.appendChild(avisoTensionMaxDiv);
@@ -5912,6 +5985,7 @@ function viewNuevoPedido() {
       tensionVertical: tensionVInput.value ? parseFloat(tensionVInput.value) : null,
       tensionHorizontal: tensionHInput.value ? parseFloat(tensionHInput.value) : (tensionVInput.value ? parseFloat(tensionVInput.value) : null),
       precio: parseFloat(precioInput.value) || 0,
+      pagado: pagoSelect.value === 'adelantado',
       fotoAntes, notas: notasInput.value.trim(),
     });
     if (window.guardarFotosTallerEnNube) window.guardarFotosTallerEnNube(nuevo.id, nuevo.fotoAntes, null);
@@ -6224,8 +6298,10 @@ function viewHistorial() {
       el('td', {}, fmtTension(p)),
       el('td', {}, duracion),
       el('td', {}, euros(p.precio)),
-      el('td', {}, el('button', { class: 'btn btn-sm ' + (p.pagado ? 'btn-gold' : 'btn-ghost'), onclick: () => { p.pagado = !p.pagado; render(); } }, p.pagado ? '✓ Pagado' : 'Pendiente')),
-      el('td', {}, p.estado === 'entregado' ? el('span', { class: 'chip chip-gold' }, 'Entregado') : el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { entregarPedido(p); render(); } }, 'Marcar entregado')),
+      el('td', {}, el('button', { class: 'btn btn-sm ' + (p.pagado ? 'btn-gold' : 'btn-ghost'), onclick: () => { p.pagado = !p.pagado; p.fechaPago = p.pagado ? Date.now() : null; render(); } }, p.pagado ? '✓ Pagado' : 'Pendiente')),
+      el('td', {}, p.estado === 'entregado'
+        ? el('span', { class: 'chip chip-gold' }, 'Entregado ' + fmtFechaTs(p.fechaEntrega))
+        : el('div', {}, el('button', { class: 'btn btn-ghost btn-sm', onclick: () => abrirEntregaPedido(p) }, 'Marcar entregado'), p.horaFin ? el('div', { class: 'sub' }, 'Lista desde ' + fmtFechaTs(p.horaFin)) : null)),
       el('td', {}, el('button', { class: 'btn btn-danger btn-sm', onclick: () => { if (confirm('¿Eliminar esta venta del historial? No se puede deshacer.')) { removePedido(p.id); render(); } } }, 'Eliminar')),
     ));
   });
@@ -7178,7 +7254,9 @@ function renderVistaPublicaTaller() {
     ));
   } else if (pedido.estado === 'terminado' || pedido.estado === 'entregado') {
     panel.appendChild(el('div', { class: 'msg msg-info', style: 'font-size:16px;font-weight:700;' },
-      pedido.estado === 'entregado' ? '✅ Raqueta entregada' : '✅ ¡Tu raqueta ya está lista para recoger!'));
+      pedido.estado === 'entregado'
+        ? '✅ Raqueta entregada' + (pedido.fechaEntrega ? ' el ' + (() => { const d = new Date(pedido.fechaEntrega); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear(); })() : '')
+        : '✅ ¡Tu raqueta ya está lista para recoger!'));
     const duracion = (pedido.horaInicio && pedido.horaFin) ? Math.round((pedido.horaFin - pedido.horaInicio) / 60000) + ' min' : '—';
     panel.appendChild(el('div', { class: 'stat-cards' },
       statCardShell(euros(pedido.precio), 'Precio'),

@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20260928-081849">
+<meta name="build-id" content="v20260928-113754">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -3659,7 +3659,13 @@ function tryLoadLocal() {
 
 function getCategoria(id) { return CATEGORIES.find(c => c.id === id); }
 function getNivel(id) { return NIVELES.find(n => n.id === id); }
-function defaultGrupoEntreno() { return { id: uid('grp'), nombre: 'Grupo nuevo', nivel: 'iniciacion', horasSemanales: 3 }; }
+function datosVaciosGrupo() {
+  return { mesociclos: [], microciclo: diasSemanaDefault(), competiciones: [], evaluacion: { tests: [], jugadores: [], resultados: {} }, entrenosIndividuales: [] };
+}
+function nuevoGrupoVacio(nombre) {
+  return { id: uid('grp'), nombre: nombre || 'Grupo nuevo', nivel: 'iniciacion', horasSemanales: 0, horario: [], alumnos: [], asistencia: {}, datos: datosVaciosGrupo() };
+}
+function defaultGrupoEntreno() { return nuevoGrupoVacio('Grupo nuevo'); }
 function migrarGrupos() {
   if (!Array.isArray(state.config.grupos) || !state.config.grupos.length) {
     const catVieja = getCategoria(state.config.categoria || 'sub11');
@@ -3668,14 +3674,72 @@ function migrarGrupos() {
   if (!state.config.grupoActivoId || !state.config.grupos.some(g => g.id === state.config.grupoActivoId)) {
     state.config.grupoActivoId = state.config.grupos[0].id;
   }
+  state.config.grupos.forEach(g => {
+    if (!Array.isArray(g.horario)) g.horario = [];
+    if (!Array.isArray(g.alumnos)) g.alumnos = [];
+    if (!g.asistencia || typeof g.asistencia !== 'object') g.asistencia = {};
+    if (g.id === state.config.grupoActivoId) g.datos = null;
+    else if (!g.datos) g.datos = datosVaciosGrupo();
+    g.alumnos.forEach(a => {
+      if (!a.docs || typeof a.docs !== 'object') a.docs = {};
+      if (!Array.isArray(a.historialGrupos)) a.historialGrupos = [];
+      if (a.telefonoEmergencia === undefined) a.telefonoEmergencia = '';
+    });
+  });
+  if (!state.config.docsUrl || typeof state.config.docsUrl !== 'object') state.config.docsUrl = {};
+  if (!Array.isArray(state.mesociclos)) state.mesociclos = [];
+  if (!Array.isArray(state.microciclo) || !state.microciclo.length) state.microciclo = diasSemanaDefault();
+  if (!Array.isArray(state.competiciones)) state.competiciones = [];
+  if (!state.evaluacion || typeof state.evaluacion !== 'object') state.evaluacion = { tests: [], jugadores: [], resultados: {} };
+  if (!Array.isArray(state.entrenosIndividuales)) state.entrenosIndividuales = [];
 }
 function grupoActivo() { return state.config.grupos.find(g => g.id === state.config.grupoActivoId) || state.config.grupos[0]; }
+function minutosHorario(h) {
+  const a = /^(\d{1,2}):(\d{2})$/.exec(h.inicio || ''), b = /^(\d{1,2}):(\d{2})$/.exec(h.fin || '');
+  if (!a || !b) return 0;
+  const m = (parseInt(b[1], 10) * 60 + parseInt(b[2], 10)) - (parseInt(a[1], 10) * 60 + parseInt(a[2], 10));
+  return m > 0 ? m : 0;
+}
 function aplicarGrupoActivo() {
   const g = grupoActivo();
   if (!g) return;
   state.config.nivel = g.nivel;
-  state.config.sesionesSemana = g.horasSemanales || state.config.sesionesSemana || 1;
+  if (g.horario && g.horario.length) {
+    state.config.sesionesSemana = g.horario.length;
+    const mins = g.horario.map(minutosHorario).filter(m => m > 0);
+    if (mins.length) state.config.duracionSesion = Math.round(mins.reduce((x, y) => x + y, 0) / mins.length);
+  } else {
+    state.config.sesionesSemana = g.horasSemanales || state.config.sesionesSemana || 1;
+  }
   refActiveNivel = g.nivel;
+}
+// El grupo "activo" tiene sus datos de planificación en state.mesociclos, state.microciclo, etc.
+// Los demás grupos guardan los suyos aparcados en grupo.datos. Al cambiar de grupo se intercambian.
+function aparcarGrupoActivo() {
+  const g = grupoActivo();
+  if (!g) return;
+  g.datos = { mesociclos: state.mesociclos, microciclo: state.microciclo, competiciones: state.competiciones, evaluacion: state.evaluacion, entrenosIndividuales: state.entrenosIndividuales };
+}
+function cargarDatosGrupo(g) {
+  const d = g.datos || datosVaciosGrupo();
+  state.mesociclos = Array.isArray(d.mesociclos) ? d.mesociclos : [];
+  state.microciclo = (Array.isArray(d.microciclo) && d.microciclo.length) ? d.microciclo : diasSemanaDefault();
+  state.competiciones = Array.isArray(d.competiciones) ? d.competiciones : [];
+  state.evaluacion = (d.evaluacion && typeof d.evaluacion === 'object') ? d.evaluacion : { tests: [], jugadores: [], resultados: {} };
+  state.entrenosIndividuales = Array.isArray(d.entrenosIndividuales) ? d.entrenosIndividuales : [];
+  g.datos = null;
+}
+function activarGrupo(id) {
+  if (id === state.config.grupoActivoId) return;
+  const nuevo = state.config.grupos.find(g => g.id === id);
+  if (!nuevo) return;
+  aparcarGrupoActivo();
+  state.config.grupoActivoId = id;
+  cargarDatosGrupo(nuevo);
+  aplicarGrupoActivo();
+  entrenoUI.jugadorNombre = '';
+  entrenoUI.nivel = '';
+  entrenoUI.numDias = null;
 }
 function parseDate(s) { return s ? new Date(s + 'T00:00:00') : null; }
 function daysBetween(a, b) { return Math.round((b - a) / 86400000); }
@@ -3780,14 +3844,16 @@ function render() {
   const main = document.getElementById('planMainArea');
   main.innerHTML = '';
 
+  if (['macrociclo', 'microciclo', 'individual', 'competiciones', 'evaluacion'].indexOf(activeTab) >= 0) {
+    migrarGrupos();
+    subTabGrupo = activeTab;
+    grupoAbiertoId = state.config.grupoActivoId;
+    activeTab = 'grupos';
+  }
   if (activeTab === 'config') main.appendChild(viewConfig());
   else if (activeTab === 'referencia') main.appendChild(viewReferencia());
   else if (activeTab === 'reglamento') main.appendChild(viewReglamento());
-  else if (activeTab === 'macrociclo') main.appendChild(viewMacrociclo());
-  else if (activeTab === 'microciclo') main.appendChild(viewMicrociclo());
-  else if (activeTab === 'individual') main.appendChild(viewEntrenoIndividual());
-  else if (activeTab === 'competiciones') main.appendChild(viewCompeticiones());
-  else if (activeTab === 'evaluacion') main.appendChild(viewEvaluacion());
+  else if (activeTab === 'grupos') main.appendChild(viewGrupos());
 }
 
 function renderTabsNav() {
@@ -3797,11 +3863,7 @@ function renderTabsNav() {
     ['config', '⚙ Configuración'],
     ['referencia', '📘 Normativa y contenidos'],
     ['reglamento', '📜 Reglamento'],
-    ['macrociclo', '🗓 Macrociclo'],
-    ['microciclo', '📅 Microciclo tipo'],
-    ['individual', '🎯 Entreno individual'],
-    ['competiciones', '🏆 Competiciones'],
-    ['evaluacion', '📊 Evaluación'],
+    ['grupos', '👥 Grupos de trabajo'],
   ];
   tabs.forEach(([id, label]) => {
     nav.appendChild(el('button', { class: activeTab === id ? 'active' : '', onclick: () => { activeTab = id; render(); } }, label));
@@ -3823,51 +3885,17 @@ function viewConfig() {
     )
   ));
 
-  const gruposPanel = el('div', { class: 'panel' },
-    el('h2', {}, 'Grupos de entrenamiento'),
-    el('div', { class: 'sub' }, 'Crea todos los grupos que entrenéis, con su título, nivel de trabajo (Iniciación, Desarrollo/Avanzado o Tecnificación) y horas semanales. Esto no implica que todos los jugadores del grupo entrenen todos los días. Marca cuál es el grupo activo para que el resto de pestañas (macrociclo, microciclo...) trabajen sobre él.'),
-    el('div', { class: 'toolbar' },
-      el('button', { class: 'btn btn-gold btn-sm', onclick: () => {
-        const nuevo = defaultGrupoEntreno();
-        state.config.grupos.push(nuevo);
-        state.config.grupoActivoId = nuevo.id;
-        aplicarGrupoActivo();
-        render();
-      } }, '+ Añadir grupo'),
-    ),
-  );
-  state.config.grupos.forEach(g => {
-    const esActivo = g.id === state.config.grupoActivoId;
-    gruposPanel.appendChild(el('div', { class: 'card', style: esActivo ? 'border:2px solid var(--gold);' : '' },
-      el('div', { class: 'card-head' },
-        el('span', { class: 'card-title' }, g.nombre || '(sin nombre)'),
-        el('div', { class: 'row', style: 'gap:6px;flex-wrap:nowrap;' },
-          esActivo ? el('span', { class: 'chip chip-gold' }, 'Grupo activo') : el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { state.config.grupoActivoId = g.id; aplicarGrupoActivo(); render(); } }, 'Usar este grupo'),
-          state.config.grupos.length > 1 ? el('button', { class: 'btn btn-danger btn-sm', onclick: () => {
-            state.config.grupos = state.config.grupos.filter(x => x.id !== g.id);
-            if (state.config.grupoActivoId === g.id) { state.config.grupoActivoId = state.config.grupos[0].id; aplicarGrupoActivo(); }
-            render();
-          } }, 'Eliminar') : null,
-        ),
-      ),
-      el('div', { class: 'grid', style: 'margin-top:10px;' },
-        field('Título del grupo', inputEl('text', g.nombre, v => { g.nombre = v; render(); })),
-        field('Nivel de trabajo', selectEl(NIVELES.map(n => ({ value: n.id, label: n.nombre })), g.nivel, v => { g.nivel = v; if (esActivo) aplicarGrupoActivo(); render(); })),
-        field('Horas semanales', inputEl('number', g.horasSemanales, v => { g.horasSemanales = Math.max(0, parseFloat(v) || 0); if (esActivo) aplicarGrupoActivo(); }, { min: 0, step: '0.5' })),
-      ),
-      el('div', { class: 'msg msg-info', style: 'margin-top:8px;' }, getNivel(g.nivel).desc),
-    ));
-  });
-  wrap.appendChild(gruposPanel);
-
   wrap.appendChild(el('div', { class: 'panel' },
-    el('h2', {}, 'Resumen del grupo activo'),
-    el('div', { class: 'stat-cards' },
-      statCard(grupoActivo().nombre, 'Grupo'),
-      statCard(getNivel(state.config.nivel).nombre, 'Nivel de trabajo'),
-      statCard(state.config.sesionesSemana + '/semana', 'Horas semanales'),
+    el('h2', {}, '👥 Grupos de trabajo'),
+    el('div', { class: 'sub' }, 'Los grupos (con su horario, alumnos, asistencia y toda su planificación: macrociclo, microciclo, entrenos individuales, competiciones y evaluación) se gestionan ahora en su propia pestaña.'),
+    el('div', { class: 'toolbar', style: 'margin-top:8px;' },
+      el('button', { class: 'btn btn-gold', onclick: () => { activeTab = 'grupos'; grupoAbiertoId = null; render(); } }, 'Ir a Grupos de trabajo →'),
+    ),
+    el('div', { class: 'stat-cards', style: 'margin-top:12px;' },
+      statCard(state.config.grupos.length, 'Grupos'),
+      statCard(state.config.grupos.reduce((n, g) => n + g.alumnos.length, 0), 'Alumnos en total'),
       statCard(totalWeeksTemporada() || '—', 'Semanas de temporada'),
-    )
+    ),
   ));
 
   return wrap;
@@ -4246,14 +4274,18 @@ function viewEntrenoIndividual() {
   );
 
   const roster = (window.JugadoresGlobal ? window.JugadoresGlobal.list() : []);
-  const nombresDisponibles = roster.length ? roster.map(j => j.nombre) : state.evaluacion.jugadores.map(j => j.nombre);
+  const nombresDisponibles = (contextoAlumnos && contextoAlumnos.length) ? contextoAlumnos.map(x => x.nombre) : (roster.length ? roster.map(j => j.nombre) : state.evaluacion.jugadores.map(j => j.nombre));
+  const buscarEnRoster = (nombre) => {
+    const ctx = contextoAlumnos ? contextoAlumnos.find(x => x.nombre === nombre) : null;
+    return roster.find(x => (ctx && ctx.jugadorId && x.id === ctx.jugadorId) || x.nombre === nombre);
+  };
   if (!entrenoUI.jugadorNombre && nombresDisponibles.length) entrenoUI.jugadorNombre = nombresDisponibles[0];
 
   const jugadorSelect = el('select', {}, nombresDisponibles.map(n => el('option', { value: n, selected: n === entrenoUI.jugadorNombre ? 'selected' : null }, n)));
   jugadorSelect.value = entrenoUI.jugadorNombre;
   jugadorSelect.addEventListener('change', (e) => {
     entrenoUI.jugadorNombre = e.target.value;
-    const j = roster.find(x => x.nombre === e.target.value);
+    const j = buscarEnRoster(e.target.value);
     if (j && j.fechaNacimiento && window.calcularCategoria) {
       const catId = window.calcularCategoria(j.fechaNacimiento);
       const catInfo = CATEGORIES.find(c => c.id === catId);
@@ -4262,7 +4294,7 @@ function viewEntrenoIndividual() {
     render();
   });
   if (!entrenoUI.nivel) {
-    const j0 = roster.find(x => x.nombre === entrenoUI.jugadorNombre);
+    const j0 = buscarEnRoster(entrenoUI.jugadorNombre);
     if (j0 && j0.fechaNacimiento && window.calcularCategoria) {
       const catId = window.calcularCategoria(j0.fechaNacimiento);
       const catInfo = CATEGORIES.find(c => c.id === catId);
@@ -4458,15 +4490,625 @@ function importData(file) {
   reader.readAsText(file);
 }
 
-function getState() { return state; }
-function setState(s) { if (s && !s.entrenosIndividuales) s.entrenosIndividuales = []; state = s; migrarGrupos(); refActiveNivel = state.config.nivel; }
-function mount() {
-  tryLoadLocal();
-  migrarGrupos();
-  refActiveNivel = state.config.nivel;
+// ===================== GRUPOS DE TRABAJO =====================
+const DIAS_SEMANA_GRUPO = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+const DIAS_CORTOS_GRUPO = { 'Lunes': 'Lun', 'Martes': 'Mar', 'Miércoles': 'Mié', 'Jueves': 'Jue', 'Viernes': 'Vie', 'Sábado': 'Sáb', 'Domingo': 'Dom' };
+const DOCS_ALUMNO = [
+  { key: 'derechosImagen', titulo: 'Derechos de imagen' },
+  { key: 'datosJuegosEscolares', titulo: 'Datos solicitados para Juegos Escolares' },
+  { key: 'asistenciaJuegosEscolares', titulo: 'Confirmación de asistencia a Juegos Escolares' },
+  { key: 'permisoSalida', titulo: 'Permiso de salida de la instalación solo' },
+];
+const SUBTABS_GRUPO = [
+  ['datos', '⚙ Datos y horario'],
+  ['alumnos', '👥 Alumnos y asistencia'],
+  ['macrociclo', '🗓 Macrociclo'],
+  ['microciclo', '📅 Microciclo tipo'],
+  ['individual', '🎯 Entreno individual'],
+  ['competiciones', '🏆 Competiciones'],
+  ['evaluacion', '📊 Evaluación'],
+];
+let grupoAbiertoId = null;
+let subTabGrupo = 'datos';
+let fechaAsistencia = null;
+let alumnoAbiertoId = null;
+let contextoAlumnos = null;
+let sensibles = {};
+
+function cargarSensibles() { try { const raw = localStorage.getItem('badmintonPlanSensibles'); sensibles = raw ? JSON.parse(raw) : {}; } catch (e) { sensibles = {}; } }
+function guardarSensibles() { try { localStorage.setItem('badmintonPlanSensibles', JSON.stringify(sensibles)); } catch (e) { } }
+
+function hoyISOPlan() { return new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10); }
+function sumarDiasISO(iso, n) { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); }
+function nombreDiaDeFecha(iso) { return ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][new Date(iso + 'T12:00:00').getDay()]; }
+function ordenHorario(a, b) { return DIAS_SEMANA_GRUPO.indexOf(a.dia) - DIAS_SEMANA_GRUPO.indexOf(b.dia) || (a.inicio || '').localeCompare(b.inicio || ''); }
+function resumenHorario(g) {
+  if (!g.horario || !g.horario.length) return 'Sin horario';
+  return g.horario.slice().sort(ordenHorario).map(h => (DIAS_CORTOS_GRUPO[h.dia] || h.dia) + ' ' + (h.inicio || '?') + '–' + (h.fin || '?')).join(' · ');
+}
+function horasSemanaGrupo(g) { return Math.round((g.horario || []).reduce((n, h) => n + minutosHorario(h), 0) / 6) / 10; }
+function nombreCompletoPlan(j) {
+  const ap = (j.apellido1 || j.apellido2) ? ((j.apellido1 || '') + ' ' + (j.apellido2 || '')).trim() : (j.apellidos || '');
+  return ((j.nombre || '') + ' ' + ap).trim();
+}
+
+function crearGrupoTrabajo(nombre) { const g = nuevoGrupoVacio(nombre); state.config.grupos.push(g); return g; }
+function eliminarGrupoTrabajo(id) {
+  const grupos = state.config.grupos;
+  if (grupos.length <= 1) return false;
+  const g = grupos.find(x => x.id === id);
+  if (!g) return false;
+  g.alumnos.forEach(a => { delete sensibles[a.id]; });
+  guardarSensibles();
+  const otro = grupos.find(x => x.id !== id);
+  if (state.config.grupoActivoId === id) {
+    state.config.grupoActivoId = otro.id;
+    cargarDatosGrupo(otro);
+  }
+  state.config.grupos = grupos.filter(x => x.id !== id);
+  if (grupoAbiertoId === id) grupoAbiertoId = null;
+  aplicarGrupoActivo();
+  return true;
+}
+function abrirGrupo(id) {
+  activarGrupo(id);
+  grupoAbiertoId = id;
+  subTabGrupo = 'datos';
+  alumnoAbiertoId = null;
   render();
 }
-return { render, mount, getState, setState };
+
+function jugadoresClubDisponibles() {
+  const roster = window.JugadoresGlobal ? window.JugadoresGlobal.list() : [];
+  const usados = new Set();
+  state.config.grupos.forEach(g => g.alumnos.forEach(a => { if (a.jugadorId) usados.add(a.jugadorId); }));
+  return roster.filter(j => !usados.has(j.id));
+}
+function addAlumno(g, nombre, jugadorId) {
+  const a = { id: uid('alu'), nombre: nombre, jugadorId: jugadorId || null, docs: {}, telefonoEmergencia: '', historialGrupos: [] };
+  g.alumnos.push(a);
+  return a;
+}
+function quitarAlumno(g, alumnoId) { g.alumnos = g.alumnos.filter(a => a.id !== alumnoId); delete sensibles[alumnoId]; guardarSensibles(); }
+function moverAlumno(alumnoId, desdeId, haciaId) {
+  const desde = state.config.grupos.find(g => g.id === desdeId);
+  const hacia = state.config.grupos.find(g => g.id === haciaId);
+  if (!desde || !hacia || desde === hacia) return false;
+  const i = desde.alumnos.findIndex(a => a.id === alumnoId);
+  if (i < 0) return false;
+  const al = desde.alumnos.splice(i, 1)[0];
+  if (!Array.isArray(al.historialGrupos)) al.historialGrupos = [];
+  al.historialGrupos.push({ fecha: Date.now(), desde: desde.nombre, hacia: hacia.nombre });
+  hacia.alumnos.push(al);
+  return true;
+}
+function docsFirmados(a) { return DOCS_ALUMNO.filter(d => a.docs && a.docs[d.key]).length; }
+
+function marcarAsistencia(g, fecha, alumnoId, presente) {
+  const dia = g.asistencia[fecha] || (g.asistencia[fecha] = {});
+  g.alumnos.forEach(a => { if (dia[a.id] === undefined) dia[a.id] = false; });
+  dia[alumnoId] = !!presente;
+}
+function resumenAsistenciaAlumno(g, alumnoId) {
+  let ses = 0, pres = 0;
+  Object.keys(g.asistencia).forEach(f => { const d = g.asistencia[f]; if (d && d[alumnoId] !== undefined) { ses++; if (d[alumnoId]) pres++; } });
+  return { ses, pres, pct: ses ? Math.round(pres / ses * 100) : null };
+}
+function sincronizarEvaluacionConAlumnos(g) {
+  g.alumnos.forEach(a => { if (!state.evaluacion.jugadores.some(j => j.nombre === a.nombre)) state.evaluacion.jugadores.push({ id: uid('jug'), nombre: a.nombre }); });
+}
+
+// ---------- vistas ----------
+function viewGrupos() {
+  const wrap = document.createDocumentFragment();
+  migrarGrupos();
+  if (grupoAbiertoId && !state.config.grupos.some(g => g.id === grupoAbiertoId)) grupoAbiertoId = null;
+  if (!grupoAbiertoId) wrap.appendChild(viewListaGrupos());
+  else wrap.appendChild(viewGrupoAbierto(state.config.grupos.find(g => g.id === grupoAbiertoId)));
+  return wrap;
+}
+
+function viewListaGrupos() {
+  const wrap = document.createDocumentFragment();
+  const panel = el('div', { class: 'panel' },
+    el('h2', {}, '👥 Grupos de trabajo'),
+    el('div', { class: 'sub' }, 'Crea los grupos que entrenéis y entra en cada uno: allí tienes su horario, sus alumnos con la asistencia diaria y los documentos, y su propia planificación (macrociclo, microciclo, entrenos individuales, competiciones y evaluación).'),
+  );
+  const nombreNuevo = el('input', { type: 'text', placeholder: 'Nombre del grupo nuevo (ej: Iniciación martes y jueves)', style: 'flex:1;min-width:200px;' });
+  panel.appendChild(el('div', { class: 'row', style: 'margin:10px 0 14px;' },
+    nombreNuevo,
+    el('button', { class: 'btn btn-gold', onclick: () => {
+      const n = nombreNuevo.value.trim();
+      if (!n) { alert('Escribe primero el nombre del grupo.'); return; }
+      crearGrupoTrabajo(n);
+      render();
+    } }, '+ Añadir grupo'),
+  ));
+  state.config.grupos.forEach(g => {
+    panel.appendChild(el('div', { class: 'card' },
+      el('div', { class: 'card-head' },
+        el('span', { class: 'card-title' }, g.nombre || '(sin nombre)'),
+        el('span', { class: 'chip chip-gold' }, getNivel(g.nivel).nombre)),
+      el('div', { class: 'sub' }, '🕒 ' + resumenHorario(g)),
+      el('div', { class: 'sub' }, `👥 ${g.alumnos.length} alumno(s) · ${horasSemanaGrupo(g)} h/semana`),
+      el('div', { class: 'toolbar', style: 'margin-top:8px;' },
+        el('button', { class: 'btn btn-primary btn-sm', onclick: () => abrirGrupo(g.id) }, 'Abrir grupo →')),
+    ));
+  });
+  wrap.appendChild(panel);
+
+  const docs = el('div', { class: 'panel' },
+    el('h2', {}, '📎 Documentos para firmar'),
+    el('div', { class: 'sub' }, 'Los documentos que firma cada alumno (se descargan desde su ficha). Si tienes tu propio PDF (por ejemplo el oficial de los Juegos Escolares, en Drive o Dropbox), pega aquí su enlace y se usará ese. Si dejas el enlace vacío, la app genera un modelo genérico en PDF con los datos del alumno.'),
+  );
+  DOCS_ALUMNO.forEach(d => {
+    docs.appendChild(field(d.titulo + ' — enlace (opcional)', inputEl('url', state.config.docsUrl[d.key] || '', v => { state.config.docsUrl[d.key] = v.trim(); render(); }, { placeholder: 'https://…' })));
+  });
+  wrap.appendChild(docs);
+  return wrap;
+}
+
+function viewGrupoAbierto(g) {
+  const wrap = document.createDocumentFragment();
+  if (g.id !== state.config.grupoActivoId) activarGrupo(g.id);
+  wrap.appendChild(el('div', { class: 'panel' },
+    el('div', { class: 'row', style: 'justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;' },
+      el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { grupoAbiertoId = null; render(); } }, '← Todos los grupos'),
+      el('span', { class: 'chip chip-gold' }, getNivel(g.nivel).nombre)),
+    el('h2', { style: 'margin-top:8px;' }, '👥 ' + (g.nombre || '(sin nombre)')),
+    el('div', { class: 'sub' }, resumenHorario(g) + ' · ' + g.alumnos.length + ' alumno(s)'),
+  ));
+  const nav = el('nav', { class: 'tabs', style: 'margin-bottom:16px;border-radius:8px;' });
+  SUBTABS_GRUPO.forEach(([id, label]) => nav.appendChild(el('button', { class: subTabGrupo === id ? 'active' : '', onclick: () => { subTabGrupo = id; render(); } }, label)));
+  wrap.appendChild(nav);
+  contextoAlumnos = g.alumnos.map(a => ({ nombre: a.nombre, jugadorId: a.jugadorId }));
+  try {
+    if (subTabGrupo === 'datos') wrap.appendChild(viewGrupoDatos(g));
+    else if (subTabGrupo === 'alumnos') wrap.appendChild(viewGrupoAlumnos(g));
+    else if (subTabGrupo === 'macrociclo') wrap.appendChild(viewMacrociclo());
+    else if (subTabGrupo === 'microciclo') { wrap.appendChild(panelMicrocicloDesdeHorario(g)); wrap.appendChild(viewMicrociclo()); }
+    else if (subTabGrupo === 'individual') wrap.appendChild(viewEntrenoIndividual());
+    else if (subTabGrupo === 'competiciones') wrap.appendChild(viewCompeticiones());
+    else if (subTabGrupo === 'evaluacion') { sincronizarEvaluacionConAlumnos(g); wrap.appendChild(viewEvaluacion()); }
+  } finally { contextoAlumnos = null; }
+  return wrap;
+}
+
+function viewGrupoDatos(g) {
+  const wrap = document.createDocumentFragment();
+  wrap.appendChild(el('div', { class: 'panel' },
+    el('h2', {}, 'Datos del grupo'),
+    el('div', { class: 'grid' },
+      field('Nombre del grupo', inputEl('text', g.nombre, v => { g.nombre = v; render(); })),
+      field('Nivel de trabajo', selectEl(NIVELES.map(n => ({ value: n.id, label: n.nombre })), g.nivel, v => { g.nivel = v; aplicarGrupoActivo(); render(); })),
+    ),
+    el('div', { class: 'msg msg-info', style: 'margin-top:8px;' }, getNivel(g.nivel).desc),
+  ));
+
+  const ph = el('div', { class: 'panel' },
+    el('h2', {}, '🕒 Horario semanal'),
+    el('div', { class: 'sub' }, 'Días y horas de entrenamiento del grupo. Con él se calcula la semana tipo (microciclo) y se sabe cuándo hay sesión al pasar lista.'),
+    el('div', { class: 'toolbar' },
+      el('button', { class: 'btn btn-gold btn-sm', onclick: () => { g.horario.push({ id: uid('hor'), dia: 'Lunes', inicio: '17:00', fin: '18:30', lugar: '' }); aplicarGrupoActivo(); render(); } }, '+ Añadir sesión')),
+  );
+  if (!g.horario.length) ph.appendChild(el('div', { class: 'empty-state' }, 'Todavía no hay sesiones en el horario.'));
+  g.horario.slice().sort(ordenHorario).forEach(h => {
+    ph.appendChild(el('div', { class: 'card' },
+      el('div', { class: 'grid' },
+        field('Día', selectEl(DIAS_SEMANA_GRUPO.map(d => ({ value: d, label: d })), h.dia, v => { h.dia = v; aplicarGrupoActivo(); render(); })),
+        field('Inicio', inputEl('time', h.inicio, v => { h.inicio = v; aplicarGrupoActivo(); render(); })),
+        field('Fin', inputEl('time', h.fin, v => { h.fin = v; aplicarGrupoActivo(); render(); })),
+        field('Lugar / pista', inputEl('text', h.lugar || '', v => { h.lugar = v; render(); })),
+      ),
+      el('div', { class: 'toolbar', style: 'margin-top:6px;' },
+        el('button', { class: 'btn btn-danger btn-sm', onclick: () => { g.horario = g.horario.filter(x => x.id !== h.id); aplicarGrupoActivo(); render(); } }, 'Quitar sesión')),
+    ));
+  });
+  if (g.horario.length) ph.appendChild(el('div', { class: 'sub', style: 'font-weight:700;margin-top:8px;' }, `${g.horario.length} sesión(es) por semana · ${horasSemanaGrupo(g)} h/semana`));
+  wrap.appendChild(ph);
+
+  wrap.appendChild(el('div', { class: 'panel' },
+    el('h2', {}, 'Eliminar grupo'),
+    el('div', { class: 'sub' }, 'Se borrarán el grupo, sus alumnos, la asistencia y toda su planificación. Si quieres conservar a los alumnos, muévelos antes a otro grupo desde su ficha.'),
+    el('div', { class: 'toolbar', style: 'margin-top:8px;' },
+      el('button', { class: 'btn btn-danger btn-sm', onclick: () => {
+        if (state.config.grupos.length <= 1) { alert('Tiene que existir al menos un grupo.'); return; }
+        if (confirm('¿Eliminar el grupo "' + g.nombre + '" con sus ' + g.alumnos.length + ' alumno(s) y toda su planificación? No se puede deshacer.')) { eliminarGrupoTrabajo(g.id); render(); }
+      } }, 'Eliminar este grupo')),
+  ));
+  return wrap;
+}
+
+function panelMicrocicloDesdeHorario(g) {
+  const panel = el('div', { class: 'panel' },
+    el('h2', {}, '🕒 Horario del grupo'),
+    el('div', { class: 'sub' }, resumenHorario(g)),
+  );
+  if (g.horario.length) {
+    panel.appendChild(el('div', { class: 'toolbar', style: 'margin-top:8px;' },
+      el('button', { class: 'btn btn-ghost btn-sm', onclick: () => {
+        if (!confirm('Se marcarán como días de entreno los del horario del grupo (con su duración) y se desmarcarán los demás. ¿Continuar?')) return;
+        state.microciclo.forEach(d => {
+          const ses = g.horario.filter(h => h.dia === d.dia);
+          d.activo = ses.length > 0;
+          if (ses.length) { const m = minutosHorario(ses[0]); if (m > 0) d.duracion = m; }
+        });
+        render();
+      } }, '📥 Rellenar la semana tipo con este horario')));
+  } else {
+    panel.appendChild(el('div', { class: 'sub' }, 'Añade primero las sesiones en "Datos y horario" para poder usarlas aquí.'));
+  }
+  return panel;
+}
+
+function viewGrupoAlumnos(g) {
+  const wrap = document.createDocumentFragment();
+  if (!fechaAsistencia) fechaAsistencia = hoyISOPlan();
+
+  const add = el('div', { class: 'panel' },
+    el('h2', {}, 'Alumnos del grupo'),
+    el('div', { class: 'sub' }, 'Añade a los jugadores del club o escribe un nombre a mano. Un jugador solo puede estar en un grupo a la vez: para cambiarlo de grupo usa "Mover" en su ficha.'),
+  );
+  const disponibles = jugadoresClubDisponibles();
+  const selJug = el('select', { style: 'flex:1;min-width:200px;' },
+    [el('option', { value: '' }, disponibles.length ? '— Elegir jugador del club —' : '(no quedan jugadores del club sin grupo)')]
+      .concat(disponibles.map(j => el('option', { value: j.id }, nombreCompletoPlan(j)))));
+  add.appendChild(el('div', { class: 'row', style: 'margin:8px 0;' },
+    selJug,
+    el('button', { class: 'btn btn-gold btn-sm', onclick: () => {
+      const j = disponibles.find(x => x.id === selJug.value);
+      if (!j) { alert('Elige primero un jugador.'); return; }
+      addAlumno(g, nombreCompletoPlan(j), j.id);
+      render();
+    } }, '+ Añadir'),
+  ));
+  const manual = el('input', { type: 'text', placeholder: 'O escribe un nombre a mano', style: 'flex:1;min-width:200px;' });
+  add.appendChild(el('div', { class: 'row', style: 'margin-bottom:4px;' },
+    manual,
+    el('button', { class: 'btn btn-ghost btn-sm', onclick: () => {
+      const n = manual.value.trim();
+      if (!n) { alert('Escribe el nombre del alumno.'); return; }
+      addAlumno(g, n, null);
+      render();
+    } }, '+ Añadir alumno'),
+  ));
+  wrap.appendChild(add);
+
+  const asis = el('div', { class: 'panel' },
+    el('h2', {}, '✅ Asistencia del día'),
+  );
+  asis.appendChild(el('div', { class: 'row', style: 'align-items:center;gap:8px;flex-wrap:wrap;' },
+    el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { fechaAsistencia = sumarDiasISO(fechaAsistencia, -1); render(); } }, '‹'),
+    inputEl('date', fechaAsistencia, v => { fechaAsistencia = v || hoyISOPlan(); render(); }),
+    el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { fechaAsistencia = sumarDiasISO(fechaAsistencia, 1); render(); } }, '›'),
+    el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { fechaAsistencia = hoyISOPlan(); render(); } }, 'Hoy'),
+  ));
+  const diaNombre = nombreDiaDeFecha(fechaAsistencia);
+  const sesiones = g.horario.filter(h => h.dia === diaNombre).sort(ordenHorario);
+  asis.appendChild(el('div', { class: 'sub', style: 'margin-top:6px;' },
+    sesiones.length
+      ? `📅 ${diaNombre}: hay sesión ${sesiones.map(h => h.inicio + '–' + h.fin + (h.lugar ? ' (' + h.lugar + ')' : '')).join(', ')}.`
+      : `📅 ${diaNombre}: no hay sesión en el horario (puedes registrar la asistencia igualmente).`));
+  if (g.alumnos.length) {
+    asis.appendChild(el('div', { class: 'toolbar', style: 'margin-top:8px;' },
+      el('button', { class: 'btn btn-primary btn-sm', onclick: () => { g.alumnos.forEach(a => marcarAsistencia(g, fechaAsistencia, a.id, true)); render(); } }, '✅ Todos presentes'),
+      g.asistencia[fechaAsistencia] ? el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { delete g.asistencia[fechaAsistencia]; render(); } }, 'Borrar el registro de este día') : null,
+    ));
+    const dia = g.asistencia[fechaAsistencia];
+    const pres = dia ? g.alumnos.filter(a => dia[a.id]).length : 0;
+    asis.appendChild(el('div', { class: 'sub', style: 'margin-top:4px;font-weight:700;' }, dia ? `Presentes: ${pres} de ${g.alumnos.length}` : 'Día sin registrar todavía.'));
+  }
+  wrap.appendChild(asis);
+
+  if (!g.alumnos.length) {
+    wrap.appendChild(el('div', { class: 'panel' }, el('div', { class: 'empty-state' }, 'Todavía no hay alumnos en este grupo.')));
+    return wrap;
+  }
+  g.alumnos.slice().sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')).forEach(a => wrap.appendChild(cardAlumno(g, a)));
+  return wrap;
+}
+
+function cardAlumno(g, a) {
+  const dia = g.asistencia[fechaAsistencia];
+  const presente = !!(dia && dia[a.id]);
+  const res = resumenAsistenciaAlumno(g, a.id);
+  const abierto = alumnoAbiertoId === a.id;
+  const nDocs = docsFirmados(a);
+  const card = el('div', { class: 'card' },
+    el('div', { class: 'card-head' },
+      el('label', { style: 'display:flex;align-items:center;gap:8px;text-transform:none;cursor:pointer;' },
+        el('input', { type: 'checkbox', style: 'width:auto;', checked: presente ? 'checked' : null, onchange: (e) => { marcarAsistencia(g, fechaAsistencia, a.id, e.target.checked); render(); } }),
+        el('span', { class: 'card-title' }, a.nombre)),
+      el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { alumnoAbiertoId = abierto ? null : a.id; render(); } }, abierto ? 'Cerrar ficha ▴' : 'Ficha ▾'),
+    ),
+    el('div', { class: 'row', style: 'gap:6px;flex-wrap:wrap;margin-top:4px;' },
+      el('span', { class: nDocs === DOCS_ALUMNO.length ? 'chip chip-gold' : 'chip chip-muted' }, `📝 Documentos ${nDocs}/${DOCS_ALUMNO.length}`),
+      el('span', { class: 'chip chip-muted' }, res.ses ? `Asistencia ${res.pres}/${res.ses} (${res.pct}%)` : 'Sin asistencia registrada'),
+      a.telefonoEmergencia ? el('span', { class: 'chip chip-muted' }, '☎ ' + a.telefonoEmergencia) : el('span', { class: 'chip chip-muted' }, '⚠️ Sin teléfono de emergencia'),
+    ),
+  );
+  if (!abierto) return card;
+
+  card.appendChild(el('h4', { style: 'margin:14px 0 6px;' }, '📝 Documentos para firmar'));
+  card.appendChild(el('div', { class: 'sub', style: 'margin-bottom:6px;' }, 'Descarga el documento, que lo firme la familia y marca la casilla cuando lo tengas.'));
+  DOCS_ALUMNO.forEach(d => {
+    const hecho = a.docs[d.key];
+    const url = (state.config.docsUrl[d.key] || '').trim();
+    const descarga = url
+      ? el('a', { href: /^https?:\/\//i.test(url) ? url : 'https://' + url, target: '_blank', rel: 'noopener', class: 'btn btn-ghost btn-sm' }, '⬇ Descargar')
+      : el('button', { class: 'btn btn-ghost btn-sm', onclick: () => descargarDocumento(d.key, a, g) }, '⬇ Descargar');
+    card.appendChild(el('div', { class: 'row', style: 'align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;' },
+      el('label', { style: 'display:flex;align-items:center;gap:8px;text-transform:none;flex:1;min-width:220px;cursor:pointer;' },
+        el('input', { type: 'checkbox', style: 'width:auto;', checked: hecho ? 'checked' : null, onchange: (e) => { a.docs[d.key] = e.target.checked ? Date.now() : null; render(); } }),
+        el('span', {}, d.titulo + (hecho ? '  ✓ ' + fmtFechaMs(hecho) : ''))),
+      descarga,
+    ));
+  });
+
+  card.appendChild(el('div', { class: 'row', style: 'align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0 6px;' },
+    el('span', { style: 'flex:1;min-width:220px;' }, '☎️ Teléfono de emergencia: ' + (a.telefonoEmergencia || 'sin indicar')),
+    el('button', { class: 'btn btn-ghost btn-sm', onclick: () => abrirModalTelefono(a) }, a.telefonoEmergencia ? 'Editar' : 'Añadir')));
+  const tieneMed = !!(sensibles[a.id] && sensibles[a.id].datosMedicos);
+  card.appendChild(el('div', { class: 'row', style: 'align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;' },
+    el('span', { style: 'flex:1;min-width:220px;' }, '🩺 Datos médicos relevantes: ' + (tieneMed ? 'anotados' : 'sin datos')),
+    el('button', { class: 'btn btn-ghost btn-sm', onclick: () => abrirModalMedicos(a) }, tieneMed ? 'Ver / editar' : 'Añadir')));
+
+  const otros = state.config.grupos.filter(x => x.id !== g.id);
+  if (otros.length) {
+    const selMover = el('select', { style: 'flex:1;min-width:180px;' }, otros.map(x => el('option', { value: x.id }, x.nombre)));
+    card.appendChild(el('h4', { style: 'margin:14px 0 6px;' }, '🔀 Cambiar de grupo'));
+    card.appendChild(el('div', { class: 'row', style: 'gap:8px;' },
+      selMover,
+      el('button', { class: 'btn btn-gold btn-sm', onclick: () => {
+        const destino = state.config.grupos.find(x => x.id === selMover.value);
+        if (!destino) return;
+        if (confirm('¿Pasar a ' + a.nombre + ' al grupo "' + destino.nombre + '"? Conserva sus documentos y datos; su asistencia anterior se queda en este grupo.')) {
+          moverAlumno(a.id, g.id, destino.id);
+          alumnoAbiertoId = null;
+          render();
+        }
+      } }, 'Mover')));
+  }
+  if (a.historialGrupos && a.historialGrupos.length) {
+    card.appendChild(el('div', { class: 'sub', style: 'margin-top:6px;' },
+      'Cambios de grupo: ' + a.historialGrupos.map(h => fmtFechaMs(h.fecha) + ' ' + h.desde + ' → ' + h.hacia).join(' · ')));
+  }
+  card.appendChild(el('div', { class: 'toolbar', style: 'margin-top:12px;' },
+    el('button', { class: 'btn btn-danger btn-sm', onclick: () => {
+      if (confirm('¿Quitar a ' + a.nombre + ' de este grupo? Se borrarán sus documentos y datos de la ficha.')) { quitarAlumno(g, a.id); alumnoAbiertoId = null; render(); }
+    } }, 'Quitar del grupo')));
+  return card;
+}
+function fmtFechaMs(ts) {
+  const d = new Date(ts);
+  return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
+}
+
+// ---------- ventanas ----------
+function abrirModalPlan(contenido) {
+  const root = document.getElementById('torneoModalRoot');
+  if (!root) return null;
+  root.innerHTML = '';
+  root.appendChild(el('div', { class: 'modal-bg', onclick: (e) => { if (e.target.classList.contains('modal-bg')) root.innerHTML = ''; } },
+    el('div', { class: 'modal' }, contenido)));
+  return root;
+}
+function abrirModalTelefono(a) {
+  const input = el('input', { type: 'tel', value: a.telefonoEmergencia || '', placeholder: 'Ej: 600 123 456' });
+  const root = abrirModalPlan([
+    el('h3', {}, '☎️ Teléfono de emergencia'),
+    el('div', { class: 'sub', style: 'margin-bottom:10px;' }, a.nombre),
+    field('Número', input),
+    el('div', { class: 'row', style: 'margin-top:16px;' },
+      el('button', { class: 'btn btn-primary', onclick: () => { a.telefonoEmergencia = input.value.trim(); document.getElementById('torneoModalRoot').innerHTML = ''; render(); } }, 'Guardar'),
+      el('button', { class: 'btn btn-ghost', onclick: () => { document.getElementById('torneoModalRoot').innerHTML = ''; } }, 'Cancelar')),
+  ]);
+  if (root) input.focus();
+}
+function abrirModalMedicos(a) {
+  const area = el('textarea', { rows: '6', placeholder: 'Alergias, lesiones, medicación, asma, etc.' }, (sensibles[a.id] && sensibles[a.id].datosMedicos) || '');
+  abrirModalPlan([
+    el('h3', {}, '🩺 Datos médicos relevantes'),
+    el('div', { class: 'sub', style: 'margin-bottom:8px;' }, a.nombre),
+    el('div', { class: 'msg msg-info', style: 'margin-bottom:10px;' }, '🔒 Por ser datos de salud, se guardan solo en este dispositivo: no se suben a la nube ni se sincronizan con otros dispositivos.'),
+    field('Datos médicos', area),
+    el('div', { class: 'row', style: 'margin-top:16px;' },
+      el('button', { class: 'btn btn-primary', onclick: () => {
+        const t = area.value.trim();
+        if (t) sensibles[a.id] = { datosMedicos: t }; else delete sensibles[a.id];
+        guardarSensibles();
+        document.getElementById('torneoModalRoot').innerHTML = '';
+        render();
+      } }, 'Guardar'),
+      el('button', { class: 'btn btn-ghost', onclick: () => { document.getElementById('torneoModalRoot').innerHTML = ''; } }, 'Cancelar')),
+  ]);
+}
+function abrirPdfPlan(nombreArchivo, bytes, titulo) {
+  const blob = new Blob([bytes], { type: 'application/pdf' });
+  const url = URL.createObjectURL(blob);
+  let archivo = null;
+  try { archivo = new File([blob], nombreArchivo, { type: 'application/pdf' }); } catch (e) { }
+  const puedeCompartir = archivo && navigator.canShare && navigator.canShare({ files: [archivo] });
+  const cerrar = () => { document.getElementById('torneoModalRoot').innerHTML = ''; setTimeout(() => URL.revokeObjectURL(url), 60000); };
+  abrirModalPlan([
+    el('h3', {}, '📄 ' + titulo),
+    el('div', { class: 'sub', style: 'margin-bottom:10px;' }, 'Imprímelo o compártelo, que lo firme la familia y marca la casilla del alumno cuando lo tengas.'),
+    el('div', { class: 'row', style: 'gap:8px;flex-wrap:wrap;margin-top:12px;' },
+      puedeCompartir ? el('button', { class: 'btn btn-gold', onclick: () => { navigator.share({ files: [archivo], title: nombreArchivo }).catch(() => { }); } }, '📤 Compartir / guardar') : null,
+      el('a', { href: url, download: nombreArchivo, class: 'btn ' + (puedeCompartir ? 'btn-ghost' : 'btn-gold') }, '⬇ Descargar PDF'),
+      el('a', { href: url, target: '_blank', class: 'btn btn-ghost' }, '👁 Ver'),
+      el('button', { class: 'btn btn-ghost', onclick: cerrar }, 'Cerrar')),
+  ]);
+}
+function descargarDocumento(docKey, a, g) {
+  const def = DOCS_ALUMNO.find(d => d.key === docKey);
+  let bytes;
+  try { bytes = pdfDocumentoPlan(docKey, a, g); } catch (e) { alert('No se pudo generar el documento: ' + e.message); return; }
+  const limpio = (a.nombre || 'alumno').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase();
+  abrirPdfPlan(docKey + '-' + limpio + '.pdf', bytes, def.titulo + ' — ' + a.nombre);
+}
+
+// ---------- PDF de documentos (sin librerías; Helvetica estándar, WinAnsi) ----------
+const HELV_ANCHOS = [278, 278, 355, 556, 556, 889, 667, 191, 333, 333, 389, 584, 278, 333, 278, 278, 556, 556, 556, 556, 556, 556, 556, 556, 556, 556, 278, 278, 584, 584, 584, 556, 1015, 667, 667, 722, 722, 667, 611, 778, 722, 278, 500, 667, 556, 833, 722, 778, 667, 778, 722, 667, 611, 722, 667, 944, 667, 667, 611, 278, 278, 278, 469, 556, 333, 556, 556, 500, 556, 556, 278, 556, 556, 222, 222, 500, 222, 833, 556, 556, 556, 556, 333, 500, 278, 556, 500, 722, 500, 500, 500, 334, 260, 334, 584];
+function pdfBinPlan(s) {
+  let out = '';
+  for (const ch of String(s)) {
+    const c = ch.codePointAt(0);
+    if (c < 128 || (c >= 160 && c < 256)) out += String.fromCharCode(c);
+    else if (c === 0x20AC) out += '\x80';
+    else if (c === 0x2013) out += '\x96';
+    else if (c === 0x2014) out += '\x97';
+    else out += '?';
+  }
+  return out;
+}
+function pdfEscPlan(s) { return pdfBinPlan(s).replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)'); }
+function anchoTextoPlan(str, size, negrita) {
+  let w = 0;
+  for (const ch of String(str)) {
+    let c = ch.charCodeAt(0);
+    if (c < 32 || c > 126) { const base = ch.normalize('NFD').charCodeAt(0); c = (base >= 32 && base <= 126) ? base : 65; }
+    w += HELV_ANCHOS[c - 32] || 556;
+  }
+  return w / 1000 * size * (negrita ? 1.06 : 1);
+}
+function envolverPlan(texto, size, anchoMax) {
+  const palabras = String(texto).split(/\s+/).filter(Boolean);
+  const lineas = [];
+  let actual = '';
+  palabras.forEach(p => {
+    const prueba = actual ? actual + ' ' + p : p;
+    if (anchoTextoPlan(prueba, size) <= anchoMax || !actual) actual = prueba;
+    else { lineas.push(actual); actual = p; }
+  });
+  if (actual) lineas.push(actual);
+  return lineas;
+}
+function ensamblarPdfPlan(paginas) {
+  const PW = 595.28, PH = 841.89;
+  const objs = [];
+  const kids = paginas.map((_, i) => (5 + 2 * i + 1) + ' 0 R').join(' ');
+  objs.push('<< /Type /Catalog /Pages 2 0 R >>');
+  objs.push('<< /Type /Pages /Kids [ ' + kids + ' ] /Count ' + paginas.length + ' >>');
+  objs.push('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>');
+  objs.push('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>');
+  const recursos = '/Resources << /Font << /F1 3 0 R /F2 4 0 R >> >>';
+  paginas.forEach((ops, i) => {
+    const cs = ops.join('\n');
+    objs.push('<< /Length ' + cs.length + ' >>\nstream\n' + cs + '\nendstream');
+    objs.push('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + PW + ' ' + PH + '] ' + recursos + ' /Contents ' + (5 + 2 * i) + ' 0 R >>');
+  });
+  let out = '%PDF-1.4\n%\xE2\xE3\xCF\xD3\n';
+  const offsets = [];
+  objs.forEach((body, i) => { offsets.push(out.length); out += (i + 1) + ' 0 obj\n' + body + '\nendobj\n'; });
+  const xrefPos = out.length;
+  out += 'xref\n0 ' + (objs.length + 1) + '\n0000000000 65535 f \n';
+  offsets.forEach(o => { out += String(o).padStart(10, '0') + ' 00000 n \n'; });
+  out += 'trailer\n<< /Size ' + (objs.length + 1) + ' /Root 1 0 R >>\nstartxref\n' + xrefPos + '\n%%EOF';
+  const u8 = new Uint8Array(out.length);
+  for (let i = 0; i < out.length; i++) u8[i] = out.charCodeAt(i) & 255;
+  return u8;
+}
+function pdfDocumentoPlan(docKey, alumno, grupo) {
+  const PW = 595.28, PH = 841.89, M = 56, ANCHO = PW - 2 * M;
+  const club = state.meta.club || 'el club';
+  const jug = (alumno.jugadorId && window.JugadoresGlobal) ? window.JugadoresGlobal.list().find(j => j.id === alumno.jugadorId) : null;
+  const nac = (jug && jug.fechaNacimiento) ? fmtDate(jug.fechaNacimiento) : '';
+  const nombre = alumno.nombre || '';
+  const tutor = 'D./Dña. ______________________________________, con DNI/NIE ________________, como padre, madre o tutor/a legal del/de la menor arriba indicado/a';
+  const bloques = [];
+  const P = (t, neg) => bloques.push({ k: 'p', t, neg });
+  const CAMPO = (etiqueta, valor) => bloques.push({ k: 'campo', etiqueta, valor: valor || '' });
+  const OPC = (arr) => bloques.push({ k: 'opc', arr });
+  const ESP = (h) => bloques.push({ k: 'esp', h });
+  let titulo = '';
+  if (docKey === 'derechosImagen') {
+    titulo = 'AUTORIZACIÓN PARA EL USO DE IMAGEN';
+    CAMPO('Alumno/a:', nombre); CAMPO('Grupo:', grupo.nombre); ESP(6);
+    P(tutor + ',');
+    P('AUTORIZO a ' + club + ' a captar y utilizar imágenes (fotografías y vídeos) en las que aparezca el/la menor durante las actividades deportivas organizadas por el club: entrenamientos, competiciones, eventos y desplazamientos.');
+    P('Estas imágenes podrán difundirse en los canales del club (página web, redes sociales, cartelería y material informativo) con fines informativos y de promoción del deporte, sin ánimo de lucro.');
+    P('La autorización es voluntaria y puede revocarse en cualquier momento comunicándolo por escrito al club. Los datos personales se tratarán conforme a la normativa vigente de protección de datos.');
+    OPC(['SÍ autorizo', 'NO autorizo']);
+  } else if (docKey === 'datosJuegosEscolares') {
+    titulo = 'DATOS SOLICITADOS PARA LOS JUEGOS ESCOLARES';
+    P('Rellene todos los campos con letra clara. Si la organización de los Juegos Escolares facilita un formulario oficial, utilícelo en su lugar.');
+    ESP(4);
+    CAMPO('Nombre y apellidos:', nombre); CAMPO('Fecha de nacimiento:', nac); CAMPO('DNI / NIE:'); CAMPO('Sexo:');
+    CAMPO('Dirección:'); CAMPO('Localidad y C.P.:'); CAMPO('Teléfono de contacto:'); CAMPO('Correo electrónico:');
+    CAMPO('Centro escolar:'); CAMPO('Curso:'); CAMPO('Club / grupo:', club + ' · ' + grupo.nombre); ESP(6);
+    CAMPO('Padre/madre/tutor/a:'); CAMPO('DNI del padre/madre/tutor/a:'); CAMPO('Teléfono del padre/madre/tutor/a:');
+  } else if (docKey === 'asistenciaJuegosEscolares') {
+    titulo = 'CONFIRMACIÓN DE ASISTENCIA A LOS JUEGOS ESCOLARES';
+    CAMPO('Alumno/a:', nombre); CAMPO('Grupo:', grupo.nombre); ESP(6);
+    P(tutor + ', confirmo que participará en los Juegos Escolares, en la modalidad de bádminton, representando a ' + club + '.');
+    P('Conozco las fechas, horarios y lugares de las jornadas que el club me ha comunicado y me comprometo a avisar con antelación en caso de que el/la menor no pueda asistir.');
+    OPC(['Confirmo la asistencia', 'El/la menor NO asistirá']);
+  } else {
+    titulo = 'AUTORIZACIÓN DE SALIDA DE LA INSTALACIÓN SIN ACOMPAÑANTE';
+    CAMPO('Alumno/a:', nombre); CAMPO('Grupo:', grupo.nombre); ESP(6);
+    P(tutor + ':');
+    P('AUTORIZO al/a la menor a abandonar solo/a la instalación deportiva al finalizar los entrenamientos y actividades de ' + club + '.');
+    P('Soy consciente de que, una vez que el/la menor salga de la instalación, el club deja de ser responsable de su custodia.');
+    OPC(['SÍ autorizo la salida sola', 'NO autorizo (lo recogerá una persona adulta)']);
+    ESP(2);
+    CAMPO('Personas autorizadas a recogerle:');
+  }
+
+  const paginas = [];
+  let ops = [], y = 0;
+  const T = (x, yy, str, size, neg) => ops.push('BT /' + (neg ? 'F2' : 'F1') + ' ' + size + ' Tf ' + x.toFixed(2) + ' ' + yy.toFixed(2) + ' Td (' + pdfEscPlan(str) + ') Tj ET');
+  const LINEA = (x1, yy, x2) => ops.push('0.4 G 0.6 w ' + x1.toFixed(2) + ' ' + yy.toFixed(2) + ' m ' + x2.toFixed(2) + ' ' + yy.toFixed(2) + ' l S');
+  function nuevaPagina() {
+    ops = []; paginas.push(ops); y = PH - M;
+    T(M, y, club, 10, true); y -= 8;
+    LINEA(M, y, PW - M); y -= 30;
+    T(M, y, titulo, 15, true); y -= 32;
+  }
+  nuevaPagina();
+  bloques.forEach(b => {
+    if (y < M + 90) nuevaPagina();
+    if (b.k === 'p') {
+      envolverPlan(b.t, 11, ANCHO).forEach(l => { T(M, y, l, 11, b.neg); y -= 15; });
+      y -= 8;
+    } else if (b.k === 'campo') {
+      const w = anchoTextoPlan(b.etiqueta, 10.5, true) + 8;
+      T(M, y, b.etiqueta, 10.5, true);
+      if (b.valor) T(M + w, y, b.valor, 10.5, false);
+      LINEA(M + w - 4, y - 3, PW - M);
+      y -= 24;
+    } else if (b.k === 'opc') {
+      y -= 4;
+      let x = M;
+      b.arr.forEach(t => { T(x, y, '[    ]  ' + t, 11, false); x += anchoTextoPlan('[    ]  ' + t, 11) + 40; });
+      y -= 26;
+    } else if (b.k === 'esp') { y -= b.h; }
+  });
+  if (y < M + 130) nuevaPagina();
+  y -= 20;
+  T(M, y, 'En ______________________, a ______ de ____________________ de __________', 11, false); y -= 56;
+  LINEA(M, y, M + 230);
+  T(M, y - 13, 'Firma del padre, madre o tutor/a legal', 9, false);
+  T(M + 270, y - 13, 'DNI del firmante: ____________________', 9, false);
+  paginas.forEach(pg => {
+    ops = pg;
+    T(M, 34, 'Modelo genérico del club. Si la entidad organizadora o la federación exige un formato oficial, utilícelo.', 8, false);
+  });
+  return ensamblarPdfPlan(paginas);
+}
+
+function getState() { return state; }
+function setState(s) { if (s && !s.entrenosIndividuales) s.entrenosIndividuales = []; state = s; migrarGrupos(); aplicarGrupoActivo(); }
+function getSensibles() { return sensibles; }
+function setSensibles(obj) { sensibles = (obj && typeof obj === 'object') ? obj : {}; guardarSensibles(); }
+function mount() {
+  tryLoadLocal();
+  cargarSensibles();
+  migrarGrupos();
+  aplicarGrupoActivo();
+  render();
+}
+return { render, mount, getState, setState, getSensibles, setSensibles };
 })();
 </script>
 <script>
@@ -7967,8 +8609,11 @@ const AYUDA_INDICE = [
   { pregunta: 'Ver torneos anteriores', ruta: 'Menú → Gestor de Torneos → Historial', palabras: 'historial anteriores pasados' },
   { pregunta: 'Añadir un jugador nuevo al club', ruta: 'Menú → Gestión de Club → Jugadores → "+ Añadir jugador"', palabras: 'jugador alta nuevo añadir crear ficha' },
   { pregunta: 'Ver todos los jugadores conocidos (también de otros clubes)', ruta: 'Menú → Gestión de Club → Base general de jugadores', palabras: 'base general otros clubes independiente todos' },
-  { pregunta: 'Planificar entrenamientos y crear grupos de entreno', ruta: 'Menú → Planificación Anual → Configuración', palabras: 'planificacion grupo entreno nivel iniciacion tecnificacion' },
-  { pregunta: 'Generar el macrociclo o microciclo de la temporada', ruta: 'Menú → Planificación Anual → Macrociclo / Microciclo tipo', palabras: 'macrociclo microciclo temporada planificar entrenamiento' },
+  { pregunta: 'Crear grupos de trabajo, ponerles horario y meter a los alumnos', ruta: 'Menú → Planificación Anual → Grupos de trabajo', palabras: 'planificacion grupo grupos entreno nivel iniciacion tecnificacion horario alumnos' },
+  { pregunta: 'Pasar lista (asistencia diaria) de un grupo', ruta: 'Menú → Planificación Anual → Grupos de trabajo → (el grupo) → Alumnos y asistencia', palabras: 'asistencia lista alumnos presentes faltas dia' },
+  { pregunta: 'Documentos que firman los alumnos (derechos de imagen, Juegos Escolares, permiso de salida) y teléfono de emergencia', ruta: 'Menú → Planificación Anual → Grupos de trabajo → (el grupo) → Alumnos y asistencia → Ficha del alumno', palabras: 'documentos firmar derechos imagen juegos escolares permiso salida emergencia medicos alumno ficha' },
+  { pregunta: 'Cambiar a un alumno de grupo', ruta: 'Menú → Planificación Anual → Grupos de trabajo → (el grupo) → Alumnos y asistencia → Ficha del alumno → Cambiar de grupo', palabras: 'mover cambiar alumno grupo pasar' },
+  { pregunta: 'Generar el macrociclo o microciclo de un grupo', ruta: 'Menú → Planificación Anual → Grupos de trabajo → (el grupo) → Macrociclo / Microciclo tipo', palabras: 'macrociclo microciclo temporada planificar entrenamiento competiciones evaluacion entreno individual' },
   { pregunta: 'Ver el reglamento oficial de bádminton', ruta: 'Menú → Planificación Anual → Reglamento', palabras: 'reglamento normas reglas puntuacion saque' },
   { pregunta: 'Configurar quién puede entrar en la app y qué puede ver', ruta: 'Menú → Control de acceso', palabras: 'acceso contraseña permiso usuario rol administrador' },
   { pregunta: 'Exportar o hacer copia de seguridad de todos los datos', ruta: 'Menú principal → "🗄️ Datos y copia de seguridad"', palabras: 'exportar importar copia seguridad backup traspasar otro dispositivo' },
@@ -8580,6 +9225,7 @@ function exportAll() {
     planificacion: PlanApp.getState(),
     pagos: PagosApp.getState(),
     taller: TallerApp.getState(),
+    planSensibles: PlanApp.getSensibles(),
   };
   const blob = new Blob([JSON.stringify(combined, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -8605,6 +9251,7 @@ function importAll(file) {
       if (parsed.torneosHistorial) TorneoApp.setHistorial(parsed.torneosHistorial);
       if (parsed.torneoActivoId) TorneoApp.setTorneoActivoId(parsed.torneoActivoId);
       PlanApp.setState(parsed.planificacion);
+      if (parsed.planSensibles) PlanApp.setSensibles(parsed.planSensibles);
       if (parsed.pagos) PagosApp.setState(parsed.pagos);
       if (parsed.taller) TallerApp.setState(parsed.taller);
       showSection('home');

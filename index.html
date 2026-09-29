@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20260929-144627">
+<meta name="build-id" content="v20260929-144915">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -5201,6 +5201,12 @@ function emptyPanel(title, sub) { return el('div', { class: 'panel' }, el('h2', 
 function mailtoLink(email, subject, body) {
   return 'mailto:' + encodeURIComponent(email) + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
 }
+function telefonoParaWhatsappPagos(tel) {
+  let digitos = String(tel || '').replace(/\D/g, '');
+  if (!digitos) return '';
+  if (digitos.length === 9) digitos = '34' + digitos;
+  return digitos;
+}
 function euros(n) { return (Math.round(n * 100) / 100).toFixed(2) + ' €'; }
 function fmtFechaDMY(s) {
   if (!s) return '—';
@@ -5278,7 +5284,7 @@ function viewConfig() {
   wrap.appendChild(tarifasPanel);
 
   wrap.appendChild(el('div', { class: 'msg msg-warn' },
-    'Importante: esta app funciona solo en tu navegador y no tiene servidor propio, así que no puede enviar correos ella sola ni de forma programada. Los botones "Enviar recibo" y "Aviso de pago" abren tu programa de correo con el mensaje ya escrito, listo para que le des a enviar. Para un envío realmente automático haría falta conectar un servicio de correo externo (por ejemplo Gmail) a un backend, algo que esta app no tiene.'));
+    'Importante: esta app funciona solo en tu navegador y no tiene servidor propio, así que no puede enviar mensajes ella sola ni de forma programada. El botón "Enviar recibo" abre tu programa de correo con el mensaje ya escrito; "Aviso de pago" abre WhatsApp con el mensaje ya escrito (necesita que el jugador tenga teléfono guardado). En ambos casos, listo para que le des a enviar. Para un envío realmente automático haría falta conectar un servicio externo a un backend, algo que esta app no tiene.'));
   return wrap;
 }
 
@@ -5486,10 +5492,10 @@ function competicionCard(comp) {
         el('td', {}, insc.pagado ? el('span', { class: 'chip chip-gold' }, 'Pagado') : el('span', { class: 'chip chip-muted' }, 'Pendiente')),
         el('td', {}, el('div', { class: 'row', style: 'gap:6px;flex-wrap:nowrap;' },
           el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { insc.pagado = !insc.pagado; render(); } }, insc.pagado ? 'Marcar pendiente' : 'Marcar pagado'),
-          (jug && jug.email) ? el('a', {
+          (jug && telefonoParaWhatsappPagos(jug.telefono)) ? el('a', {
             class: 'btn btn-gold btn-sm',
-            href: mailtoLink(jug.email, 'Pago inscripción: ' + (comp.nombre || 'competición'),
-              'Hola ' + jug.nombre + ',\n\nInscripción en ' + (comp.nombre || 'la competición') + (comp.fecha ? ' (' + fmtFechaDMY(comp.fecha) + ')' : '') + '.\nModalidades: ' + numMod + '.\nImporte a pagar: ' + euros(precio) + '\n\nUn saludo' + (typeof clubGlobal !== 'undefined' && clubGlobal.nombre ? ',\n' + clubGlobal.nombre : '.')),
+            href: 'https://wa.me/' + telefonoParaWhatsappPagos(jug.telefono) + '?text=' + encodeURIComponent(
+              'Hola ' + jug.nombre + ', inscripción en ' + (comp.nombre || 'la competición') + (comp.fecha ? ' (' + fmtFechaDMY(comp.fecha) + ')' : '') + '. Modalidades: ' + numMod + '. Importe a pagar: ' + euros(precio) + '.' + (typeof clubGlobal !== 'undefined' && clubGlobal.nombre ? ' Un saludo, ' + clubGlobal.nombre + '.' : ' Un saludo.')),
             target: '_blank',
           }, 'Aviso de pago') : null,
           el('button', { class: 'btn btn-danger btn-sm', onclick: () => { comp.inscritos = comp.inscritos.filter(x => x.id !== insc.id); render(); } }, 'Quitar'),

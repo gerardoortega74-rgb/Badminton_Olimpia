@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20260929-131516">
+<meta name="build-id" content="v20260929-131728">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -6907,14 +6907,28 @@ const UNIDADES_STOCK_TALLER = ['unidades', 'metros', 'pares', 'packs', 'rollos',
 function unidadArticuloOptions() { return UNIDADES_STOCK_TALLER.map(u => ({ value: u, label: u })); }
 
 // Tarjeta compartida por cordajes y artículos: mismo modelo de datos (state.articulos), solo cambia qué campos se muestran.
+function precioCosteMedio(a) {
+  if (!a.proveedores || !a.proveedores.length) return null;
+  const suma = a.proveedores.reduce((s, r) => s + (r.precioCompra || 0), 0);
+  return suma / a.proveedores.length;
+}
+function sincronizarPrecioCoste(a) {
+  const media = precioCosteMedio(a);
+  if (media !== null) a.precioCoste = Math.round(media * 100) / 100;
+}
 function articuloCard(a) {
+  sincronizarPrecioCoste(a);
   const beneficioUd = (a.precio || 0) - (a.precioCoste || 0);
+  const tieneProveedores = a.proveedores && a.proveedores.length > 0;
+  const campoPrecioCoste = tieneProveedores
+    ? field('Precio de coste (€) — media de ' + a.proveedores.length + ' proveedor(es)', inputEl('number', a.precioCoste || 0, () => {}, { min: 0, step: '0.5', disabled: 'disabled', title: 'Se calcula solo a partir del precio de compra de cada proveedor' }))
+    : field('Precio de coste (€)', inputEl('number', a.precioCoste || 0, v => { a.precioCoste = parseFloat(v) || 0; render(); }, { min: 0, step: '0.5' }));
   const card = el('div', { class: 'card' },
     el('div', { class: 'grid' },
       field('Código', inputEl('text', a.codigo || '', v => { a.codigo = v; render(); })),
       field('Nombre', inputEl('text', a.nombre, v => { a.nombre = v; render(); })),
       !a.esCordaje ? field('Tipo', selectEl(tipoArticuloOptions(), a.tipo || 'Otro', v => { a.tipo = v; render(); })) : null,
-      field('Precio de coste (€)', inputEl('number', a.precioCoste || 0, v => { a.precioCoste = parseFloat(v) || 0; render(); }, { min: 0, step: '0.5' })),
+      campoPrecioCoste,
       field('Precio de venta (€)', inputEl('number', a.precio, v => { a.precio = parseFloat(v) || 0; render(); }, { min: 0, step: '0.5' })),
       field('Unidad', selectEl(unidadArticuloOptions(), a.unidad || (a.esCordaje ? 'metros' : 'unidades'), v => { a.unidad = v; render(); })),
       field('Stock (' + (a.unidad || 'unidades') + ')', inputEl('number', a.stock, v => { a.stock = parseFloat(v) || 0; render(); }, { min: 0 })),
@@ -6947,8 +6961,8 @@ function articuloCard(a) {
       const prov = proveedorDe(rel.proveedorId);
       card.appendChild(el('div', { class: 'row', style: 'align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;' },
         el('span', { style: 'flex:1;min-width:140px;' }, prov ? prov.nombre : '(proveedor eliminado)'),
-        field('Precio de compra (€)', inputEl('number', rel.precioCompra || 0, v => { rel.precioCompra = parseFloat(v) || 0; render(); }, { min: 0, step: '0.01' })),
-        el('button', { class: 'btn btn-danger btn-sm', onclick: () => { a.proveedores = a.proveedores.filter(x => x !== rel); render(); } }, 'Quitar'),
+        field('Precio de compra (€)', inputEl('number', rel.precioCompra || 0, v => { rel.precioCompra = parseFloat(v) || 0; sincronizarPrecioCoste(a); render(); }, { min: 0, step: '0.01' })),
+        el('button', { class: 'btn btn-danger btn-sm', onclick: () => { a.proveedores = a.proveedores.filter(x => x !== rel); sincronizarPrecioCoste(a); render(); } }, 'Quitar'),
       ));
     });
     const yaAsignados = new Set(a.proveedores.map(r => r.proveedorId));
@@ -6957,9 +6971,10 @@ function articuloCard(a) {
       const selProv = el('select', {}, disponibles.map(p => el('option', { value: p.id }, p.nombre)));
       card.appendChild(el('div', { class: 'row', style: 'gap:8px;margin-top:4px;' },
         selProv,
-        el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { a.proveedores.push({ proveedorId: selProv.value, precioCompra: a.precioCoste || 0 }); render(); } }, '+ Añadir proveedor'),
+        el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { a.proveedores.push({ proveedorId: selProv.value, precioCompra: a.precioCoste || 0 }); sincronizarPrecioCoste(a); render(); } }, '+ Añadir proveedor'),
       ));
     }
+    card.appendChild(el('div', { class: 'sub', style: 'margin-top:4px;' }, 'El precio de coste se recalcula solo como la media de estos precios de compra, incluidos los nuevos que añadas.'));
   }
 
   card.appendChild(el('div', { class: 'toolbar', style: 'margin-top:8px;' },

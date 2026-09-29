@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20260929-131728">
+<meta name="build-id" content="v20260929-131913">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -6887,6 +6887,29 @@ function labelDe(lista, valor) { const o = lista.find(x => x.value === valor); r
 
 let subTabCatalogo = 'cordajes';
 let proveedorAbiertoId = null;
+let articuloAbiertoId = null;
+function listaArticulosCompacta(lista) {
+  const wrap = document.createDocumentFragment();
+  const table = el('table', {}, el('thead', {}, el('tr', {},
+    el('th', {}, 'Código'), el('th', {}, 'Nombre'), el('th', {}, 'Coste'), el('th', {}, 'Venta'), el('th', {}, 'Stock'), el('th', {}, ''))));
+  const tbody = el('tbody');
+  lista.forEach(a => {
+    const abierto = articuloAbiertoId === a.id;
+    tbody.appendChild(el('tr', {},
+      el('td', {}, a.codigo || '—'),
+      el('td', {}, a.nombre),
+      el('td', {}, euros(a.precioCoste)),
+      el('td', {}, euros(a.precio)),
+      el('td', {}, (a.stock || 0) + ' ' + (a.unidad || 'unidades')),
+      el('td', {}, el('button', { class: 'btn btn-sm ' + (abierto ? 'btn-primary' : 'btn-ghost'), onclick: () => { articuloAbiertoId = abierto ? null : a.id; render(); } }, abierto ? 'Cerrar' : 'Editar')),
+    ));
+  });
+  table.appendChild(tbody);
+  wrap.appendChild(el('div', { style: 'overflow-x:auto;' }, table));
+  const abierto = lista.find(a => a.id === articuloAbiertoId);
+  if (abierto) wrap.appendChild(articuloCard(abierto));
+  return wrap;
+}
 function viewCatalogo() {
   const wrap = document.createDocumentFragment();
   wrap.appendChild(el('div', { class: 'row', style: 'gap:8px;margin-bottom:12px;flex-wrap:wrap;' },
@@ -6978,7 +7001,7 @@ function articuloCard(a) {
   }
 
   card.appendChild(el('div', { class: 'toolbar', style: 'margin-top:8px;' },
-    el('button', { class: 'btn btn-danger btn-sm', onclick: () => { if (confirm('¿Eliminar "' + (a.nombre || 'este artículo') + '"?')) { removeArticulo(a.id); render(); } } }, 'Eliminar'),
+    el('button', { class: 'btn btn-danger btn-sm', onclick: () => { if (confirm('¿Eliminar "' + (a.nombre || 'este artículo') + '"?')) { removeArticulo(a.id); articuloAbiertoId = null; render(); } } }, 'Eliminar'),
   ));
   return card;
 }
@@ -7001,12 +7024,13 @@ function viewCordajes() {
   const cordajes = state.articulos.filter(a => a.esCordaje);
   const panelCordajes = el('div', { class: 'panel' },
     el('h2', {}, '🧵 Cordajes en stock'),
-    el('div', { class: 'toolbar' }, el('button', { class: 'btn btn-gold btn-sm', onclick: () => { addArticulo(true); render(); } }, '+ Añadir cordaje')),
+    el('div', { class: 'sub' }, cordajes.length + ' cordaje(s). Pulsa "Editar" en el que quieras cambiar.'),
+    el('div', { class: 'toolbar' }, el('button', { class: 'btn btn-gold btn-sm', onclick: () => { const nuevo = addArticulo(true); articuloAbiertoId = nuevo.id; render(); } }, '+ Añadir cordaje')),
   );
   if (!cordajes.length) {
     panelCordajes.appendChild(el('div', { class: 'empty-state' }, 'Todavía no has añadido ningún cordaje.'));
   } else {
-    cordajes.forEach(c => panelCordajes.appendChild(articuloCard(c)));
+    panelCordajes.appendChild(listaArticulosCompacta(cordajes));
   }
   wrap.appendChild(panelCordajes);
   return wrap;
@@ -7019,17 +7043,15 @@ function viewArticulos() {
   const articulos = state.articulos.filter(a => !a.esCordaje);
   const panelArt = el('div', { class: 'panel' },
     el('h2', {}, '🏷️ Artículos a la venta'),
-    el('div', { class: 'sub' }, 'Llaveros, mochilas, raquetas, grips, ropa y demás artículos.'),
-    el('div', { class: 'toolbar' }, el('button', { class: 'btn btn-gold btn-sm', onclick: () => { addArticulo(false); render(); } }, '+ Añadir artículo')),
+    el('div', { class: 'sub' }, 'Llaveros, mochilas, raquetas, grips, ropa y demás artículos. Pulsa "Editar" en el que quieras cambiar.'),
+    el('div', { class: 'toolbar' }, el('button', { class: 'btn btn-gold btn-sm', onclick: () => { const nuevo = addArticulo(false); articuloAbiertoId = nuevo.id; render(); } }, '+ Añadir artículo')),
   );
   if (!articulos.length) {
     panelArt.appendChild(el('div', { class: 'empty-state' }, 'Todavía no has añadido ningún artículo.'));
   } else {
     let beneficioTotalPotencial = 0;
-    articulos.forEach(a => {
-      beneficioTotalPotencial += ((a.precio || 0) - (a.precioCoste || 0)) * (a.stock || 0);
-      panelArt.appendChild(articuloCard(a));
-    });
+    articulos.forEach(a => { beneficioTotalPotencial += ((a.precio || 0) - (a.precioCoste || 0)) * (a.stock || 0); });
+    panelArt.appendChild(listaArticulosCompacta(articulos));
     panelArt.appendChild(el('div', { class: 'msg msg-info', style: 'margin-top:10px;' }, `Beneficio potencial total de todo el stock de artículos: ${euros(beneficioTotalPotencial)}.`));
   }
   wrap.appendChild(panelArt);

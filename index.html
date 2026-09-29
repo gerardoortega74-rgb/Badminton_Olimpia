@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20260929-132404">
+<meta name="build-id" content="v20260929-132530">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -6910,13 +6910,19 @@ function construirTablaArticulos(lista) {
     const abierto = articuloAbiertoId === a.id;
     const checkFila = el('input', { type: 'checkbox', style: 'width:auto;', checked: articulosSeleccionados.has(a.id) ? 'checked' : null,
       onchange: e => { if (e.target.checked) articulosSeleccionados.add(a.id); else articulosSeleccionados.delete(a.id); render(); } });
+    const tieneProveedores = a.proveedores && a.proveedores.length > 0;
+    const costeCelda = tieneProveedores
+      ? el('input', { type: 'number', value: a.precioCoste || 0, disabled: 'disabled', title: 'Media de sus proveedores; se edita desde la ficha', style: 'width:70px;' })
+      : el('input', { type: 'number', min: '0', step: '0.5', value: a.precioCoste || 0, style: 'width:70px;', onchange: e => { a.precioCoste = parseFloat(e.target.value) || 0; render(); } });
+    const ventaCelda = el('input', { type: 'number', min: '0', step: '0.5', value: a.precio || 0, style: 'width:70px;', onchange: e => { a.precio = parseFloat(e.target.value) || 0; render(); } });
+    const stockCelda = el('input', { type: 'number', min: '0', value: a.stock || 0, style: 'width:65px;', onchange: e => { a.stock = parseFloat(e.target.value) || 0; render(); } });
     tbody.appendChild(el('tr', {},
       el('td', {}, checkFila),
       el('td', {}, a.codigo || '—'),
       el('td', {}, a.nombre),
-      el('td', {}, euros(a.precioCoste)),
-      el('td', {}, euros(a.precio)),
-      el('td', {}, (a.stock || 0) + ' ' + (a.unidad || 'unidades')),
+      el('td', {}, costeCelda),
+      el('td', {}, ventaCelda),
+      el('td', {}, el('div', { class: 'row', style: 'align-items:center;gap:4px;flex-wrap:nowrap;' }, stockCelda, el('span', { class: 'sub' }, a.unidad || 'unidades'))),
       el('td', {}, el('button', { class: 'btn btn-sm ' + (abierto ? 'btn-primary' : 'btn-ghost'), onclick: () => { articuloAbiertoId = abierto ? null : a.id; render(); } }, abierto ? 'Cerrar' : 'Editar')),
     ));
   });

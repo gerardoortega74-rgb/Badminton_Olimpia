@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20260929-140451">
+<meta name="build-id" content="v20260929-140927">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -9716,6 +9716,7 @@ function guardarFotosTallerEnNube(pedidoId, fotoAntes, fotoDespues) {
     marcarEstadoNube('⚠️ No se pudo guardar la foto de la raqueta: ' + (err && err.message ? err.message : 'error desconocido'));
   });
 }
+let tarjetaVisitaCache = null;
 function cargarFotosTallerDeNube() {
   if (!firebaseDisponible) return Promise.resolve();
   return coleccionFotosTaller().get().then(snap => {
@@ -9727,12 +9728,14 @@ function cargarFotosTallerDeNube() {
         if (mapa[p.id]) { p.fotoAntes = mapa[p.id].fotoAntes || null; p.fotoDespues = mapa[p.id].fotoDespues || null; }
       });
     }
-    if (mapa['_config_tarjeta'] && tallerState.config) {
-      tallerState.config.tarjetaVisitaFoto = mapa['_config_tarjeta'].foto || null;
+    if (mapa['_config_tarjeta']) {
+      tarjetaVisitaCache = mapa['_config_tarjeta'].foto || null;
+      if (tallerState.config) tallerState.config.tarjetaVisitaFoto = tarjetaVisitaCache;
     }
   }).catch(err => { console.warn('No se pudieron cargar las fotos del taller:', err); });
 }
 function guardarTarjetaVisitaTallerEnNube(foto) {
+  tarjetaVisitaCache = foto || null;
   if (!firebaseDisponible || !sincronizacionInicialLista) return;
   coleccionFotosTaller().doc('_config_tarjeta').set({ foto: foto || null }).catch(err => {
     console.warn('Error guardando la tarjeta de visita en la nube:', err);
@@ -9825,6 +9828,9 @@ function aplicarDatosDeNube(dataOriginal) {
   if (data.planificacion) PlanApp.setState(data.planificacion);
   if (data.pagos) PagosApp.setState(data.pagos);
   if (data.taller) TallerApp.setState(data.taller);
+  // La tarjeta de visita se guarda aparte (no viaja en este documento, para no saturarlo);
+  // cada sincronización pisa el campo con null, así que la reponemos desde la caché local.
+  if (tarjetaVisitaCache && TallerApp.getState().config) TallerApp.getState().config.tarjetaVisitaFoto = tarjetaVisitaCache;
   if (data.accessControl) { accessControl = data.accessControl; saveAccessControl(); }
 }
 function arrancarAppLocal() {

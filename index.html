@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20260929-130904">
+<meta name="build-id" content="v20260929-131516">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -6125,9 +6125,15 @@ function tiempoMedioReal() {
   const total = terminados.reduce((sum, p) => sum + (p.horaFin - p.horaInicio), 0);
   return Math.round((total / terminados.length) / 60000);
 }
+function cantidadCordajePorDefecto(cor) {
+  if (!cor) return 1;
+  return cor.unidad === 'metros' ? 9 : 1;
+}
 function addPedido(datos) {
   const nuevo = {
     id: uid('ped'), clienteId: datos.clienteId, marcaModelo: datos.marcaModelo || '', cordajeId: datos.cordajeId || null,
+    cantidadCordaje: datos.cordajeId ? (datos.cantidadCordaje || cantidadCordajePorDefecto(cordajeDe(datos.cordajeId))) : null,
+    articulosAdicionales: Array.isArray(datos.articulosAdicionales) ? datos.articulosAdicionales.map(i => ({ articuloId: i.articuloId, cantidad: i.cantidad, precioUnitario: i.precioUnitario, nombre: i.nombre })) : [],
     tensionVertical: datos.tensionVertical || null, tensionHorizontal: datos.tensionHorizontal || null, precio: datos.precio || 0, fotoAntes: datos.fotoAntes || null, fotoDespues: null,
     estado: 'pendiente', horaLlegada: Date.now(), horaInicio: null, horaFin: null, notas: datos.notas || '',
     pagado: !!datos.pagado, fechaPago: datos.pagado ? Date.now() : null, fechaEntrega: null, aplazado: false, pagoPrevisto: datos.pagoPrevisto || (datos.pagado ? 'adelantado' : 'alRecoger'),
@@ -6135,15 +6141,25 @@ function addPedido(datos) {
   state.pedidos.push(nuevo);
   if (nuevo.cordajeId) {
     const cor = cordajeDe(nuevo.cordajeId);
-    if (cor) cor.stock = Math.max(0, (cor.stock || 0) - 1);
+    if (cor) cor.stock = Math.max(0, (cor.stock || 0) - (nuevo.cantidadCordaje || 1));
   }
+  nuevo.articulosAdicionales.forEach(item => {
+    const art = state.articulos.find(a => a.id === item.articuloId);
+    if (art) art.stock = Math.max(0, (art.stock || 0) - (item.cantidad || 1));
+  });
   return nuevo;
 }
 function removePedido(id) {
   const p = state.pedidos.find(x => x.id === id);
   if (p && p.cordajeId) {
     const cor = cordajeDe(p.cordajeId);
-    if (cor) cor.stock = (cor.stock || 0) + 1;
+    if (cor) cor.stock = (cor.stock || 0) + (p.cantidadCordaje || 1);
+  }
+  if (p && Array.isArray(p.articulosAdicionales)) {
+    p.articulosAdicionales.forEach(item => {
+      const art = state.articulos.find(a => a.id === item.articuloId);
+      if (art) art.stock = (art.stock || 0) + (item.cantidad || 1);
+    });
   }
   state.pedidos = state.pedidos.filter(x => x.id !== id);
 }
@@ -6609,9 +6625,19 @@ function viewNuevoPedido() {
     field('Molestias o lesiones', molestiaSelect),
   ));
   panel.appendChild(avisoMolestiaDiv);
+  const cantidadCordajeInput = el('input', { type: 'number', step: '0.5', min: '0' });
+  const cantidadCordajeDiv = el('div', { style: 'display:none;' }, field('Cantidad de cordaje usada', cantidadCordajeInput));
   cordajeSelect.addEventListener('change', () => {
     const cor = cordajeDe(cordajeSelect.value);
     precioInput.value = cor ? ((state.config.precioBaseEncordado || 0) + cor.precio) : (state.config.precioSinCordaje || 0);
+    if (cor) {
+      cantidadCordajeInput.value = cantidadCordajePorDefecto(cor);
+      cantidadCordajeInput.setAttribute('placeholder', cor.unidad || 'unidades');
+      cantidadCordajeDiv.style.display = 'block';
+    } else {
+      cantidadCordajeDiv.style.display = 'none';
+    }
+    if (typeof actualizarTotalPedido === 'function') actualizarTotalPedido();
   });
   const fotoInput = el('input', { type: 'file', accept: 'image/*', capture: 'environment' });
   const notasInput = el('textarea', { rows: '2', placeholder: 'Notas (opcional)' });
@@ -6626,6 +6652,53 @@ function viewNuevoPedido() {
     field('Foto de la raqueta (opcional)', fotoInput),
   ));
   panel.appendChild(avisoTensionMaxDiv);
+
+  // ---------- Otros artículos en el mismo pedido (camisetas, grips, llaveros...) ----------
+  const articulosAdicionalesLista = [];
+  const otrosArticulosDisponibles = state.articulos.filter(a => !a.esCordaje);
+  const otrosArticulosSelect = el('select', {},
+    [el('option', { value: '' }, '— Elegir artículo —')].concat(
+      otrosArticulosDisponibles.map(a => el('option', { value: a.id }, a.nombre + ' (' + euros(a.precio) + ', stock: ' + a.stock + ' ' + (a.unidad || 'unidades') + ')'))));
+  const otrosArticulosCantidad = el('input', { type: 'number', min: '1', step: '1', value: '1', style: 'max-width:90px;' });
+  const otrosArticulosListaDiv = el('div', { style: 'margin-top:8px;' });
+  const totalPedidoDiv = el('div', { class: 'sub', style: 'font-weight:700;margin-top:8px;' });
+  function subtotalArticulosAdicionales() { return articulosAdicionalesLista.reduce((s, i) => s + i.cantidad * i.precioUnitario, 0); }
+  function actualizarTotalPedido() {
+    totalPedidoDiv.textContent = '💶 Total del pedido: ' + euros((parseFloat(precioInput.value) || 0) + subtotalArticulosAdicionales());
+  }
+  function repintarOtrosArticulos() {
+    otrosArticulosListaDiv.innerHTML = '';
+    articulosAdicionalesLista.forEach((item, idx) => {
+      otrosArticulosListaDiv.appendChild(el('div', { class: 'row', style: 'align-items:center;gap:8px;margin-bottom:4px;' },
+        el('span', { style: 'flex:1;' }, item.cantidad + ' × ' + item.nombre + ' = ' + euros(item.cantidad * item.precioUnitario)),
+        el('button', { class: 'btn btn-danger btn-sm', onclick: () => { articulosAdicionalesLista.splice(idx, 1); repintarOtrosArticulos(); } }, 'Quitar'),
+      ));
+    });
+    actualizarTotalPedido();
+  }
+  precioInput.addEventListener('input', actualizarTotalPedido);
+  precioInput.addEventListener('change', actualizarTotalPedido);
+  const panelOtrosArticulos = el('div', { class: 'panel' },
+    el('h2', {}, '🛍️ Otros artículos de este pedido'),
+    el('div', { class: 'sub' }, 'Si el cliente se lleva además una camiseta, un grip, un llavero... añádelo aquí y se suma al total.'),
+    el('div', { class: 'row', style: 'gap:8px;flex-wrap:wrap;margin:8px 0;' },
+      otrosArticulosSelect, otrosArticulosCantidad,
+      el('button', { class: 'btn btn-gold btn-sm', onclick: () => {
+        const art = otrosArticulosDisponibles.find(a => a.id === otrosArticulosSelect.value);
+        if (!art) { alert('Elige primero un artículo.'); return; }
+        const cant = parseFloat(otrosArticulosCantidad.value) || 1;
+        const existente = articulosAdicionalesLista.find(i => i.articuloId === art.id);
+        if (existente) existente.cantidad += cant;
+        else articulosAdicionalesLista.push({ articuloId: art.id, cantidad: cant, precioUnitario: art.precio, nombre: art.nombre });
+        otrosArticulosCantidad.value = '1';
+        repintarOtrosArticulos();
+      } }, '+ Añadir a este pedido'),
+    ),
+    otrosArticulosListaDiv,
+    totalPedidoDiv,
+  );
+  actualizarTotalPedido();
+  panel.appendChild(panelOtrosArticulos);
 
   const nuevaMarcaInput = el('input', { type: 'text', placeholder: 'Marca (ej: Yonex)' });
   const nuevoModeloInput = el('input', { type: 'text', placeholder: 'Modelo (ej: Astrox 200)' });
@@ -6644,6 +6717,7 @@ function viewNuevoPedido() {
       } }, '+ Añadir modelo a la lista'),
     ),
   ));
+  panel.appendChild(cantidadCordajeDiv);
   panel.appendChild(field('Notas', notasInput));
 
   async function guardarPedido(irACola) {
@@ -6656,7 +6730,9 @@ function viewNuevoPedido() {
       clienteId: clienteElegidoId, marcaModelo: marcaModeloFinal(), cordajeId: cordajeSelect.value || null,
       tensionVertical: tensionVInput.value ? parseFloat(tensionVInput.value) : null,
       tensionHorizontal: tensionHInput.value ? parseFloat(tensionHInput.value) : (tensionVInput.value ? parseFloat(tensionVInput.value) : null),
-      precio: parseFloat(precioInput.value) || 0,
+      precio: (parseFloat(precioInput.value) || 0) + subtotalArticulosAdicionales(),
+      cantidadCordaje: cordajeSelect.value ? (parseFloat(cantidadCordajeInput.value) || cantidadCordajePorDefecto(cordajeDe(cordajeSelect.value))) : null,
+      articulosAdicionales: articulosAdicionalesLista,
       pagado: pagoSelect.value === 'adelantado',
       pagoPrevisto: pagoSelect.value,
       fotoAntes, notas: notasInput.value.trim(),

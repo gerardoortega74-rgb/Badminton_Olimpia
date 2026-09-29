@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20260929-141503">
+<meta name="build-id" content="v20260929-144627">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -6372,12 +6372,18 @@ function viewCola() {
       el('div', { class: 'sub' }, `Llegó a las ${fmtHora(p.horaLlegada)}${estimada ? ' · Estimado listo a las ' + fmtHora(estimada) : ''}`),
     );
     if (p.fotoAntes) card.appendChild(el('img', { src: p.fotoAntes, style: 'max-width:160px;border-radius:8px;margin-top:6px;display:block;' }));
+    const hayOtroEnProceso = cola.some(x => x.estado === 'en_proceso' && x.id !== p.id);
     const acciones = el('div', { class: 'toolbar', style: 'margin-top:8px;' });
-    if (p.estado === 'pendiente') {
+    if (p.estado === 'pendiente' && hayOtroEnProceso) {
+      acciones.appendChild(el('div', { class: 'sub', style: 'font-style:italic;' }, '⏳ Termina la raqueta en proceso antes de empezar esta.'));
+    }
+    if (p.estado === 'pendiente' && !hayOtroEnProceso) {
       acciones.appendChild(el('button', { class: 'btn btn-primary btn-sm', onclick: () => { empezarPedido(p); render(); abrirAvisoEmpezado(p); } }, '▶️ Empezar'));
     }
-    if (p.estado === 'en_proceso' || p.estado === 'pendiente') {
+    if (p.estado === 'en_proceso' || (p.estado === 'pendiente' && !hayOtroEnProceso)) {
       acciones.appendChild(el('button', { class: 'btn btn-gold btn-sm', onclick: () => { if (p.estado === 'pendiente') empezarPedido(p); abrirTerminarPedido(p); } }, '✅ Marcar terminado'));
+    }
+    if (p.estado === 'en_proceso' || p.estado === 'pendiente') {
       acciones.appendChild(el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { if (confirm('¿El cliente no puede esperar? Se pasará a "Aplazados" y no contará para la hora estimada de los demás, hasta que la reanudes otro día.')) { aplazarPedido(p); render(); } } }, '📅 No puede esperar / aplazar'));
       acciones.appendChild(el('button', { class: 'btn btn-ghost btn-sm', onclick: () => abrirEnviarEnlaceSeguimiento(p) }, '🔗 Enviar enlace de seguimiento'));
     }
@@ -9136,6 +9142,7 @@ function renderShellHeader() {
     home: ['Bádminton · Club', 'Menú principal'],
     torneo: [clubGlobal.nombre ? clubGlobal.nombre + ' · Torneo' : 'Gestor de Torneos', 'Grupos + eliminatoria'],
     planificacion: [clubGlobal.nombre ? clubGlobal.nombre + ' · Planificación' : 'Planificación Anual', 'Iniciación a tecnificación'],
+    taller: [(TallerApp.getState().config && TallerApp.getState().config.nombreTaller) || 'Taller de Raquetas', 'Encordado, clientes y contabilidad'],
   };
   const clubGestionTitles = {
     datos: ['Datos del club', 'Se usan en Torneos y en Planificación'],

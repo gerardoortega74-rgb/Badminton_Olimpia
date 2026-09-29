@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20260929-133310">
+<meta name="build-id" content="v20260929-133631">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -7060,6 +7060,7 @@ function articuloCard(a) {
   }
 
   card.appendChild(el('div', { class: 'toolbar', style: 'margin-top:8px;' },
+    el('button', { class: 'btn btn-gold btn-sm', onclick: () => { articuloAbiertoId = null; render(); } }, '💾 Guardar y cerrar'),
     el('button', { class: 'btn btn-danger btn-sm', onclick: () => { if (confirm('¿Eliminar "' + (a.nombre || 'este artículo') + '"?')) { removeArticulo(a.id); articuloAbiertoId = null; render(); } } }, 'Eliminar'),
   ));
   return card;

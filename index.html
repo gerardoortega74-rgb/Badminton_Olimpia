@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20260929-120449">
+<meta name="build-id" content="v20260929-130904">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -6091,7 +6091,7 @@ function removeCliente(id) { state.clientes = state.clientes.filter(c => c.id !=
 function addArticulo(esCordaje) {
   const nuevo = {
     id: uid('art'), codigo: '', nombre: esCordaje ? 'Nuevo cordaje' : 'Nuevo artículo', tipo: esCordaje ? 'Cordaje' : 'Otro',
-    esCordaje: !!esCordaje, precioCoste: 0, precio: 0, stock: 0,
+    esCordaje: !!esCordaje, precioCoste: 0, precio: 0, stock: 0, unidad: esCordaje ? 'metros' : 'unidades',
     nivelRecomendado: 'todos', estiloRecomendado: 'todos', suave: false, proveedores: [],
   };
   state.articulos.push(nuevo);
@@ -6588,7 +6588,7 @@ function viewNuevoPedido() {
     cordajeSelect.appendChild(el('option', { value: '' }, '— Elegir cordaje —'));
     const hayFiltro = nivel !== 'todos' || estilo !== 'todos' || (molestia && molestia !== 'ninguna');
     opcionesCordajeOrdenadas(nivel || 'todos', estilo || 'todos', molestia).forEach(({ c, rec }) => {
-      cordajeSelect.appendChild(el('option', { value: c.id }, (rec && hayFiltro ? '⭐ ' : '') + c.nombre + ' (' + euros(c.precio) + ', stock: ' + c.stock + ')'));
+      cordajeSelect.appendChild(el('option', { value: c.id }, (rec && hayFiltro ? '⭐ ' : '') + c.nombre + ' (' + euros(c.precio) + ', stock: ' + c.stock + ' ' + (c.unidad || 'unidades') + ')'));
     });
   }
   repintarCordajeSelect('todos', 'todos', 'ninguna');
@@ -6827,6 +6827,8 @@ function viewCatalogo() {
 function tipoArticuloOptions() {
   return ['Raqueta', 'Mochila', 'Llavero', 'Grip', 'Calzado', 'Ropa', 'Pulsera', 'Otro'].map(t => ({ value: t, label: t }));
 }
+const UNIDADES_STOCK_TALLER = ['unidades', 'metros', 'pares', 'packs', 'rollos', 'cajas'];
+function unidadArticuloOptions() { return UNIDADES_STOCK_TALLER.map(u => ({ value: u, label: u })); }
 
 // Tarjeta compartida por cordajes y artículos: mismo modelo de datos (state.articulos), solo cambia qué campos se muestran.
 function articuloCard(a) {
@@ -6838,7 +6840,8 @@ function articuloCard(a) {
       !a.esCordaje ? field('Tipo', selectEl(tipoArticuloOptions(), a.tipo || 'Otro', v => { a.tipo = v; render(); })) : null,
       field('Precio de coste (€)', inputEl('number', a.precioCoste || 0, v => { a.precioCoste = parseFloat(v) || 0; render(); }, { min: 0, step: '0.5' })),
       field('Precio de venta (€)', inputEl('number', a.precio, v => { a.precio = parseFloat(v) || 0; render(); }, { min: 0, step: '0.5' })),
-      field(a.esCordaje ? 'Stock (metros o unidades)' : 'Unidades en stock', inputEl('number', a.stock, v => { a.stock = parseFloat(v) || 0; render(); }, { min: 0 })),
+      field('Unidad', selectEl(unidadArticuloOptions(), a.unidad || (a.esCordaje ? 'metros' : 'unidades'), v => { a.unidad = v; render(); })),
+      field('Stock (' + (a.unidad || 'unidades') + ')', inputEl('number', a.stock, v => { a.stock = parseFloat(v) || 0; render(); }, { min: 0 })),
     ),
     el('div', { class: 'field', style: 'margin-top:6px;' },
       el('label', {}, el('input', { type: 'checkbox', style: 'width:auto;margin-right:6px;', checked: a.esCordaje ? 'checked' : null,
@@ -6980,7 +6983,7 @@ function viewProveedores() {
             const rel = a.proveedores.find(x => x.proveedorId === p.id);
             tbody.appendChild(el('tr', {},
               el('td', {}, a.codigo || '—'), el('td', {}, a.nombre + (a.esCordaje ? ' 🧵' : '')),
-              el('td', {}, euros(rel ? rel.precioCompra : 0)), el('td', {}, euros(a.precioCoste)), el('td', {}, euros(a.precio)), el('td', {}, String(a.stock || 0)),
+              el('td', {}, euros(rel ? rel.precioCompra : 0)), el('td', {}, euros(a.precioCoste)), el('td', {}, euros(a.precio)), el('td', {}, (a.stock || 0) + ' ' + (a.unidad || 'unidades')),
             ));
           });
           table.appendChild(tbody);
@@ -7472,6 +7475,7 @@ function setState(s) {
     if (a.codigo === undefined) a.codigo = '';
     if (a.esCordaje === undefined) a.esCordaje = false;
     if (!Array.isArray(a.proveedores)) a.proveedores = [];
+    if (!a.unidad) a.unidad = a.esCordaje ? 'metros' : 'unidades';
   });
 }
 function tryLoadLocal() {

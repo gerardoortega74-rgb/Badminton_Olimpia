@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20260929-135449">
+<meta name="build-id" content="v20260929-140451">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -9899,6 +9899,7 @@ if (firebaseDisponible) {
     cargarFotosTallerDeNube().then(() => {
       const tallerScreen = document.getElementById('tallerScreen');
       if (tallerScreen && tallerScreen.style.display !== 'none') TallerApp.render();
+      if (esVistaPublicaTaller()) renderVistaPublicaTaller();
     });
     if (esVistaPublica()) {
       let timerVistaPublica = null;

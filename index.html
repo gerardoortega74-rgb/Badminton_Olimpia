@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20260928-134726">
+<meta name="build-id" content="v20260929-120449">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -5972,7 +5972,7 @@ function defaultState() {
     config: { tiempoMedioMinutos: 35, precioBaseEncordado: 12, precioSinCordaje: 12, tarjetaVisitaFoto: null },
     clientes: [],
     articulos: [],
-    cordajes: [],
+    proveedores: [],
     pedidos: [],
     contabilidad: { movimientos: [] },
     raquetasExtra: [],
@@ -6088,10 +6088,23 @@ function addCliente(datos) {
   return nuevo;
 }
 function removeCliente(id) { state.clientes = state.clientes.filter(c => c.id !== id); }
-function addArticulo() { state.articulos.push({ id: uid('art'), nombre: 'Nuevo artículo', tipo: 'Otro', precioCoste: 0, precio: 0, stock: 0 }); }
+function addArticulo(esCordaje) {
+  const nuevo = {
+    id: uid('art'), codigo: '', nombre: esCordaje ? 'Nuevo cordaje' : 'Nuevo artículo', tipo: esCordaje ? 'Cordaje' : 'Otro',
+    esCordaje: !!esCordaje, precioCoste: 0, precio: 0, stock: 0,
+    nivelRecomendado: 'todos', estiloRecomendado: 'todos', suave: false, proveedores: [],
+  };
+  state.articulos.push(nuevo);
+  return nuevo;
+}
 function removeArticulo(id) { state.articulos = state.articulos.filter(a => a.id !== id); }
-function addCordaje() { state.cordajes.push({ id: uid('cor'), nombre: 'Nuevo cordaje', precioCoste: 0, precio: 0, stock: 0, nivelRecomendado: 'todos', estiloRecomendado: 'todos', suave: false }); }
-function removeCordaje(id) { state.cordajes = state.cordajes.filter(c => c.id !== id); }
+function addProveedor() { const p = { id: uid('prov'), nombre: 'Nuevo proveedor', contacto: '', telefono: '', email: '', notas: '' }; state.proveedores.push(p); return p; }
+function removeProveedor(id) {
+  state.proveedores = state.proveedores.filter(p => p.id !== id);
+  state.articulos.forEach(a => { a.proveedores = (a.proveedores || []).filter(x => x.proveedorId !== id); });
+}
+function proveedorDe(id) { return state.proveedores.find(p => p.id === id); }
+function articulosDeProveedor(provId) { return state.articulos.filter(a => (a.proveedores || []).some(x => x.proveedorId === provId)); }
 
 function pedidosEnCola() {
   return state.pedidos.filter(p => !p.aplazado && (p.estado === 'pendiente' || p.estado === 'en_proceso')).sort((a, b) => a.horaLlegada - b.horaLlegada);
@@ -6208,7 +6221,7 @@ function aplazarPedido(p) { p.aplazado = true; }
 function reanudarPedido(p) { p.aplazado = false; p.horaLlegada = Date.now(); }
 
 function clienteDe(id) { return state.clientes.find(c => c.id === id); }
-function cordajeDe(id) { return state.cordajes.find(c => c.id === id); }
+function cordajeDe(id) { return state.articulos.find(a => a.id === id); }
 function pedidosDeCliente(clienteId) { return state.pedidos.filter(p => p.clienteId === clienteId).sort((a, b) => b.horaLlegada - a.horaLlegada); }
 
 function telefonoParaWhatsapp(tel) {
@@ -6558,14 +6571,16 @@ function viewNuevoPedido() {
   ];
   function opcionesCordajeOrdenadas(nivel, estilo, molestia) {
     if (molestia && molestia !== 'ninguna') {
-      const suaves = state.cordajes.filter(c => c.suave);
-      const resto = state.cordajes.filter(c => !c.suave);
+      const cordajesStock = state.articulos.filter(a => a.esCordaje);
+      const suaves = cordajesStock.filter(c => c.suave);
+      const resto = cordajesStock.filter(c => !c.suave);
       return suaves.map(c => ({ c, rec: true })).concat(resto.map(c => ({ c, rec: false })));
     }
+    const cordajesStock = state.articulos.filter(a => a.esCordaje);
     const coincide = c => (nivel === 'todos' || (c.nivelRecomendado || 'todos') === 'todos' || (c.nivelRecomendado || 'todos') === nivel)
       && (estilo === 'todos' || (c.estiloRecomendado || 'todos') === 'todos' || (c.estiloRecomendado || 'todos') === estilo);
-    const recomendados = state.cordajes.filter(coincide);
-    const resto = state.cordajes.filter(c => !coincide(c));
+    const recomendados = cordajesStock.filter(coincide);
+    const resto = cordajesStock.filter(c => !coincide(c));
     return recomendados.map(c => ({ c, rec: true })).concat(resto.map(c => ({ c, rec: false })));
   }
   function repintarCordajeSelect(nivel, estilo, molestia) {
@@ -6795,15 +6810,85 @@ const ESTILOS_JUEGO_TALLER = [
 function labelDe(lista, valor) { const o = lista.find(x => x.value === valor); return o ? o.label : valor; }
 
 let subTabCatalogo = 'cordajes';
+let proveedorAbiertoId = null;
 function viewCatalogo() {
   const wrap = document.createDocumentFragment();
-  wrap.appendChild(el('div', { class: 'row', style: 'gap:8px;margin-bottom:12px;' },
+  wrap.appendChild(el('div', { class: 'row', style: 'gap:8px;margin-bottom:12px;flex-wrap:wrap;' },
     el('button', { class: 'btn ' + (subTabCatalogo === 'cordajes' ? 'btn-primary' : 'btn-ghost'), onclick: () => { subTabCatalogo = 'cordajes'; render(); } }, '🧵 Cordajes'),
     el('button', { class: 'btn ' + (subTabCatalogo === 'articulos' ? 'btn-primary' : 'btn-ghost'), onclick: () => { subTabCatalogo = 'articulos'; render(); } }, '🏷️ Artículos'),
+    el('button', { class: 'btn ' + (subTabCatalogo === 'proveedores' ? 'btn-primary' : 'btn-ghost'), onclick: () => { subTabCatalogo = 'proveedores'; render(); } }, '🏭 Proveedores'),
   ));
-  wrap.appendChild(subTabCatalogo === 'articulos' ? viewArticulos() : viewCordajes());
+  if (subTabCatalogo === 'proveedores') wrap.appendChild(viewProveedores());
+  else if (subTabCatalogo === 'articulos') wrap.appendChild(viewArticulos());
+  else wrap.appendChild(viewCordajes());
   return wrap;
 }
+
+function tipoArticuloOptions() {
+  return ['Raqueta', 'Mochila', 'Llavero', 'Grip', 'Calzado', 'Ropa', 'Pulsera', 'Otro'].map(t => ({ value: t, label: t }));
+}
+
+// Tarjeta compartida por cordajes y artículos: mismo modelo de datos (state.articulos), solo cambia qué campos se muestran.
+function articuloCard(a) {
+  const beneficioUd = (a.precio || 0) - (a.precioCoste || 0);
+  const card = el('div', { class: 'card' },
+    el('div', { class: 'grid' },
+      field('Código', inputEl('text', a.codigo || '', v => { a.codigo = v; render(); })),
+      field('Nombre', inputEl('text', a.nombre, v => { a.nombre = v; render(); })),
+      !a.esCordaje ? field('Tipo', selectEl(tipoArticuloOptions(), a.tipo || 'Otro', v => { a.tipo = v; render(); })) : null,
+      field('Precio de coste (€)', inputEl('number', a.precioCoste || 0, v => { a.precioCoste = parseFloat(v) || 0; render(); }, { min: 0, step: '0.5' })),
+      field('Precio de venta (€)', inputEl('number', a.precio, v => { a.precio = parseFloat(v) || 0; render(); }, { min: 0, step: '0.5' })),
+      field(a.esCordaje ? 'Stock (metros o unidades)' : 'Unidades en stock', inputEl('number', a.stock, v => { a.stock = parseFloat(v) || 0; render(); }, { min: 0 })),
+    ),
+    el('div', { class: 'field', style: 'margin-top:6px;' },
+      el('label', {}, el('input', { type: 'checkbox', style: 'width:auto;margin-right:6px;', checked: a.esCordaje ? 'checked' : null,
+        onchange: e => { a.esCordaje = e.target.checked; if (a.esCordaje && !a.tipo) a.tipo = 'Cordaje'; render(); } }),
+        '🧵 Es un cordaje (aparece en el desplegable de cordajes de Nuevo pedido)'),
+    ),
+  );
+  if (a.esCordaje) {
+    card.appendChild(el('div', { class: 'grid', style: 'margin-top:6px;' },
+      field('Nivel recomendado', selectEl(NIVELES_JUGADOR_TALLER, a.nivelRecomendado || 'todos', v => { a.nivelRecomendado = v; render(); })),
+      field('Estilo recomendado', selectEl(ESTILOS_JUEGO_TALLER, a.estiloRecomendado || 'todos', v => { a.estiloRecomendado = v; render(); })),
+    ));
+    card.appendChild(el('div', { class: 'field', style: 'margin-top:4px;' },
+      el('label', {}, el('input', { type: 'checkbox', style: 'width:auto;margin-right:6px;', checked: a.suave ? 'checked' : null, onchange: e => { a.suave = e.target.checked; render(); } }),
+        'Cordaje suave / con amortiguación (recomendado para molestias de codo, muñeca u hombro)'),
+    ));
+  }
+  card.appendChild(el('div', { class: 'sub', style: 'margin-top:6px;' }, `Beneficio por unidad: ${euros(beneficioUd)} · Beneficio potencial del stock: ${euros(beneficioUd * (a.stock || 0))}`));
+
+  // Proveedores de este artículo (uno o varios, cada uno con su propio precio de compra)
+  card.appendChild(el('h4', { style: 'margin:10px 0 4px;' }, '🏭 Proveedores de este artículo'));
+  if (!state.proveedores.length) {
+    card.appendChild(el('div', { class: 'sub' }, 'Todavía no tienes ningún proveedor dado de alta (pestaña Proveedores).'));
+  } else {
+    if (!a.proveedores.length) card.appendChild(el('div', { class: 'sub', style: 'margin-bottom:6px;' }, 'Sin proveedor asignado.'));
+    a.proveedores.forEach(rel => {
+      const prov = proveedorDe(rel.proveedorId);
+      card.appendChild(el('div', { class: 'row', style: 'align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;' },
+        el('span', { style: 'flex:1;min-width:140px;' }, prov ? prov.nombre : '(proveedor eliminado)'),
+        field('Precio de compra (€)', inputEl('number', rel.precioCompra || 0, v => { rel.precioCompra = parseFloat(v) || 0; render(); }, { min: 0, step: '0.01' })),
+        el('button', { class: 'btn btn-danger btn-sm', onclick: () => { a.proveedores = a.proveedores.filter(x => x !== rel); render(); } }, 'Quitar'),
+      ));
+    });
+    const yaAsignados = new Set(a.proveedores.map(r => r.proveedorId));
+    const disponibles = state.proveedores.filter(p => !yaAsignados.has(p.id));
+    if (disponibles.length) {
+      const selProv = el('select', {}, disponibles.map(p => el('option', { value: p.id }, p.nombre)));
+      card.appendChild(el('div', { class: 'row', style: 'gap:8px;margin-top:4px;' },
+        selProv,
+        el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { a.proveedores.push({ proveedorId: selProv.value, precioCompra: a.precioCoste || 0 }); render(); } }, '+ Añadir proveedor'),
+      ));
+    }
+  }
+
+  card.appendChild(el('div', { class: 'toolbar', style: 'margin-top:8px;' },
+    el('button', { class: 'btn btn-danger btn-sm', onclick: () => { if (confirm('¿Eliminar "' + (a.nombre || 'este artículo') + '"?')) { removeArticulo(a.id); render(); } } }, 'Eliminar'),
+  ));
+  return card;
+}
+
 function viewCordajes() {
   const wrap = document.createDocumentFragment();
   const panelGuia = el('div', { class: 'panel' },
@@ -6819,33 +6904,15 @@ function viewCordajes() {
   );
   wrap.appendChild(panelGuia);
 
+  const cordajes = state.articulos.filter(a => a.esCordaje);
   const panelCordajes = el('div', { class: 'panel' },
     el('h2', {}, '🧵 Cordajes en stock'),
-    el('div', { class: 'toolbar' }, el('button', { class: 'btn btn-gold btn-sm', onclick: () => { addCordaje(); render(); } }, '+ Añadir cordaje')),
+    el('div', { class: 'toolbar' }, el('button', { class: 'btn btn-gold btn-sm', onclick: () => { addArticulo(true); render(); } }, '+ Añadir cordaje')),
   );
-  if (!state.cordajes.length) {
+  if (!cordajes.length) {
     panelCordajes.appendChild(el('div', { class: 'empty-state' }, 'Todavía no has añadido ningún cordaje.'));
   } else {
-    state.cordajes.forEach(c => {
-      const beneficioUd = (c.precio || 0) - (c.precioCoste || 0);
-      panelCordajes.appendChild(el('div', { class: 'card' },
-        el('div', { class: 'grid' },
-          field('Nombre', inputEl('text', c.nombre, v => { c.nombre = v; render(); })),
-          field('Precio de coste (€)', inputEl('number', c.precioCoste || 0, v => { c.precioCoste = parseFloat(v) || 0; render(); }, { min: 0, step: '0.5' })),
-          field('Precio de venta (€)', inputEl('number', c.precio, v => { c.precio = parseFloat(v) || 0; render(); }, { min: 0, step: '0.5' })),
-          field('Stock (metros o unidades)', inputEl('number', c.stock, v => { c.stock = parseFloat(v) || 0; render(); }, { min: 0 })),
-          field('Nivel recomendado', selectEl(NIVELES_JUGADOR_TALLER, c.nivelRecomendado || 'todos', v => { c.nivelRecomendado = v; render(); })),
-          field('Estilo recomendado', selectEl(ESTILOS_JUEGO_TALLER, c.estiloRecomendado || 'todos', v => { c.estiloRecomendado = v; render(); })),
-        ),
-        el('div', { class: 'field', style: 'margin-top:8px;' },
-          el('label', {}, el('input', { type: 'checkbox', style: 'width:auto;margin-right:6px;', checked: c.suave ? 'checked' : null, onchange: e => { c.suave = e.target.checked; render(); } }), 'Cordaje suave / con amortiguación (recomendado para molestias de codo, muñeca u hombro)'),
-        ),
-        el('div', { class: 'sub', style: 'margin-top:6px;' }, `Beneficio por unidad: ${euros(beneficioUd)} · Beneficio potencial del stock: ${euros(beneficioUd * (c.stock || 0))}`),
-        el('div', { class: 'toolbar', style: 'margin-top:6px;' },
-          el('button', { class: 'btn btn-danger btn-sm', onclick: () => { removeCordaje(c.id); render(); } }, 'Eliminar'),
-        ),
-      ));
-    });
+    cordajes.forEach(c => panelCordajes.appendChild(articuloCard(c)));
   }
   wrap.appendChild(panelCordajes);
   return wrap;
@@ -6853,36 +6920,138 @@ function viewCordajes() {
 
 function viewArticulos() {
   const wrap = document.createDocumentFragment();
+  wrap.appendChild(viewImportarArticulos());
+
+  const articulos = state.articulos.filter(a => !a.esCordaje);
   const panelArt = el('div', { class: 'panel' },
     el('h2', {}, '🏷️ Artículos a la venta'),
-    el('div', { class: 'sub' }, 'Llaveros, mochilas, raquetas, grips y demás artículos.'),
-    el('div', { class: 'toolbar' }, el('button', { class: 'btn btn-gold btn-sm', onclick: () => { addArticulo(); render(); } }, '+ Añadir artículo')),
+    el('div', { class: 'sub' }, 'Llaveros, mochilas, raquetas, grips, ropa y demás artículos.'),
+    el('div', { class: 'toolbar' }, el('button', { class: 'btn btn-gold btn-sm', onclick: () => { addArticulo(false); render(); } }, '+ Añadir artículo')),
   );
-  if (!state.articulos.length) {
+  if (!articulos.length) {
     panelArt.appendChild(el('div', { class: 'empty-state' }, 'Todavía no has añadido ningún artículo.'));
   } else {
     let beneficioTotalPotencial = 0;
-    state.articulos.forEach(a => {
-      const beneficioUd = (a.precio || 0) - (a.precioCoste || 0);
-      beneficioTotalPotencial += beneficioUd * (a.stock || 0);
-      panelArt.appendChild(el('div', { class: 'card' },
-        el('div', { class: 'grid' },
-          field('Nombre', inputEl('text', a.nombre, v => { a.nombre = v; render(); })),
-          field('Tipo', selectEl(['Raqueta', 'Mochila', 'Llavero', 'Grip', 'Calzado', 'Otro'].map(t => ({ value: t, label: t })), a.tipo, v => { a.tipo = v; })),
-          field('Precio de coste (€)', inputEl('number', a.precioCoste || 0, v => { a.precioCoste = parseFloat(v) || 0; render(); }, { min: 0, step: '0.5' })),
-          field('Precio de venta (€)', inputEl('number', a.precio, v => { a.precio = parseFloat(v) || 0; render(); }, { min: 0, step: '0.5' })),
-          field('Stock', inputEl('number', a.stock, v => { a.stock = parseFloat(v) || 0; render(); }, { min: 0 })),
-        ),
-        el('div', { class: 'sub', style: 'margin-top:6px;' }, `Beneficio por unidad: ${euros(beneficioUd)} · Beneficio potencial del stock: ${euros(beneficioUd * (a.stock || 0))}`),
-        el('div', { class: 'toolbar', style: 'margin-top:6px;' },
-          el('button', { class: 'btn btn-danger btn-sm', onclick: () => { removeArticulo(a.id); render(); } }, 'Eliminar'),
-        ),
-      ));
+    articulos.forEach(a => {
+      beneficioTotalPotencial += ((a.precio || 0) - (a.precioCoste || 0)) * (a.stock || 0);
+      panelArt.appendChild(articuloCard(a));
     });
     panelArt.appendChild(el('div', { class: 'msg msg-info', style: 'margin-top:10px;' }, `Beneficio potencial total de todo el stock de artículos: ${euros(beneficioTotalPotencial)}.`));
   }
   wrap.appendChild(panelArt);
   return wrap;
+}
+
+// ---------- Proveedores ----------
+function viewProveedores() {
+  const wrap = document.createDocumentFragment();
+  const panel = el('div', { class: 'panel' },
+    el('h2', {}, '🏭 Proveedores'),
+    el('div', { class: 'sub' }, 'Da de alta a tus proveedores. Luego, desde cada artículo o cordaje, le asignas uno o varios proveedores con su precio de compra.'),
+    el('div', { class: 'toolbar' }, el('button', { class: 'btn btn-gold btn-sm', onclick: () => { addProveedor(); render(); } }, '+ Añadir proveedor')),
+  );
+  if (!state.proveedores.length) {
+    panel.appendChild(el('div', { class: 'empty-state' }, 'Todavía no has añadido ningún proveedor.'));
+  } else {
+    state.proveedores.forEach(p => {
+      const articulosProv = articulosDeProveedor(p.id);
+      const expandido = proveedorAbiertoId === p.id;
+      const card = el('div', { class: 'card' },
+        el('div', { class: 'grid' },
+          field('Nombre', inputEl('text', p.nombre, v => { p.nombre = v; render(); })),
+          field('Persona de contacto', inputEl('text', p.contacto || '', v => { p.contacto = v; render(); })),
+          field('Teléfono', inputEl('tel', p.telefono || '', v => { p.telefono = v; render(); })),
+          field('Email', inputEl('email', p.email || '', v => { p.email = v; render(); })),
+        ),
+        field('Notas', el('textarea', { rows: '2', onchange: e => { p.notas = e.target.value; } }, p.notas || '')),
+        el('div', { class: 'toolbar', style: 'margin-top:6px;' },
+          el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { proveedorAbiertoId = expandido ? null : p.id; render(); } }, `${expandido ? 'Ocultar' : 'Ver'} artículos (${articulosProv.length})`),
+          el('button', { class: 'btn btn-danger btn-sm', onclick: () => { if (confirm('¿Eliminar el proveedor "' + p.nombre + '"? Se quitará de todos los artículos que lo tengan asignado.')) { removeProveedor(p.id); render(); } } }, 'Eliminar'),
+        ),
+      );
+      if (expandido) {
+        if (!articulosProv.length) {
+          card.appendChild(el('div', { class: 'empty-state' }, 'Este proveedor no tiene ningún artículo asignado todavía.'));
+        } else {
+          const table = el('table', {}, el('thead', {}, el('tr', {},
+            el('th', {}, 'Código'), el('th', {}, 'Artículo'), el('th', {}, 'Precio de compra'), el('th', {}, 'Precio de coste'), el('th', {}, 'Precio de venta'), el('th', {}, 'Stock'))));
+          const tbody = el('tbody');
+          articulosProv.forEach(a => {
+            const rel = a.proveedores.find(x => x.proveedorId === p.id);
+            tbody.appendChild(el('tr', {},
+              el('td', {}, a.codigo || '—'), el('td', {}, a.nombre + (a.esCordaje ? ' 🧵' : '')),
+              el('td', {}, euros(rel ? rel.precioCompra : 0)), el('td', {}, euros(a.precioCoste)), el('td', {}, euros(a.precio)), el('td', {}, String(a.stock || 0)),
+            ));
+          });
+          table.appendChild(tbody);
+          card.appendChild(table);
+        }
+      }
+      panel.appendChild(card);
+    });
+  }
+  wrap.appendChild(panel);
+  return wrap;
+}
+
+// ---------- Importar artículos desde Excel ----------
+function viewImportarArticulos() {
+  const panel = el('div', { class: 'panel' },
+    el('h2', {}, '📥 Importar artículos desde Excel'),
+    el('div', { class: 'sub' }, 'Sube un archivo .xlsx con una columna de código y otra de nombre del artículo (usa las cabeceras que quieras, la app las busca sola). Si el código ya existe, actualiza el nombre; si no, crea el artículo nuevo. Los cordajes se marcan solos si el nombre empieza por "CORDAJE". Luego rellenas precios, stock y proveedor a mano.'),
+  );
+  const fileInput = el('input', { type: 'file', accept: '.xlsx,.xls' });
+  const resultado = el('div', { style: 'margin-top:8px;' });
+  panel.appendChild(el('div', { class: 'toolbar' },
+    fileInput,
+    el('button', { class: 'btn btn-gold btn-sm', onclick: () => {
+      if (!fileInput.files[0]) { alert('Elige antes un archivo .xlsx.'); return; }
+      importarArticulosExcel(fileInput.files[0], resultado);
+    } }, '📥 Importar'),
+  ));
+  panel.appendChild(resultado);
+  return panel;
+}
+function importarArticulosExcel(file, resultadoDiv) {
+  resultadoDiv.innerHTML = '';
+  if (typeof XLSX === 'undefined') { resultadoDiv.appendChild(el('div', { class: 'msg msg-warn' }, 'No se pudo cargar el lector de Excel. Comprueba tu conexión y vuelve a intentarlo.')); return; }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array' });
+      const nombreHoja = wb.SheetNames.find(n => /art[ií]culo/i.test(n)) || wb.SheetNames[0];
+      const filas = XLSX.utils.sheet_to_json(wb.Sheets[nombreHoja], { header: 1, defval: '' });
+      let filaCabecera = -1, colCodigo = -1, colNombre = -1;
+      for (let i = 0; i < Math.min(filas.length, 15); i++) {
+        const fila = filas[i].map(v => String(v || '').toLowerCase().trim());
+        const iCod = fila.findIndex(v => v.includes('código') || v.includes('codigo'));
+        const iNom = fila.findIndex((v, idx) => idx !== iCod && (v.includes('artículo') || v.includes('articulo') || v.includes('nombre') || v.includes('descripci')));
+        if (iCod >= 0 && iNom >= 0) { filaCabecera = i; colCodigo = iCod; colNombre = iNom; break; }
+      }
+      if (filaCabecera < 0) { resultadoDiv.appendChild(el('div', { class: 'msg msg-warn' }, 'No he encontrado una columna de código y otra de nombre/artículo en el archivo. Revisa las cabeceras.')); return; }
+      let creados = 0, actualizados = 0;
+      for (let i = filaCabecera + 1; i < filas.length; i++) {
+        const fila = filas[i];
+        const codigo = String(fila[colCodigo] || '').trim();
+        const nombre = String(fila[colNombre] || '').trim();
+        if (!codigo && !nombre) continue;
+        const existente = state.articulos.find(a => a.codigo && codigo && a.codigo.toLowerCase() === codigo.toLowerCase());
+        if (existente) { existente.nombre = nombre || existente.nombre; actualizados++; }
+        else {
+          const esCordaje = /^cordaje/i.test(nombre);
+          const nuevo = addArticulo(esCordaje);
+          nuevo.codigo = codigo;
+          nuevo.nombre = nombre || 'Sin nombre';
+        }
+        if (!existente) creados++;
+      }
+      resultadoDiv.appendChild(el('div', { class: 'msg msg-info' }, `Importación terminada: ${creados} artículo(s) nuevo(s), ${actualizados} actualizado(s) por coincidir el código.`));
+      render();
+    } catch (err) {
+      resultadoDiv.appendChild(el('div', { class: 'msg msg-warn' }, 'No se pudo leer el archivo: ' + err.message));
+    }
+  };
+  reader.readAsArrayBuffer(file);
 }
 
 function viewConfigTaller() {
@@ -7287,11 +7456,23 @@ function setState(s) {
   state.config = Object.assign(defaultState().config, state.config || {});
   if (!Array.isArray(state.clientes)) state.clientes = [];
   if (!Array.isArray(state.articulos)) state.articulos = [];
-  if (!Array.isArray(state.cordajes)) state.cordajes = [];
+  if (!Array.isArray(state.proveedores)) state.proveedores = [];
   if (!Array.isArray(state.pedidos)) state.pedidos = [];
   if (!state.contabilidad) state.contabilidad = { movimientos: [] };
   if (!Array.isArray(state.contabilidad.movimientos)) state.contabilidad.movimientos = [];
   if (!Array.isArray(state.raquetasExtra)) state.raquetasExtra = [];
+  // Migración: los cordajes vivían en un catálogo aparte; ahora son artículos marcados con "es cordaje".
+  if (Array.isArray(s && s.cordajes) && s.cordajes.length) {
+    s.cordajes.forEach(c => {
+      state.articulos.push(Object.assign({ codigo: '', esCordaje: true, tipo: 'Cordaje', proveedores: [] }, c));
+    });
+  }
+  delete state.cordajes;
+  state.articulos.forEach(a => {
+    if (a.codigo === undefined) a.codigo = '';
+    if (a.esCordaje === undefined) a.esCordaje = false;
+    if (!Array.isArray(a.proveedores)) a.proveedores = [];
+  });
 }
 function tryLoadLocal() {
   try {
@@ -8132,7 +8313,7 @@ function renderVistaPublicaTaller() {
     return;
   }
   const cliente = (taller.clientes || []).find(c => c.id === pedido.clienteId);
-  const cordaje = (taller.cordajes || []).find(c => c.id === pedido.cordajeId);
+  const cordaje = (taller.articulos || []).find(c => c.id === pedido.cordajeId);
 
   const panel = el('div', { class: 'panel' },
     el('h2', {}, '🏸 ' + (pedido.marcaModelo || 'Tu raqueta')),

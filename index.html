@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20260929-131913">
+<meta name="build-id" content="v20260929-132404">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -6888,14 +6888,30 @@ function labelDe(lista, valor) { const o = lista.find(x => x.value === valor); r
 let subTabCatalogo = 'cordajes';
 let proveedorAbiertoId = null;
 let articuloAbiertoId = null;
-function listaArticulosCompacta(lista) {
-  const wrap = document.createDocumentFragment();
+let busquedaArticulo = '';
+let articulosSeleccionados = new Set();
+function construirTablaArticulos(lista) {
+  const tbodyWrap = el('div', { style: 'overflow-x:auto;' });
+  const checkTodos = el('input', { type: 'checkbox', style: 'width:auto;' });
+  const idsVisibles = lista.map(a => a.id);
+  checkTodos.checked = idsVisibles.length > 0 && idsVisibles.every(id => articulosSeleccionados.has(id));
+  checkTodos.addEventListener('change', () => {
+    if (checkTodos.checked) idsVisibles.forEach(id => articulosSeleccionados.add(id));
+    else idsVisibles.forEach(id => articulosSeleccionados.delete(id));
+    render();
+  });
   const table = el('table', {}, el('thead', {}, el('tr', {},
-    el('th', {}, 'Código'), el('th', {}, 'Nombre'), el('th', {}, 'Coste'), el('th', {}, 'Venta'), el('th', {}, 'Stock'), el('th', {}, ''))));
+    el('th', {}, checkTodos), el('th', {}, 'Código'), el('th', {}, 'Nombre'), el('th', {}, 'Coste'), el('th', {}, 'Venta'), el('th', {}, 'Stock'), el('th', {}, ''))));
   const tbody = el('tbody');
+  if (!lista.length) {
+    tbody.appendChild(el('tr', {}, el('td', { colspan: '7' }, 'Ningún artículo coincide con la búsqueda.')));
+  }
   lista.forEach(a => {
     const abierto = articuloAbiertoId === a.id;
+    const checkFila = el('input', { type: 'checkbox', style: 'width:auto;', checked: articulosSeleccionados.has(a.id) ? 'checked' : null,
+      onchange: e => { if (e.target.checked) articulosSeleccionados.add(a.id); else articulosSeleccionados.delete(a.id); render(); } });
     tbody.appendChild(el('tr', {},
+      el('td', {}, checkFila),
       el('td', {}, a.codigo || '—'),
       el('td', {}, a.nombre),
       el('td', {}, euros(a.precioCoste)),
@@ -6905,7 +6921,38 @@ function listaArticulosCompacta(lista) {
     ));
   });
   table.appendChild(tbody);
-  wrap.appendChild(el('div', { style: 'overflow-x:auto;' }, table));
+  tbodyWrap.appendChild(table);
+  return tbodyWrap;
+}
+function listaArticulosCompacta(listaCompleta) {
+  const wrap = document.createDocumentFragment();
+  const buscadorInput = el('input', { type: 'text', placeholder: 'Buscar por código o nombre…', value: busquedaArticulo });
+  const tablaDiv = el('div', {});
+  function aplicarFiltro() {
+    const q = busquedaArticulo.trim().toLowerCase();
+    const filtrada = q ? listaCompleta.filter(a => (a.nombre || '').toLowerCase().includes(q) || (a.codigo || '').toLowerCase().includes(q)) : listaCompleta;
+    tablaDiv.innerHTML = '';
+    tablaDiv.appendChild(construirTablaArticulos(filtrada));
+  }
+  buscadorInput.addEventListener('input', () => { busquedaArticulo = buscadorInput.value; aplicarFiltro(); });
+  wrap.appendChild(field('🔎 Buscar', buscadorInput));
+  const idsEnEstaLista = new Set(listaCompleta.map(a => a.id));
+  const seleccionadosAqui = Array.from(articulosSeleccionados).filter(id => idsEnEstaLista.has(id));
+  if (seleccionadosAqui.length) {
+    wrap.appendChild(el('div', { class: 'toolbar', style: 'margin:6px 0;' },
+      el('span', { class: 'sub', style: 'font-weight:700;' }, seleccionadosAqui.length + ' seleccionado(s)'),
+      el('button', { class: 'btn btn-danger btn-sm', onclick: () => {
+        if (!confirm('¿Borrar los ' + seleccionadosAqui.length + ' artículos seleccionados? No se puede deshacer.')) return;
+        seleccionadosAqui.forEach(id => { removeArticulo(id); articulosSeleccionados.delete(id); });
+        if (seleccionadosAqui.includes(articuloAbiertoId)) articuloAbiertoId = null;
+        render();
+      } }, '🗑️ Borrar seleccionados'),
+      el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { seleccionadosAqui.forEach(id => articulosSeleccionados.delete(id)); render(); } }, 'Quitar selección'),
+    ));
+  }
+  aplicarFiltro();
+  wrap.appendChild(tablaDiv);
+  const lista = listaCompleta;
   const abierto = lista.find(a => a.id === articuloAbiertoId);
   if (abierto) wrap.appendChild(articuloCard(abierto));
   return wrap;

@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20260929-133631">
+<meta name="build-id" content="v20260929-135449">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -5969,7 +5969,7 @@ function uid(prefix) { return prefix + '_' + (uidCounter++) + '_' + Math.random(
 let uidCounter = 1;
 function defaultState() {
   return {
-    config: { tiempoMedioMinutos: 35, precioBaseEncordado: 12, precioSinCordaje: 12, tarjetaVisitaFoto: null },
+    config: { tiempoMedioMinutos: 35, precioBaseEncordado: 12, precioSinCordaje: 12, tarjetaVisitaFoto: null, nombreTaller: '' },
     clientes: [],
     articulos: [],
     proveedores: [],
@@ -7241,8 +7241,10 @@ function viewConfigTaller() {
       field('Precio si el cliente trae su propio cordaje (€)', inputEl('number', state.config.precioSinCordaje, v => { state.config.precioSinCordaje = parseFloat(v) || 0; }, { min: 0, step: '0.5' })),
     ),
   );
-  panelConfig.appendChild(el('h3', { style: 'margin-top:16px;' }, '📇 Tu publicidad (tarjeta de visita)'));
-  panelConfig.appendChild(el('div', { class: 'sub', style: 'margin-bottom:8px;' }, 'Sube una foto de tu tarjeta de visita. Saldrá en el historial y en la página que ve cada cliente al seguir su raqueta.'));
+  panelConfig.appendChild(el('h3', { style: 'margin-top:16px;' }, '📇 Tu publicidad (independiente del club)'));
+  panelConfig.appendChild(el('div', { class: 'sub', style: 'margin-bottom:8px;' }, 'El taller es un negocio aparte del club de bádminton. Este nombre y esta foto son los que ve el cliente al seguir su raqueta, en vez del nombre del club.'));
+  panelConfig.appendChild(field('Nombre del taller / encordador', inputEl('text', state.config.nombreTaller || '', v => { state.config.nombreTaller = v; render(); }, { placeholder: 'Ej: Encordados Juan' })));
+  panelConfig.appendChild(el('div', { class: 'sub', style: 'margin:6px 0 10px;' }, 'Sube una foto de tu tarjeta de visita. Saldrá en el historial y en la página que ve cada cliente al seguir su raqueta.'));
   if (state.config.tarjetaVisitaFoto) {
     panelConfig.appendChild(el('img', { src: state.config.tarjetaVisitaFoto, style: 'max-width:280px;border-radius:8px;display:block;margin-bottom:8px;' }));
   }
@@ -8478,12 +8480,12 @@ function renderVistaPublicaTaller() {
   const root = document.getElementById('tallerPublicoScreen');
   root.style.display = 'block';
   root.innerHTML = '';
-  document.getElementById('shellTitle').textContent = clubGlobal.nombre || 'Taller de raquetas';
+  const taller = TallerApp.getState();
+  document.getElementById('shellTitle').textContent = (taller.config && taller.config.nombreTaller) || 'Taller de Raquetas';
   document.getElementById('shellSubtitle').textContent = 'Sigue tu reparación en directo · se actualiza sola';
   document.body.classList.remove('solo-lectura');
 
   const pedidoId = new URLSearchParams(location.search).get('pedido');
-  const taller = TallerApp.getState();
   const pedido = (taller.pedidos || []).find(p => p.id === pedidoId);
   if (!pedido) {
     root.appendChild(el('div', { class: 'panel' }, el('div', { class: 'empty-state' }, 'No se encuentra esa reparación. Puede que el enlace no sea correcto o que se haya eliminado.')));

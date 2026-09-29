@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20260929-132530">
+<meta name="build-id" content="v20260929-133310">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -6956,11 +6956,17 @@ function listaArticulosCompacta(listaCompleta) {
       el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { seleccionadosAqui.forEach(id => articulosSeleccionados.delete(id)); render(); } }, 'Quitar selección'),
     ));
   }
-  aplicarFiltro();
-  wrap.appendChild(tablaDiv);
+  // La ficha completa del artículo abierto se pone AQUÍ, justo encima de la lista,
+  // para que no haya que bajar entre decenas o cientos de filas para verla.
   const lista = listaCompleta;
   const abierto = lista.find(a => a.id === articuloAbiertoId);
-  if (abierto) wrap.appendChild(articuloCard(abierto));
+  if (abierto) {
+    const fichaDiv = el('div', { id: 'ficha-articulo-abierto' }, articuloCard(abierto));
+    wrap.appendChild(fichaDiv);
+    setTimeout(() => { const el2 = document.getElementById('ficha-articulo-abierto'); if (el2) el2.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 50);
+  }
+  aplicarFiltro();
+  wrap.appendChild(tablaDiv);
   return wrap;
 }
 function viewCatalogo() {

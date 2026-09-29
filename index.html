@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20260929-140927">
+<meta name="build-id" content="v20260929-141503">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -6228,6 +6228,7 @@ function construirPanelPorRecoger() {
       el('div', { class: 'toolbar', style: 'margin-top:8px;' },
         el('button', { class: 'btn btn-primary btn-sm', onclick: () => abrirEntregaPedido(p) }, '📦 Entregar'),
         el('button', { class: 'btn btn-ghost btn-sm', onclick: () => abrirAvisoWhatsapp(p) }, '💬 Avisar por WhatsApp'),
+        el('button', { class: 'btn btn-danger btn-sm', onclick: () => { if (confirm('¿Quitar este pedido? No se puede deshacer.')) { removePedido(p.id); render(); } } }, 'Quitar'),
       ),
     ));
   });

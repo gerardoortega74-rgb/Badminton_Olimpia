@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20260929-144915">
+<meta name="build-id" content="v20260930-114013">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -6139,6 +6139,8 @@ function addPedido(datos) {
   const nuevo = {
     id: uid('ped'), clienteId: datos.clienteId, marcaModelo: datos.marcaModelo || '', cordajeId: datos.cordajeId || null,
     cantidadCordaje: datos.cordajeId ? (datos.cantidadCordaje || cantidadCordajePorDefecto(cordajeDe(datos.cordajeId))) : null,
+    cordajeIdH: datos.cordajeIdH || null,
+    cantidadCordajeH: datos.cordajeIdH ? (datos.cantidadCordajeH || cantidadCordajePorDefecto(cordajeDe(datos.cordajeIdH))) : null,
     articulosAdicionales: Array.isArray(datos.articulosAdicionales) ? datos.articulosAdicionales.map(i => ({ articuloId: i.articuloId, cantidad: i.cantidad, precioUnitario: i.precioUnitario, nombre: i.nombre })) : [],
     tensionVertical: datos.tensionVertical || null, tensionHorizontal: datos.tensionHorizontal || null, precio: datos.precio || 0, fotoAntes: datos.fotoAntes || null, fotoDespues: null,
     estado: 'pendiente', horaLlegada: Date.now(), horaInicio: null, horaFin: null, notas: datos.notas || '',
@@ -6148,6 +6150,10 @@ function addPedido(datos) {
   if (nuevo.cordajeId) {
     const cor = cordajeDe(nuevo.cordajeId);
     if (cor) cor.stock = Math.max(0, (cor.stock || 0) - (nuevo.cantidadCordaje || 1));
+  }
+  if (nuevo.cordajeIdH) {
+    const corH = cordajeDe(nuevo.cordajeIdH);
+    if (corH) corH.stock = Math.max(0, (corH.stock || 0) - (nuevo.cantidadCordajeH || 1));
   }
   nuevo.articulosAdicionales.forEach(item => {
     const art = state.articulos.find(a => a.id === item.articuloId);
@@ -6160,6 +6166,10 @@ function removePedido(id) {
   if (p && p.cordajeId) {
     const cor = cordajeDe(p.cordajeId);
     if (cor) cor.stock = (cor.stock || 0) + (p.cantidadCordaje || 1);
+  }
+  if (p && p.cordajeIdH) {
+    const corH = cordajeDe(p.cordajeIdH);
+    if (corH) corH.stock = (corH.stock || 0) + (p.cantidadCordajeH || 1);
   }
   if (p && Array.isArray(p.articulosAdicionales)) {
     p.articulosAdicionales.forEach(item => {
@@ -6245,6 +6255,12 @@ function reanudarPedido(p) { p.aplazado = false; p.horaLlegada = Date.now(); }
 
 function clienteDe(id) { return state.clientes.find(c => c.id === id); }
 function cordajeDe(id) { return state.articulos.find(a => a.id === id); }
+function nombreCordajeDe(p) {
+  const cor = cordajeDe(p.cordajeId);
+  const corH = p.cordajeIdH ? cordajeDe(p.cordajeIdH) : null;
+  if (corH) return 'V: ' + (cor ? cor.nombre : 'sin especificar') + ' · H: ' + corH.nombre;
+  return cor ? cor.nombre : 'sin cordaje';
+}
 function pedidosDeCliente(clienteId) { return state.pedidos.filter(p => p.clienteId === clienteId).sort((a, b) => b.horaLlegada - a.horaLlegada); }
 
 function telefonoParaWhatsapp(tel) {
@@ -6374,7 +6390,7 @@ function viewCola() {
         p.estado === 'en_proceso' ? el('span', { class: 'chip chip-gold' }, 'En proceso') : el('span', { class: 'chip chip-muted' }, 'Pendiente'),
         p.pagado ? el('span', { class: 'chip chip-gold' }, 'Pagada') : (p.pagoPrevisto === 'sinPagar' ? el('span', { class: 'chip chip-muted' }, 'Recoge sin pagar') : null),
       ),
-      el('div', { class: 'sub' }, `${p.marcaModelo || 'Raqueta sin especificar'} · ${cor ? cor.nombre : 'sin cordaje'} · ${fmtTension(p)} · ${euros(p.precio)}`),
+      el('div', { class: 'sub' }, `${p.marcaModelo || 'Raqueta sin especificar'} · ${nombreCordajeDe(p)} · ${fmtTension(p)} · ${euros(p.precio)}`),
       el('div', { class: 'sub' }, `Llegó a las ${fmtHora(p.horaLlegada)}${estimada ? ' · Estimado listo a las ' + fmtHora(estimada) : ''}`),
     );
     if (p.fotoAntes) card.appendChild(el('img', { src: p.fotoAntes, style: 'max-width:160px;border-radius:8px;margin-top:6px;display:block;' }));
@@ -6411,7 +6427,7 @@ function viewCola() {
         el('div', { class: 'card-head' },
           el('span', { class: 'card-title' }, cli ? cli.nombre : '(cliente eliminado)'),
         ),
-        el('div', { class: 'sub' }, `${p.marcaModelo || 'Raqueta sin especificar'} · ${cor ? cor.nombre : 'sin cordaje'} · ${fmtTension(p)} · ${euros(p.precio)}`),
+        el('div', { class: 'sub' }, `${p.marcaModelo || 'Raqueta sin especificar'} · ${nombreCordajeDe(p)} · ${fmtTension(p)} · ${euros(p.precio)}`),
         el('div', { class: 'toolbar', style: 'margin-top:8px;' },
           el('button', { class: 'btn btn-primary btn-sm', onclick: () => { reanudarPedido(p); render(); } }, '▶️ Reanudar hoy'),
           el('button', { class: 'btn btn-danger btn-sm', onclick: () => { if (confirm('¿Quitar este pedido?')) { removePedido(p.id); render(); } } }, 'Quitar'),
@@ -6640,9 +6656,44 @@ function viewNuevoPedido() {
   panel.appendChild(avisoMolestiaDiv);
   const cantidadCordajeInput = el('input', { type: 'number', step: '0.5', min: '0' });
   const cantidadCordajeDiv = el('div', { style: 'display:none;' }, field('Cantidad de cordaje usada', cantidadCordajeInput));
+
+  // ---------- Cordaje híbrido: uno distinto para verticales y para horizontales ----------
+  const cordajeHSelect = el('select', {});
+  function repintarCordajeHSelect() {
+    cordajeHSelect.innerHTML = '';
+    cordajeHSelect.appendChild(el('option', { value: '' }, '— Elegir cordaje horizontal —'));
+    state.articulos.filter(a => a.esCordaje).forEach(c => {
+      cordajeHSelect.appendChild(el('option', { value: c.id }, c.nombre + ' (' + euros(c.precio) + ', stock: ' + c.stock + ' ' + (c.unidad || 'unidades') + ')'));
+    });
+  }
+  repintarCordajeHSelect();
+  const cantidadCordajeHInput = el('input', { type: 'number', step: '0.5', min: '0' });
+  const cantidadCordajeHDiv = el('div', { style: 'display:none;' }, field('Cantidad de cordaje horizontal usada', cantidadCordajeHInput));
+  const cordajeHDiv = el('div', { style: 'display:none;' }, field('Cordaje horizontal', cordajeHSelect));
+  const hibridoCheckbox = el('input', { type: 'checkbox', style: 'width:auto;margin-right:6px;' });
+  const campoCordajeVerticalLabel = el('span', {}, 'Cordaje');
+  hibridoCheckbox.addEventListener('change', () => {
+    const on = hibridoCheckbox.checked;
+    cordajeHDiv.style.display = on ? 'block' : 'none';
+    campoCordajeVerticalLabel.textContent = on ? 'Cordaje vertical' : 'Cordaje';
+    if (!on) { cordajeHSelect.value = ''; cordajeHDiv.querySelector('label').textContent = 'Cordaje horizontal'; cantidadCordajeHDiv.style.display = 'none'; cordajeHSelect.dispatchEvent(new Event('change')); }
+    actualizarPrecioCordajes();
+  });
+  panel.appendChild(el('div', { class: 'msg msg-info', style: 'margin-bottom:8px;' },
+    el('label', { style: 'display:flex;align-items:center;text-transform:none;font-weight:400;cursor:pointer;' },
+      hibridoCheckbox, '🔀 Cordaje híbrido: uno para las verticales y otro distinto para las horizontales'),
+  ));
+
+  function actualizarPrecioCordajes() {
+    const cor = cordajeDe(cordajeSelect.value);
+    const corH = hibridoCheckbox.checked ? cordajeDe(cordajeHSelect.value) : null;
+    let base = state.config.precioSinCordaje || 0;
+    if (cor || corH) base = (state.config.precioBaseEncordado || 0) + (cor ? cor.precio : 0) + (corH ? corH.precio : 0);
+    precioInput.value = base;
+    if (typeof actualizarTotalPedido === 'function') actualizarTotalPedido();
+  }
   cordajeSelect.addEventListener('change', () => {
     const cor = cordajeDe(cordajeSelect.value);
-    precioInput.value = cor ? ((state.config.precioBaseEncordado || 0) + cor.precio) : (state.config.precioSinCordaje || 0);
     if (cor) {
       cantidadCordajeInput.value = cantidadCordajePorDefecto(cor);
       cantidadCordajeInput.setAttribute('placeholder', cor.unidad || 'unidades');
@@ -6650,14 +6701,25 @@ function viewNuevoPedido() {
     } else {
       cantidadCordajeDiv.style.display = 'none';
     }
-    if (typeof actualizarTotalPedido === 'function') actualizarTotalPedido();
+    actualizarPrecioCordajes();
+  });
+  cordajeHSelect.addEventListener('change', () => {
+    const corH = cordajeDe(cordajeHSelect.value);
+    if (corH) {
+      cantidadCordajeHInput.value = cantidadCordajePorDefecto(corH);
+      cantidadCordajeHInput.setAttribute('placeholder', corH.unidad || 'unidades');
+      cantidadCordajeHDiv.style.display = 'block';
+    } else {
+      cantidadCordajeHDiv.style.display = 'none';
+    }
+    actualizarPrecioCordajes();
   });
   const fotoInput = el('input', { type: 'file', accept: 'image/*', capture: 'environment' });
   const notasInput = el('textarea', { rows: '2', placeholder: 'Notas (opcional)' });
 
   panel.appendChild(el('div', { class: 'grid' },
     field('Marca y modelo de la raqueta', marcaCampoDiv),
-    field('Cordaje', cordajeSelect),
+    field(campoCordajeVerticalLabel, cordajeSelect),
     field('Tensión vertical (kg)', tensionVInput),
     field('Tensión horizontal (kg)', tensionHInput),
     field('Precio (€)', precioInput),
@@ -6731,6 +6793,8 @@ function viewNuevoPedido() {
     ),
   ));
   panel.appendChild(cantidadCordajeDiv);
+  panel.appendChild(cordajeHDiv);
+  panel.appendChild(cantidadCordajeHDiv);
   panel.appendChild(field('Notas', notasInput));
 
   async function guardarPedido(irACola) {
@@ -6745,6 +6809,8 @@ function viewNuevoPedido() {
       tensionHorizontal: tensionHInput.value ? parseFloat(tensionHInput.value) : (tensionVInput.value ? parseFloat(tensionVInput.value) : null),
       precio: (parseFloat(precioInput.value) || 0) + subtotalArticulosAdicionales(),
       cantidadCordaje: cordajeSelect.value ? (parseFloat(cantidadCordajeInput.value) || cantidadCordajePorDefecto(cordajeDe(cordajeSelect.value))) : null,
+      cordajeIdH: hibridoCheckbox.checked ? (cordajeHSelect.value || null) : null,
+      cantidadCordajeH: (hibridoCheckbox.checked && cordajeHSelect.value) ? (parseFloat(cantidadCordajeHInput.value) || cantidadCordajePorDefecto(cordajeDe(cordajeHSelect.value))) : null,
       articulosAdicionales: articulosAdicionalesLista,
       pagado: pagoSelect.value === 'adelantado',
       pagoPrevisto: pagoSelect.value,
@@ -6836,7 +6902,7 @@ function viewClientes() {
             tbody.appendChild(el('tr', {},
               el('td', {}, fmtFechaHora(p.horaLlegada)),
               el('td', {}, p.marcaModelo || '—'),
-              el('td', {}, cor ? cor.nombre : '—'),
+              el('td', {}, nombreCordajeDe(p)),
               el('td', {}, fmtTension(p)),
               el('td', {}, euros(p.precio)),
               el('td', {}, p.pagado ? el('span', { class: 'chip chip-gold' }, 'Pagado') : el('span', { class: 'chip chip-muted' }, 'Pendiente')),
@@ -7511,7 +7577,7 @@ function viewHistorial() {
       el('td', {}, fmtFechaHora(p.horaLlegada)),
       el('td', {}, cli ? cli.nombre : '(eliminado)'),
       el('td', {}, p.marcaModelo || '—'),
-      el('td', {}, cor ? cor.nombre : '—'),
+      el('td', {}, nombreCordajeDe(p)),
       el('td', {}, fmtTension(p)),
       el('td', {}, duracion),
       el('td', {}, euros(p.precio)),
@@ -8506,6 +8572,8 @@ function renderVistaPublicaTaller() {
   }
   const cliente = (taller.clientes || []).find(c => c.id === pedido.clienteId);
   const cordaje = (taller.articulos || []).find(c => c.id === pedido.cordajeId);
+  const cordajeH = pedido.cordajeIdH ? (taller.articulos || []).find(c => c.id === pedido.cordajeIdH) : null;
+  const textoCordaje = cordajeH ? ('V: ' + (cordaje ? cordaje.nombre : 'sin especificar') + ' · H: ' + cordajeH.nombre) : (cordaje ? cordaje.nombre : 'sin especificar');
 
   const panel = el('div', { class: 'panel' },
     el('h2', {}, '🏸 ' + (pedido.marcaModelo || 'Tu raqueta')),
@@ -8545,7 +8613,7 @@ function renderVistaPublicaTaller() {
   }
 
   panel.appendChild(el('div', { class: 'sub', style: 'margin-top:12px;' },
-    'Cordaje: ' + (cordaje ? cordaje.nombre : 'sin especificar') + (pedido.tensionVertical || pedido.tensionHorizontal ? ' · Tensión: ' + (pedido.tensionVertical || '') + '/' + (pedido.tensionHorizontal || '') + ' kg' : '')));
+    'Cordaje: ' + textoCordaje + (pedido.tensionVertical || pedido.tensionHorizontal ? ' · Tensión: ' + (pedido.tensionVertical || '') + '/' + (pedido.tensionHorizontal || '') + ' kg' : '')));
   root.appendChild(panel);
   if (taller.config && taller.config.tarjetaVisitaFoto) {
     root.appendChild(el('div', { class: 'panel', style: 'text-align:center;' },

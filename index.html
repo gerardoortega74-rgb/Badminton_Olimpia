@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20260930-163745">
+<meta name="build-id" content="v20260930-164749">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -9255,7 +9255,9 @@ function renderShellHeader() {
   document.getElementById('btnLogout').style.display = accesoActivo() && sesionActual ? 'inline-flex' : 'none';
   const badge = document.getElementById('shellBrand').querySelector('.brand-badge');
   badge.innerHTML = '';
-  if (clubGlobal.logo) badge.appendChild(el('img', { src: clubGlobal.logo }));
+  const fotoTaller = currentSection === 'taller' && TallerApp.getState().config && TallerApp.getState().config.tarjetaVisitaFoto;
+  if (fotoTaller) badge.appendChild(el('img', { src: fotoTaller }));
+  else if (clubGlobal.logo) badge.appendChild(el('img', { src: clubGlobal.logo }));
   else badge.textContent = '🏸';
 }
 
@@ -9965,6 +9967,7 @@ function aplicarDatosDeNube(dataOriginal) {
     TallerApp.getState().articulos.forEach(a => { if (fotosArticulosCache[a.id] !== undefined) a.foto = fotosArticulosCache[a.id]; });
   }
   if (data.accessControl) { accessControl = data.accessControl; saveAccessControl(); }
+  if (typeof currentSection !== 'undefined' && currentSection === 'taller' && typeof renderShellHeader === 'function') renderShellHeader();
 }
 function arrancarAppLocal() {
   if (esVistaPublicaTaller()) {
@@ -10037,7 +10040,7 @@ if (firebaseDisponible) {
     });
     cargarFotosTallerDeNube().then(() => {
       const tallerScreen = document.getElementById('tallerScreen');
-      if (tallerScreen && tallerScreen.style.display !== 'none') TallerApp.render();
+      if (tallerScreen && tallerScreen.style.display !== 'none') { TallerApp.render(); renderShellHeader(); }
       if (esVistaPublicaTaller()) renderVistaPublicaTaller();
     });
     if (esVistaPublica()) {

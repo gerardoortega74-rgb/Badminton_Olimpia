@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20260930-114602">
+<meta name="build-id" content="v20260930-163745">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -6098,7 +6098,7 @@ function addArticulo(esCordaje) {
   const nuevo = {
     id: uid('art'), codigo: '', nombre: esCordaje ? 'Nuevo cordaje' : 'Nuevo artículo', tipo: esCordaje ? 'Cordaje' : 'Otro',
     esCordaje: !!esCordaje, precioCoste: 0, precio: 0, stock: 0, unidad: esCordaje ? 'metros' : 'unidades',
-    nivelRecomendado: 'todos', estiloRecomendado: 'todos', suave: false, proveedores: [],
+    nivelRecomendado: 'todos', estiloRecomendado: 'todos', suave: false, proveedores: [], foto: null,
   };
   state.articulos.push(nuevo);
   return nuevo;
@@ -7094,6 +7094,29 @@ function articuloCard(a) {
       field('Unidad', selectEl(unidadArticuloOptions(), a.unidad || (a.esCordaje ? 'metros' : 'unidades'), v => { a.unidad = v; render(); })),
       field('Stock (' + (a.unidad || 'unidades') + ')', inputEl('number', a.stock, v => { a.stock = parseFloat(v) || 0; render(); }, { min: 0 })),
     ),
+    el('div', { style: 'margin-top:10px;' },
+      el('h4', { style: 'margin:0 0 6px;' }, '📷 Foto del artículo'),
+      a.foto ? el('img', { src: a.foto, style: 'max-width:160px;border-radius:8px;display:block;margin-bottom:6px;' }) : null,
+      (() => {
+        const fotoArticuloInput = el('input', { type: 'file', accept: 'image/*' });
+        return el('div', { class: 'row', style: 'gap:8px;flex-wrap:wrap;align-items:center;' },
+          fotoArticuloInput,
+          el('button', { class: 'btn btn-gold btn-sm', onclick: async () => {
+            if (!fotoArticuloInput.files[0]) { alert('Elige antes una foto.'); return; }
+            try {
+              a.foto = await comprimirImagen(fotoArticuloInput.files[0], 700, 0.65);
+              if (window.guardarFotoArticuloTallerEnNube) window.guardarFotoArticuloTallerEnNube(a.id, a.foto);
+              render();
+            } catch (e) { alert('No se pudo procesar la foto.'); }
+          } }, a.foto ? 'Cambiar foto' : '+ Añadir foto'),
+          a.foto ? el('button', { class: 'btn btn-danger btn-sm', onclick: () => {
+            a.foto = null;
+            if (window.guardarFotoArticuloTallerEnNube) window.guardarFotoArticuloTallerEnNube(a.id, null);
+            render();
+          } }, 'Quitar foto') : null,
+        );
+      })(),
+    ),
     el('div', { class: 'field', style: 'margin-top:6px;' },
       el('label', {}, el('input', { type: 'checkbox', style: 'width:auto;margin-right:6px;', checked: a.esCordaje ? 'checked' : null,
         onchange: e => { a.esCordaje = e.target.checked; if (a.esCordaje && !a.tipo) a.tipo = 'Cordaje'; render(); } }),
@@ -7730,6 +7753,7 @@ function setState(s) {
     if (a.esCordaje === undefined) a.esCordaje = false;
     if (!Array.isArray(a.proveedores)) a.proveedores = [];
     if (!a.unidad) a.unidad = a.esCordaje ? 'metros' : 'unidades';
+    if (a.foto === undefined) a.foto = null;
   });
 }
 function tryLoadLocal() {
@@ -9776,6 +9800,12 @@ function estadoCompletoParaNube() {
     tallerParaNube.config.tieneTarjetaVisita = !!tallerParaNube.config.tarjetaVisitaFoto;
     tallerParaNube.config.tarjetaVisitaFoto = null;
   }
+  if (Array.isArray(tallerParaNube.articulos)) {
+    tallerParaNube.articulos.forEach(a => {
+      a.tieneFoto = !!a.foto;
+      a.foto = null;
+    });
+  }
   return {
     club: clubGlobal,
     jugadoresGlobal: jugadoresGlobal,
@@ -9799,6 +9829,7 @@ function guardarFotosTallerEnNube(pedidoId, fotoAntes, fotoDespues) {
   });
 }
 let tarjetaVisitaCache = null;
+let fotosArticulosCache = {};
 function cargarFotosTallerDeNube() {
   if (!firebaseDisponible) return Promise.resolve();
   return coleccionFotosTaller().get().then(snap => {
@@ -9814,6 +9845,14 @@ function cargarFotosTallerDeNube() {
       tarjetaVisitaCache = mapa['_config_tarjeta'].foto || null;
       if (tallerState.config) tallerState.config.tarjetaVisitaFoto = tarjetaVisitaCache;
     }
+    if (Array.isArray(tallerState.articulos)) {
+      tallerState.articulos.forEach(a => {
+        if (mapa[a.id] && mapa[a.id].fotoArticulo !== undefined) {
+          fotosArticulosCache[a.id] = mapa[a.id].fotoArticulo || null;
+          a.foto = fotosArticulosCache[a.id];
+        }
+      });
+    }
   }).catch(err => { console.warn('No se pudieron cargar las fotos del taller:', err); });
 }
 function guardarTarjetaVisitaTallerEnNube(foto) {
@@ -9824,8 +9863,17 @@ function guardarTarjetaVisitaTallerEnNube(foto) {
     marcarEstadoNube('⚠️ No se pudo guardar la tarjeta de visita: ' + (err && err.message ? err.message : 'error desconocido'));
   });
 }
+function guardarFotoArticuloTallerEnNube(articuloId, foto) {
+  fotosArticulosCache[articuloId] = foto || null;
+  if (!firebaseDisponible || !sincronizacionInicialLista) return;
+  coleccionFotosTaller().doc(articuloId).set({ fotoArticulo: foto || null }, { merge: true }).catch(err => {
+    console.warn('Error guardando la foto del artículo en la nube:', err);
+    marcarEstadoNube('⚠️ No se pudo guardar la foto del artículo: ' + (err && err.message ? err.message : 'error desconocido'));
+  });
+}
 window.guardarFotosTallerEnNube = guardarFotosTallerEnNube;
 window.guardarTarjetaVisitaTallerEnNube = guardarTarjetaVisitaTallerEnNube;
+window.guardarFotoArticuloTallerEnNube = guardarFotoArticuloTallerEnNube;
 function coleccionRecibos() {
   return docNube().collection('recibos');
 }
@@ -9913,6 +9961,9 @@ function aplicarDatosDeNube(dataOriginal) {
   // La tarjeta de visita se guarda aparte (no viaja en este documento, para no saturarlo);
   // cada sincronización pisa el campo con null, así que la reponemos desde la caché local.
   if (tarjetaVisitaCache && TallerApp.getState().config) TallerApp.getState().config.tarjetaVisitaFoto = tarjetaVisitaCache;
+  if (Array.isArray(TallerApp.getState().articulos)) {
+    TallerApp.getState().articulos.forEach(a => { if (fotosArticulosCache[a.id] !== undefined) a.foto = fotosArticulosCache[a.id]; });
+  }
   if (data.accessControl) { accessControl = data.accessControl; saveAccessControl(); }
 }
 function arrancarAppLocal() {

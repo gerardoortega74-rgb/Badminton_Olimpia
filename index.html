@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20260930-114013">
+<meta name="build-id" content="v20260930-114602">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -6720,6 +6720,7 @@ function viewNuevoPedido() {
   panel.appendChild(el('div', { class: 'grid' },
     field('Marca y modelo de la raqueta', marcaCampoDiv),
     field(campoCordajeVerticalLabel, cordajeSelect),
+    cordajeHDiv,
     field('Tensión vertical (kg)', tensionVInput),
     field('Tensión horizontal (kg)', tensionHInput),
     field('Precio (€)', precioInput),
@@ -6793,7 +6794,6 @@ function viewNuevoPedido() {
     ),
   ));
   panel.appendChild(cantidadCordajeDiv);
-  panel.appendChild(cordajeHDiv);
   panel.appendChild(cantidadCordajeHDiv);
   panel.appendChild(field('Notas', notasInput));
 

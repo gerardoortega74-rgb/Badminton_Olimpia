@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261001-085230">
+<meta name="build-id" content="v20261001-093025">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -9210,7 +9210,7 @@ const AYUDA_INDICE = [
   { pregunta: 'Cobrar la cuota del club a los socios', ruta: 'Menú → Gestión de Club → Pagos y Cuotas → Cuotas del club', palabras: 'cuota socio mensualidad matricula tarifa pagar cobrar' },
   { pregunta: 'Crear o cambiar las tarifas de cuota (por días de entreno, mensual o anual)', ruta: 'Menú → Gestión de Club → Pagos y Cuotas → Configuración', palabras: 'tarifa precio cuota matricula configurar' },
   { pregunta: 'Inscribir a alguien en una competición federada (TTR, autonómico...)', ruta: 'Menú → Gestión de Club → Pagos y Cuotas → Competiciones', palabras: 'competicion inscripcion federada ttr autonomico modalidad' },
-  { pregunta: 'Ver los proveedores del club (CIF, teléfono...)', ruta: 'Menú → Gestión de Club → Pagos y Cuotas → Proveedores', palabras: 'proveedor cif telefono empresa' },
+  { pregunta: 'Ver los proveedores del club (CIF, teléfono...)', ruta: 'Menú → Gestión de Club → Pagos y Cuotas → Proveedores', palabras: 'proveedor cif telefono empresa club' },
   { pregunta: 'Crear o gestionar un torneo del club', ruta: 'Menú → Gestor de Torneos', palabras: 'torneo campeonato crear gestionar' },
   { pregunta: 'Apuntar participantes a un torneo', ruta: 'Menú → Gestor de Torneos → Participantes', palabras: 'apuntar participante inscribir torneo jugador categoria' },
   { pregunta: 'Hacer el sorteo de grupos de un torneo', ruta: 'Menú → Gestor de Torneos → Sorteo', palabras: 'sorteo grupo aleatorio' },
@@ -9229,8 +9229,21 @@ const AYUDA_INDICE = [
   { pregunta: 'Cambiar a un alumno de grupo', ruta: 'Menú → Planificación Anual → Grupos de trabajo → (el grupo) → Alumnos y asistencia → Ficha del alumno → Cambiar de grupo', palabras: 'mover cambiar alumno grupo pasar' },
   { pregunta: 'Generar el macrociclo o microciclo de un grupo', ruta: 'Menú → Planificación Anual → Grupos de trabajo → (el grupo) → Macrociclo / Microciclo tipo', palabras: 'macrociclo microciclo temporada planificar entrenamiento competiciones evaluacion entreno individual' },
   { pregunta: 'Ver el reglamento oficial de bádminton', ruta: 'Menú → Planificación Anual → Reglamento', palabras: 'reglamento normas reglas puntuacion saque' },
-  { pregunta: 'Configurar quién puede entrar en la app y qué puede ver', ruta: 'Menú → Control de acceso', palabras: 'acceso contraseña permiso usuario rol administrador' },
-  { pregunta: 'Exportar o hacer copia de seguridad de todos los datos', ruta: 'Menú principal → "🗄️ Datos y copia de seguridad"', palabras: 'exportar importar copia seguridad backup traspasar otro dispositivo' },
+  { pregunta: 'Configurar quién puede entrar en la app y qué puede ver', ruta: 'Icono ⚙️ (arriba a la derecha de la cabecera) → Control de acceso', palabras: 'acceso contraseña permiso usuario rol administrador engranaje control de acceso' },
+  { pregunta: 'Exportar o hacer copia de seguridad de todos los datos', ruta: 'Icono ⚙️ (arriba a la derecha de la cabecera) → Exportar todo / Importar todo', palabras: 'exportar importar copia seguridad backup traspasar otro dispositivo engranaje' },
+  { pregunta: 'Ver la cola de raquetas pendientes de encordar', ruta: 'Menú → bloque del Taller de Raquetas → Taller de Raquetas', palabras: 'cola trabajo pendiente encordar raqueta taller' },
+  { pregunta: 'Crear un pedido nuevo de encordado', ruta: 'Menú → bloque del Taller de Raquetas → Taller de Raquetas → Nuevo pedido', palabras: 'nuevo pedido encordar cliente raqueta cordaje tension precio' },
+  { pregunta: 'Encordar una raqueta con un cordaje distinto para las verticales y las horizontales (híbrido)', ruta: 'Nuevo pedido → tic "🔀 Cordaje híbrido"', palabras: 'hibrido cordaje vertical horizontal distinto dos' },
+  { pregunta: 'Añadir una camiseta, grip, llavero u otro artículo al mismo pedido de encordado', ruta: 'Nuevo pedido → panel "🛍️ Otros artículos de este pedido"', palabras: 'otros articulos camiseta grip llavero vender mismo pedido total' },
+  { pregunta: 'Avisar a un cliente de que ya se ha empezado a encordar o que la raqueta está lista', ruta: 'Taller de Raquetas → Cola de trabajo → botón "Enviar enlace de seguimiento" o "Avisar por WhatsApp"', palabras: 'avisar whatsapp enlace seguimiento cliente lista terminada' },
+  { pregunta: 'Ver o editar los clientes del taller (número de cliente, DNI, dirección)', ruta: 'Menú → bloque del Taller de Raquetas → Cuentas → Clientes', palabras: 'cliente taller numero dni telefono direccion encordado cuentas' },
+  { pregunta: 'Ver o editar los proveedores del taller (número, DNI, varias personas de contacto)', ruta: 'Menú → bloque del Taller de Raquetas → Cuentas → Proveedores', palabras: 'proveedor taller numero dni contacto encordado idermay cuentas' },
+  { pregunta: 'Ver o editar los artículos y cordajes del taller (precio, stock, foto, proveedor asignado)', ruta: 'Menú → bloque del Taller de Raquetas → Almacén', palabras: 'articulo cordaje stock precio foto almacen taller' },
+  { pregunta: 'Importar artículos desde un Excel', ruta: 'Almacén → pestaña Artículos → "📥 Importar artículos desde Excel"', palabras: 'importar excel articulos inventario' },
+  { pregunta: 'Buscar un artículo o cordaje concreto, o borrar varios a la vez', ruta: 'Almacén → buscador arriba de la lista; marca las casillas y pulsa "Borrar seleccionados"', palabras: 'buscar articulo cordaje borrar varios seleccionar' },
+  { pregunta: 'Ver el historial de raquetas ya entregadas', ruta: 'Menú → bloque del Taller de Raquetas → Historial', palabras: 'historial raqueta entregada terminada taller' },
+  { pregunta: 'Ver la contabilidad del taller y lo pendiente de cobro', ruta: 'Menú → bloque del Taller de Raquetas → Contabilidad', palabras: 'contabilidad taller ingreso gasto pendiente cobro pdf' },
+  { pregunta: 'Cambiar precios, tiempos, nombre del taller, logo o tarjeta de visita', ruta: 'Menú → bloque del Taller de Raquetas → Configuración', palabras: 'configuracion taller precio tiempo nombre logo tarjeta visita publicidad' },
 ];
 function abrirAyuda() {
   const root = document.getElementById('torneoModalRoot');

@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261001-135810">
+<meta name="build-id" content="v20261001-140532">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -9055,11 +9055,9 @@ function renderVistaPublicaTaller() {
       pedido.estado === 'entregado'
         ? '✅ Raqueta entregada' + (pedido.fechaEntrega ? ' el ' + (() => { const d = new Date(pedido.fechaEntrega); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear(); })() : '')
         : '✅ ¡Tu raqueta ya está lista para recoger!'));
-    const duracion = (pedido.horaInicio && pedido.horaFin) ? Math.round((pedido.horaFin - pedido.horaInicio) / 60000) + ' min' : '—';
     panel.appendChild(el('div', { class: 'stat-cards' },
       statCardShell(euros(pedido.precio), 'Precio'),
       statCardShell(pedido.pagado ? 'Pagado' : 'Pendiente de pago', 'Pago'),
-      statCardShell(duracion, 'Tiempo de encordado'),
     ));
     if (pedido.fotoDespues) {
       panel.appendChild(el('div', { style: 'margin-top:12px;' },

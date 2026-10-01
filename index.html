@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261001-054518">
+<meta name="build-id" content="v20261001-054850">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -9739,7 +9739,14 @@ function renderHome() {
       const primerTab = tienePermiso('club') ? 'datos' : tienePermiso('jugadores') ? 'jugadores' : 'pagos';
       goToClubGestion(primerTab);
     } },
-      el('div', { class: 'icon' }, c.icon), el('h3', {}, c.title), el('p', {}, c.desc)));
+      (() => {
+        const cfgTaller = (c.sec === 'taller' || c.sec === 'taller-contabilidad') && TallerApp.getState().config;
+        const fotoTaller = cfgTaller && (cfgTaller.logoTaller || cfgTaller.tarjetaVisitaFoto);
+        return fotoTaller
+          ? el('div', { class: 'icon' }, el('img', { src: fotoTaller, style: 'width:38px;height:38px;object-fit:cover;border-radius:50%;' }))
+          : el('div', { class: 'icon' }, c.icon);
+      })(),
+      el('h3', {}, c.title), el('p', {}, c.desc)));
   });
   root.appendChild(grid);
 

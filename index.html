@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261001-073049">
+<meta name="build-id" content="v20261001-073248">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -6305,7 +6305,7 @@ function render() {
   try {
     if (activeTab === 'cola') main.appendChild(viewCola());
     else if (activeTab === 'nuevo') main.appendChild(viewNuevoPedido());
-    else if (activeTab === 'clientes') main.appendChild(viewClientes());
+    else if (activeTab === 'cuentas') main.appendChild(viewCuentas());
     else if (activeTab === 'catalogo') main.appendChild(viewCatalogo());
     else if (activeTab === 'historial') main.appendChild(viewHistorial());
     else if (activeTab === 'contabilidad') main.appendChild(viewContabilidadTaller());
@@ -6323,7 +6323,7 @@ function renderTabsNav() {
   const tabs = [
     ['cola', '🏸 Cola de trabajo' + (cola ? ' (' + cola + ')' : '')],
     ['nuevo', '➕ Nuevo pedido'],
-    ['clientes', '👤 Clientes'],
+    ['cuentas', '💳 Cuentas'],
     ['catalogo', '🏷️ Artículos y cordajes'],
     ['historial', '📚 Historial'],
     ['contabilidad', '💰 Contabilidad'],
@@ -7083,11 +7083,20 @@ function viewCatalogo() {
   wrap.appendChild(el('div', { class: 'row', style: 'gap:8px;margin-bottom:12px;flex-wrap:wrap;' },
     el('button', { class: 'btn ' + (subTabCatalogo === 'cordajes' ? 'btn-primary' : 'btn-ghost'), onclick: () => { subTabCatalogo = 'cordajes'; render(); } }, '🧵 Cordajes'),
     el('button', { class: 'btn ' + (subTabCatalogo === 'articulos' ? 'btn-primary' : 'btn-ghost'), onclick: () => { subTabCatalogo = 'articulos'; render(); } }, '🏷️ Artículos'),
-    el('button', { class: 'btn ' + (subTabCatalogo === 'proveedores' ? 'btn-primary' : 'btn-ghost'), onclick: () => { subTabCatalogo = 'proveedores'; render(); } }, '🏭 Proveedores'),
   ));
-  if (subTabCatalogo === 'proveedores') wrap.appendChild(viewProveedores());
-  else if (subTabCatalogo === 'articulos') wrap.appendChild(viewArticulos());
+  if (subTabCatalogo === 'articulos') wrap.appendChild(viewArticulos());
   else wrap.appendChild(viewCordajes());
+  return wrap;
+}
+let subTabCuentas = 'clientes';
+function viewCuentas() {
+  const wrap = document.createDocumentFragment();
+  wrap.appendChild(el('div', { class: 'row', style: 'gap:8px;margin-bottom:12px;flex-wrap:wrap;' },
+    el('button', { class: 'btn ' + (subTabCuentas === 'clientes' ? 'btn-primary' : 'btn-ghost'), onclick: () => { subTabCuentas = 'clientes'; render(); } }, '👤 Clientes'),
+    el('button', { class: 'btn ' + (subTabCuentas === 'proveedores' ? 'btn-primary' : 'btn-ghost'), onclick: () => { subTabCuentas = 'proveedores'; render(); } }, '🏭 Proveedores'),
+  ));
+  if (subTabCuentas === 'proveedores') wrap.appendChild(viewProveedores());
+  else wrap.appendChild(viewClientes());
   return wrap;
 }
 

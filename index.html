@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261001-082601">
+<meta name="build-id" content="v20261001-085230">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -243,14 +243,7 @@ if (window.pdfjsLib) { pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.c
   <div class="row no-print" id="headerActions">
     <small id="sesionIndicador" style="display:none;color:#CFE8DA;margin-right:4px;"></small>
     <button class="btn btn-ghost btn-sm" id="btnAyuda" title="¿Dónde encuentro…?">❓</button>
-    <div style="position:relative;display:inline-block;">
-      <button class="btn btn-ghost btn-sm" id="btnAcceso" style="display:none;" title="Ajustes">⚙️</button>
-      <div id="menuAjustes" style="display:none;position:fixed;background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:6px;z-index:9999;min-width:200px;">
-        <button class="btn btn-ghost btn-sm" id="btnAccesoMenu" style="width:100%;text-align:left;margin-bottom:4px;">🔐 Control de acceso</button>
-        <button class="btn btn-ghost btn-sm" id="btnExportMenu" style="width:100%;text-align:left;margin-bottom:4px;">⬇ Exportar todo</button>
-        <button class="btn btn-ghost btn-sm" id="btnImportMenu" style="width:100%;text-align:left;">⬆ Importar todo</button>
-      </div>
-    </div>
+    <button class="btn btn-ghost btn-sm" id="btnAcceso" style="display:none;" title="Ajustes">⚙️</button>
     <button class="btn btn-ghost btn-sm" id="btnLogout" style="display:none;">🔒 Salir</button>
     <button class="btn btn-primary btn-sm" id="btnMenu" style="display:none;">🏠 Menú</button>
     <button class="btn btn-gold btn-sm" id="btnExport" style="display:none;">⬇ Exportar todo</button>
@@ -258,6 +251,12 @@ if (window.pdfjsLib) { pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.c
     <input type="file" id="fileImport" accept=".json" style="display:none">
   </div>
 </header>
+
+<div id="menuAjustes" style="display:none;position:fixed;background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:6px;z-index:99999;min-width:200px;">
+  <button class="btn btn-ghost btn-sm" id="btnAccesoMenu" style="width:100%;text-align:left;margin-bottom:4px;">🔐 Control de acceso</button>
+  <button class="btn btn-ghost btn-sm" id="btnExportMenu" style="width:100%;text-align:left;margin-bottom:4px;">⬇ Exportar todo</button>
+  <button class="btn btn-ghost btn-sm" id="btnImportMenu" style="width:100%;text-align:left;">⬆ Importar todo</button>
+</div>
 
 <div id="marcaAguaTaller" style="display:none;position:fixed;inset:0;background-repeat:no-repeat;background-position:center;background-size:min(60vw,420px);opacity:0.13;pointer-events:none;z-index:0;"></div>
 <main id="shellMain" style="position:relative;z-index:1;">

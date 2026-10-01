@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261001-082241">
+<meta name="build-id" content="v20261001-082601">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -245,7 +245,7 @@ if (window.pdfjsLib) { pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.c
     <button class="btn btn-ghost btn-sm" id="btnAyuda" title="¿Dónde encuentro…?">❓</button>
     <div style="position:relative;display:inline-block;">
       <button class="btn btn-ghost btn-sm" id="btnAcceso" style="display:none;" title="Ajustes">⚙️</button>
-      <div id="menuAjustes" style="display:none;position:absolute;right:0;top:110%;background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:6px;z-index:50;min-width:200px;">
+      <div id="menuAjustes" style="display:none;position:fixed;background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:6px;z-index:9999;min-width:200px;">
         <button class="btn btn-ghost btn-sm" id="btnAccesoMenu" style="width:100%;text-align:left;margin-bottom:4px;">🔐 Control de acceso</button>
         <button class="btn btn-ghost btn-sm" id="btnExportMenu" style="width:100%;text-align:left;margin-bottom:4px;">⬇ Exportar todo</button>
         <button class="btn btn-ghost btn-sm" id="btnImportMenu" style="width:100%;text-align:left;">⬆ Importar todo</button>
@@ -10214,7 +10214,15 @@ document.getElementById('btnLogout').addEventListener('click', () => { if (confi
 document.getElementById('btnAcceso').addEventListener('click', (e) => {
   e.stopPropagation();
   const menu = document.getElementById('menuAjustes');
-  menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+  if (menu.style.display === 'none') {
+    const rect = e.currentTarget.getBoundingClientRect();
+    menu.style.top = (rect.bottom + 6) + 'px';
+    menu.style.left = 'auto';
+    menu.style.right = (window.innerWidth - rect.right) + 'px';
+    menu.style.display = 'block';
+  } else {
+    menu.style.display = 'none';
+  }
 });
 document.addEventListener('click', (e) => {
   const menu = document.getElementById('menuAjustes');

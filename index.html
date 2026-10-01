@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261001-073248">
+<meta name="build-id" content="v20261001-073704">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -9772,47 +9772,70 @@ function renderHome() {
   if (sesionActual) {
     root.appendChild(el('div', { class: 'sub', style: 'margin-bottom:10px;' }, `Sesión: ${sesionActual.nombre} (${sesionActual.rol === 'admin' ? 'Administrador' : sesionActual.rol === 'usuario' ? 'Usuario' : 'Solo lectura'})`));
   }
-  if (clubGlobal.nombre) {
-    root.appendChild(el('div', { class: 'club-banner' },
-      el('div', { class: 'info' },
-        clubGlobal.logo ? el('img', { class: 'logo-big', src: clubGlobal.logo }) : el('div', { class: 'logo-big-emoji' }, '🏸'),
-        el('div', {}, el('b', {}, clubGlobal.nombre), el('div', {}, clubGlobal.localidad || '')),
-      ),
-      tienePermiso('club') ? el('button', { class: 'btn btn-ghost btn-sm', onclick: () => goToClubGestion('datos') }, 'Editar datos del club') : null
-    ));
+  function construirGrid(cards, onclickBase) {
+    const grid = el('div', { class: 'home-grid' });
+    cards.forEach(c => {
+      const visible = c.permiso ? tienePermiso(c.permiso) : (c.sec === 'acceso' ? true : (tienePermiso('club') || tienePermiso('jugadores') || tienePermiso('pagos')));
+      if (!visible) return;
+      grid.appendChild(el('div', { class: 'home-card', onclick: () => onclickBase(c) },
+        el('div', { class: 'icon' }, c.icon),
+        el('h3', {}, c.title), el('p', {}, c.desc)));
+    });
+    return grid;
   }
-  const cards = [
+
+  const gruposClub = [
     { icon: '🏆', title: 'Gestor de Torneos', desc: 'Grupos, sorteo, calendario, resultados y eliminatoria.', sec: 'torneo', permiso: 'torneo' },
     { icon: '📅', title: 'Planificación Anual', desc: 'De la iniciación a la tecnificación: macrociclo, microciclo y evaluación.', sec: 'planificacion', permiso: 'planificacion' },
     { icon: '🏛️', title: 'Gestión de Club', desc: 'Datos del club, jugadores, y pagos y cuotas.', sec: 'clubgestion', permiso: null },
-    { icon: '🏸', title: 'Taller de Raquetas', desc: 'Cola de encordado, clientes, artículos y cordajes, e historial.', sec: 'taller', permiso: 'taller' },
-    { icon: '💰', title: 'Contabilidad del Taller', desc: 'Encordado y venta de artículos: grips, llaveros, mochilas y más.', sec: 'taller-contabilidad', permiso: 'taller' },
   ];
-  if (esAdmin()) {
-    cards.push({ icon: '🔐', title: 'Control de acceso', desc: 'Usuarios, roles y qué puede ver cada uno.', sec: 'acceso', permiso: null });
+  const onclickClub = (c) => {
+    if (c.sec !== 'clubgestion') { showSection(c.sec); return; }
+    const primerTab = tienePermiso('club') ? 'datos' : tienePermiso('jugadores') ? 'jugadores' : 'pagos';
+    goToClubGestion(primerTab);
+  };
+  const gridClub = construirGrid(gruposClub, onclickClub);
+  if (gridClub.children.length) {
+    root.appendChild(el('div', { class: 'club-banner', style: 'margin-bottom:10px;' },
+      el('div', { class: 'info' },
+        clubGlobal.logo ? el('img', { class: 'logo-big', src: clubGlobal.logo }) : el('div', { class: 'logo-big-emoji' }, '🏸'),
+        el('div', {}, el('b', {}, clubGlobal.nombre || 'Club'), el('div', {}, clubGlobal.localidad || 'Torneos, planificación y gestión del club')),
+      ),
+      tienePermiso('club') ? el('button', { class: 'btn btn-ghost btn-sm', onclick: () => goToClubGestion('datos') }, 'Editar datos del club') : null
+    ));
+    root.appendChild(gridClub);
   }
-  const grid = el('div', { class: 'home-grid' });
-  cards.forEach(c => {
-    const visible = c.permiso ? tienePermiso(c.permiso) : (c.sec === 'acceso' ? true : (tienePermiso('club') || tienePermiso('jugadores') || tienePermiso('pagos')));
-    if (!visible) return;
-    grid.appendChild(el('div', { class: 'home-card', onclick: () => {
-      if (c.sec === 'acceso') { goToClubGestion('acceso'); return; }
-      if (c.sec === 'taller-contabilidad') { showSection('taller'); TallerApp.irATab('contabilidad'); return; }
-      if (c.sec !== 'clubgestion') { showSection(c.sec); return; }
-      const primerTab = tienePermiso('club') ? 'datos' : tienePermiso('jugadores') ? 'jugadores' : 'pagos';
-      goToClubGestion(primerTab);
-    } },
-      el('div', { class: 'icon' }, c.icon),
-      el('h3', {}, c.title), el('p', {}, c.desc),
-      (() => {
-        const cfgTaller = (c.sec === 'taller' || c.sec === 'taller-contabilidad') && TallerApp.getState().config;
-        const fotoTaller = cfgTaller && (cfgTaller.logoTaller || cfgTaller.tarjetaVisitaFoto);
-        return fotoTaller
-          ? el('img', { src: fotoTaller, style: 'width:60px;height:60px;object-fit:cover;border-radius:50%;position:absolute;top:14px;right:14px;box-shadow:var(--shadow);' })
-          : null;
-      })()));
-  });
-  root.appendChild(grid);
+
+  if (tienePermiso('taller')) {
+    const cfgTaller = TallerApp.getState().config || {};
+    const fotoTaller = cfgTaller.logoTaller || cfgTaller.tarjetaVisitaFoto;
+    const gruposTaller = [
+      { icon: '🏸', title: 'Taller de Raquetas', desc: 'Cola de encordado.', sec: 'taller', tallerTab: 'cola', permiso: 'taller' },
+      { icon: '📦', title: 'Almacén', desc: 'Artículos y cordajes.', sec: 'taller', tallerTab: 'catalogo', permiso: 'taller' },
+      { icon: '💳', title: 'Cuentas', desc: 'Clientes y proveedores.', sec: 'taller', tallerTab: 'cuentas', permiso: 'taller' },
+      { icon: '💰', title: 'Contabilidad', desc: 'Encordado y venta de artículos.', sec: 'taller', tallerTab: 'contabilidad', permiso: 'taller' },
+      { icon: '⚙️', title: 'Configuración', desc: 'Precios, tiempos y publicidad.', sec: 'taller', tallerTab: 'config', permiso: 'taller' },
+    ];
+    const onclickTaller = (c) => { showSection('taller'); if (c.tallerTab) TallerApp.irATab(c.tallerTab); };
+    const gridTaller = construirGrid(gruposTaller, onclickTaller);
+    if (gridTaller.children.length) {
+      root.appendChild(el('div', { class: 'club-banner', style: 'margin:18px 0 10px;' },
+        el('div', { class: 'info' },
+          fotoTaller ? el('img', { class: 'logo-big', src: fotoTaller }) : el('div', { class: 'logo-big-emoji' }, '🏸'),
+          el('div', {}, el('b', {}, cfgTaller.nombreTaller || 'Taller de Raquetas'), el('div', {}, 'Encordado, almacén, cuentas y contabilidad')),
+        ),
+      ));
+      root.appendChild(gridTaller);
+    }
+  }
+
+  if (esAdmin()) {
+    const gridAcceso = construirGrid(
+      [{ icon: '🔐', title: 'Control de acceso', desc: 'Usuarios, roles y qué puede ver cada uno.', sec: 'acceso', permiso: null }],
+      () => goToClubGestion('acceso'));
+    gridAcceso.style.marginTop = '18px';
+    root.appendChild(gridAcceso);
+  }
 
   root.appendChild(el('div', { class: 'panel', style: 'margin-top:16px;text-align:center;' },
     el('button', { class: 'btn btn-gold', onclick: () => abrirAyuda() }, '❓ ¿Dónde encuentro…?'),

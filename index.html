@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261001-054034">
+<meta name="build-id" content="v20261001-054518">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -63,6 +63,8 @@ th{background:#F5F3EB;color:var(--court-dark);font-size:11px;text-transform:uppe
 .chip-gold{background:var(--gold);color:var(--court-dark);}
 .chip-muted{background:#DEDBD0;color:var(--muted);}
 .card{border:1px solid #E4E1D6;border-radius:var(--radius);padding:12px;margin-bottom:10px;}
+#tallerScreen .panel,#tallerPublicoScreen .panel{background-color:rgba(255,255,255,.72);}
+#tallerScreen .card,#tallerPublicoScreen .card{background-color:rgba(255,255,255,.5);}
 .card-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
 .card-title{font-weight:700;color:var(--court-dark);font-size:14px;}
 .empty-state{text-align:center;padding:30px 10px;color:var(--muted);font-size:14px;}
@@ -234,7 +236,7 @@ if (window.pdfjsLib) { pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.c
   </div>
 </header>
 
-<div id="marcaAguaTaller" style="display:none;position:fixed;inset:0;background-repeat:no-repeat;background-position:center;background-size:min(60vw,420px);opacity:0.06;pointer-events:none;z-index:0;"></div>
+<div id="marcaAguaTaller" style="display:none;position:fixed;inset:0;background-repeat:no-repeat;background-position:center;background-size:min(60vw,420px);opacity:0.13;pointer-events:none;z-index:0;"></div>
 <main id="shellMain" style="position:relative;z-index:1;">
 
   <div id="publicoScreen" style="display:none;"></div>

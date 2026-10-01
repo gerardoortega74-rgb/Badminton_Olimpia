@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261001-142714">
+<meta name="build-id" content="v20261001-150828">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -9037,9 +9037,14 @@ function renderVistaPublicaTaller() {
   const badgePublico = document.querySelector('#shellBrand .brand-badge');
   if (badgePublico) {
     badgePublico.innerHTML = '';
+    badgePublico.style.display = 'flex';
+    badgePublico.style.width = 'clamp(72px, 16vw, 150px)';
+    badgePublico.style.height = 'clamp(72px, 16vw, 150px)';
+    badgePublico.style.borderRadius = '16px';
+    badgePublico.style.fontSize = 'clamp(32px, 8vw, 70px)';
     const fotoBadge = taller.config && (taller.config.logoTaller || taller.config.tarjetaVisitaFoto);
-    if (fotoBadge) badgePublico.appendChild(el('img', { src: fotoBadge }));
-    else if (typeof clubGlobal !== 'undefined' && clubGlobal.logo) badgePublico.appendChild(el('img', { src: clubGlobal.logo }));
+    if (fotoBadge) badgePublico.appendChild(el('img', { src: fotoBadge, style: 'width:100%;height:100%;object-fit:cover;border-radius:16px;' }));
+    else if (typeof clubGlobal !== 'undefined' && clubGlobal.logo) badgePublico.appendChild(el('img', { src: clubGlobal.logo, style: 'width:100%;height:100%;object-fit:cover;border-radius:16px;' }));
     else badgePublico.textContent = '🏸';
   }
   if (typeof actualizarMarcaAguaTaller === 'function') actualizarMarcaAguaTaller(true);

@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261001-071152">
+<meta name="build-id" content="v20261001-071517">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -6116,7 +6116,21 @@ function addArticulo(esCordaje) {
   return nuevo;
 }
 function removeArticulo(id) { state.articulos = state.articulos.filter(a => a.id !== id); }
-function addProveedor() { const p = { id: uid('prov'), nombre: 'Nuevo proveedor', contacto: '', telefono: '', email: '', notas: '' }; state.proveedores.push(p); return p; }
+function siguienteNumeroProveedor() {
+  let maxNum = 4000000;
+  state.proveedores.forEach(p => {
+    const n = parseInt(p.numeroProveedor, 10);
+    if (!isNaN(n) && n > maxNum) maxNum = n;
+  });
+  return String(maxNum + 1);
+}
+function addProveedor() {
+  const p = { id: uid('prov'), numeroProveedor: siguienteNumeroProveedor(), nombre: 'Nuevo proveedor', dni: '', telefono: '', email: '', notas: '', contactos: [] };
+  state.proveedores.push(p);
+  return p;
+}
+function addContactoProveedor(p) { p.contactos.push({ id: uid('cont'), nombre: '', telefono: '', email: '' }); }
+function removeContactoProveedor(p, contactoId) { p.contactos = p.contactos.filter(x => x.id !== contactoId); }
 function removeProveedor(id) {
   state.proveedores = state.proveedores.filter(p => p.id !== id);
   state.articulos.forEach(a => { a.proveedores = (a.proveedores || []).filter(x => x.proveedorId !== id); });
@@ -7251,18 +7265,34 @@ function viewProveedores() {
       const articulosProv = articulosDeProveedor(p.id);
       const expandido = proveedorAbiertoId === p.id;
       const card = el('div', { class: 'card' },
+        el('div', { class: 'sub', style: 'font-weight:700;margin-bottom:6px;' }, 'Nº proveedor: ' + (p.numeroProveedor || '—')),
         el('div', { class: 'grid' },
           field('Nombre', inputEl('text', p.nombre, v => { p.nombre = v; render(); })),
-          field('Persona de contacto', inputEl('text', p.contacto || '', v => { p.contacto = v; render(); })),
+          field('DNI/NIF', inputEl('text', p.dni || '', v => { p.dni = v; render(); })),
           field('Teléfono', inputEl('tel', p.telefono || '', v => { p.telefono = v; render(); })),
           field('Email', inputEl('email', p.email || '', v => { p.email = v; render(); })),
         ),
         field('Notas', el('textarea', { rows: '2', onchange: e => { p.notas = e.target.value; } }, p.notas || '')),
-        el('div', { class: 'toolbar', style: 'margin-top:6px;' },
-          el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { proveedorAbiertoId = expandido ? null : p.id; render(); } }, `${expandido ? 'Ocultar' : 'Ver'} artículos (${articulosProv.length})`),
-          el('button', { class: 'btn btn-danger btn-sm', onclick: () => { if (confirm('¿Eliminar el proveedor "' + p.nombre + '"? Se quitará de todos los artículos que lo tengan asignado.')) { removeProveedor(p.id); render(); } } }, 'Eliminar'),
-        ),
       );
+      card.appendChild(el('h4', { style: 'margin:10px 0 4px;' }, '👤 Personas de contacto'));
+      if (!p.contactos.length) {
+        card.appendChild(el('div', { class: 'sub', style: 'margin-bottom:6px;' }, 'Ninguna persona de contacto añadida todavía.'));
+      }
+      p.contactos.forEach(cont => {
+        card.appendChild(el('div', { class: 'row', style: 'gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:6px;' },
+          field('Nombre', inputEl('text', cont.nombre || '', v => { cont.nombre = v; render(); })),
+          field('Teléfono', inputEl('tel', cont.telefono || '', v => { cont.telefono = v; render(); })),
+          field('Email', inputEl('email', cont.email || '', v => { cont.email = v; render(); })),
+          el('button', { class: 'btn btn-danger btn-sm', onclick: () => { removeContactoProveedor(p, cont.id); render(); } }, 'Quitar'),
+        ));
+      });
+      card.appendChild(el('div', { class: 'toolbar', style: 'margin-bottom:6px;' },
+        el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { addContactoProveedor(p); render(); } }, '+ Añadir persona de contacto'),
+      ));
+      card.appendChild(el('div', { class: 'toolbar', style: 'margin-top:6px;' },
+        el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { proveedorAbiertoId = expandido ? null : p.id; render(); } }, `${expandido ? 'Ocultar' : 'Ver'} artículos (${articulosProv.length})`),
+        el('button', { class: 'btn btn-danger btn-sm', onclick: () => { if (confirm('¿Eliminar el proveedor "' + p.nombre + '"? Se quitará de todos los artículos que lo tengan asignado.')) { removeProveedor(p.id); render(); } } }, 'Eliminar'),
+      ));
       if (expandido) {
         if (!articulosProv.length) {
           card.appendChild(el('div', { class: 'empty-state' }, 'Este proveedor no tiene ningún artículo asignado todavía.'));
@@ -7794,6 +7824,13 @@ function setState(s) {
   });
   if (!Array.isArray(state.articulos)) state.articulos = [];
   if (!Array.isArray(state.proveedores)) state.proveedores = [];
+  state.proveedores.forEach(p => {
+    if (p.dni === undefined) p.dni = '';
+    if (!p.numeroProveedor) p.numeroProveedor = siguienteNumeroProveedor();
+    if (!Array.isArray(p.contactos)) {
+      p.contactos = (p.contacto && p.contacto.trim()) ? [{ id: uid('cont'), nombre: p.contacto.trim(), telefono: '', email: '' }] : [];
+    }
+  });
   if (!Array.isArray(state.pedidos)) state.pedidos = [];
   if (!state.contabilidad) state.contabilidad = { movimientos: [] };
   if (!Array.isArray(state.contabilidad.movimientos)) state.contabilidad.movimientos = [];

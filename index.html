@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261001-052325">
+<meta name="build-id" content="v20261001-053611">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -8617,8 +8617,16 @@ function renderVistaPublicaTaller() {
   root.style.display = 'block';
   root.innerHTML = '';
   const taller = TallerApp.getState();
-  document.getElementById('shellTitle').textContent = (taller.config && taller.config.nombreTaller) || 'Taller de Raquetas';
-  document.getElementById('shellSubtitle').textContent = 'Sigue tu reparación en directo · se actualiza sola';
+  document.getElementById('shellTitle').textContent = 'Taller de Raquetas';
+  document.getElementById('shellSubtitle').textContent = (taller.config && taller.config.nombreTaller) || 'Sigue tu reparación en directo · se actualiza sola';
+  const badgePublico = document.querySelector('#shellBrand .brand-badge');
+  if (badgePublico) {
+    badgePublico.innerHTML = '';
+    const fotoBadge = taller.config && (taller.config.logoTaller || taller.config.tarjetaVisitaFoto);
+    if (fotoBadge) badgePublico.appendChild(el('img', { src: fotoBadge }));
+    else if (typeof clubGlobal !== 'undefined' && clubGlobal.logo) badgePublico.appendChild(el('img', { src: clubGlobal.logo }));
+    else badgePublico.textContent = '🏸';
+  }
   document.body.classList.remove('solo-lectura');
 
   const pedidoId = new URLSearchParams(location.search).get('pedido');
@@ -9887,7 +9895,8 @@ function cargarFotosTallerDeNube() {
     if (mapa['_config_logo']) {
       logoTallerCache = mapa['_config_logo'].foto || null;
       if (tallerState.config) tallerState.config.logoTaller = logoTallerCache;
-      if (window.renderShellHeader) window.renderShellHeader();
+      if (typeof esVistaPublicaTaller === 'function' && esVistaPublicaTaller()) { if (typeof renderVistaPublicaTaller === 'function') renderVistaPublicaTaller(); }
+      else if (window.renderShellHeader) window.renderShellHeader();
     }
     if (Array.isArray(tallerState.articulos)) {
       tallerState.articulos.forEach(a => {

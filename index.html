@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261001-141712">
+<meta name="build-id" content="v20261001-142714">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -418,14 +418,39 @@ function nombreCompletoJ(j) {
   const apellidos = (j.apellido1 || j.apellido2) ? ((j.apellido1 || '') + ' ' + (j.apellido2 || '')).trim() : (j.apellidos || '');
   return (j.nombre + ' ' + apellidos).trim();
 }
+function fechaISOaDDMMAAAA(iso) {
+  const s = String(iso || '').trim();
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? (m[3] + '/' + m[2] + '/' + m[1]) : s;
+}
+function fechaDDMMAAAAaISO(valor) {
+  if (valor === null || valor === undefined || valor === '') return '';
+  // Ya viene como objeto Date (Excel a veces lo entrega así si la celda tiene formato fecha)
+  if (valor instanceof Date && !isNaN(valor)) {
+    return valor.getFullYear() + '-' + String(valor.getMonth() + 1).padStart(2, '0') + '-' + String(valor.getDate()).padStart(2, '0');
+  }
+  const s = String(valor).trim();
+  // Ya viene en AAAA-MM-DD (por si usan una plantilla antigua, o lo escriben así igualmente)
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m) return m[1] + '-' + m[2].padStart(2, '0') + '-' + m[3].padStart(2, '0');
+  // Formato esperado DD/MM/AAAA (o con guiones DD-MM-AAAA)
+  m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (m) return m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0');
+  // Numero de serie de Excel (celda formateada como fecha y leida como numero)
+  if (/^\d+(\.\d+)?$/.test(s)) {
+    const d = new Date(Math.round((parseFloat(s) - 25569) * 86400 * 1000));
+    if (!isNaN(d)) return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  return s;
+}
 function generarPlantillaExcelExterno() {
   if (typeof XLSX === 'undefined') { alert('No se ha podido cargar el generador de Excel. Comprueba tu conexión a internet e inténtalo de nuevo.'); return; }
   const datos = [
-    ['Modalidad', 'Sistema de categoría', 'Nombre', 'Apellidos', 'Fecha nacimiento (AAAA-MM-DD)', 'Sexo (M/F)', 'Club', 'Teléfono', 'Email', 'Nombre pareja (solo dobles)', 'Apellidos pareja (solo dobles)', 'Fecha nacimiento pareja (solo dobles)', 'Sexo pareja (solo dobles)'],
-    ['Individual Masculino', 'Por edad', 'Juan', 'Pérez López', '2013-04-10', 'M', 'CB Ejemplo', '600111222', 'juan@ejemplo.com', '', '', '', ''],
-    ['Dobles Mixto', 'Por edad', 'Ana', 'García Ruiz', '1998-02-20', 'F', 'CB Ejemplo', '600333444', 'ana@ejemplo.com', 'Luis', 'Martín Soto', '1996-11-05', 'M'],
-    ['Individual Masculino', 'Categoría A', 'Pedro', 'Ruiz Gómez', '1990-01-01', 'M', 'CB Ejemplo', '600555666', 'pedro@ejemplo.com', '', '', '', ''],
-    ['Individual Femenino', 'Categoría C', 'Marta', 'Soto Díaz', '1985-06-15', 'F', 'CB Ejemplo', '600777888', 'marta@ejemplo.com', '', '', '', ''],
+    ['Modalidad', 'Sistema de categoría', 'Nombre', 'Apellidos', 'Fecha nacimiento (DD/MM/AAAA)', 'Sexo (M/F)', 'Club', 'Teléfono', 'Email', 'Nombre pareja (solo dobles)', 'Apellidos pareja (solo dobles)', 'Fecha nacimiento pareja (solo dobles)', 'Sexo pareja (solo dobles)'],
+    ['Individual Masculino', 'Por edad', 'Juan', 'Pérez López', '10/04/2013', 'M', 'CB Ejemplo', '600111222', 'juan@ejemplo.com', '', '', '', ''],
+    ['Dobles Mixto', 'Por edad', 'Ana', 'García Ruiz', '20/02/1998', 'F', 'CB Ejemplo', '600333444', 'ana@ejemplo.com', 'Luis', 'Martín Soto', '05/11/1996', 'M'],
+    ['Individual Masculino', 'Categoría A', 'Pedro', 'Ruiz Gómez', '01/01/1990', 'M', 'CB Ejemplo', '600555666', 'pedro@ejemplo.com', '', '', '', ''],
+    ['Individual Femenino', 'Categoría C', 'Marta', 'Soto Díaz', '15/06/1985', 'F', 'CB Ejemplo', '600777888', 'marta@ejemplo.com', '', '', '', ''],
   ];
   const ws = XLSX.utils.aoa_to_sheet(datos);
   ws['!cols'] = [{ wch: 20 }, { wch: 16 }, { wch: 14 }, { wch: 18 }, { wch: 24 }, { wch: 12 }, { wch: 20 }, { wch: 14 }, { wch: 22 }, { wch: 20 }, { wch: 20 }, { wch: 26 }, { wch: 14 }];
@@ -440,7 +465,7 @@ function generarPlantillaExcelExterno() {
     ['   Categoría A'],
     ['   Categoría B'],
     ['   Categoría C'],
-    ['4. La fecha de nacimiento es MUY IMPORTANTE si el sistema es "Por edad": sin ella no se puede calcular la categoría correcta. Formato AAAA-MM-DD, por ejemplo 2013-04-10.'],
+    ['4. La fecha de nacimiento es MUY IMPORTANTE si el sistema es "Por edad": sin ella no se puede calcular la categoría correcta. Formato DD/MM/AAAA, por ejemplo 10/04/2013.'],
     ['5. En categorías de dobles, rellena también los datos de la pareja en la misma fila.'],
     ['6. Teléfono y email son opcionales, pero si los rellenas quedan guardados en la ficha del participante, sin tener que volver a teclearlos después.'],
     ['7. Borra las filas de ejemplo de la hoja "Participantes" antes de enviarnos el archivo.'],
@@ -480,7 +505,7 @@ function importarParticipantesExternos(file) {
       rows.forEach((row, idx) => {
         const modalidadTexto = row['Modalidad'] || '';
         const sistemaTexto = row['Sistema de categoría'] || row['Sistema de categoria'] || 'Por edad';
-        const fechaNacimiento = String(row['Fecha nacimiento (AAAA-MM-DD)'] || row['Fecha nacimiento'] || '').trim();
+        const fechaNacimiento = fechaDDMMAAAAaISO(row['Fecha nacimiento (DD/MM/AAAA)'] !== undefined && row['Fecha nacimiento (DD/MM/AAAA)'] !== '' ? row['Fecha nacimiento (DD/MM/AAAA)'] : (row['Fecha nacimiento (AAAA-MM-DD)'] || row['Fecha nacimiento'] || ''));
         const nombre = String(row['Nombre'] || '').trim();
         const apellidos = String(row['Apellidos'] || '').trim();
         const sexo = String(row['Sexo (M/F)'] || row['Sexo'] || '').trim().toUpperCase();
@@ -496,7 +521,7 @@ function importarParticipantesExternos(file) {
         if (cat.kind === 'double') {
           const nombrePareja = String(row['Nombre pareja (solo dobles)'] || row['Nombre pareja'] || '').trim();
           const apellidosPareja = String(row['Apellidos pareja (solo dobles)'] || row['Apellidos pareja'] || '').trim();
-          const fechaNacimientoPareja = String(row['Fecha nacimiento pareja (solo dobles)'] || row['Fecha nacimiento pareja'] || '').trim();
+          const fechaNacimientoPareja = fechaDDMMAAAAaISO(row['Fecha nacimiento pareja (solo dobles)'] || row['Fecha nacimiento pareja'] || '');
           const sexoPareja = String(row['Sexo pareja (solo dobles)'] || row['Sexo pareja'] || '').trim().toUpperCase();
           if (!nombrePareja) { saltados++; motivos.push('Fila ' + (idx + 2) + ': falta el nombre de la pareja (categoría de dobles).'); return; }
           const nombreParejaCompleto = (nombrePareja + ' ' + apellidosPareja).trim();

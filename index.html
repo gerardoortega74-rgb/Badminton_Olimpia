@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261001-093025">
+<meta name="build-id" content="v20261001-131503">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -6005,6 +6005,7 @@ function defaultState() {
     articulos: [],
     proveedores: [],
     pedidos: [],
+    pedidosProveedor: [],
     contabilidad: { movimientos: [] },
     raquetasExtra: [],
   };
@@ -6159,6 +6160,40 @@ function removeProveedor(id) {
 }
 function proveedorDe(id) { return state.proveedores.find(p => p.id === id); }
 function articulosDeProveedor(provId) { return state.articulos.filter(a => (a.proveedores || []).some(x => x.proveedorId === provId)); }
+
+function addPedidoProveedor(proveedorId) {
+  const nuevo = { id: uid('ppr'), proveedorId: proveedorId || null, fecha: new Date().toISOString().slice(0, 10), items: [], estado: 'pendiente', fechaRecibido: null, notas: '' };
+  state.pedidosProveedor.push(nuevo);
+  return nuevo;
+}
+function removePedidoProveedor(id) {
+  const p = state.pedidosProveedor.find(x => x.id === id);
+  if (p && p.estado === 'recibido') deshacerRecepcionPedidoProveedor(p);
+  state.pedidosProveedor = state.pedidosProveedor.filter(x => x.id !== id);
+}
+function totalPedidoProveedor(p) { return (p.items || []).reduce((s, it) => s + (it.cantidad || 0) * (it.precioUnitario || 0), 0); }
+function recibirPedidoProveedor(p) {
+  if (p.estado === 'recibido') return;
+  p.items.forEach(it => {
+    const art = state.articulos.find(a => a.id === it.articuloId);
+    if (art) art.stock = (art.stock || 0) + (it.cantidad || 0);
+  });
+  const prov = proveedorDe(p.proveedorId);
+  addMovimientoTaller({ tipo: 'gasto', categoria: 'Compra a proveedor', concepto: 'Pedido a ' + (prov ? prov.nombre : 'proveedor') + ' (' + p.items.length + ' artículo(s))', importe: totalPedidoProveedor(p) });
+  p.movimientoId = state.contabilidad.movimientos[state.contabilidad.movimientos.length - 1].id;
+  p.estado = 'recibido';
+  p.fechaRecibido = new Date().toISOString().slice(0, 10);
+}
+function deshacerRecepcionPedidoProveedor(p) {
+  p.items.forEach(it => {
+    const art = state.articulos.find(a => a.id === it.articuloId);
+    if (art) art.stock = Math.max(0, (art.stock || 0) - (it.cantidad || 0));
+  });
+  if (p.movimientoId) state.contabilidad.movimientos = state.contabilidad.movimientos.filter(m => m.id !== p.movimientoId);
+  p.estado = 'pendiente';
+  p.fechaRecibido = null;
+  p.movimientoId = null;
+}
 
 function pedidosEnCola() {
   return state.pedidos.filter(p => !p.aplazado && (p.estado === 'pendiente' || p.estado === 'en_proceso')).sort((a, b) => a.horaLlegada - b.horaLlegada);
@@ -7105,8 +7140,10 @@ function viewCatalogo() {
   wrap.appendChild(el('div', { class: 'row', style: 'gap:8px;margin-bottom:12px;flex-wrap:wrap;' },
     el('button', { class: 'btn ' + (subTabCatalogo === 'cordajes' ? 'btn-primary' : 'btn-ghost'), onclick: () => { subTabCatalogo = 'cordajes'; render(); } }, '🧵 Cordajes'),
     el('button', { class: 'btn ' + (subTabCatalogo === 'articulos' ? 'btn-primary' : 'btn-ghost'), onclick: () => { subTabCatalogo = 'articulos'; render(); } }, '🏷️ Artículos'),
+    el('button', { class: 'btn ' + (subTabCatalogo === 'pedidosProv' ? 'btn-primary' : 'btn-ghost'), onclick: () => { subTabCatalogo = 'pedidosProv'; render(); } }, '📦 Pedidos a proveedor'),
   ));
   if (subTabCatalogo === 'articulos') wrap.appendChild(viewArticulos());
+  else if (subTabCatalogo === 'pedidosProv') wrap.appendChild(viewPedidosProveedor());
   else wrap.appendChild(viewCordajes());
   return wrap;
 }
@@ -7345,6 +7382,116 @@ function viewProveedores() {
       panel.appendChild(card);
     });
   }
+  wrap.appendChild(panel);
+  return wrap;
+}
+
+// ---------- Pedidos a proveedor ----------
+let pedidoProvAbiertoId = null;
+let pedidoProvNuevoItems = [];
+function viewPedidosProveedor() {
+  const wrap = document.createDocumentFragment();
+  const panel = el('div', { class: 'panel' },
+    el('h2', {}, '📦 Pedidos a proveedor'),
+    el('div', { class: 'sub' }, 'Cuando pidas material a un proveedor, apúntalo aquí. Al marcarlo como recibido, se da entrada al stock de cada artículo y se apunta el gasto en Contabilidad, todo a la vez.'),
+  );
+
+  if (!state.proveedores.length) {
+    panel.appendChild(el('div', { class: 'msg msg-info' }, 'Primero da de alta algún proveedor en Cuentas → Proveedores.'));
+    wrap.appendChild(panel);
+    return wrap;
+  }
+
+  // ---- Formulario de nuevo pedido ----
+  const provSelect = el('select', {}, [el('option', { value: '' }, '— Elegir proveedor —')].concat(
+    state.proveedores.map(p => el('option', { value: p.id }, p.nombre))));
+  const artSelect = el('select', {}, [el('option', { value: '' }, '— Elegir artículo —')].concat(
+    state.articulos.map(a => el('option', { value: a.id }, (a.codigo ? a.codigo + ' · ' : '') + a.nombre))));
+  const cantInput = el('input', { type: 'number', min: '0', step: '1', value: '1', style: 'max-width:90px;' });
+  const precioInput = el('input', { type: 'number', min: '0', step: '0.01', value: '0', style: 'max-width:100px;' });
+  artSelect.addEventListener('change', () => {
+    const art = state.articulos.find(a => a.id === artSelect.value);
+    if (art) {
+      const rel = (art.proveedores || []).find(x => x.proveedorId === provSelect.value);
+      precioInput.value = rel ? rel.precioCompra : (art.precioCoste || 0);
+    }
+  });
+  provSelect.addEventListener('change', () => artSelect.dispatchEvent(new Event('change')));
+  const itemsDiv = el('div', { style: 'margin:10px 0;' });
+  const totalDiv = el('div', { class: 'sub', style: 'font-weight:700;' });
+  function repintarItems() {
+    itemsDiv.innerHTML = '';
+    pedidoProvNuevoItems.forEach((it, idx) => {
+      const art = state.articulos.find(a => a.id === it.articuloId);
+      itemsDiv.appendChild(el('div', { class: 'row', style: 'align-items:center;gap:8px;margin-bottom:4px;' },
+        el('span', { style: 'flex:1;' }, it.cantidad + ' × ' + (art ? art.nombre : '—') + ' a ' + euros(it.precioUnitario) + ' = ' + euros(it.cantidad * it.precioUnitario)),
+        el('button', { class: 'btn btn-danger btn-sm', onclick: () => { pedidoProvNuevoItems.splice(idx, 1); repintarItems(); } }, 'Quitar'),
+      ));
+    });
+    totalDiv.textContent = '💶 Total del pedido: ' + euros(pedidoProvNuevoItems.reduce((s, it) => s + it.cantidad * it.precioUnitario, 0));
+  }
+  repintarItems();
+  panel.appendChild(el('h3', { style: 'margin-top:4px;' }, '+ Nuevo pedido'));
+  panel.appendChild(el('div', { class: 'grid' }, field('Proveedor', provSelect)));
+  panel.appendChild(el('div', { class: 'row', style: 'gap:8px;flex-wrap:wrap;margin:8px 0;align-items:flex-end;' },
+    field('Artículo', artSelect), field('Cantidad', cantInput), field('Precio de compra (€/ud)', precioInput),
+    el('button', { class: 'btn btn-gold btn-sm', onclick: () => {
+      if (!artSelect.value) { alert('Elige un artículo.'); return; }
+      const cant = parseFloat(cantInput.value) || 0;
+      if (cant <= 0) { alert('Pon una cantidad mayor que 0.'); return; }
+      pedidoProvNuevoItems.push({ articuloId: artSelect.value, cantidad: cant, precioUnitario: parseFloat(precioInput.value) || 0 });
+      cantInput.value = '1';
+      repintarItems();
+    } }, '+ Añadir artículo'),
+  ));
+  panel.appendChild(itemsDiv);
+  panel.appendChild(totalDiv);
+  panel.appendChild(el('div', { class: 'toolbar', style: 'margin-top:8px;' },
+    el('button', { class: 'btn btn-primary btn-sm', onclick: () => {
+      if (!provSelect.value) { alert('Elige un proveedor.'); return; }
+      if (!pedidoProvNuevoItems.length) { alert('Añade al menos un artículo.'); return; }
+      const nuevo = addPedidoProveedor(provSelect.value);
+      nuevo.items = pedidoProvNuevoItems;
+      pedidoProvNuevoItems = [];
+      render();
+    } }, '✅ Guardar pedido'),
+  ));
+
+  // ---- Lista de pedidos ----
+  panel.appendChild(el('h3', { style: 'margin-top:18px;' }, 'Pedidos'));
+  if (!state.pedidosProveedor.length) {
+    panel.appendChild(el('div', { class: 'empty-state' }, 'Todavía no has hecho ningún pedido a proveedor.'));
+  } else {
+    state.pedidosProveedor.slice().reverse().forEach(p => {
+      const prov = proveedorDe(p.proveedorId);
+      const abierto = pedidoProvAbiertoId === p.id;
+      const card = el('div', { class: 'card' },
+        el('div', { class: 'card-head' },
+          el('span', { class: 'card-title' }, (prov ? prov.nombre : 'Proveedor eliminado') + ' · ' + fmtFechaDMY(p.fecha)),
+          el('span', { class: 'chip ' + (p.estado === 'recibido' ? 'chip-gold' : 'chip-muted') }, p.estado === 'recibido' ? '✅ Recibido' : '⏳ Pendiente'),
+        ),
+        el('div', { class: 'sub' }, p.items.length + ' artículo(s) · Total: ' + euros(totalPedidoProveedor(p)) + (p.fechaRecibido ? ' · Recibido el ' + fmtFechaDMY(p.fechaRecibido) : '')),
+        el('div', { class: 'toolbar', style: 'margin-top:6px;' },
+          el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { pedidoProvAbiertoId = abierto ? null : p.id; render(); } }, abierto ? 'Ocultar detalle' : 'Ver detalle'),
+          p.estado === 'pendiente' ? el('button', { class: 'btn btn-gold btn-sm', onclick: () => { if (confirm('¿Marcar como recibido? Se sumará al stock de cada artículo y se apuntará el gasto en Contabilidad.')) { recibirPedidoProveedor(p); render(); } } }, '📥 Marcar recibido') : null,
+          p.estado === 'recibido' ? el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { if (confirm('¿Deshacer la recepción? Se restará del stock y se quitará el gasto de Contabilidad.')) { deshacerRecepcionPedidoProveedor(p); render(); } } }, '↩ Deshacer recepción') : null,
+          el('button', { class: 'btn btn-danger btn-sm', onclick: () => { if (confirm('¿Eliminar este pedido?')) { removePedidoProveedor(p.id); render(); } } }, 'Eliminar'),
+        ),
+      );
+      if (abierto) {
+        const table = el('table', {}, el('thead', {}, el('tr', {}, el('th', {}, 'Artículo'), el('th', {}, 'Cantidad'), el('th', {}, 'Precio/ud'), el('th', {}, 'Subtotal'))));
+        const tbody = el('tbody');
+        p.items.forEach(it => {
+          const art = state.articulos.find(a => a.id === it.articuloId);
+          tbody.appendChild(el('tr', {}, el('td', {}, art ? art.nombre : 'Artículo eliminado'), el('td', {}, it.cantidad + ' ' + (art ? (art.unidad || 'unidades') : '')), el('td', {}, euros(it.precioUnitario)), el('td', {}, euros(it.cantidad * it.precioUnitario))));
+        });
+        table.appendChild(tbody);
+        card.appendChild(table);
+      }
+      panel.appendChild(card);
+    });
+  }
+
   wrap.appendChild(panel);
   return wrap;
 }
@@ -7855,6 +8002,7 @@ function setState(s) {
   });
   if (!Array.isArray(state.articulos)) state.articulos = [];
   if (!Array.isArray(state.proveedores)) state.proveedores = [];
+  if (!Array.isArray(state.pedidosProveedor)) state.pedidosProveedor = [];
   state.proveedores.forEach(p => {
     if (p.dni === undefined) p.dni = '';
     if (!p.numeroProveedor) p.numeroProveedor = siguienteNumeroProveedor();

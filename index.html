@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261001-041951">
+<meta name="build-id" content="v20261001-052325">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -5975,7 +5975,7 @@ function uid(prefix) { return prefix + '_' + (uidCounter++) + '_' + Math.random(
 let uidCounter = 1;
 function defaultState() {
   return {
-    config: { tiempoMedioMinutos: 35, precioBaseEncordado: 12, precioSinCordaje: 12, tarjetaVisitaFoto: null, nombreTaller: '' },
+    config: { tiempoMedioMinutos: 35, precioBaseEncordado: 12, precioSinCordaje: 12, tarjetaVisitaFoto: null, nombreTaller: '', logoTaller: null },
     clientes: [],
     articulos: [],
     proveedores: [],
@@ -7354,6 +7354,31 @@ function viewConfigTaller() {
       if (window.renderShellHeader) window.renderShellHeader();
     } }, '✓ Aceptar'),
   )));
+
+  panelConfig.appendChild(el('div', { class: 'sub', style: 'margin:10px 0 6px;' }, 'Logo para la cabecera: una imagen pensada para verse en un círculo pequeño (distinta de la tarjeta de visita completa de abajo).'));
+  if (state.config.logoTaller) {
+    panelConfig.appendChild(el('img', { src: state.config.logoTaller, style: 'width:70px;height:70px;object-fit:cover;border-radius:50%;display:block;margin-bottom:8px;' }));
+  }
+  const logoTallerInput = el('input', { type: 'file', accept: 'image/*' });
+  panelConfig.appendChild(el('div', { class: 'toolbar', style: 'margin-bottom:10px;' },
+    logoTallerInput,
+    el('button', { class: 'btn btn-gold btn-sm', onclick: async () => {
+      if (!logoTallerInput.files[0]) { alert('Elige antes una foto.'); return; }
+      try {
+        state.config.logoTaller = await comprimirImagen(logoTallerInput.files[0], 300, 0.75);
+        if (window.guardarLogoTallerEnNube) window.guardarLogoTallerEnNube(state.config.logoTaller);
+        render();
+        if (window.renderShellHeader) window.renderShellHeader();
+      } catch (e) { alert('No se pudo procesar la foto.'); }
+    } }, '+ Guardar logo'),
+    state.config.logoTaller ? el('button', { class: 'btn btn-danger btn-sm', onclick: () => {
+      state.config.logoTaller = null;
+      if (window.guardarLogoTallerEnNube) window.guardarLogoTallerEnNube(null);
+      render();
+      if (window.renderShellHeader) window.renderShellHeader();
+    } }, 'Quitar logo') : null,
+  ));
+
   panelConfig.appendChild(el('div', { class: 'sub', style: 'margin:6px 0 10px;' }, 'Sube una foto de tu tarjeta de visita. Saldrá en el historial y en la página que ve cada cliente al seguir su raqueta.'));
   if (state.config.tarjetaVisitaFoto) {
     panelConfig.appendChild(el('img', { src: state.config.tarjetaVisitaFoto, style: 'max-width:280px;border-radius:8px;display:block;margin-bottom:8px;' }));
@@ -9263,7 +9288,8 @@ function renderShellHeader() {
   document.getElementById('btnLogout').style.display = accesoActivo() && sesionActual ? 'inline-flex' : 'none';
   const badge = document.getElementById('shellBrand').querySelector('.brand-badge');
   badge.innerHTML = '';
-  const fotoTaller = currentSection === 'taller' && TallerApp.getState().config && TallerApp.getState().config.tarjetaVisitaFoto;
+  const cfgTaller = currentSection === 'taller' && TallerApp.getState().config;
+  const fotoTaller = cfgTaller && (cfgTaller.logoTaller || cfgTaller.tarjetaVisitaFoto);
   if (fotoTaller) badge.appendChild(el('img', { src: fotoTaller }));
   else if (clubGlobal.logo) badge.appendChild(el('img', { src: clubGlobal.logo }));
   else badge.textContent = '🏸';
@@ -9809,6 +9835,8 @@ function estadoCompletoParaNube() {
   if (tallerParaNube.config) {
     tallerParaNube.config.tieneTarjetaVisita = !!tallerParaNube.config.tarjetaVisitaFoto;
     tallerParaNube.config.tarjetaVisitaFoto = null;
+    tallerParaNube.config.tieneLogoTaller = !!tallerParaNube.config.logoTaller;
+    tallerParaNube.config.logoTaller = null;
   }
   if (Array.isArray(tallerParaNube.articulos)) {
     tallerParaNube.articulos.forEach(a => {
@@ -9839,6 +9867,7 @@ function guardarFotosTallerEnNube(pedidoId, fotoAntes, fotoDespues) {
   });
 }
 let tarjetaVisitaCache = null;
+let logoTallerCache = null;
 let fotosArticulosCache = {};
 function cargarFotosTallerDeNube() {
   if (!firebaseDisponible) return Promise.resolve();
@@ -9854,6 +9883,11 @@ function cargarFotosTallerDeNube() {
     if (mapa['_config_tarjeta']) {
       tarjetaVisitaCache = mapa['_config_tarjeta'].foto || null;
       if (tallerState.config) tallerState.config.tarjetaVisitaFoto = tarjetaVisitaCache;
+    }
+    if (mapa['_config_logo']) {
+      logoTallerCache = mapa['_config_logo'].foto || null;
+      if (tallerState.config) tallerState.config.logoTaller = logoTallerCache;
+      if (window.renderShellHeader) window.renderShellHeader();
     }
     if (Array.isArray(tallerState.articulos)) {
       tallerState.articulos.forEach(a => {
@@ -9873,6 +9907,14 @@ function guardarTarjetaVisitaTallerEnNube(foto) {
     marcarEstadoNube('⚠️ No se pudo guardar la tarjeta de visita: ' + (err && err.message ? err.message : 'error desconocido'));
   });
 }
+function guardarLogoTallerEnNube(foto) {
+  logoTallerCache = foto || null;
+  if (!firebaseDisponible || !sincronizacionInicialLista) return;
+  coleccionFotosTaller().doc('_config_logo').set({ foto: foto || null }).catch(err => {
+    console.warn('Error guardando el logo del taller en la nube:', err);
+    marcarEstadoNube('⚠️ No se pudo guardar el logo del taller: ' + (err && err.message ? err.message : 'error desconocido'));
+  });
+}
 function guardarFotoArticuloTallerEnNube(articuloId, foto) {
   fotosArticulosCache[articuloId] = foto || null;
   if (!firebaseDisponible || !sincronizacionInicialLista) return;
@@ -9883,6 +9925,7 @@ function guardarFotoArticuloTallerEnNube(articuloId, foto) {
 }
 window.guardarFotosTallerEnNube = guardarFotosTallerEnNube;
 window.guardarTarjetaVisitaTallerEnNube = guardarTarjetaVisitaTallerEnNube;
+window.guardarLogoTallerEnNube = guardarLogoTallerEnNube;
 window.guardarFotoArticuloTallerEnNube = guardarFotoArticuloTallerEnNube;
 function coleccionRecibos() {
   return docNube().collection('recibos');
@@ -9971,6 +10014,7 @@ function aplicarDatosDeNube(dataOriginal) {
   // La tarjeta de visita se guarda aparte (no viaja en este documento, para no saturarlo);
   // cada sincronización pisa el campo con null, así que la reponemos desde la caché local.
   if (tarjetaVisitaCache && TallerApp.getState().config) TallerApp.getState().config.tarjetaVisitaFoto = tarjetaVisitaCache;
+  if (logoTallerCache && TallerApp.getState().config) TallerApp.getState().config.logoTaller = logoTallerCache;
   if (Array.isArray(TallerApp.getState().articulos)) {
     TallerApp.getState().articulos.forEach(a => { if (fotosArticulosCache[a.id] !== undefined) a.foto = fotosArticulosCache[a.id]; });
   }

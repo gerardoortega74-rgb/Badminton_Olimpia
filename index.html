@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261001-155611">
+<meta name="build-id" content="v20261001-160307">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -9139,6 +9139,13 @@ function renderVistaPublicaTaller() {
 
   panel.appendChild(el('div', { class: 'sub', style: 'margin-top:12px;' },
     'Cordaje: ' + textoCordaje + (pedido.tensionVertical || pedido.tensionHorizontal ? ' · Tensión: ' + (pedido.tensionVertical || '') + '/' + (pedido.tensionHorizontal || '') + ' kg' : '')));
+  if ((taller.articulos || []).some(a => a.ventaOnline)) {
+    panel.appendChild(el('a', {
+      class: 'btn btn-gold', target: '_blank',
+      href: location.origin + location.pathname + '?tiendaonline=1',
+      style: 'display:block;text-align:center;margin-top:14px;',
+    }, '🛒 Ir a tienda'));
+  }
   root.appendChild(panel);
   if (taller.config && taller.config.tarjetaVisitaFoto) {
     root.appendChild(el('div', { class: 'panel', style: 'text-align:center;' },

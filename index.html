@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261001-150828">
+<meta name="build-id" content="v20261001-151341">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -263,6 +263,7 @@ if (window.pdfjsLib) { pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.c
 
   <div id="publicoScreen" style="display:none;"></div>
   <div id="tallerPublicoScreen" style="display:none;"></div>
+  <div id="tiendaOnlineScreen" style="display:none;"></div>
 
   <div id="loginScreen" style="display:none;"></div>
 
@@ -6025,7 +6026,7 @@ function uid(prefix) { return prefix + '_' + (uidCounter++) + '_' + Math.random(
 let uidCounter = 1;
 function defaultState() {
   return {
-    config: { tiempoMedioMinutos: 35, precioBaseEncordado: 12, precioSinCordaje: 12, tarjetaVisitaFoto: null, nombreTaller: '', logoTaller: null, precioHoraOperario: 15 },
+    config: { tiempoMedioMinutos: 35, precioBaseEncordado: 12, precioSinCordaje: 12, tarjetaVisitaFoto: null, nombreTaller: '', logoTaller: null, precioHoraOperario: 15, telefonoTienda: '', enlacePago: '' },
     clientes: [],
     articulos: [],
     proveedores: [],
@@ -6158,7 +6159,7 @@ function addArticulo(esCordaje) {
   const nuevo = {
     id: uid('art'), codigo: '', nombre: esCordaje ? 'Nuevo cordaje' : 'Nuevo artículo', tipo: esCordaje ? 'Cordaje' : 'Otro',
     esCordaje: !!esCordaje, precioCoste: 0, precio: 0, stock: 0, unidad: esCordaje ? 'metros' : 'unidades',
-    nivelRecomendado: 'todos', estiloRecomendado: 'todos', suave: false, proveedores: [], foto: null,
+    nivelRecomendado: 'todos', estiloRecomendado: 'todos', suave: false, proveedores: [], foto: null, ventaOnline: false,
   };
   state.articulos.push(nuevo);
   return nuevo;
@@ -7194,7 +7195,7 @@ function construirTablaArticulos(lista) {
     tbody.appendChild(el('tr', {},
       el('td', {}, checkFila),
       el('td', {}, a.codigo || '—'),
-      el('td', {}, a.nombre),
+      el('td', {}, a.nombre + (a.ventaOnline ? ' 🛒' : '')),
       el('td', {}, costeCelda),
       el('td', {}, ventaCelda),
       el('td', {}, el('div', { class: 'row', style: 'align-items:center;gap:4px;flex-wrap:nowrap;' }, stockCelda, el('span', { class: 'sub' }, a.unidad || 'unidades'))),
@@ -7328,6 +7329,11 @@ function articuloCard(a) {
       el('label', {}, el('input', { type: 'checkbox', style: 'width:auto;margin-right:6px;', checked: a.esCordaje ? 'checked' : null,
         onchange: e => { a.esCordaje = e.target.checked; if (a.esCordaje && !a.tipo) a.tipo = 'Cordaje'; render(); } }),
         '🧵 Es un cordaje (aparece en el desplegable de cordajes de Nuevo pedido)'),
+    ),
+    el('div', { class: 'field', style: 'margin-top:6px;' },
+      el('label', {}, el('input', { type: 'checkbox', style: 'width:auto;margin-right:6px;', checked: a.ventaOnline ? 'checked' : null,
+        onchange: e => { a.ventaOnline = e.target.checked; render(); } }),
+        '🛒 A la venta en el catálogo online'),
     ),
   );
   if (a.esCordaje) {
@@ -7786,6 +7792,31 @@ function viewConfigTaller() {
       if (window.actualizarMarcaAguaTaller) window.actualizarMarcaAguaTaller(true);
     } }, 'Quitar foto') : null,
   ));
+
+  panelConfig.appendChild(el('h3', { style: 'margin-top:16px;' }, '🛒 Tienda online'));
+  panelConfig.appendChild(el('div', { class: 'sub', style: 'margin-bottom:8px;' }, 'Marca los artículos que quieras vender online desde su ficha (casilla "A la venta en el catálogo online"). El cliente los ve, hace su pedido y te lo manda por WhatsApp a este número.'));
+  const telefonoTiendaInput = el('input', { type: 'tel', value: state.config.telefonoTienda || '', placeholder: 'Ej: 600111222' });
+  panelConfig.appendChild(field('Teléfono de WhatsApp para recibir pedidos', el('div', { class: 'row', style: 'gap:8px;' },
+    telefonoTiendaInput,
+    el('button', { class: 'btn btn-gold btn-sm', onclick: () => { state.config.telefonoTienda = telefonoTiendaInput.value.trim(); render(); } }, '✓ Aceptar'),
+  )));
+  const enlacePagoInput = el('input', { type: 'text', value: state.config.enlacePago || '', placeholder: 'Ej: https://paypal.me/TuNombre' });
+  panelConfig.appendChild(field('Enlace de pago (opcional, PayPal.me, Stripe, etc.)', el('div', { class: 'row', style: 'gap:8px;' },
+    enlacePagoInput,
+    el('button', { class: 'btn btn-gold btn-sm', onclick: () => { state.config.enlacePago = enlacePagoInput.value.trim(); render(); } }, '✓ Aceptar'),
+  )));
+  const nOnline = state.articulos.filter(a => a.ventaOnline).length;
+  if (nOnline > 0) {
+    const enlaceTienda = location.origin + location.pathname + '?tiendaonline=1';
+    panelConfig.appendChild(el('div', { class: 'msg msg-info', style: 'margin-top:8px;' },
+      el('div', {}, '✅ ' + nOnline + ' artículo(s) a la venta online. Enlace de tu tienda:'),
+      el('div', { style: 'word-break:break-all;font-weight:700;margin:4px 0;' }, enlaceTienda),
+      el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { navigator.clipboard.writeText(enlaceTienda); alert('Enlace copiado.'); } }, '📋 Copiar enlace'),
+    ));
+  } else {
+    panelConfig.appendChild(el('div', { class: 'sub' }, 'Todavía no has marcado ningún artículo para la venta online (hazlo desde Almacén → Artículos).'));
+  }
+
   wrap.appendChild(panelConfig);
   return wrap;
 }
@@ -8200,6 +8231,7 @@ function setState(s) {
     if (!Array.isArray(a.proveedores)) a.proveedores = [];
     if (!a.unidad) a.unidad = a.esCordaje ? 'metros' : 'unidades';
     if (a.foto === undefined) a.foto = null;
+    if (a.ventaOnline === undefined) a.ventaOnline = false;
   });
 }
 function tryLoadLocal() {
@@ -9008,6 +9040,9 @@ function cerrarSesion() {
 function esVistaPublicaTaller() {
   try { return new URLSearchParams(location.search).get('tallerpublico') === '1'; } catch (e) { return false; }
 }
+function esVistaTiendaOnline() {
+  try { return new URLSearchParams(location.search).get('tiendaonline') === '1'; } catch (e) { return false; }
+}
 function esVistaPublica() {
   try { return new URLSearchParams(location.search).get('publico') === '1' || esVistaPublicaTaller(); } catch (e) { return false; }
 }
@@ -9023,7 +9058,7 @@ window.enlacePublicoPedidoTaller = enlacePublicoPedidoTaller;
 function renderVistaPublicaTaller() {
   const headerActions = document.getElementById('headerActions');
   if (headerActions) headerActions.style.display = 'none';
-  ['loginScreen', 'onboardingScreen', 'homeScreen', 'clubGestionScreen', 'torneoScreen', 'planScreen', 'tallerScreen', 'publicoScreen'].forEach(id => {
+  ['loginScreen', 'onboardingScreen', 'homeScreen', 'clubGestionScreen', 'torneoScreen', 'planScreen', 'tallerScreen', 'publicoScreen', 'tiendaOnlineScreen'].forEach(id => {
     const e = document.getElementById(id); if (e) e.style.display = 'none';
   });
   const root = document.getElementById('tallerPublicoScreen');
@@ -9120,6 +9155,87 @@ function abrirFotoGrandePublica(src) {
     el('img', { src, style: 'max-width:100%;max-height:100%;border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,0.5);' }),
   );
   document.body.appendChild(capa);
+}
+function telefonoParaWhatsappTienda(tel) {
+  let digitos = String(tel || '').replace(/\D/g, '');
+  if (!digitos) return '';
+  if (digitos.length === 9) digitos = '34' + digitos;
+  return digitos;
+}
+let carritoTienda = {};
+function renderTiendaOnline() {
+  const headerActions = document.getElementById('headerActions');
+  if (headerActions) headerActions.style.display = 'none';
+  ['loginScreen', 'onboardingScreen', 'homeScreen', 'clubGestionScreen', 'torneoScreen', 'planScreen', 'tallerScreen', 'publicoScreen', 'tallerPublicoScreen'].forEach(id => {
+    const e = document.getElementById(id); if (e) e.style.display = 'none';
+  });
+  const root = document.getElementById('tiendaOnlineScreen');
+  root.style.display = 'block';
+  root.innerHTML = '';
+  const taller = TallerApp.getState();
+  document.getElementById('shellTitle').textContent = 'Tienda Online';
+  document.getElementById('shellSubtitle').textContent = (taller.config && taller.config.nombreTaller) || 'Artículos a la venta';
+  const badgePublico = document.querySelector('#shellBrand .brand-badge');
+  if (badgePublico) {
+    badgePublico.innerHTML = '';
+    badgePublico.style.display = 'flex';
+    badgePublico.style.width = 'clamp(72px, 16vw, 150px)';
+    badgePublico.style.height = 'clamp(72px, 16vw, 150px)';
+    badgePublico.style.borderRadius = '16px';
+    badgePublico.style.fontSize = 'clamp(32px, 8vw, 70px)';
+    const fotoBadge = taller.config && (taller.config.logoTaller || taller.config.tarjetaVisitaFoto);
+    if (fotoBadge) badgePublico.appendChild(el('img', { src: fotoBadge, style: 'width:100%;height:100%;object-fit:cover;border-radius:16px;' }));
+    else badgePublico.textContent = '🛒';
+  }
+  const nubeEl = document.getElementById('nubeIndicador'); if (nubeEl) nubeEl.style.display = 'none';
+  document.body.classList.remove('solo-lectura');
+
+  const articulos = (taller.articulos || []).filter(a => a.ventaOnline);
+  if (!articulos.length) {
+    root.appendChild(el('div', { class: 'panel' }, el('div', { class: 'empty-state' }, 'Todavía no hay artículos a la venta online.')));
+    return;
+  }
+
+  const panel = el('div', { class: 'panel' }, el('h2', {}, '🛒 Catálogo'));
+  const grid = el('div', { class: 'home-grid' });
+  articulos.forEach(a => {
+    const sinStock = (a.stock || 0) <= 0;
+    const card = el('div', { class: 'card' },
+      a.foto ? el('img', { src: a.foto, style: 'width:100%;max-width:220px;border-radius:8px;display:block;margin-bottom:8px;' }) : null,
+      el('div', { style: 'font-weight:700;' }, a.nombre),
+      el('div', { class: 'sub' }, euros(a.precio) + (sinStock ? ' · Sin stock' : '')),
+    );
+    if (!sinStock) {
+      const cantSpan = el('span', { style: 'min-width:24px;text-align:center;display:inline-block;font-weight:700;' }, String(carritoTienda[a.id] || 0));
+      card.appendChild(el('div', { class: 'row', style: 'gap:8px;align-items:center;margin-top:8px;' },
+        el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { if ((carritoTienda[a.id] || 0) > 0) { carritoTienda[a.id]--; if (!carritoTienda[a.id]) delete carritoTienda[a.id]; renderTiendaOnline(); } } }, '−'),
+        cantSpan,
+        el('button', { class: 'btn btn-gold btn-sm', onclick: () => { const max = a.stock || 0; carritoTienda[a.id] = Math.min(max, (carritoTienda[a.id] || 0) + 1); renderTiendaOnline(); } }, '+'),
+      ));
+    }
+    grid.appendChild(card);
+  });
+  panel.appendChild(grid);
+  root.appendChild(panel);
+
+  const items = Object.keys(carritoTienda).map(id => ({ articulo: articulos.find(a => a.id === id), cantidad: carritoTienda[id] })).filter(x => x.articulo);
+  const total = items.reduce((s, it) => s + it.articulo.precio * it.cantidad, 0);
+  if (items.length) {
+    const carritoPanel = el('div', { class: 'panel' }, el('h3', {}, '🛍️ Tu pedido'));
+    items.forEach(it => carritoPanel.appendChild(el('div', { class: 'row', style: 'justify-content:space-between;' }, el('span', {}, it.cantidad + ' × ' + it.articulo.nombre), el('span', {}, euros(it.articulo.precio * it.cantidad)))));
+    carritoPanel.appendChild(el('div', { class: 'row', style: 'justify-content:space-between;font-weight:700;margin-top:6px;' }, el('span', {}, 'Total'), el('span', {}, euros(total))));
+    const tel = telefonoParaWhatsappTienda(taller.config.telefonoTienda);
+    if (tel) {
+      const mensaje = 'Hola, quiero hacer este pedido:\n' + items.map(it => '- ' + it.cantidad + ' x ' + it.articulo.nombre + ' (' + euros(it.articulo.precio * it.cantidad) + ')').join('\n') + '\nTotal: ' + euros(total);
+      carritoPanel.appendChild(el('a', { class: 'btn btn-primary', href: 'https://wa.me/' + tel + '?text=' + encodeURIComponent(mensaje), target: '_blank', style: 'display:block;text-align:center;margin-top:10px;' }, '💬 Hacer pedido por WhatsApp'));
+    } else {
+      carritoPanel.appendChild(el('div', { class: 'msg msg-info', style: 'margin-top:10px;' }, 'El taller todavía no ha configurado un teléfono para recibir pedidos.'));
+    }
+    if (taller.config.enlacePago) {
+      carritoPanel.appendChild(el('a', { class: 'btn btn-ghost', href: taller.config.enlacePago, target: '_blank', style: 'display:block;text-align:center;margin-top:8px;' }, '💳 Pagar online'));
+    }
+    root.appendChild(carritoPanel);
+  }
 }
 function nombreParticipantePublico(cat, id) {
   if (!id) return 'Por determinar';
@@ -10550,6 +10666,10 @@ function aplicarDatosDeNube(dataOriginal) {
   if (typeof esVistaPublicaTaller === 'function' && esVistaPublicaTaller() && typeof renderVistaPublicaTaller === 'function') renderVistaPublicaTaller();
 }
 function arrancarAppLocal() {
+  if (esVistaTiendaOnline()) {
+    renderTiendaOnline();
+    return;
+  }
   if (esVistaPublicaTaller()) {
     renderVistaPublicaTaller();
     return;

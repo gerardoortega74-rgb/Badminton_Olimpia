@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261001-141126">
+<meta name="build-id" content="v20261001-141712">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -9007,6 +9007,8 @@ function renderVistaPublicaTaller() {
   const taller = TallerApp.getState();
   document.getElementById('shellTitle').textContent = 'Taller de Raquetas';
   document.getElementById('shellSubtitle').textContent = (taller.config && taller.config.nombreTaller) || 'Sigue tu reparación en directo · se actualiza sola';
+  const nubeEl = document.getElementById('nubeIndicador');
+  if (nubeEl) nubeEl.style.display = 'none';
   const badgePublico = document.querySelector('#shellBrand .brand-badge');
   if (badgePublico) {
     badgePublico.innerHTML = '';

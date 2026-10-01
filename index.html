@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261001-134147">
+<meta name="build-id" content="v20261001-134506">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -6000,7 +6000,7 @@ function uid(prefix) { return prefix + '_' + (uidCounter++) + '_' + Math.random(
 let uidCounter = 1;
 function defaultState() {
   return {
-    config: { tiempoMedioMinutos: 35, precioBaseEncordado: 12, precioSinCordaje: 12, tarjetaVisitaFoto: null, nombreTaller: '', logoTaller: null },
+    config: { tiempoMedioMinutos: 35, precioBaseEncordado: 12, precioSinCordaje: 12, tarjetaVisitaFoto: null, nombreTaller: '', logoTaller: null, precioHoraOperario: 15 },
     clientes: [],
     articulos: [],
     proveedores: [],
@@ -6348,6 +6348,7 @@ function construirPanelPorRecoger() {
       el('div', { class: 'toolbar', style: 'margin-top:8px;' },
         el('button', { class: 'btn btn-primary btn-sm', onclick: () => abrirEntregaPedido(p) }, '📦 Entregar'),
         el('button', { class: 'btn btn-ghost btn-sm', onclick: () => abrirAvisoWhatsapp(p) }, '💬 Avisar por WhatsApp'),
+        el('button', { class: 'btn btn-ghost btn-sm', onclick: () => abrirInformeCoste(p) }, '📊 Informe de coste'),
         el('button', { class: 'btn btn-danger btn-sm', onclick: () => { if (confirm('¿Quitar este pedido? No se puede deshacer.')) { removePedido(p.id); render(); } } }, 'Quitar'),
       ),
     ));
@@ -6366,6 +6367,68 @@ function nombreCordajeDe(p) {
   return cor ? cor.nombre : 'sin cordaje';
 }
 function pedidosDeCliente(clienteId) { return state.pedidos.filter(p => p.clienteId === clienteId).sort((a, b) => b.horaLlegada - a.horaLlegada); }
+
+function calcularInformeCoste(p) {
+  let costeCordajes = 0;
+  const detalleCordajes = [];
+  if (p.cordajeId) {
+    const cor = cordajeDe(p.cordajeId);
+    const cant = p.cantidadCordaje || 1;
+    const coste = cor ? (cor.precioCoste || 0) * cant : 0;
+    costeCordajes += coste;
+    detalleCordajes.push({ nombre: cor ? cor.nombre : 'Cordaje', cantidad: cant, coste });
+  }
+  if (p.cordajeIdH) {
+    const corH = cordajeDe(p.cordajeIdH);
+    const cant = p.cantidadCordajeH || 1;
+    const coste = corH ? (corH.precioCoste || 0) * cant : 0;
+    costeCordajes += coste;
+    detalleCordajes.push({ nombre: corH ? corH.nombre : 'Cordaje horizontal', cantidad: cant, coste });
+  }
+  let costeArticulos = 0;
+  const detalleArticulos = [];
+  (p.articulosAdicionales || []).forEach(it => {
+    const art = state.articulos.find(a => a.id === it.articuloId);
+    const coste = art ? (art.precioCoste || 0) * it.cantidad : 0;
+    costeArticulos += coste;
+    detalleArticulos.push({ nombre: it.nombre || (art ? art.nombre : 'Artículo'), cantidad: it.cantidad, coste });
+  });
+  const costeMaterial = costeCordajes + costeArticulos;
+  const duracionHoras = (p.horaInicio && p.horaFin) ? Math.max(0, (p.horaFin - p.horaInicio) / 3600000) : 0;
+  const precioHora = state.config.precioHoraOperario || 0;
+  const costeManoObra = duracionHoras * precioHora;
+  const costeTotal = costeMaterial + costeManoObra;
+  const precioCobrado = p.precio || 0;
+  const beneficio = precioCobrado - costeTotal;
+  return { detalleCordajes, detalleArticulos, costeMaterial, duracionHoras, precioHora, costeManoObra, costeTotal, precioCobrado, beneficio };
+}
+function abrirInformeCoste(p) {
+  const root = document.getElementById('tallerModalRoot');
+  if (!root) return;
+  const inf = calcularInformeCoste(p);
+  const horasFmt = inf.duracionHoras ? (Math.floor(inf.duracionHoras) + 'h ' + Math.round((inf.duracionHoras % 1) * 60) + 'min') : '—';
+  const filas = [];
+  inf.detalleCordajes.forEach(d => filas.push(el('div', { class: 'row', style: 'justify-content:space-between;' }, el('span', {}, d.nombre + ' (' + d.cantidad + ')'), el('span', {}, euros(d.coste)))));
+  inf.detalleArticulos.forEach(d => filas.push(el('div', { class: 'row', style: 'justify-content:space-between;' }, el('span', {}, d.nombre + ' (×' + d.cantidad + ')'), el('span', {}, euros(d.coste)))));
+  root.innerHTML = '';
+  root.appendChild(el('div', { class: 'modal-bg', onclick: (e) => { if (e.target.classList.contains('modal-bg')) root.innerHTML = ''; } },
+    el('div', { class: 'modal', style: 'max-width:440px;' },
+      el('h3', {}, '📊 Informe de coste — ' + (p.marcaModelo || 'Raqueta')),
+      el('div', { class: 'sub', style: 'margin-bottom:10px;' }, 'Solo lo ves tú; el cliente no tiene acceso a este informe.'),
+      filas.length ? el('div', {}, el('h4', { style: 'margin:4px 0;' }, 'Material usado'), ...filas) : null,
+      el('div', { class: 'row', style: 'justify-content:space-between;margin-top:8px;font-weight:700;' }, el('span', {}, 'Coste material'), el('span', {}, euros(inf.costeMaterial))),
+      el('div', { style: 'border-top:1px solid #E4E1D6;margin:10px 0;' }),
+      el('div', { class: 'row', style: 'justify-content:space-between;' }, el('span', {}, 'Tiempo real de encordado'), el('span', {}, horasFmt)),
+      el('div', { class: 'row', style: 'justify-content:space-between;' }, el('span', {}, 'Precio hora del operario'), el('span', {}, euros(inf.precioHora) + '/h')),
+      el('div', { class: 'row', style: 'justify-content:space-between;font-weight:700;' }, el('span', {}, 'Coste mano de obra'), el('span', {}, euros(inf.costeManoObra))),
+      el('div', { style: 'border-top:1px solid #E4E1D6;margin:10px 0;' }),
+      el('div', { class: 'row', style: 'justify-content:space-between;font-weight:700;' }, el('span', {}, 'Coste total'), el('span', {}, euros(inf.costeTotal))),
+      el('div', { class: 'row', style: 'justify-content:space-between;' }, el('span', {}, 'Precio cobrado'), el('span', {}, euros(inf.precioCobrado))),
+      el('div', { class: 'row', style: 'justify-content:space-between;font-size:17px;font-weight:800;margin-top:6px;color:' + (inf.beneficio >= 0 ? 'var(--ok)' : 'var(--danger)') + ';' }, el('span', {}, 'Beneficio'), el('span', {}, euros(inf.beneficio))),
+      el('div', { class: 'row', style: 'margin-top:14px;' }, el('button', { class: 'btn btn-ghost', onclick: () => { root.innerHTML = ''; } }, 'Cerrar')),
+    ),
+  ));
+}
 
 function telefonoParaWhatsapp(tel) {
   let digitos = String(tel || '').replace(/\D/g, '');
@@ -7633,7 +7696,9 @@ function viewConfigTaller() {
       field('Tiempo medio por raqueta (min)', inputEl('number', state.config.tiempoMedioMinutos, v => { state.config.tiempoMedioMinutos = Math.max(5, parseInt(v) || 35); }, { min: 5 })),
       field('Mano de obra con cordaje del stock (€)', inputEl('number', state.config.precioBaseEncordado, v => { state.config.precioBaseEncordado = parseFloat(v) || 0; }, { min: 0, step: '0.5' })),
       field('Precio si el cliente trae su propio cordaje (€)', inputEl('number', state.config.precioSinCordaje, v => { state.config.precioSinCordaje = parseFloat(v) || 0; }, { min: 0, step: '0.5' })),
+      field('Precio de la hora del operario (€/h)', inputEl('number', state.config.precioHoraOperario, v => { state.config.precioHoraOperario = parseFloat(v) || 0; }, { min: 0, step: '0.5' })),
     ),
+    el('div', { class: 'sub', style: 'margin-top:4px;' }, 'El precio de la hora del operario se usa para calcular el coste de mano de obra real en el informe de coste de cada raqueta terminada (según lo que tarde de verdad en encordarse).'),
   );
   panelConfig.appendChild(el('h3', { style: 'margin-top:16px;' }, '📇 Tu publicidad (independiente del club)'));
   panelConfig.appendChild(el('div', { class: 'sub', style: 'margin-bottom:8px;' }, 'El taller es un negocio aparte del club de bádminton. Este nombre y esta foto son los que ve el cliente al seguir su raqueta, en vez del nombre del club.'));
@@ -7919,7 +7984,7 @@ function viewHistorial() {
   }
   const lista = terminados;
   const table = el('table', {}, el('thead', {}, el('tr', {},
-    el('th', {}, 'Fecha'), el('th', {}, 'Cliente'), el('th', {}, 'Raqueta'), el('th', {}, 'Cordaje'), el('th', {}, 'Tensión'), el('th', {}, 'Duración'), el('th', {}, 'Precio'), el('th', {}, 'Pago'), el('th', {}, 'Entrega'), el('th', {}, ''))));
+    el('th', {}, 'Fecha'), el('th', {}, 'Cliente'), el('th', {}, 'Raqueta'), el('th', {}, 'Cordaje'), el('th', {}, 'Tensión'), el('th', {}, 'Duración'), el('th', {}, 'Precio'), el('th', {}, 'Pago'), el('th', {}, 'Entrega'), el('th', {}, ''), el('th', {}, ''))));
   const tbody = el('tbody');
   lista.forEach(p => {
     const cli = clienteDe(p.clienteId);
@@ -7937,6 +8002,7 @@ function viewHistorial() {
       el('td', {}, p.estado === 'entregado'
         ? el('span', { class: 'chip chip-gold' }, 'Entregado ' + fmtFechaTs(p.fechaEntrega))
         : el('div', {}, el('button', { class: 'btn btn-ghost btn-sm', onclick: () => abrirEntregaPedido(p) }, 'Marcar entregado'), p.horaFin ? el('div', { class: 'sub' }, 'Lista desde ' + fmtFechaTs(p.horaFin)) : null)),
+      el('td', {}, el('button', { class: 'btn btn-ghost btn-sm', onclick: () => abrirInformeCoste(p) }, '📊 Informe')),
       el('td', {}, el('button', { class: 'btn btn-danger btn-sm', onclick: () => { if (confirm('¿Eliminar esta venta del historial? No se puede deshacer.')) { removePedido(p.id); render(); } } }, 'Eliminar')),
     ));
   });

@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261001-071517">
+<meta name="build-id" content="v20261001-073049">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -9969,16 +9969,22 @@ function cargarFotosTallerDeNube() {
         if (mapa[p.id]) { p.fotoAntes = mapa[p.id].fotoAntes || null; p.fotoDespues = mapa[p.id].fotoDespues || null; }
       });
     }
+    let imagenDeMarcaCambio = false;
     if (mapa['_config_tarjeta']) {
       tarjetaVisitaCache = mapa['_config_tarjeta'].foto || null;
       if (tallerState.config) tallerState.config.tarjetaVisitaFoto = tarjetaVisitaCache;
+      imagenDeMarcaCambio = true;
     }
     if (mapa['_config_logo']) {
       logoTallerCache = mapa['_config_logo'].foto || null;
       if (tallerState.config) tallerState.config.logoTaller = logoTallerCache;
+      imagenDeMarcaCambio = true;
+    }
+    if (imagenDeMarcaCambio) {
       if (typeof esVistaPublicaTaller === 'function' && esVistaPublicaTaller()) { if (typeof renderVistaPublicaTaller === 'function') renderVistaPublicaTaller(); }
       else if (window.renderShellHeader) window.renderShellHeader();
       if (typeof currentSection !== 'undefined' && currentSection === 'taller' && window.actualizarMarcaAguaTaller) window.actualizarMarcaAguaTaller(true);
+      if (typeof currentSection !== 'undefined' && currentSection === 'home' && typeof renderHome === 'function') renderHome();
     }
     if (Array.isArray(tallerState.articulos)) {
       tallerState.articulos.forEach(a => {

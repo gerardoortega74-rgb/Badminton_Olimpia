@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261001-131625">
+<meta name="build-id" content="v20261001-133502">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -6162,37 +6162,58 @@ function proveedorDe(id) { return state.proveedores.find(p => p.id === id); }
 function articulosDeProveedor(provId) { return state.articulos.filter(a => (a.proveedores || []).some(x => x.proveedorId === provId)); }
 
 function addPedidoProveedor(proveedorId) {
-  const nuevo = { id: uid('ppr'), proveedorId: proveedorId || null, fecha: new Date().toISOString().slice(0, 10), items: [], estado: 'pendiente', fechaRecibido: null, notas: '' };
+  const nuevo = { id: uid('ppr'), proveedorId: proveedorId || null, fecha: new Date().toISOString().slice(0, 10), items: [], estado: 'pendiente', recepciones: [], notas: '' };
   state.pedidosProveedor.push(nuevo);
   return nuevo;
 }
 function removePedidoProveedor(id) {
   const p = state.pedidosProveedor.find(x => x.id === id);
-  if (p && p.estado === 'recibido') deshacerRecepcionPedidoProveedor(p);
+  if (p) { (p.recepciones || []).slice().forEach(r => quitarRecepcionPedidoProveedor(p, r.id)); }
   state.pedidosProveedor = state.pedidosProveedor.filter(x => x.id !== id);
 }
 function totalPedidoProveedor(p) { return (p.items || []).reduce((s, it) => s + (it.cantidad || 0) * (it.precioUnitario || 0), 0); }
-function recibirPedidoProveedor(p) {
-  if (p.estado === 'recibido') return;
-  p.items.forEach(it => {
-    const art = state.articulos.find(a => a.id === it.articuloId);
-    if (art) art.stock = (art.stock || 0) + (it.cantidad || 0);
-  });
-  const prov = proveedorDe(p.proveedorId);
-  addMovimientoTaller({ tipo: 'gasto', categoria: 'Compra a proveedor', concepto: 'Pedido a ' + (prov ? prov.nombre : 'proveedor') + ' (' + p.items.length + ' artículo(s))', importe: totalPedidoProveedor(p) });
-  p.movimientoId = state.contabilidad.movimientos[state.contabilidad.movimientos.length - 1].id;
-  p.estado = 'recibido';
-  p.fechaRecibido = new Date().toISOString().slice(0, 10);
+function cantidadPendienteItem(it) { return Math.max(0, (it.cantidad || 0) - (it.cantidadRecibida || 0)); }
+function pedidoProveedorCompleto(p) { return p.items.every(it => cantidadPendienteItem(it) <= 0); }
+function recalcularEstadoPedidoProveedor(p) {
+  const algunaRecibida = p.items.some(it => (it.cantidadRecibida || 0) > 0);
+  if (!algunaRecibida) p.estado = 'pendiente';
+  else if (pedidoProveedorCompleto(p)) p.estado = 'recibido';
+  else p.estado = 'parcial';
 }
-function deshacerRecepcionPedidoProveedor(p) {
+// cantidadesPorItem: { articuloId: cantidadQueLlegaHoy }
+function registrarRecepcionPedidoProveedor(p, fecha, cantidadesPorItem) {
+  const itemsRecepcion = [];
+  let importe = 0;
   p.items.forEach(it => {
+    const cant = Math.min(cantidadesPorItem[it.articuloId] || 0, cantidadPendienteItem(it));
+    if (cant <= 0) return;
     const art = state.articulos.find(a => a.id === it.articuloId);
-    if (art) art.stock = Math.max(0, (art.stock || 0) - (it.cantidad || 0));
+    if (art) art.stock = (art.stock || 0) + cant;
+    it.cantidadRecibida = (it.cantidadRecibida || 0) + cant;
+    itemsRecepcion.push({ articuloId: it.articuloId, cantidad: cant });
+    importe += cant * (it.precioUnitario || 0);
   });
-  if (p.movimientoId) state.contabilidad.movimientos = state.contabilidad.movimientos.filter(m => m.id !== p.movimientoId);
-  p.estado = 'pendiente';
-  p.fechaRecibido = null;
-  p.movimientoId = null;
+  if (!itemsRecepcion.length) return null;
+  const prov = proveedorDe(p.proveedorId);
+  addMovimientoTaller({ fecha, tipo: 'gasto', categoria: 'Compra a proveedor', concepto: 'Entrada de material de ' + (prov ? prov.nombre : 'proveedor') + ' (' + itemsRecepcion.length + ' artículo(s))', importe });
+  const movimientoId = state.contabilidad.movimientos[state.contabilidad.movimientos.length - 1].id;
+  const recepcion = { id: uid('recp'), fecha, items: itemsRecepcion, movimientoId };
+  p.recepciones.push(recepcion);
+  recalcularEstadoPedidoProveedor(p);
+  return recepcion;
+}
+function quitarRecepcionPedidoProveedor(p, recepcionId) {
+  const r = p.recepciones.find(x => x.id === recepcionId);
+  if (!r) return;
+  r.items.forEach(it => {
+    const art = state.articulos.find(a => a.id === it.articuloId);
+    if (art) art.stock = Math.max(0, (art.stock || 0) - it.cantidad);
+    const itemPedido = p.items.find(x => x.articuloId === it.articuloId);
+    if (itemPedido) itemPedido.cantidadRecibida = Math.max(0, (itemPedido.cantidadRecibida || 0) - it.cantidad);
+  });
+  if (r.movimientoId) state.contabilidad.movimientos = state.contabilidad.movimientos.filter(m => m.id !== r.movimientoId);
+  p.recepciones = p.recepciones.filter(x => x.id !== recepcionId);
+  recalcularEstadoPedidoProveedor(p);
 }
 
 function pedidosEnCola() {
@@ -7462,31 +7483,78 @@ function viewPedidosProveedor() {
   if (!state.pedidosProveedor.length) {
     panel.appendChild(el('div', { class: 'empty-state' }, 'Todavía no has hecho ningún pedido a proveedor.'));
   } else {
+    const ESTADO_INFO = { pendiente: ['chip-muted', '⏳ Pendiente'], parcial: ['chip-gold', '🟡 Parcial'], recibido: ['chip-gold', '✅ Recibido'] };
     state.pedidosProveedor.slice().reverse().forEach(p => {
       const prov = proveedorDe(p.proveedorId);
       const abierto = pedidoProvAbiertoId === p.id;
+      const [chipClase, chipTexto] = ESTADO_INFO[p.estado] || ESTADO_INFO.pendiente;
       const card = el('div', { class: 'card' },
         el('div', { class: 'card-head' },
           el('span', { class: 'card-title' }, (prov ? prov.nombre : 'Proveedor eliminado') + ' · ' + fmtFechaDMY(p.fecha)),
-          el('span', { class: 'chip ' + (p.estado === 'recibido' ? 'chip-gold' : 'chip-muted') }, p.estado === 'recibido' ? '✅ Recibido' : '⏳ Pendiente'),
+          el('span', { class: 'chip ' + chipClase }, chipTexto),
         ),
-        el('div', { class: 'sub' }, p.items.length + ' artículo(s) · Total: ' + euros(totalPedidoProveedor(p)) + (p.fechaRecibido ? ' · Recibido el ' + fmtFechaDMY(p.fechaRecibido) : '')),
+        el('div', { class: 'sub' }, p.items.length + ' artículo(s) · Total: ' + euros(totalPedidoProveedor(p)) + (p.recepciones.length ? ' · ' + p.recepciones.length + ' entrada(s) registrada(s)' : '')),
         el('div', { class: 'toolbar', style: 'margin-top:6px;' },
           el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { pedidoProvAbiertoId = abierto ? null : p.id; render(); } }, abierto ? 'Ocultar detalle' : 'Ver detalle'),
-          p.estado === 'pendiente' ? el('button', { class: 'btn btn-gold btn-sm', onclick: () => { if (confirm('¿Marcar como recibido? Se sumará al stock de cada artículo y se apuntará el gasto en Contabilidad.')) { recibirPedidoProveedor(p); render(); } } }, '📥 Marcar recibido') : null,
-          p.estado === 'recibido' ? el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { if (confirm('¿Deshacer la recepción? Se restará del stock y se quitará el gasto de Contabilidad.')) { deshacerRecepcionPedidoProveedor(p); render(); } } }, '↩ Deshacer recepción') : null,
-          el('button', { class: 'btn btn-danger btn-sm', onclick: () => { if (confirm('¿Eliminar este pedido?')) { removePedidoProveedor(p.id); render(); } } }, 'Eliminar'),
+          el('button', { class: 'btn btn-danger btn-sm', onclick: () => { if (confirm('¿Eliminar este pedido? Se deshará cualquier entrada ya registrada.')) { removePedidoProveedor(p.id); render(); } } }, 'Eliminar'),
         ),
       );
       if (abierto) {
-        const table = el('table', {}, el('thead', {}, el('tr', {}, el('th', {}, 'Artículo'), el('th', {}, 'Cantidad'), el('th', {}, 'Precio/ud'), el('th', {}, 'Subtotal'))));
+        const table = el('table', {}, el('thead', {}, el('tr', {}, el('th', {}, 'Artículo'), el('th', {}, 'Pedido'), el('th', {}, 'Recibido'), el('th', {}, 'Pendiente'), el('th', {}, 'Precio/ud'))));
         const tbody = el('tbody');
         p.items.forEach(it => {
           const art = state.articulos.find(a => a.id === it.articuloId);
-          tbody.appendChild(el('tr', {}, el('td', {}, art ? art.nombre : 'Artículo eliminado'), el('td', {}, it.cantidad + ' ' + (art ? (art.unidad || 'unidades') : '')), el('td', {}, euros(it.precioUnitario)), el('td', {}, euros(it.cantidad * it.precioUnitario))));
+          const unidad = art ? (art.unidad || 'unidades') : '';
+          tbody.appendChild(el('tr', {},
+            el('td', {}, art ? art.nombre : 'Artículo eliminado'),
+            el('td', {}, it.cantidad + ' ' + unidad),
+            el('td', {}, (it.cantidadRecibida || 0) + ' ' + unidad),
+            el('td', {}, cantidadPendienteItem(it) + ' ' + unidad),
+            el('td', {}, euros(it.precioUnitario)),
+          ));
         });
         table.appendChild(tbody);
         card.appendChild(table);
+
+        if (!pedidoProveedorCompleto(p)) {
+          card.appendChild(el('h4', { style: 'margin:12px 0 4px;' }, '📥 Registrar entrada de material'));
+          const fechaInput = el('input', { type: 'date', value: new Date().toISOString().slice(0, 10) });
+          const cantidadesInputs = {};
+          const filasPendientes = p.items.filter(it => cantidadPendienteItem(it) > 0).map(it => {
+            const art = state.articulos.find(a => a.id === it.articuloId);
+            const inp = el('input', { type: 'number', min: '0', max: String(cantidadPendienteItem(it)), step: '1', value: String(cantidadPendienteItem(it)), style: 'max-width:90px;' });
+            cantidadesInputs[it.articuloId] = inp;
+            return el('div', { class: 'row', style: 'align-items:center;gap:8px;margin-bottom:4px;' },
+              el('span', { style: 'flex:1;' }, (art ? art.nombre : 'Artículo eliminado') + ' (pendiente: ' + cantidadPendienteItem(it) + ')'),
+              inp,
+            );
+          });
+          card.appendChild(el('div', { class: 'field' }, el('label', {}, 'Fecha de entrada'), fechaInput));
+          filasPendientes.forEach(f => card.appendChild(f));
+          card.appendChild(el('div', { class: 'toolbar', style: 'margin-top:6px;' },
+            el('button', { class: 'btn btn-gold btn-sm', onclick: () => {
+              const cantidades = {};
+              Object.keys(cantidadesInputs).forEach(artId => { cantidades[artId] = parseFloat(cantidadesInputs[artId].value) || 0; });
+              if (!Object.values(cantidades).some(c => c > 0)) { alert('Pon alguna cantidad mayor que 0.'); return; }
+              if (!fechaInput.value) { alert('Elige una fecha.'); return; }
+              registrarRecepcionPedidoProveedor(p, fechaInput.value, cantidades);
+              render();
+            } }, '✅ Registrar esta entrada'),
+          ));
+        }
+
+        if (p.recepciones.length) {
+          card.appendChild(el('h4', { style: 'margin:12px 0 4px;' }, '📅 Historial de entradas'));
+          p.recepciones.slice().reverse().forEach(r => {
+            card.appendChild(el('div', { class: 'row', style: 'align-items:center;gap:8px;margin-bottom:4px;' },
+              el('span', { style: 'flex:1;' }, fmtFechaDMY(r.fecha) + ' — ' + r.items.map(it => {
+                const art = state.articulos.find(a => a.id === it.articuloId);
+                return it.cantidad + ' ' + (art ? art.nombre : 'artículo eliminado');
+              }).join(', ')),
+              el('button', { class: 'btn btn-danger btn-sm', onclick: () => { if (confirm('¿Quitar esta entrada? Se restará del stock y se quitará su gasto de Contabilidad.')) { quitarRecepcionPedidoProveedor(p, r.id); render(); } } }, 'Quitar'),
+            ));
+          });
+        }
       }
       panel.appendChild(card);
     });
@@ -8003,6 +8071,17 @@ function setState(s) {
   if (!Array.isArray(state.articulos)) state.articulos = [];
   if (!Array.isArray(state.proveedores)) state.proveedores = [];
   if (!Array.isArray(state.pedidosProveedor)) state.pedidosProveedor = [];
+  state.pedidosProveedor.forEach(p => {
+    if (!Array.isArray(p.recepciones)) p.recepciones = [];
+    p.items.forEach(it => { if (it.cantidadRecibida === undefined) it.cantidadRecibida = 0; });
+    if (p.estado === 'recibido' && !p.recepciones.length) {
+      // Pedido antiguo (todo o nada): lo convertimos en una única recepción ya hecha.
+      p.items.forEach(it => { it.cantidadRecibida = it.cantidad; });
+      p.recepciones.push({ id: uid('recp'), fecha: p.fechaRecibido || p.fecha, items: p.items.map(it => ({ articuloId: it.articuloId, cantidad: it.cantidad })), movimientoId: p.movimientoId || null });
+    }
+    delete p.fechaRecibido;
+    delete p.movimientoId;
+  });
   state.proveedores.forEach(p => {
     if (p.dni === undefined) p.dni = '';
     if (!p.numeroProveedor) p.numeroProveedor = siguienteNumeroProveedor();

@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261001-055409">
+<meta name="build-id" content="v20261001-071152">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -6088,10 +6088,19 @@ function comprimirImagen(file, maxWidth, calidad) {
   });
 }
 
+function siguienteNumeroCliente() {
+  let maxNum = 4300000;
+  state.clientes.forEach(c => {
+    const n = parseInt(c.numeroCliente, 10);
+    if (!isNaN(n) && n > maxNum) maxNum = n;
+  });
+  return String(maxNum + 1);
+}
 function addCliente(datos) {
   const nuevo = {
     id: uid('cli'), nombre: datos.nombre || '', telefono: datos.telefono || '', email: datos.email || '', jugadorId: datos.jugadorId || null, notas: datos.notas || '',
     direccion: datos.direccion || '', codigoPostal: datos.codigoPostal || '', localidad: datos.localidad || '', provincia: datos.provincia || '',
+    numeroCliente: siguienteNumeroCliente(), dni: datos.dni || '',
   };
   state.clientes.push(nuevo);
   return nuevo;
@@ -6846,19 +6855,20 @@ function viewClientes() {
   const nombreInput = el('input', { type: 'text', placeholder: 'Nombre' });
   const telInput = el('input', { type: 'tel', placeholder: 'Teléfono' });
   const emailInput = el('input', { type: 'email', placeholder: 'Email' });
+  const dniInput = el('input', { type: 'text', placeholder: 'DNI/NIF' });
   const direccionInput = el('input', { type: 'text', placeholder: 'Calle y número' });
   const cpInput = el('input', { type: 'text', placeholder: 'Código postal' });
   const localidadInput = el('input', { type: 'text', placeholder: 'Localidad' });
   const provinciaInput = el('input', { type: 'text', placeholder: 'Provincia' });
   panel.appendChild(el('div', { class: 'grid', style: 'margin-top:10px;' },
-    field('Nombre', nombreInput), field('Teléfono', telInput), field('Email', emailInput),
+    field('Nombre', nombreInput), field('Teléfono', telInput), field('Email', emailInput), field('DNI/NIF', dniInput),
     field('Dirección', direccionInput), field('Código postal', cpInput), field('Localidad', localidadInput), field('Provincia', provinciaInput),
   ));
   panel.appendChild(el('div', { class: 'toolbar', style: 'margin-bottom:16px;' },
     el('button', { class: 'btn btn-gold btn-sm', onclick: () => {
       if (!nombreInput.value.trim()) { alert('Escribe al menos el nombre.'); return; }
       addCliente({
-        nombre: nombreInput.value.trim(), telefono: telInput.value.trim(), email: emailInput.value.trim(),
+        nombre: nombreInput.value.trim(), telefono: telInput.value.trim(), email: emailInput.value.trim(), dni: dniInput.value.trim(),
         direccion: direccionInput.value.trim(), codigoPostal: cpInput.value.trim(), localidad: localidadInput.value.trim(), provincia: provinciaInput.value.trim(),
       });
       render();
@@ -6866,7 +6876,7 @@ function viewClientes() {
   ));
 
   const q = filtroClienteTexto.trim().toLowerCase();
-  const lista = q ? state.clientes.filter(c => (c.nombre || '').toLowerCase().includes(q) || (c.telefono || '').includes(q)) : state.clientes;
+  const lista = q ? state.clientes.filter(c => (c.nombre || '').toLowerCase().includes(q) || (c.telefono || '').includes(q) || (c.numeroCliente || '').includes(q) || (c.dni || '').toLowerCase().includes(q)) : state.clientes;
   if (!lista.length) {
     panel.appendChild(el('div', { class: 'empty-state' }, q ? 'No hay clientes que coincidan.' : 'Todavía no hay clientes guardados.'));
   } else {
@@ -6877,11 +6887,14 @@ function viewClientes() {
           el('span', { class: 'card-title' }, (expandido ? '▾ ' : '▸ ') + c.nombre),
           el('button', { class: 'btn btn-danger btn-sm', onclick: (e) => { e.stopPropagation(); if (confirm('¿Eliminar este cliente?')) { removeCliente(c.id); render(); } } }, 'Eliminar'),
         ),
+        el('div', { class: 'sub' }, `Nº cliente: ${c.numeroCliente || '—'}` + (c.dni ? ' · DNI: ' + c.dni : '')),
         el('div', { class: 'sub' }, [c.telefono, c.email].filter(Boolean).join(' · ') || 'Sin contacto'),
       );
       if (expandido) {
         card.appendChild(el('h4', { style: 'margin:12px 0 6px;' }, '📇 Datos de contacto y envío'));
         card.appendChild(el('div', { class: 'grid', onclick: e => e.stopPropagation() },
+          field('Nº de cliente', inputEl('text', c.numeroCliente || '', v => { c.numeroCliente = v.trim(); render(); })),
+          field('DNI/NIF', inputEl('text', c.dni || '', v => { c.dni = v; render(); })),
           field('Nombre', inputEl('text', c.nombre, v => { c.nombre = v; render(); })),
           field('Teléfono', inputEl('tel', c.telefono, v => { c.telefono = v; render(); })),
           field('Email', inputEl('email', c.email, v => { c.email = v; render(); })),
@@ -7775,6 +7788,10 @@ function setState(s) {
   state = Object.assign(defaultState(), s || {});
   state.config = Object.assign(defaultState().config, state.config || {});
   if (!Array.isArray(state.clientes)) state.clientes = [];
+  state.clientes.forEach(c => {
+    if (c.dni === undefined) c.dni = '';
+    if (!c.numeroCliente) c.numeroCliente = siguienteNumeroCliente();
+  });
   if (!Array.isArray(state.articulos)) state.articulos = [];
   if (!Array.isArray(state.proveedores)) state.proveedores = [];
   if (!Array.isArray(state.pedidos)) state.pedidos = [];

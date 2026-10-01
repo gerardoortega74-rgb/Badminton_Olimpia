@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261001-134506">
+<meta name="build-id" content="v20261001-135810">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -10333,7 +10333,8 @@ function estadoCompletoParaNube() {
 }
 function coleccionFotosTaller() { return docNube().collection('taller_fotos'); }
 function guardarFotosTallerEnNube(pedidoId, fotoAntes, fotoDespues) {
-  if (!firebaseDisponible || !sincronizacionInicialLista || (!fotoAntes && !fotoDespues)) return;
+  fotosPedidosCache[pedidoId] = { fotoAntes: fotoAntes || null, fotoDespues: fotoDespues || null };
+  if (!firebaseDisponible || !sincronizacionInicialLista) return;
   coleccionFotosTaller().doc(pedidoId).set({ fotoAntes: fotoAntes || null, fotoDespues: fotoDespues || null }).catch(err => {
     console.warn('Error guardando fotos del taller en la nube:', err);
     marcarEstadoNube('⚠️ No se pudo guardar la foto de la raqueta: ' + (err && err.message ? err.message : 'error desconocido'));
@@ -10342,6 +10343,7 @@ function guardarFotosTallerEnNube(pedidoId, fotoAntes, fotoDespues) {
 let tarjetaVisitaCache = null;
 let logoTallerCache = null;
 let fotosArticulosCache = {};
+let fotosPedidosCache = {};
 function cargarFotosTallerDeNube() {
   if (!firebaseDisponible) return Promise.resolve();
   return coleccionFotosTaller().get().then(snap => {
@@ -10350,7 +10352,12 @@ function cargarFotosTallerDeNube() {
     const tallerState = TallerApp.getState();
     if (Array.isArray(tallerState.pedidos)) {
       tallerState.pedidos.forEach(p => {
-        if (mapa[p.id]) { p.fotoAntes = mapa[p.id].fotoAntes || null; p.fotoDespues = mapa[p.id].fotoDespues || null; }
+        if (mapa[p.id]) {
+          const fa = mapa[p.id].fotoAntes || null;
+          const fd = mapa[p.id].fotoDespues || null;
+          fotosPedidosCache[p.id] = { fotoAntes: fa, fotoDespues: fd };
+          p.fotoAntes = fa; p.fotoDespues = fd;
+        }
       });
     }
     let imagenDeMarcaCambio = false;
@@ -10499,9 +10506,15 @@ function aplicarDatosDeNube(dataOriginal) {
   if (Array.isArray(TallerApp.getState().articulos)) {
     TallerApp.getState().articulos.forEach(a => { if (fotosArticulosCache[a.id] !== undefined) a.foto = fotosArticulosCache[a.id]; });
   }
+  if (Array.isArray(TallerApp.getState().pedidos)) {
+    TallerApp.getState().pedidos.forEach(p => {
+      if (fotosPedidosCache[p.id] !== undefined) { p.fotoAntes = fotosPedidosCache[p.id].fotoAntes; p.fotoDespues = fotosPedidosCache[p.id].fotoDespues; }
+    });
+  }
   if (data.accessControl) { accessControl = data.accessControl; saveAccessControl(); }
   if (typeof currentSection !== 'undefined' && currentSection === 'taller' && typeof renderShellHeader === 'function') renderShellHeader();
   if (typeof currentSection !== 'undefined' && currentSection === 'taller' && typeof actualizarMarcaAguaTaller === 'function') actualizarMarcaAguaTaller(true);
+  if (typeof esVistaPublicaTaller === 'function' && esVistaPublicaTaller() && typeof renderVistaPublicaTaller === 'function') renderVistaPublicaTaller();
 }
 function arrancarAppLocal() {
   if (esVistaPublicaTaller()) {

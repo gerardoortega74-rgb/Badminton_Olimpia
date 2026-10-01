@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20260930-164749">
+<meta name="build-id" content="v20261001-041401">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -9240,7 +9240,7 @@ function renderShellHeader() {
     home: ['Bádminton · Club', 'Menú principal'],
     torneo: [clubGlobal.nombre ? clubGlobal.nombre + ' · Torneo' : 'Gestor de Torneos', 'Grupos + eliminatoria'],
     planificacion: [clubGlobal.nombre ? clubGlobal.nombre + ' · Planificación' : 'Planificación Anual', 'Iniciación a tecnificación'],
-    taller: [(TallerApp.getState().config && TallerApp.getState().config.nombreTaller) || 'Taller de Raquetas', 'Encordado, clientes y contabilidad'],
+    taller: ['Taller de Raquetas', (TallerApp.getState().config && TallerApp.getState().config.nombreTaller) || 'Encordado, clientes y contabilidad'],
   };
   const clubGestionTitles = {
     datos: ['Datos del club', 'Se usan en Torneos y en Planificación'],

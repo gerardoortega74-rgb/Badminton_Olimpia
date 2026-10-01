@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261001-053611">
+<meta name="build-id" content="v20261001-054034">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -234,7 +234,8 @@ if (window.pdfjsLib) { pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.c
   </div>
 </header>
 
-<main id="shellMain">
+<div id="marcaAguaTaller" style="display:none;position:fixed;inset:0;background-repeat:no-repeat;background-position:center;background-size:min(60vw,420px);opacity:0.06;pointer-events:none;z-index:0;"></div>
+<main id="shellMain" style="position:relative;z-index:1;">
 
   <div id="publicoScreen" style="display:none;"></div>
   <div id="tallerPublicoScreen" style="display:none;"></div>
@@ -7369,6 +7370,7 @@ function viewConfigTaller() {
         if (window.guardarLogoTallerEnNube) window.guardarLogoTallerEnNube(state.config.logoTaller);
         render();
         if (window.renderShellHeader) window.renderShellHeader();
+        if (window.actualizarMarcaAguaTaller) window.actualizarMarcaAguaTaller(true);
       } catch (e) { alert('No se pudo procesar la foto.'); }
     } }, '+ Guardar logo'),
     state.config.logoTaller ? el('button', { class: 'btn btn-danger btn-sm', onclick: () => {
@@ -7376,6 +7378,7 @@ function viewConfigTaller() {
       if (window.guardarLogoTallerEnNube) window.guardarLogoTallerEnNube(null);
       render();
       if (window.renderShellHeader) window.renderShellHeader();
+      if (window.actualizarMarcaAguaTaller) window.actualizarMarcaAguaTaller(true);
     } }, 'Quitar logo') : null,
   ));
 
@@ -7392,12 +7395,14 @@ function viewConfigTaller() {
         state.config.tarjetaVisitaFoto = await comprimirImagen(tarjetaInput.files[0], 900, 0.7);
         if (window.guardarTarjetaVisitaTallerEnNube) window.guardarTarjetaVisitaTallerEnNube(state.config.tarjetaVisitaFoto);
         render();
+        if (window.actualizarMarcaAguaTaller) window.actualizarMarcaAguaTaller(true);
       } catch (e) { alert('No se pudo procesar la foto.'); }
     } }, '+ Guardar foto'),
     state.config.tarjetaVisitaFoto ? el('button', { class: 'btn btn-danger btn-sm', onclick: () => {
       state.config.tarjetaVisitaFoto = null;
       if (window.guardarTarjetaVisitaTallerEnNube) window.guardarTarjetaVisitaTallerEnNube(null);
       render();
+      if (window.actualizarMarcaAguaTaller) window.actualizarMarcaAguaTaller(true);
     } }, 'Quitar foto') : null,
   ));
   wrap.appendChild(panelConfig);
@@ -8627,6 +8632,7 @@ function renderVistaPublicaTaller() {
     else if (typeof clubGlobal !== 'undefined' && clubGlobal.logo) badgePublico.appendChild(el('img', { src: clubGlobal.logo }));
     else badgePublico.textContent = '🏸';
   }
+  if (typeof actualizarMarcaAguaTaller === 'function') actualizarMarcaAguaTaller(true);
   document.body.classList.remove('solo-lectura');
 
   const pedidoId = new URLSearchParams(location.search).get('pedido');
@@ -9181,6 +9187,7 @@ function showSection(sec) {
   SCREENS.forEach(id => { document.getElementById(id).style.display = 'none'; });
   document.getElementById(sec === 'torneo' ? 'torneoScreen' : sec === 'planificacion' ? 'planScreen' : sec === 'clubgestion' ? 'clubGestionScreen' : sec + 'Screen').style.display = 'block';
   renderShellHeader();
+  actualizarMarcaAguaTaller(sec === 'taller');
   aplicarModoLectura();
   if (sec === 'home') renderHome();
   else if (sec === 'clubgestion') showClubGestionTab(clubGestionTab);
@@ -9189,6 +9196,16 @@ function showSection(sec) {
   else if (sec === 'taller') TallerApp.render();
   window.scrollTo(0, 0);
 }
+function actualizarMarcaAguaTaller(mostrar) {
+  const marca = document.getElementById('marcaAguaTaller');
+  if (!marca) return;
+  if (!mostrar) { marca.style.display = 'none'; return; }
+  const cfg = TallerApp.getState().config;
+  const foto = cfg && (cfg.logoTaller || cfg.tarjetaVisitaFoto);
+  if (foto) { marca.style.backgroundImage = 'url(' + foto + ')'; marca.style.display = 'block'; }
+  else { marca.style.display = 'none'; }
+}
+window.actualizarMarcaAguaTaller = actualizarMarcaAguaTaller;
 
 function goToClubGestion(tab) {
   clubGestionTab = tab;
@@ -9897,6 +9914,7 @@ function cargarFotosTallerDeNube() {
       if (tallerState.config) tallerState.config.logoTaller = logoTallerCache;
       if (typeof esVistaPublicaTaller === 'function' && esVistaPublicaTaller()) { if (typeof renderVistaPublicaTaller === 'function') renderVistaPublicaTaller(); }
       else if (window.renderShellHeader) window.renderShellHeader();
+      if (typeof currentSection !== 'undefined' && currentSection === 'taller' && window.actualizarMarcaAguaTaller) window.actualizarMarcaAguaTaller(true);
     }
     if (Array.isArray(tallerState.articulos)) {
       tallerState.articulos.forEach(a => {
@@ -10029,6 +10047,7 @@ function aplicarDatosDeNube(dataOriginal) {
   }
   if (data.accessControl) { accessControl = data.accessControl; saveAccessControl(); }
   if (typeof currentSection !== 'undefined' && currentSection === 'taller' && typeof renderShellHeader === 'function') renderShellHeader();
+  if (typeof currentSection !== 'undefined' && currentSection === 'taller' && typeof actualizarMarcaAguaTaller === 'function') actualizarMarcaAguaTaller(true);
 }
 function arrancarAppLocal() {
   if (esVistaPublicaTaller()) {

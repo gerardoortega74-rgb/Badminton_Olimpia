@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261001-073704">
+<meta name="build-id" content="v20261001-073940">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -121,7 +121,12 @@ footer.hint{text-align:center;color:var(--muted);font-size:12px;padding:20px;}
 .home-card .icon{font-size:32px;margin-bottom:10px;}
 .home-card h3{margin:0 0 6px;color:var(--court-dark);font-size:16px;}
 .home-card p{margin:0;color:var(--muted);font-size:13px;}
-.club-banner{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 18px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
+.club-banner{background:linear-gradient(135deg,var(--court) 0%,var(--court-dark) 100%);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 20px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;position:relative;overflow:hidden;}
+.club-banner::after{content:'';position:absolute;inset:0;background:radial-gradient(circle at 85% 20%,rgba(232,185,36,.25),transparent 55%);pointer-events:none;}
+.club-banner .info{position:relative;z-index:1;}
+.club-banner .info b{color:#fff;font-size:17px;}
+.club-banner .info > div > div{color:#CFE8DA;font-size:13px;}
+.club-banner > button{position:relative;z-index:1;color:#fff;border-color:rgba(255,255,255,.6);}
 .club-banner .info{font-size:13.5px;color:var(--court-dark);display:flex;align-items:center;gap:14px;}
 .club-banner .info b{font-size:19px;}
 .club-banner .logo-big{width:64px;height:64px;border-radius:12px;object-fit:cover;box-shadow:var(--shadow);flex-shrink:0;}
@@ -9360,7 +9365,7 @@ function renderJugadoresGeneral() {
 function renderShellHeader() {
   const titles = {
     onboarding: ['Bádminton · Club', 'Antes de empezar'],
-    home: ['Bádminton · Club', 'Menú principal'],
+    home: ['Gestión Integral Bádminton', 'Menú principal'],
     torneo: [clubGlobal.nombre ? clubGlobal.nombre + ' · Torneo' : 'Gestor de Torneos', 'Grupos + eliminatoria'],
     planificacion: [clubGlobal.nombre ? clubGlobal.nombre + ' · Planificación' : 'Planificación Anual', 'Iniciación a tecnificación'],
     taller: ['Taller de Raquetas', (TallerApp.getState().config && TallerApp.getState().config.nombreTaller) || 'Encordado, clientes y contabilidad'],

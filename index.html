@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261001-133502">
+<meta name="build-id" content="v20261001-134147">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -8995,6 +8995,12 @@ function renderVistaPublicaTaller() {
       statCardShell(pedido.pagado ? 'Pagado' : 'Pendiente de pago', 'Pago'),
       statCardShell(duracion, 'Tiempo de encordado'),
     ));
+    if (pedido.fotoDespues) {
+      panel.appendChild(el('div', { style: 'margin-top:12px;' },
+        el('div', { class: 'sub', style: 'margin-bottom:6px;' }, '📷 Foto de tu raqueta terminada (pulsa para verla más grande)'),
+        el('img', { src: pedido.fotoDespues, style: 'max-width:220px;border-radius:8px;box-shadow:var(--shadow);cursor:pointer;display:block;', onclick: () => abrirFotoGrandePublica(pedido.fotoDespues) }),
+      ));
+    }
   }
 
   panel.appendChild(el('div', { class: 'sub', style: 'margin-top:12px;' },
@@ -9007,6 +9013,15 @@ function renderVistaPublicaTaller() {
   }
 }
 function statCardShell(num, lab) { return el('div', { class: 'stat-card' }, el('div', { class: 'num' }, num), el('div', { class: 'lab' }, lab)); }
+function abrirFotoGrandePublica(src) {
+  const capa = el('div', {
+    style: 'position:fixed;inset:0;background:rgba(10,20,30,0.92);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;cursor:pointer;',
+    onclick: () => capa.remove(),
+  },
+    el('img', { src, style: 'max-width:100%;max-height:100%;border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,0.5);' }),
+  );
+  document.body.appendChild(capa);
+}
 function nombreParticipantePublico(cat, id) {
   if (!id) return 'Por determinar';
   const p = (cat.players || []).find(x => x.id === id);

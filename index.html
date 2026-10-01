@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261001-140532">
+<meta name="build-id" content="v20261001-141126">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -7984,7 +7984,7 @@ function viewHistorial() {
   }
   const lista = terminados;
   const table = el('table', {}, el('thead', {}, el('tr', {},
-    el('th', {}, 'Fecha'), el('th', {}, 'Cliente'), el('th', {}, 'Raqueta'), el('th', {}, 'Cordaje'), el('th', {}, 'Tensión'), el('th', {}, 'Duración'), el('th', {}, 'Precio'), el('th', {}, 'Pago'), el('th', {}, 'Entrega'), el('th', {}, ''), el('th', {}, ''))));
+    el('th', {}, 'Fecha'), el('th', {}, 'Cliente'), el('th', {}, 'Raqueta'), el('th', {}, 'Cordaje'), el('th', {}, 'Tensión'), el('th', {}, 'Duración'), el('th', {}, 'Precio'), el('th', {}, 'Pago'), el('th', {}, 'Foto'), el('th', {}, 'Entrega'), el('th', {}, ''), el('th', {}, ''))));
   const tbody = el('tbody');
   lista.forEach(p => {
     const cli = clienteDe(p.clienteId);
@@ -7999,6 +7999,9 @@ function viewHistorial() {
       el('td', {}, duracion),
       el('td', {}, euros(p.precio)),
       el('td', {}, el('button', { class: 'btn btn-sm ' + (p.pagado ? 'btn-gold' : 'btn-ghost'), onclick: () => { p.pagado = !p.pagado; p.fechaPago = p.pagado ? Date.now() : null; render(); } }, p.pagado ? '✓ Pagado' : 'Pendiente')),
+      el('td', {}, p.fotoDespues
+        ? el('img', { src: p.fotoDespues, style: 'width:44px;height:44px;object-fit:cover;border-radius:6px;cursor:pointer;', onclick: () => abrirFotoGrandePublica(p.fotoDespues) })
+        : el('span', { class: 'sub' }, '—')),
       el('td', {}, p.estado === 'entregado'
         ? el('span', { class: 'chip chip-gold' }, 'Entregado ' + fmtFechaTs(p.fechaEntrega))
         : el('div', {}, el('button', { class: 'btn btn-ghost btn-sm', onclick: () => abrirEntregaPedido(p) }, 'Marcar entregado'), p.horaFin ? el('div', { class: 'sub' }, 'Lista desde ' + fmtFechaTs(p.horaFin)) : null)),

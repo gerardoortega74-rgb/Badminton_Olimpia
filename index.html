@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261001-075703">
+<meta name="build-id" content="v20261001-080642">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -131,6 +131,13 @@ footer.hint{text-align:center;color:var(--muted);font-size:12px;padding:20px;}
 .club-banner .info b{font-size:19px;}
 .club-banner .logo-big{width:64px;height:64px;border-radius:12px;object-fit:cover;box-shadow:var(--shadow);flex-shrink:0;}
 .club-banner .logo-big-emoji{width:64px;height:64px;border-radius:12px;background:var(--gold);display:flex;align-items:center;justify-content:center;font-size:32px;flex-shrink:0;}
+.home-group-big{width:100%;min-height:150px;padding:22px 28px;cursor:pointer;box-sizing:border-box;}
+.home-group-big .logo-big,.home-group-big .logo-big-emoji{width:84px;height:84px;font-size:42px;}
+.home-group-big .info{gap:20px;}
+.home-group-big .info b{font-size:clamp(20px,4.2vw,34px);line-height:1.15;display:block;}
+.home-group-big .info > div > div:last-child{font-size:clamp(12px,2vw,15px);}
+.home-group-big:hover{box-shadow:0 4px 16px rgba(15,46,68,0.28);transform:translateY(-1px);transition:all .15s;}
+.home-back-btn{display:inline-flex;align-items:center;gap:6px;margin-bottom:10px;}
 @media print{header.app-header,nav.tabs,.toolbar,.no-print{display:none !important;}body{background:#fff;}}
 #areaImpresionActa{display:none;}
 body.imprimiendo-acta > *:not(#areaImpresionActa){display:none !important;}
@@ -233,6 +240,8 @@ if (window.pdfjsLib) { pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.c
     </div>
   </div>
   <div class="row no-print" id="headerActions">
+    <small id="sesionIndicador" style="display:none;color:#CFE8DA;margin-right:4px;"></small>
+    <button class="btn btn-ghost btn-sm" id="btnAcceso" style="display:none;" title="Control de acceso">⚙️</button>
     <button class="btn btn-ghost btn-sm" id="btnLogout" style="display:none;">🔒 Salir</button>
     <button class="btn btn-primary btn-sm" id="btnMenu" style="display:none;">🏠 Menú</button>
     <button class="btn btn-gold btn-sm" id="btnExport" style="display:none;">⬇ Exportar todo</button>
@@ -9129,6 +9138,8 @@ function mostrarLogin() {
   document.getElementById('loginScreen').style.display = 'block';
   document.getElementById('btnMenu').style.display = 'none';
   document.getElementById('btnLogout').style.display = 'none';
+  document.getElementById('btnAcceso').style.display = 'none';
+  document.getElementById('sesionIndicador').style.display = 'none';
   document.getElementById('shellTitle').textContent = 'Bádminton · Club';
   document.getElementById('shellSubtitle').textContent = 'Iniciar sesión';
   renderLogin();
@@ -9381,6 +9392,14 @@ function renderShellHeader() {
   document.getElementById('shellSubtitle').textContent = sub;
   document.getElementById('btnMenu').style.display = (currentSection === 'home' || currentSection === 'onboarding') ? 'none' : 'inline-flex';
   document.getElementById('btnLogout').style.display = accesoActivo() && sesionActual ? 'inline-flex' : 'none';
+  document.getElementById('btnAcceso').style.display = (accesoActivo() && sesionActual && esAdmin()) ? 'inline-flex' : 'none';
+  const sesionEl = document.getElementById('sesionIndicador');
+  if (sesionActual) {
+    sesionEl.textContent = sesionActual.nombre + ' (' + (sesionActual.rol === 'admin' ? 'Administrador' : sesionActual.rol === 'usuario' ? 'Usuario' : 'Solo lectura') + ')';
+    sesionEl.style.display = 'inline';
+  } else {
+    sesionEl.style.display = 'none';
+  }
   const badge = document.getElementById('shellBrand').querySelector('.brand-badge');
   badge.innerHTML = '';
   const cfgTaller = currentSection === 'taller' && TallerApp.getState().config;
@@ -9771,16 +9790,15 @@ function renderControlAcceso() {
   root.appendChild(permPanel);
 }
 
+let homeGrupoAbierto = null;
 function renderHome() {
   const root = document.getElementById('homeScreen');
   root.innerHTML = '';
-  if (sesionActual) {
-    root.appendChild(el('div', { class: 'sub', style: 'margin-bottom:10px;' }, `Sesión: ${sesionActual.nombre} (${sesionActual.rol === 'admin' ? 'Administrador' : sesionActual.rol === 'usuario' ? 'Usuario' : 'Solo lectura'})`));
-  }
+
   function construirGrid(cards, onclickBase) {
     const grid = el('div', { class: 'home-grid' });
     cards.forEach(c => {
-      const visible = c.permiso ? tienePermiso(c.permiso) : (c.sec === 'acceso' ? true : (tienePermiso('club') || tienePermiso('jugadores') || tienePermiso('pagos')));
+      const visible = c.permiso ? tienePermiso(c.permiso) : (tienePermiso('club') || tienePermiso('jugadores') || tienePermiso('pagos'));
       if (!visible) return;
       grid.appendChild(el('div', { class: 'home-card', onclick: () => onclickBase(c) },
         el('div', { class: 'icon' }, c.icon),
@@ -9799,47 +9817,58 @@ function renderHome() {
     const primerTab = tienePermiso('club') ? 'datos' : tienePermiso('jugadores') ? 'jugadores' : 'pagos';
     goToClubGestion(primerTab);
   };
-  const gridClub = construirGrid(gruposClub, onclickClub);
-  if (gridClub.children.length) {
-    root.appendChild(el('div', { class: 'club-banner', style: 'margin-bottom:10px;' },
+  const hayClub = construirGrid(gruposClub, onclickClub).children.length > 0;
+
+  const cfgTaller = TallerApp.getState().config || {};
+  const fotoTaller = cfgTaller.logoTaller || cfgTaller.tarjetaVisitaFoto;
+  const gruposTaller = [
+    { icon: '🏸', title: 'Taller de Raquetas', desc: 'Cola de encordado.', sec: 'taller', tallerTab: 'cola', permiso: 'taller' },
+    { icon: '📦', title: 'Almacén', desc: 'Artículos y cordajes.', sec: 'taller', tallerTab: 'catalogo', permiso: 'taller' },
+    { icon: '💳', title: 'Cuentas', desc: 'Clientes y proveedores.', sec: 'taller', tallerTab: 'cuentas', permiso: 'taller' },
+    { icon: '💰', title: 'Contabilidad', desc: 'Encordado y venta de artículos.', sec: 'taller', tallerTab: 'contabilidad', permiso: 'taller' },
+    { icon: '⚙️', title: 'Configuración', desc: 'Precios, tiempos y publicidad.', sec: 'taller', tallerTab: 'config', permiso: 'taller' },
+  ];
+  const onclickTaller = (c) => { showSection('taller'); if (c.tallerTab) TallerApp.irATab(c.tallerTab); };
+  const hayTaller = tienePermiso('taller');
+
+  // Si hay un grupo abierto, mostrar solo ese: su cabecera (más pequeña) + sus acciones.
+  if (homeGrupoAbierto === 'club' && hayClub) {
+    root.appendChild(el('div', { class: 'club-banner', style: 'margin-bottom:14px;' },
       el('div', { class: 'info' },
         clubGlobal.logo ? el('img', { class: 'logo-big', src: clubGlobal.logo }) : el('div', { class: 'logo-big-emoji' }, '🏸'),
         el('div', {}, el('b', {}, clubGlobal.nombre || 'Club'), el('div', {}, clubGlobal.localidad || 'Torneos, planificación y gestión del club')),
       ),
-      tienePermiso('club') ? el('button', { class: 'btn btn-ghost btn-sm', onclick: () => goToClubGestion('datos') }, 'Editar datos del club') : null
+      tienePermiso('club') ? el('button', { class: 'btn btn-ghost btn-sm', onclick: (e) => { e.stopPropagation(); goToClubGestion('datos'); } }, 'Editar datos del club') : null
     ));
-    root.appendChild(gridClub);
-  }
-
-  if (tienePermiso('taller')) {
-    const cfgTaller = TallerApp.getState().config || {};
-    const fotoTaller = cfgTaller.logoTaller || cfgTaller.tarjetaVisitaFoto;
-    const gruposTaller = [
-      { icon: '🏸', title: 'Taller de Raquetas', desc: 'Cola de encordado.', sec: 'taller', tallerTab: 'cola', permiso: 'taller' },
-      { icon: '📦', title: 'Almacén', desc: 'Artículos y cordajes.', sec: 'taller', tallerTab: 'catalogo', permiso: 'taller' },
-      { icon: '💳', title: 'Cuentas', desc: 'Clientes y proveedores.', sec: 'taller', tallerTab: 'cuentas', permiso: 'taller' },
-      { icon: '💰', title: 'Contabilidad', desc: 'Encordado y venta de artículos.', sec: 'taller', tallerTab: 'contabilidad', permiso: 'taller' },
-      { icon: '⚙️', title: 'Configuración', desc: 'Precios, tiempos y publicidad.', sec: 'taller', tallerTab: 'config', permiso: 'taller' },
-    ];
-    const onclickTaller = (c) => { showSection('taller'); if (c.tallerTab) TallerApp.irATab(c.tallerTab); };
-    const gridTaller = construirGrid(gruposTaller, onclickTaller);
-    if (gridTaller.children.length) {
-      root.appendChild(el('div', { class: 'club-banner', style: 'margin:18px 0 10px;' },
+    root.appendChild(el('button', { class: 'btn btn-ghost btn-sm home-back-btn', onclick: () => { homeGrupoAbierto = null; renderHome(); } }, '← Volver'));
+    root.appendChild(construirGrid(gruposClub, onclickClub));
+  } else if (homeGrupoAbierto === 'taller' && hayTaller) {
+    root.appendChild(el('div', { class: 'club-banner', style: 'margin-bottom:14px;' },
+      el('div', { class: 'info' },
+        fotoTaller ? el('img', { class: 'logo-big', src: fotoTaller }) : el('div', { class: 'logo-big-emoji' }, '🏸'),
+        el('div', {}, el('b', {}, cfgTaller.nombreTaller || 'Taller de Raquetas'), el('div', {}, 'Encordado, almacén, cuentas y contabilidad')),
+      ),
+    ));
+    root.appendChild(el('button', { class: 'btn btn-ghost btn-sm home-back-btn', onclick: () => { homeGrupoAbierto = null; renderHome(); } }, '← Volver'));
+    root.appendChild(construirGrid(gruposTaller, onclickTaller));
+  } else {
+    // Pantalla principal: solo los dos bloques grandes.
+    if (hayClub) {
+      root.appendChild(el('div', { class: 'club-banner home-group-big', style: 'margin-bottom:16px;', onclick: () => { homeGrupoAbierto = 'club'; renderHome(); } },
         el('div', { class: 'info' },
-          fotoTaller ? el('img', { class: 'logo-big', src: fotoTaller }) : el('div', { class: 'logo-big-emoji' }, '🏸'),
-          el('div', {}, el('b', {}, cfgTaller.nombreTaller || 'Taller de Raquetas'), el('div', {}, 'Encordado, almacén, cuentas y contabilidad')),
+          clubGlobal.logo ? el('img', { class: 'logo-big', src: clubGlobal.logo }) : el('div', { class: 'logo-big-emoji' }, '🏸'),
+          el('div', {}, el('b', {}, clubGlobal.nombre || 'Club'), el('div', {}, el('div', {}, clubGlobal.localidad || 'Torneos, planificación y gestión del club'))),
         ),
       ));
-      root.appendChild(gridTaller);
     }
-  }
-
-  if (esAdmin()) {
-    const gridAcceso = construirGrid(
-      [{ icon: '🔐', title: 'Control de acceso', desc: 'Usuarios, roles y qué puede ver cada uno.', sec: 'acceso', permiso: null }],
-      () => goToClubGestion('acceso'));
-    gridAcceso.style.marginTop = '18px';
-    root.appendChild(gridAcceso);
+    if (hayTaller) {
+      root.appendChild(el('div', { class: 'club-banner home-group-big', style: 'margin-bottom:16px;', onclick: () => { homeGrupoAbierto = 'taller'; renderHome(); } },
+        el('div', { class: 'info' },
+          fotoTaller ? el('img', { class: 'logo-big', src: fotoTaller }) : el('div', { class: 'logo-big-emoji' }, '🏸'),
+          el('div', {}, el('b', {}, cfgTaller.nombreTaller || 'Taller de Raquetas'), el('div', {}, el('div', {}, 'Encordado, almacén, cuentas y contabilidad'))),
+        ),
+      ));
+    }
   }
 
   root.appendChild(el('div', { class: 'panel', style: 'margin-top:16px;text-align:center;' },
@@ -10180,11 +10209,12 @@ function arrancarAppLocal() {
 }
 
 document.getElementById('shellBrand').addEventListener('click', () => showSection('home'));
-document.getElementById('btnMenu').addEventListener('click', () => showSection('home'));
+document.getElementById('btnMenu').addEventListener('click', () => { homeGrupoAbierto = null; showSection('home'); });
 document.getElementById('btnExport').addEventListener('click', exportAll);
 document.getElementById('btnImport').addEventListener('click', () => document.getElementById('fileImport').click());
 document.getElementById('fileImport').addEventListener('change', (e) => { if (e.target.files[0]) importAll(e.target.files[0]); e.target.value = ''; });
 document.getElementById('btnLogout').addEventListener('click', () => { if (confirm('¿Cerrar sesión?')) cerrarSesion(); });
+document.getElementById('btnAcceso').addEventListener('click', () => goToClubGestion('acceso'));
 
 if (!esVistaPublica()) {
   const introScreen = document.getElementById('introScreen');

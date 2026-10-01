@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261001-081039">
+<meta name="build-id" content="v20261001-081603">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -241,7 +241,15 @@ if (window.pdfjsLib) { pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.c
   </div>
   <div class="row no-print" id="headerActions">
     <small id="sesionIndicador" style="display:none;color:#CFE8DA;margin-right:4px;"></small>
-    <button class="btn btn-ghost btn-sm" id="btnAcceso" style="display:none;" title="Control de acceso">⚙️</button>
+    <button class="btn btn-ghost btn-sm" id="btnAyuda" title="¿Dónde encuentro…?">❓</button>
+    <div style="position:relative;display:inline-block;">
+      <button class="btn btn-ghost btn-sm" id="btnAcceso" style="display:none;" title="Ajustes">⚙️</button>
+      <div id="menuAjustes" style="display:none;position:absolute;right:0;top:110%;background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:6px;z-index:50;min-width:200px;">
+        <button class="btn btn-ghost btn-sm" id="btnAccesoMenu" style="width:100%;text-align:left;margin-bottom:4px;">🔐 Control de acceso</button>
+        <button class="btn btn-ghost btn-sm" id="btnExportMenu" style="width:100%;text-align:left;margin-bottom:4px;">⬇ Exportar todo</button>
+        <button class="btn btn-ghost btn-sm" id="btnImportMenu" style="width:100%;text-align:left;">⬆ Importar todo</button>
+      </div>
+    </div>
     <button class="btn btn-ghost btn-sm" id="btnLogout" style="display:none;">🔒 Salir</button>
     <button class="btn btn-primary btn-sm" id="btnMenu" style="display:none;">🏠 Menú</button>
     <button class="btn btn-gold btn-sm" id="btnExport" style="display:none;">⬇ Exportar todo</button>
@@ -9871,18 +9879,6 @@ function renderHome() {
     }
   }
 
-  root.appendChild(el('div', { class: 'panel', style: 'margin-top:16px;text-align:center;' },
-    el('button', { class: 'btn btn-gold', onclick: () => abrirAyuda() }, '❓ ¿Dónde encuentro…?'),
-  ));
-
-  root.appendChild(el('div', { class: 'panel', style: 'margin-top:16px;' },
-    el('h3', { style: 'margin-bottom:6px;' }, '🗄️ Datos y copia de seguridad'),
-    el('div', { class: 'sub', style: 'margin-bottom:10px;' }, 'Todos los datos se guardan en este dispositivo y en la nube. Usa "Exportar todo" para pasarlos a otro ordenador o al móvil, e "Importar todo" en el otro dispositivo para continuar donde lo dejaste.'),
-    el('div', { class: 'row', style: 'gap:8px;' },
-      el('button', { class: 'btn btn-gold btn-sm', onclick: () => document.getElementById('btnExport').click() }, '⬇ Exportar todo'),
-      el('button', { class: 'btn btn-ghost btn-sm', onclick: () => document.getElementById('btnImport').click() }, '⬆ Importar todo'),
-    ),
-  ));
 }
 
 function exportAll() {
@@ -10214,7 +10210,19 @@ document.getElementById('btnExport').addEventListener('click', exportAll);
 document.getElementById('btnImport').addEventListener('click', () => document.getElementById('fileImport').click());
 document.getElementById('fileImport').addEventListener('change', (e) => { if (e.target.files[0]) importAll(e.target.files[0]); e.target.value = ''; });
 document.getElementById('btnLogout').addEventListener('click', () => { if (confirm('¿Cerrar sesión?')) cerrarSesion(); });
-document.getElementById('btnAcceso').addEventListener('click', () => goToClubGestion('acceso'));
+document.getElementById('btnAcceso').addEventListener('click', (e) => {
+  e.stopPropagation();
+  const menu = document.getElementById('menuAjustes');
+  menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+});
+document.addEventListener('click', (e) => {
+  const menu = document.getElementById('menuAjustes');
+  if (menu.style.display !== 'none' && !menu.contains(e.target) && e.target.id !== 'btnAcceso') menu.style.display = 'none';
+});
+document.getElementById('btnAccesoMenu').addEventListener('click', () => { document.getElementById('menuAjustes').style.display = 'none'; goToClubGestion('acceso'); });
+document.getElementById('btnExportMenu').addEventListener('click', () => { document.getElementById('menuAjustes').style.display = 'none'; document.getElementById('btnExport').click(); });
+document.getElementById('btnImportMenu').addEventListener('click', () => { document.getElementById('menuAjustes').style.display = 'none'; document.getElementById('btnImport').click(); });
+document.getElementById('btnAyuda').addEventListener('click', () => abrirAyuda());
 
 if (!esVistaPublica()) {
   const introScreen = document.getElementById('introScreen');

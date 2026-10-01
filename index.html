@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261001-041401">
+<meta name="build-id" content="v20261001-041820">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -7345,7 +7345,7 @@ function viewConfigTaller() {
   );
   panelConfig.appendChild(el('h3', { style: 'margin-top:16px;' }, '📇 Tu publicidad (independiente del club)'));
   panelConfig.appendChild(el('div', { class: 'sub', style: 'margin-bottom:8px;' }, 'El taller es un negocio aparte del club de bádminton. Este nombre y esta foto son los que ve el cliente al seguir su raqueta, en vez del nombre del club.'));
-  panelConfig.appendChild(field('Nombre del taller / encordador', inputEl('text', state.config.nombreTaller || '', v => { state.config.nombreTaller = v; render(); }, { placeholder: 'Ej: Encordados Juan' })));
+  panelConfig.appendChild(field('Nombre del taller / encordador', inputEl('text', state.config.nombreTaller || '', v => { state.config.nombreTaller = v; render(); if (window.renderShellHeader) window.renderShellHeader(); }, { placeholder: 'Ej: Encordados Juan' })));
   panelConfig.appendChild(el('div', { class: 'sub', style: 'margin:6px 0 10px;' }, 'Sube una foto de tu tarjeta de visita. Saldrá en el historial y en la página que ve cada cliente al seguir su raqueta.'));
   if (state.config.tarjetaVisitaFoto) {
     panelConfig.appendChild(el('img', { src: state.config.tarjetaVisitaFoto, style: 'max-width:280px;border-radius:8px;display:block;margin-bottom:8px;' }));

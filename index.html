@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261001-160629">
+<meta name="build-id" content="v20261002-073140">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -6273,6 +6273,7 @@ function addPedido(datos) {
     cantidadCordajeH: datos.cordajeIdH ? (datos.cantidadCordajeH || cantidadCordajePorDefecto(cordajeDe(datos.cordajeIdH))) : null,
     articulosAdicionales: Array.isArray(datos.articulosAdicionales) ? datos.articulosAdicionales.map(i => ({ articuloId: i.articuloId, cantidad: i.cantidad, precioUnitario: i.precioUnitario, nombre: i.nombre })) : [],
     tensionVertical: datos.tensionVertical || null, tensionHorizontal: datos.tensionHorizontal || null, precio: datos.precio || 0, fotoAntes: datos.fotoAntes || null, fotoDespues: null,
+    pretensado: !!datos.pretensado,
     estado: 'pendiente', horaLlegada: Date.now(), horaInicio: null, horaFin: null, notas: datos.notas || '',
     pagado: !!datos.pagado, fechaPago: datos.pagado ? Date.now() : null, fechaEntrega: null, aplazado: false, pagoPrevisto: datos.pagoPrevisto || (datos.pagado ? 'adelantado' : 'alRecoger'),
   };
@@ -6691,7 +6692,7 @@ function enlaceTallerDe(p) { return window.enlacePublicoPedidoTaller ? window.en
 function abrirAvisoWhatsapp(p) {
   const cli = clienteDe(p.clienteId);
   if (!cli) return;
-  const mensaje = `Hola ${cli.nombre}, ya tengo lista tu raqueta (${p.marcaModelo || ''}). Importe: ${euros(p.precio)}. Puedes pasar a recogerla cuando quieras.\n\n${enlaceTallerDe(p)}`;
+  const mensaje = `Hola ${cli.nombre}, ya tengo lista tu raqueta (${p.marcaModelo || ''})${p.pretensado ? ', encordada con pretensado' : ''}. Importe: ${euros(p.precio)}. Puedes pasar a recogerla cuando quieras.\n\n${enlaceTallerDe(p)}`;
   abrirModalWhatsapp('💬 Avisar por WhatsApp', cli, mensaje, p.fotoDespues);
 }
 function abrirAvisoEmpezado(p) {
@@ -6876,6 +6877,11 @@ function viewNuevoPedido() {
     el('label', { style: 'display:flex;align-items:center;text-transform:none;font-weight:400;cursor:pointer;' },
       hibridoCheckbox, '🔀 Cordaje híbrido: uno para las verticales y otro distinto para las horizontales'),
   ));
+  const pretensadoCheckbox = el('input', { type: 'checkbox', style: 'width:auto;margin-right:6px;' });
+  panel.appendChild(el('div', { class: 'msg msg-info', style: 'margin-bottom:8px;' },
+    el('label', { style: 'display:flex;align-items:center;text-transform:none;font-weight:400;cursor:pointer;' },
+      pretensadoCheckbox, '🧵 Pretensado del cordaje'),
+  ));
 
   function actualizarPrecioCordajes() {
     const cor = cordajeDe(cordajeSelect.value);
@@ -7004,6 +7010,7 @@ function viewNuevoPedido() {
       cantidadCordaje: cordajeSelect.value ? (parseFloat(cantidadCordajeInput.value) || cantidadCordajePorDefecto(cordajeDe(cordajeSelect.value))) : null,
       cordajeIdH: hibridoCheckbox.checked ? (cordajeHSelect.value || null) : null,
       cantidadCordajeH: (hibridoCheckbox.checked && cordajeHSelect.value) ? (parseFloat(cantidadCordajeHInput.value) || cantidadCordajePorDefecto(cordajeDe(cordajeHSelect.value))) : null,
+      pretensado: pretensadoCheckbox.checked,
       articulosAdicionales: articulosAdicionalesLista,
       pagado: pagoSelect.value === 'adelantado',
       pagoPrevisto: pagoSelect.value,

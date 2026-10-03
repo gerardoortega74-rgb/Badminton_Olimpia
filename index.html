@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261003-085450">
+<meta name="build-id" content="v20261003-090109">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -6299,8 +6299,19 @@ function removeProveedor(id) {
 function proveedorDe(id) { return state.proveedores.find(p => p.id === id); }
 function articulosDeProveedor(provId) { return state.articulos.filter(a => (a.proveedores || []).some(x => x.proveedorId === provId)); }
 
+function siguienteNumeroPedidoProveedor(año) {
+  let maxNum = 0;
+  state.pedidosProveedor.forEach(p => {
+    if (p.numeroPedido && p.numeroPedido.slice(0, 2) === año) {
+      const n = parseInt(p.numeroPedido.slice(2), 10);
+      if (!isNaN(n) && n > maxNum) maxNum = n;
+    }
+  });
+  return año + String(maxNum + 1).padStart(3, '0');
+}
 function addPedidoProveedor(proveedorId) {
-  const nuevo = { id: uid('ppr'), proveedorId: proveedorId || null, fecha: new Date().toISOString().slice(0, 10), items: [], estado: 'pendiente', recepciones: [], notas: '' };
+  const año = String(new Date().getFullYear()).slice(-2);
+  const nuevo = { id: uid('ppr'), numeroPedido: siguienteNumeroPedidoProveedor(año), proveedorId: proveedorId || null, fecha: new Date().toISOString().slice(0, 10), items: [], estado: 'pendiente', recepciones: [], notas: '' };
   state.pedidosProveedor.push(nuevo);
   return nuevo;
 }
@@ -7726,7 +7737,7 @@ function viewPedidosProveedor() {
       const [chipClase, chipTexto] = ESTADO_INFO[p.estado] || ESTADO_INFO.pendiente;
       const card = el('div', { class: 'card' },
         el('div', { class: 'card-head' },
-          el('span', { class: 'card-title' }, (prov ? prov.nombre : 'Proveedor eliminado') + ' · ' + fmtFechaDMY(p.fecha)),
+          el('span', { class: 'card-title' }, '#' + (p.numeroPedido || '—') + ' · ' + (prov ? prov.nombre : 'Proveedor eliminado') + ' · ' + fmtFechaDMY(p.fecha)),
           el('span', { class: 'chip ' + chipClase }, chipTexto),
         ),
         el('div', { class: 'sub' }, p.items.length + ' artículo(s) · Total: ' + euros(totalPedidoProveedor(p)) + (p.recepciones.length ? ' · ' + p.recepciones.length + ' entrada(s) registrada(s)' : '')),
@@ -8350,6 +8361,17 @@ function setState(s) {
     delete p.fechaRecibido;
     delete p.movimientoId;
   });
+  // Pedidos a proveedor antiguos sin numerar: se numeran por orden cronologico dentro de cada año.
+  const pedidosSinNumero = state.pedidosProveedor.filter(p => !p.numeroPedido);
+  if (pedidosSinNumero.length) {
+    pedidosSinNumero.sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''));
+    const contadorPorAño = {};
+    pedidosSinNumero.forEach(p => {
+      const año = String(new Date(p.fecha || Date.now()).getFullYear()).slice(-2);
+      contadorPorAño[año] = (contadorPorAño[año] || 0) + 1;
+      p.numeroPedido = año + String(contadorPorAño[año]).padStart(3, '0');
+    });
+  }
   state.proveedores.forEach(p => {
     if (p.dni === undefined) p.dni = '';
     if (!p.numeroProveedor) p.numeroProveedor = siguienteNumeroProveedor();

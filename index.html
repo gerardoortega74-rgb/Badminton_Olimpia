@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261003-090109">
+<meta name="build-id" content="v20261003-090852">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -7673,18 +7673,39 @@ function viewPedidosProveedor() {
   // ---- Formulario de nuevo pedido ----
   const provSelect = el('select', {}, [el('option', { value: '' }, '— Elegir proveedor —')].concat(
     state.proveedores.map(p => el('option', { value: p.id }, p.nombre + (p.razonSocial ? ' — ' + p.razonSocial : '')))));
-  const artSelect = el('select', {}, [el('option', { value: '' }, '— Elegir artículo —')].concat(
-    state.articulos.map(a => el('option', { value: a.id }, (a.codigo ? a.codigo + ' · ' : '') + a.nombre))));
   const cantInput = el('input', { type: 'number', min: '0', step: '1', value: '1', style: 'max-width:90px;' });
   const precioInput = el('input', { type: 'number', min: '0', step: '0.01', value: '0', style: 'max-width:100px;' });
-  artSelect.addEventListener('change', () => {
-    const art = state.articulos.find(a => a.id === artSelect.value);
-    if (art) {
-      const rel = (art.proveedores || []).find(x => x.proveedorId === provSelect.value);
-      precioInput.value = rel ? rel.precioCompra : (art.precioCoste || 0);
-    }
+  let articuloSeleccionadoId = null;
+  function aplicarPrecioDeArticulo(art) {
+    if (!art) return;
+    const rel = (art.proveedores || []).find(x => x.proveedorId === provSelect.value);
+    precioInput.value = rel ? rel.precioCompra : (art.precioCoste || 0);
+  }
+  const artBuscador = el('input', { type: 'text', placeholder: 'Buscar artículo por código o nombre…' });
+  const artResultados = el('div', { style: 'position:relative;' });
+  function cerrarResultadosArt() { artResultados.innerHTML = ''; }
+  artBuscador.addEventListener('input', () => {
+    articuloSeleccionadoId = null;
+    const q = artBuscador.value.trim().toLowerCase();
+    cerrarResultadosArt();
+    if (!q) return;
+    const coincidencias = state.articulos.filter(a => (a.nombre || '').toLowerCase().includes(q) || (a.codigo || '').toLowerCase().includes(q)).slice(0, 8);
+    if (!coincidencias.length) { artResultados.appendChild(el('div', { class: 'sub', style: 'padding:6px;' }, 'Sin coincidencias.')); return; }
+    const lista = el('div', { style: 'position:absolute;z-index:20;background:#fff;border:1px solid #E4E1D6;border-radius:8px;box-shadow:var(--shadow);width:100%;max-height:220px;overflow-y:auto;' });
+    coincidencias.forEach(a => {
+      lista.appendChild(el('div', {
+        style: 'padding:8px 10px;cursor:pointer;border-bottom:1px solid #F0EEE6;',
+        onclick: () => {
+          articuloSeleccionadoId = a.id;
+          artBuscador.value = (a.codigo ? a.codigo + ' · ' : '') + a.nombre + (a.esCordaje ? ' 🧵' : '');
+          cerrarResultadosArt();
+          aplicarPrecioDeArticulo(a);
+        },
+      }, (a.codigo ? a.codigo + ' · ' : '') + a.nombre + (a.esCordaje ? ' 🧵' : '')));
+    });
+    artResultados.appendChild(lista);
   });
-  provSelect.addEventListener('change', () => artSelect.dispatchEvent(new Event('change')));
+  provSelect.addEventListener('change', () => { if (articuloSeleccionadoId) aplicarPrecioDeArticulo(state.articulos.find(a => a.id === articuloSeleccionadoId)); });
   const itemsDiv = el('div', { style: 'margin:10px 0;' });
   const totalDiv = el('div', { class: 'sub', style: 'font-weight:700;' });
   function repintarItems() {
@@ -7702,13 +7723,16 @@ function viewPedidosProveedor() {
   panel.appendChild(el('h3', { style: 'margin-top:4px;' }, '+ Nuevo pedido'));
   panel.appendChild(el('div', { class: 'grid' }, field('Proveedor', provSelect)));
   panel.appendChild(el('div', { class: 'row', style: 'gap:8px;flex-wrap:wrap;margin:8px 0;align-items:flex-end;' },
-    field('Artículo', artSelect), field('Cantidad', cantInput), field('Precio de compra (€/ud)', precioInput),
+    el('div', { style: 'min-width:220px;' }, field('Artículo', artBuscador), artResultados),
+    field('Cantidad', cantInput), field('Precio de compra (€/ud)', precioInput),
     el('button', { class: 'btn btn-gold btn-sm', onclick: () => {
-      if (!artSelect.value) { alert('Elige un artículo.'); return; }
+      if (!articuloSeleccionadoId) { alert('Busca y elige un artículo de la lista.'); return; }
       const cant = parseFloat(cantInput.value) || 0;
       if (cant <= 0) { alert('Pon una cantidad mayor que 0.'); return; }
-      pedidoProvNuevoItems.push({ articuloId: artSelect.value, cantidad: cant, precioUnitario: parseFloat(precioInput.value) || 0 });
+      pedidoProvNuevoItems.push({ articuloId: articuloSeleccionadoId, cantidad: cant, precioUnitario: parseFloat(precioInput.value) || 0 });
       cantInput.value = '1';
+      articuloSeleccionadoId = null;
+      artBuscador.value = '';
       repintarItems();
     } }, '+ Añadir artículo'),
   ));

@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261003-091341">
+<meta name="build-id" content="v20261003-092751">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -6364,6 +6364,19 @@ function quitarRecepcionPedidoProveedor(p, recepcionId) {
   p.recepciones = p.recepciones.filter(x => x.id !== recepcionId);
   recalcularEstadoPedidoProveedor(p);
 }
+// Deshace la entrada y vuelve a registrarla con la fecha/cantidades nuevas.
+function editarRecepcionPedidoProveedor(p, recepcionId, nuevaFecha, nuevasCantidades) {
+  quitarRecepcionPedidoProveedor(p, recepcionId);
+  return registrarRecepcionPedidoProveedor(p, nuevaFecha, nuevasCantidades);
+}
+function anularPedidoProveedor(p) {
+  if (p.recepciones.length) return false;
+  p.estado = 'anulado';
+  return true;
+}
+function reactivarPedidoProveedor(p) {
+  recalcularEstadoPedidoProveedor(p);
+}
 
 function pedidosEnCola() {
   return state.pedidos.filter(p => !p.aplazado && (p.estado === 'pendiente' || p.estado === 'en_proceso')).sort((a, b) => a.horaLlegada - b.horaLlegada);
@@ -7656,6 +7669,8 @@ function viewProveedores() {
 
 // ---------- Pedidos a proveedor ----------
 let pedidoProvAbiertoId = null;
+let itemsPedidoProvEditandoId = null;
+let recepcionEditandoId = null;
 let pedidoProvNuevoItems = [];
 function viewPedidosProveedor() {
   const wrap = document.createDocumentFragment();
@@ -7754,10 +7769,11 @@ function viewPedidosProveedor() {
   if (!state.pedidosProveedor.length) {
     panel.appendChild(el('div', { class: 'empty-state' }, 'Todavía no has hecho ningún pedido a proveedor.'));
   } else {
-    const ESTADO_INFO = { pendiente: ['chip-muted', '⏳ Pendiente'], parcial: ['chip-gold', '🟡 Parcial'], recibido: ['chip-gold', '✅ Recibido'] };
+    const ESTADO_INFO = { pendiente: ['chip-muted', '⏳ Pendiente'], parcial: ['chip-gold', '🟡 Parcial'], recibido: ['chip-gold', '✅ Recibido'], anulado: ['chip-muted', '🚫 Anulado'] };
     state.pedidosProveedor.slice().reverse().forEach(p => {
       const prov = proveedorDe(p.proveedorId);
       const abierto = pedidoProvAbiertoId === p.id;
+      const editandoItems = itemsPedidoProvEditandoId === p.id;
       const [chipClase, chipTexto] = ESTADO_INFO[p.estado] || ESTADO_INFO.pendiente;
       const card = el('div', { class: 'card' },
         el('div', { class: 'card-head' },
@@ -7766,11 +7782,42 @@ function viewPedidosProveedor() {
         ),
         el('div', { class: 'sub' }, p.items.length + ' artículo(s) · Total: ' + euros(totalPedidoProveedor(p)) + (p.recepciones.length ? ' · ' + p.recepciones.length + ' entrada(s) registrada(s)' : '')),
         el('div', { class: 'toolbar', style: 'margin-top:6px;' },
-          el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { pedidoProvAbiertoId = abierto ? null : p.id; render(); } }, abierto ? 'Ocultar detalle' : 'Ver detalle'),
-          el('button', { class: 'btn btn-danger btn-sm', onclick: () => { if (confirm('¿Eliminar este pedido? Se deshará cualquier entrada ya registrada.')) { removePedidoProveedor(p.id); render(); } } }, 'Eliminar'),
+          el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { pedidoProvAbiertoId = abierto ? null : p.id; itemsPedidoProvEditandoId = null; render(); } }, abierto ? 'Ocultar detalle' : 'Ver detalle'),
+          p.estado !== 'anulado' ? el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { pedidoProvAbiertoId = p.id; itemsPedidoProvEditandoId = p.id; render(); } }, '✏️ Editar pedido') : null,
+          p.estado === 'anulado'
+            ? el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { reactivarPedidoProveedor(p); render(); } }, '↩ Reactivar')
+            : el('button', { class: 'btn btn-ghost btn-sm', onclick: () => {
+                if (p.recepciones.length) { alert('Este pedido ya tiene entradas registradas. Quítalas primero si quieres anularlo.'); return; }
+                if (confirm('¿Anular este pedido? Quedará marcado como anulado, sin borrarlo.')) { anularPedidoProveedor(p); render(); }
+              } }, '🚫 Anular'),
+          el('button', { class: 'btn btn-danger btn-sm', onclick: () => { if (confirm('¿Eliminar este pedido? Se deshará cualquier entrada ya registrada. No se puede deshacer.')) { removePedidoProveedor(p.id); render(); } } }, 'Eliminar'),
         ),
       );
-      if (abierto) {
+      if (abierto && editandoItems) {
+        card.appendChild(el('h4', { style: 'margin:12px 0 4px;' }, '✏️ Editar artículos del pedido'));
+        const tablaEdit = el('table', {}, el('thead', {}, el('tr', {}, el('th', {}, 'Artículo'), el('th', {}, 'Cantidad'), el('th', {}, 'Precio/ud'), el('th', {}, ''))));
+        const tbodyEdit = el('tbody');
+        p.items.forEach((it, idx) => {
+          const art = state.articulos.find(a => a.id === it.articuloId);
+          const cantInputEdit = el('input', { type: 'number', min: String(it.cantidadRecibida || 0), step: '1', value: String(it.cantidad), style: 'max-width:90px;' });
+          const precioInputEdit = el('input', { type: 'number', min: '0', step: '0.01', value: String(it.precioUnitario), style: 'max-width:100px;' });
+          tbodyEdit.appendChild(el('tr', {},
+            el('td', {}, art ? art.nombre : 'Artículo eliminado'),
+            el('td', {}, cantInputEdit, it.cantidadRecibida ? el('div', { class: 'sub' }, 'mín. ' + it.cantidadRecibida + ' (ya recibido)') : null),
+            el('td', {}, precioInputEdit),
+            el('td', {}, (it.cantidadRecibida || 0) <= 0
+              ? el('button', { class: 'btn btn-danger btn-sm', onclick: () => { p.items.splice(idx, 1); render(); } }, 'Quitar')
+              : null),
+          ));
+          cantInputEdit.addEventListener('change', () => { it.cantidad = Math.max(it.cantidadRecibida || 0, parseFloat(cantInputEdit.value) || 0); cantInputEdit.value = String(it.cantidad); });
+          precioInputEdit.addEventListener('change', () => { it.precioUnitario = parseFloat(precioInputEdit.value) || 0; });
+        });
+        tablaEdit.appendChild(tbodyEdit);
+        card.appendChild(tablaEdit);
+        card.appendChild(el('div', { class: 'toolbar', style: 'margin-top:8px;' },
+          el('button', { class: 'btn btn-gold btn-sm', onclick: () => { itemsPedidoProvEditandoId = null; render(); } }, '✅ Hecho'),
+        ));
+      } else if (abierto) {
         const table = el('table', {}, el('thead', {}, el('tr', {}, el('th', {}, 'Artículo'), el('th', {}, 'Pedido'), el('th', {}, 'Recibido'), el('th', {}, 'Pendiente'), el('th', {}, 'Precio/ud'))));
         const tbody = el('tbody');
         p.items.forEach(it => {
@@ -7787,7 +7834,7 @@ function viewPedidosProveedor() {
         table.appendChild(tbody);
         card.appendChild(table);
 
-        if (!pedidoProveedorCompleto(p)) {
+        if (p.estado !== 'anulado' && !pedidoProveedorCompleto(p)) {
           card.appendChild(el('h4', { style: 'margin:12px 0 4px;' }, '📥 Registrar entrada de material'));
           const fechaInput = el('input', { type: 'date', value: new Date().toISOString().slice(0, 10) });
           const cantidadesInputs = {};
@@ -7817,11 +7864,43 @@ function viewPedidosProveedor() {
         if (p.recepciones.length) {
           card.appendChild(el('h4', { style: 'margin:12px 0 4px;' }, '📅 Historial de entradas'));
           p.recepciones.slice().reverse().forEach(r => {
+            if (recepcionEditandoId === r.id) {
+              const fechaEditInput = el('input', { type: 'date', value: r.fecha });
+              const cantidadesEditInputs = {};
+              const filasEdit = r.items.map(it => {
+                const art = state.articulos.find(a => a.id === it.articuloId);
+                const itemPedido = p.items.find(x => x.articuloId === it.articuloId);
+                const maxDisponible = it.cantidad + (itemPedido ? cantidadPendienteItem(itemPedido) : 0);
+                const inp = el('input', { type: 'number', min: '0', max: String(maxDisponible), step: '1', value: String(it.cantidad), style: 'max-width:90px;' });
+                cantidadesEditInputs[it.articuloId] = inp;
+                return el('div', { class: 'row', style: 'align-items:center;gap:8px;margin-bottom:4px;' },
+                  el('span', { style: 'flex:1;' }, art ? art.nombre : 'Artículo eliminado'),
+                  inp,
+                );
+              });
+              card.appendChild(el('div', { style: 'border:1px solid #E4E1D6;border-radius:8px;padding:10px;margin-bottom:8px;' },
+                el('div', { class: 'field' }, el('label', {}, 'Fecha de esta entrada'), fechaEditInput),
+                ...filasEdit,
+                el('div', { class: 'toolbar', style: 'margin-top:6px;' },
+                  el('button', { class: 'btn btn-gold btn-sm', onclick: () => {
+                    const nuevasCantidades = {};
+                    Object.keys(cantidadesEditInputs).forEach(artId => { nuevasCantidades[artId] = parseFloat(cantidadesEditInputs[artId].value) || 0; });
+                    if (!fechaEditInput.value) { alert('Elige una fecha.'); return; }
+                    editarRecepcionPedidoProveedor(p, r.id, fechaEditInput.value, nuevasCantidades);
+                    recepcionEditandoId = null;
+                    render();
+                  } }, '💾 Guardar cambios'),
+                  el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { recepcionEditandoId = null; render(); } }, 'Cancelar'),
+                ),
+              ));
+              return;
+            }
             card.appendChild(el('div', { class: 'row', style: 'align-items:center;gap:8px;margin-bottom:4px;' },
               el('span', { style: 'flex:1;' }, fmtFechaDMY(r.fecha) + ' — ' + r.items.map(it => {
                 const art = state.articulos.find(a => a.id === it.articuloId);
                 return it.cantidad + ' ' + (art ? art.nombre : 'artículo eliminado');
               }).join(', ')),
+              el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { recepcionEditandoId = r.id; render(); } }, '✏️ Editar'),
               el('button', { class: 'btn btn-danger btn-sm', onclick: () => { if (confirm('¿Quitar esta entrada? Se restará del stock y se quitará su gasto de Contabilidad.')) { quitarRecepcionPedidoProveedor(p, r.id); render(); } } }, 'Quitar'),
             ));
           });

@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261003-090852">
+<meta name="build-id" content="v20261003-091341">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -7554,10 +7554,10 @@ function viewArticulos() {
   const wrap = document.createDocumentFragment();
   wrap.appendChild(viewImportarArticulos());
 
-  const articulos = state.articulos.filter(a => !a.esCordaje);
+  const articulos = state.articulos;
   const panelArt = el('div', { class: 'panel' },
-    el('h2', {}, '🏷️ Artículos a la venta'),
-    el('div', { class: 'sub' }, 'Llaveros, mochilas, raquetas, grips, ropa y demás artículos. Pulsa "Editar" en el que quieras cambiar.'),
+    el('h2', {}, '🏷️ Artículos'),
+    el('div', { class: 'sub' }, 'Todo tu inventario: llaveros, mochilas, raquetas, grips, ropa y también los cordajes (marcados con 🧵). Pulsa "Editar" en el que quieras cambiar.'),
     el('div', { class: 'toolbar' }, el('button', { class: 'btn btn-gold btn-sm', onclick: () => { const nuevo = addArticulo(false); articuloAbiertoId = nuevo.id; render(); } }, '+ Añadir artículo')),
   );
   if (!articulos.length) {

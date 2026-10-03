@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261003-082309">
+<meta name="build-id" content="v20261003-083318">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -30,38 +30,44 @@ nav.tabs button.active{background:var(--bg);color:var(--court-dark);}
 #tallerSidebarBrand, #tallerSidebarFooter{display:none;}
 @media (min-width: 860px) {
   body.taller-sidebar-on header.app-header,
-  body.taller-sidebar-on main{ margin-left:272px; transition:margin-left .15s ease; }
+  body.taller-sidebar-on main{ margin-left:196px; transition:margin-left .15s ease; }
+  body.taller-sidebar-on header.app-header{
+    min-height:0 !important;padding:10px 16px !important;background:var(--court-dark);
+  }
+  body.taller-sidebar-on header.app-header::before,
+  body.taller-sidebar-on header.app-header::after{ display:none !important; }
+  body.taller-sidebar-on header.app-header .brand{ display:none !important; }
 
   #tallerScreen nav.tabs#tallerTabsNav{
     display:none;
   }
   body.taller-sidebar-on #tallerScreen nav.tabs#tallerTabsNav{
-    display:flex;flex-direction:column;width:272px;
+    display:flex;flex-direction:column;width:196px;
     position:fixed;left:0;top:0;bottom:0;z-index:40;margin:0 !important;
     padding:0;gap:0;overflow-y:auto;overflow-x:visible;
     background:linear-gradient(195deg,#123A52 0%,#071D2C 100%);
     box-shadow:6px 0 28px rgba(0,0,0,0.25);
   }
   body.taller-sidebar-on #tallerSidebarBrand{
-    display:flex;align-items:center;gap:12px;padding:22px 20px 18px;
-    border-bottom:1px solid rgba(255,255,255,0.09);margin-bottom:10px;
+    display:flex;align-items:center;gap:9px;padding:16px 14px 13px;
+    border-bottom:1px solid rgba(255,255,255,0.09);margin-bottom:6px;
   }
   #tallerSidebarBrand img, #tallerSidebarBrand .ph{
-    width:46px;height:46px;border-radius:12px;object-fit:cover;flex-shrink:0;
-    background:var(--gold);display:flex;align-items:center;justify-content:center;font-size:22px;
+    width:34px;height:34px;border-radius:9px;object-fit:cover;flex-shrink:0;
+    background:var(--gold);display:flex;align-items:center;justify-content:center;font-size:16px;
   }
-  #tallerSidebarBrand b{color:#fff;font-size:15px;display:block;line-height:1.25;}
-  #tallerSidebarBrand small{color:#8FAFC2;font-size:11px;}
+  #tallerSidebarBrand b{color:#fff;font-size:12.5px;display:block;line-height:1.25;}
+  #tallerSidebarBrand small{color:#8FAFC2;font-size:9.5px;}
   #tallerScreen nav.tabs#tallerTabsNav button{
-    text-align:left;border-radius:0;padding:13px 20px;white-space:normal;font-size:14px;
-    display:flex;align-items:center;gap:13px;background:transparent;color:#C3D6E1;
-    font-weight:600;position:relative;margin:0 10px 2px;border-radius:11px;
+    text-align:left;border-radius:0;padding:9px 13px;white-space:normal;font-size:12.5px;
+    display:flex;align-items:center;gap:9px;background:transparent;color:#C3D6E1;
+    font-weight:600;position:relative;margin:0 7px 2px;border-radius:9px;
     transition:background .12s ease;
   }
   #tallerScreen nav.tabs#tallerTabsNav button:hover{background:rgba(255,255,255,0.06);color:#fff;}
   #tallerScreen nav.tabs#tallerTabsNav .tab-icon{
-    width:34px;height:34px;border-radius:9px;background:rgba(255,255,255,0.08);flex-shrink:0;
-    display:flex;align-items:center;justify-content:center;font-size:16px;
+    width:26px;height:26px;border-radius:7px;background:rgba(255,255,255,0.08);flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;font-size:13px;
   }
   #tallerScreen nav.tabs#tallerTabsNav .tab-label{flex:1;}
   #tallerScreen nav.tabs#tallerTabsNav button.active{
@@ -70,12 +76,12 @@ nav.tabs button.active{background:var(--bg);color:var(--court-dark);}
   }
   #tallerScreen nav.tabs#tallerTabsNav button.active .tab-icon{background:rgba(15,46,68,0.16);}
   #tallerScreen nav.tabs#tallerTabsNav button:last-child{
-    margin-top:14px;padding-top:15px;
+    margin-top:10px;padding-top:11px;
     border-top:1px solid rgba(255,255,255,0.09);
   }
   body.taller-sidebar-on #tallerSidebarFooter{
-    display:block;margin-top:auto;padding:16px 20px 20px;border-top:1px solid rgba(255,255,255,0.09);
-    color:#7E9BAC;font-size:11.5px;
+    display:block;margin-top:auto;padding:12px 14px 14px;border-top:1px solid rgba(255,255,255,0.09);
+    color:#7E9BAC;font-size:10px;
   }
 }
 main{max-width:1100px;margin:0 auto;padding:20px 16px 60px;}

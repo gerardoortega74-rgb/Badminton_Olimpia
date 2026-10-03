@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261003-083318">
+<meta name="build-id" content="v20261003-084247">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -6235,6 +6235,60 @@ function addProveedor() {
   state.proveedores.push(p);
   return p;
 }
+function archivoABase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+async function importarProveedorDesdeFactura(file) {
+  const btn = document.getElementById('inputFacturaProveedor');
+  const toolbar = btn ? btn.parentElement : null;
+  const avisoId = 'avisoFacturaProv';
+  if (toolbar && !document.getElementById(avisoId)) {
+    toolbar.appendChild(el('span', { id: avisoId, class: 'sub' }, ' ⏳ Leyendo la factura con IA…'));
+  }
+  try {
+    const base64 = await archivoABase64(file);
+    const esPdf = file.type === 'application/pdf';
+    const contenido = [
+      esPdf
+        ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } }
+        : { type: 'image', source: { type: 'base64', media_type: file.type || 'image/jpeg', data: base64 } },
+      { type: 'text', text: 'Esto es una factura o ficha de un proveedor. Extrae estos datos y responde ÚNICAMENTE con un JSON válido, sin texto antes ni después, sin \`\`\`: {"nombre": "", "telefono": "", "email": "", "dni": "", "direccion": "", "notas": ""}. "dni" es el NIF/CIF/número de identificación fiscal que aparezca (puede ser extranjero). "notas" debe incluir cualquier otro dato relevante (representante legal, condiciones, etc.) en una frase corta. Si un dato no aparece, deja el campo como cadena vacía. No inventes datos.' },
+    ];
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: contenido }],
+      }),
+    });
+    if (!response.ok) throw new Error('Respuesta ' + response.status);
+    const data = await response.json();
+    const textoBloque = (data.content || []).find(b => b.type === 'text');
+    if (!textoBloque) throw new Error('Sin respuesta de texto');
+    const limpio = textoBloque.text.trim().replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '');
+    const datos = JSON.parse(limpio);
+    const p = addProveedor();
+    p.nombre = datos.nombre || 'Nuevo proveedor';
+    p.telefono = datos.telefono || '';
+    p.email = datos.email || '';
+    p.dni = datos.dni || '';
+    p.notas = datos.direccion ? ('Dirección: ' + datos.direccion + (datos.notas ? ' · ' + datos.notas : '')) : (datos.notas || '');
+    render();
+  } catch (err) {
+    console.warn('Error extrayendo datos de la factura:', err);
+    alert('No se han podido extraer los datos automáticamente. Añade el proveedor a mano con "+ Añadir proveedor".');
+  } finally {
+    const aviso = document.getElementById(avisoId);
+    if (aviso) aviso.remove();
+  }
+}
 function addContactoProveedor(p) { p.contactos.push({ id: uid('cont'), nombre: '', telefono: '', email: '' }); }
 function removeContactoProveedor(p, contactoId) { p.contactos = p.contactos.filter(x => x.id !== contactoId); }
 function removeProveedor(id) {
@@ -7512,7 +7566,11 @@ function viewProveedores() {
   const panel = el('div', { class: 'panel' },
     el('h2', {}, '🏭 Proveedores'),
     el('div', { class: 'sub' }, 'Da de alta a tus proveedores. Luego, desde cada artículo o cordaje, le asignas uno o varios proveedores con su precio de compra.'),
-    el('div', { class: 'toolbar' }, el('button', { class: 'btn btn-gold btn-sm', onclick: () => { addProveedor(); render(); } }, '+ Añadir proveedor')),
+    el('div', { class: 'toolbar' },
+      el('button', { class: 'btn btn-gold btn-sm', onclick: () => { addProveedor(); render(); } }, '+ Añadir proveedor'),
+      el('button', { class: 'btn btn-ghost btn-sm', onclick: () => document.getElementById('inputFacturaProveedor').click() }, '📄 Rellenar desde PDF/foto de factura'),
+      el('input', { type: 'file', id: 'inputFacturaProveedor', accept: '.pdf,image/*', style: 'display:none;', onchange: (e) => { if (e.target.files[0]) importarProveedorDesdeFactura(e.target.files[0]); e.target.value = ''; } }),
+    ),
   );
   if (!state.proveedores.length) {
     panel.appendChild(el('div', { class: 'empty-state' }, 'Todavía no has añadido ningún proveedor.'));

@@ -11368,7 +11368,7 @@ function formularioCuentaAdmin(contenedor, opciones) {
     authFb().signInWithEmailAndPassword((email.value || '').trim().toLowerCase(), clave.value).catch(e => ponMsg(mensajeErrorAuth(e)));
   };
   const olvido = () => {
-    authFb().sendPasswordResetEmail((email.value || '').trim().toLowerCase()).then(() => ponMsg('✅ Te hemos enviado un email para crear una contraseña nueva.', true)).catch(e => ponMsg(mensajeErrorAuth(e)));
+    authFb().sendPasswordResetEmail((email.value || '').trim().toLowerCase()).then(() => ponMsg('Si ese email ya tiene cuenta, te llegará un enlace para crear una contraseña nueva (mira también en Spam). Si es tu primera vez, no hace falta: usa "Es mi primera vez: crear mi cuenta".', true)).catch(e => ponMsg(mensajeErrorAuth(e)));
   };
   const zonaRepetir = el('div', { style: opciones.modo === 'activar' ? '' : 'display:none;' }, field('Repite la contraseña', clave2));
   contenedor.appendChild(field('Email', email));

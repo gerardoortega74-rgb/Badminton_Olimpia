@@ -3,7 +3,7 @@
 <head>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&display=swap">
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261004-acc1">
+<meta name="build-id" content="v20261004-acc2">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -92,7 +92,7 @@ main{max-width:1100px;margin:0 auto;padding:20px 16px 60px;}
 .panel .sub{color:var(--muted);font-size:13px;margin-bottom:14px;}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;}
 label{display:block;font-size:12px;font-weight:700;color:var(--court-dark);margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px;}
-input[type=text],input[type=number],input[type=date],input[type=time],select,textarea{
+input[type=text],input[type=number],input[type=date],input[type=time],input[type=email],input[type=password],input[type=tel],input[type=month],select,textarea{
   width:100%;padding:9px 10px;border:1px solid #D8D5CB;border-radius:7px;font-size:14px;background:#FBFAF7;font-family:inherit;
 }
 textarea{resize:vertical;min-height:60px;}
@@ -10673,11 +10673,24 @@ function renderControlAcceso() {
         if (sesionActual && sesionActual.id === u.id) { sesionActual.nombre = nuevo; saveSesion(); renderShellHeader(); }
       }, { 'aria-label': 'Nombre' });
       const pinInp = inputEl('text', u.pin, v => { u.pin = v; if (modoAuth) { u.provisional = false; u.authEmail = null; } saveAccessControl(); }, { inputmode: 'numeric', 'aria-label': 'PIN' });
-      const rolSel = selectEl(OPCIONES_ROL, u.rol, v => { u.rol = v; saveAccessControl(); if (sesionActual && sesionActual.id === u.id) { sesionActual.rol = v; saveSesion(); } renderShellHeader(); });
+      const rolSel = selectEl(OPCIONES_ROL, u.rol, v => { u.rol = v; saveAccessControl(); if (sesionActual && sesionActual.id === u.id) { sesionActual.rol = v; saveSesion(); } renderShellHeader(); renderControlAcceso(); });
       const esYo = sesionActual && sesionActual.id === u.id;
+      let zonaEmail = null;
+      if (u.rol === 'admin') {
+        const aviso = el('div', { class: 'sub', style: 'font-size:12px;' });
+        const pintarAviso = () => { aviso.style.color = ''; aviso.textContent = !u.email ? 'Pon el email con el que entrará en "🔐 Administrador".' : esEmailAdmin(u.email) ? '✅ Entra con este email y su contraseña.' : '⚠️ Este email aún no está autorizado como administrador: hay que añadirlo a la app y a las reglas de Firebase.'; };
+        const emailInp = inputEl('email', u.email || '', v => {
+          const nuevo = (v || '').trim().toLowerCase();
+          if (nuevo && accessControl.usuarios.some(x => x.id !== u.id && (x.email || '').toLowerCase() === nuevo)) { alert('Ese email ya lo tiene otro usuario.'); renderControlAcceso(); return; }
+          u.email = nuevo; saveAccessControl(); pintarAviso();
+        }, { autocapitalize: 'off', placeholder: 'email@ejemplo.com' });
+        pintarAviso();
+        zonaEmail = el('div', { class: 'acc-fila' }, field('Email para entrar', emailInp), aviso);
+      }
       panel.appendChild(el('div', { class: 'acc-usuario' },
         el('div', { class: 'acc-fila' }, field('Nombre' + (esYo ? ' (tú)' : ''), nombreInp)),
-        el('div', { class: 'acc-fila acc-dos' }, field('PIN', pinInp), field('Rol', rolSel)),
+        zonaEmail,
+        el('div', { class: 'acc-fila acc-dos' }, field(u.rol === 'admin' ? 'PIN (ya no se usa)' : 'PIN', pinInp), field('Rol', rolSel)),
         el('div', { style: 'text-align:right;' }, el('button', { class: 'btn btn-danger btn-sm', onclick: () => {
           if (!confirm('¿Eliminar a ' + u.nombre + '? Dejará de poder entrar en la app.')) return;
           accessControl.usuarios = accessControl.usuarios.filter(x => x.id !== u.id);
@@ -11133,6 +11146,9 @@ function subirCopiaPublica() {
 // cada persona tiene su propia cuenta de Firebase, creada automáticamente por el administrador.
 // Mientras no exista la lista pública de accesos (publico/acceso), la app funciona como antes (PIN local).
 const ADMIN_EMAIL = 'gerardoortega74@gmail.com';
+// Administradores que entran con email y contraseña. Deben coincidir con la lista de las reglas de Firebase.
+const ADMIN_EMAILS = ['gerardoortega74@gmail.com', 'idermaycantabria@gmail.com'];
+function esEmailAdmin(email) { return ADMIN_EMAILS.includes(String(email || '').trim().toLowerCase()); }
 const DOMINIO_CUENTAS = 'cuentas.badminton-olimpia.app';
 let authDisponible = false;
 let modoAuth = false;
@@ -11242,11 +11258,15 @@ function entrarConCuenta(user) {
   marcarEstadoNube('☁️ Conectando…');
   const pantallaLogin = document.getElementById('loginScreen');
   pantallaLogin.innerHTML = ''; pantallaLogin.style.display = 'none';
-  if ((user.email || '').toLowerCase() === ADMIN_EMAIL) {
+  if (esEmailAdmin(user.email)) {
+    const email = String(user.email).toLowerCase();
     sesionActual = { id: 'admin', nombre: 'Administrador', rol: 'admin', uid: user.uid };
     cargarDatosClubCompletos().then(() => {
-      const a = adminEnAccessControl();
-      sesionActual = { id: a ? a.id : 'admin', nombre: a ? a.nombre : 'Administrador', rol: 'admin', uid: user.uid };
+      // Cada administrador se identifica por su email en Control de acceso; el principal, si no lo tiene puesto, por ser el primero sin email.
+      let a = accessControl.usuarios.find(u => u.rol === 'admin' && (u.email || '').toLowerCase() === email);
+      if (!a && email === ADMIN_EMAIL) a = accessControl.usuarios.find(u => u.rol === 'admin' && !u.email) || null;
+      try { localStorage.setItem('badmintonUltimoAdmin', email); } catch (e) {}
+      sesionActual = { id: a ? a.id : 'admin_' + email.replace(/[^a-z0-9]/g, '_'), nombre: a ? a.nombre : email, rol: 'admin', uid: user.uid };
       saveSesion(); marcarDispositivoFichaje(false);
       activarSesionUnica(sesionActual.id);
       arrancarAppLocal();
@@ -11324,18 +11344,20 @@ function loginConPin(u) {
 }
 function formularioCuentaAdmin(contenedor, opciones) {
   // opciones.modo: 'entrar' (pantalla de acceso) o 'activar' (desde la app antigua, con PIN)
-  const email = el('input', { type: 'email', value: ADMIN_EMAIL, autocomplete: 'username' });
+  let ultimo = ''; try { ultimo = localStorage.getItem('badmintonUltimoAdmin') || ''; } catch (e) {}
+  const email = el('input', { type: 'email', value: opciones.modo === 'activar' ? ADMIN_EMAIL : (ultimo || ADMIN_EMAIL), autocomplete: 'username', autocapitalize: 'off' });
   const clave = el('input', { type: 'password', autocomplete: opciones.modo === 'activar' ? 'new-password' : 'current-password', placeholder: 'Contraseña' });
   const clave2 = el('input', { type: 'password', autocomplete: 'new-password', placeholder: 'Repite la contraseña' });
   const msg = el('div', { class: 'sub', style: 'min-height:18px;' });
   const ponMsg = (t, ok) => { msg.style.color = ok ? '#1E5B3C' : '#B3261E'; msg.textContent = t; };
   const crear = () => {
-    if ((email.value || '').trim().toLowerCase() !== ADMIN_EMAIL) { ponMsg('Solo se puede crear la cuenta del administrador del club.'); return; }
+    const correo = (email.value || '').trim().toLowerCase();
+    if (!esEmailAdmin(correo)) { ponMsg('Ese email no está autorizado como administrador del club.'); return; }
     if (clave.value.length < 8) { ponMsg('La contraseña debe tener al menos 8 caracteres.'); return; }
     if (clave.value !== clave2.value) { ponMsg('Las contraseñas no coinciden.'); return; }
     ponMsg('Creando tu cuenta…', true);
-    authFb().createUserWithEmailAndPassword(ADMIN_EMAIL, clave.value)
-      .catch(e => { if (/email-already-in-use/.test(e.code || '')) return authFb().signInWithEmailAndPassword(ADMIN_EMAIL, clave.value); throw e; })
+    authFb().createUserWithEmailAndPassword(correo, clave.value)
+      .catch(e => { if (/email-already-in-use/.test(e.code || '')) return authFb().signInWithEmailAndPassword(correo, clave.value); throw e; })
       .then(cred => cred.user.emailVerified ? null : cred.user.sendEmailVerification().catch(() => {}))
       .then(() => { ponMsg('✅ Cuenta lista. Te hemos enviado un email para confirmarla. Recargando…', true); setTimeout(() => location.reload(), 1800); })
       .catch(e => ponMsg(mensajeErrorAuth(e)));
@@ -11343,10 +11365,10 @@ function formularioCuentaAdmin(contenedor, opciones) {
   const entrar = () => {
     if (!clave.value) { ponMsg('Escribe tu contraseña.'); return; }
     ponMsg('Entrando…', true);
-    authFb().signInWithEmailAndPassword((email.value || '').trim(), clave.value).catch(e => ponMsg(mensajeErrorAuth(e)));
+    authFb().signInWithEmailAndPassword((email.value || '').trim().toLowerCase(), clave.value).catch(e => ponMsg(mensajeErrorAuth(e)));
   };
   const olvido = () => {
-    authFb().sendPasswordResetEmail((email.value || '').trim()).then(() => ponMsg('✅ Te hemos enviado un email para crear una contraseña nueva.', true)).catch(e => ponMsg(mensajeErrorAuth(e)));
+    authFb().sendPasswordResetEmail((email.value || '').trim().toLowerCase()).then(() => ponMsg('✅ Te hemos enviado un email para crear una contraseña nueva.', true)).catch(e => ponMsg(mensajeErrorAuth(e)));
   };
   const zonaRepetir = el('div', { style: opciones.modo === 'activar' ? '' : 'display:none;' }, field('Repite la contraseña', clave2));
   contenedor.appendChild(field('Email', email));

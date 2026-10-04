@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261004-ch7">
+<meta name="build-id" content="v20261004-pub1">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -10921,9 +10921,70 @@ function desenvolverArraysAnidados(valor) {
   }
   return valor;
 }
+// ===== COPIA PÚBLICA =====
+// Las páginas públicas (visor de torneos, seguimiento de raquetas y tienda online) ya no leen el
+// documento completo del club: leen publico/datos, una copia reducida y sin datos personales que
+// la propia app genera cada vez que se guardan cambios.
+function docPublico() { return firebaseDb.collection('publico').doc('datos'); }
+const CLAVES_PRIVADAS_PUBLICO = /^(email.*|telefono.*|movil|phone|dni|nif|nie|fechaNacimiento.*|parejaFechaNacimiento|direccion|iban|pin|nss)$/i;
+function sanearPublico(v) {
+  if (Array.isArray(v)) return v.map(sanearPublico);
+  if (v && typeof v === 'object') {
+    const out = {};
+    Object.keys(v).forEach(k => { if (!CLAVES_PRIVADAS_PUBLICO.test(k)) out[k] = sanearPublico(v[k]); });
+    return out;
+  }
+  return v;
+}
+function estadoPublicoParaNube() {
+  const t = TallerApp.getState() || {};
+  const cfg = t.config || {};
+  const taller = {
+    config: {
+      nombreTaller: cfg.nombreTaller || '', tiempoMedioMinutos: cfg.tiempoMedioMinutos || 35,
+      enlacePago: cfg.enlacePago || '', telefonoTienda: cfg.telefonoTienda || '',
+      tieneLogoTaller: !!cfg.logoTaller, tieneTarjetaVisita: !!cfg.tarjetaVisitaFoto, logoTaller: null, tarjetaVisitaFoto: null,
+    },
+    pedidos: (t.pedidos || []).map(p => ({
+      id: p.id, estado: p.estado, marcaModelo: p.marcaModelo, clienteId: p.clienteId, cordajeId: p.cordajeId, cordajeIdH: p.cordajeIdH,
+      tensionVertical: p.tensionVertical, tensionHorizontal: p.tensionHorizontal, horaLlegada: p.horaLlegada, fechaEntrega: p.fechaEntrega,
+      precio: p.precio, pagado: p.pagado, aplazado: p.aplazado, tieneFotoDespues: !!p.fotoDespues, fotoAntes: null, fotoDespues: null,
+    })),
+    clientes: (t.clientes || []).map(c => ({ id: c.id, nombre: c.nombre })),
+    articulos: (t.articulos || []).map(a => {
+      const o = Object.assign({}, a, { foto: null, tieneFoto: !!a.foto });
+      Object.keys(o).forEach(k => { if (/coste|costo|compra|proveedor|margen/i.test(k)) delete o[k]; });
+      return o;
+    }),
+  };
+  // El taller ya va filtrado campo a campo arriba; a los torneos se les quitan los datos personales de los participantes.
+  return {
+    club: { nombre: clubGlobal.nombre || '', localidad: clubGlobal.localidad || '', logo: clubGlobal.logo || '', temporadaInicio: clubGlobal.temporadaInicio || '', temporadaFin: clubGlobal.temporadaFin || '' },
+    torneo: sanearPublico(TorneoApp.getState()),
+    torneosHistorial: sanearPublico(TorneoApp.getHistorial()),
+    torneoActivoId: TorneoApp.getTorneoActivoId(),
+    taller,
+    actualizadoEn: Date.now(),
+  };
+}
+let publicoTimer = null;
+function subirCopiaPublica() {
+  if (!firebaseDisponible || esVistaPublica()) return;
+  if (typeof esTrabajador === 'function' && esTrabajador()) return;
+  clearTimeout(publicoTimer);
+  publicoTimer = setTimeout(() => {
+    try {
+      const payload = envolverArraysAnidados(JSON.parse(JSON.stringify(estadoPublicoParaNube())));
+      if (JSON.stringify(payload).length > 900000) { console.warn('Copia pública demasiado grande'); return; }
+      docPublico().set(payload).catch(err => console.warn('No se pudo actualizar la copia pública:', err));
+    } catch (e) { console.warn('Error preparando la copia pública:', e); }
+  }, 1500);
+}
+
 let sincronizacionInicialLista = false;
 function programarSyncNube() {
   if (!firebaseDisponible) return;
+  if (esVistaPublica()) return;
   if (typeof esTrabajador === 'function' && esTrabajador()) return;
   if (!sincronizacionInicialLista) return;
   marcarEstadoNube('☁️ Guardando en la nube…');
@@ -10937,6 +10998,7 @@ function programarSyncNube() {
     }
     docNube().set(payloadLimpio).then(() => {
       marcarEstadoNube('☁️ Sincronizado');
+      subirCopiaPublica();
     }).catch(err => {
       console.warn('Error subiendo a la nube:', err);
       marcarEstadoNube('⚠️ Nube: ' + (err && err.code ? err.code : (err && err.message) || 'error desconocido') + (err && err.message ? ' - ' + err.message : ''));
@@ -12227,7 +12289,12 @@ TallerApp.mount();
 inicializarFirebase();
 if (firebaseDisponible) {
   marcarEstadoNube('☁️ Conectando…');
-  docNube().get().then(doc => {
+  const refInicial = esVistaPublica() ? docPublico() : docNube();
+  refInicial.get().then(doc => {
+    // Mientras no exista la copia pública (justo tras publicar esta versión), las páginas públicas usan el documento general.
+    if (esVistaPublica() && !doc.exists) return docNube().get().then(d2 => ({ doc: d2, ref: docNube() }));
+    return { doc, ref: refInicial };
+  }).then(({ doc, ref: refDatos }) => {
     if (doc.exists) {
       aplicarDatosDeNube(doc.data());
       marcarEstadoNube('☁️ Sincronizado');
@@ -12236,8 +12303,9 @@ if (firebaseDisponible) {
     }
     sincronizacionInicialLista = true;
     if (!doc.exists && clubGlobal.nombre) programarSyncNube();
-    chCargarPins().then(arrancarAppLocal, arrancarAppLocal);
-    cargarRecibosDeNube().then(() => {
+    if (!esVistaPublica() && doc.exists) subirCopiaPublica();
+    (esVistaPublica() ? Promise.resolve() : chCargarPins()).then(arrancarAppLocal, arrancarAppLocal);
+    if (!esVistaPublica()) cargarRecibosDeNube().then(() => {
       const pagosScreen = document.getElementById('pagosScreen');
       if (pagosScreen && pagosScreen.style.display !== 'none') PagosApp.render();
     });
@@ -12249,7 +12317,7 @@ if (firebaseDisponible) {
     });
     if (esVistaPublica()) {
       let timerVistaPublica = null;
-      docNube().onSnapshot(snap => {
+      refDatos.onSnapshot(snap => {
         if (!snap.exists) return;
         clearTimeout(timerVistaPublica);
         const intentarActualizar = () => {

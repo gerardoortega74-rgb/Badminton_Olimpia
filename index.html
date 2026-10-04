@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261004-ch2">
+<meta name="build-id" content="v20261004-ch3">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -11320,6 +11320,22 @@ function chRenderAsignaciones(zona, estado) {
   zona.appendChild(el('div', { style: 'overflow-x:auto;' }, el('table', { style: 'width:100%;' }, el('thead', {}, el('tr', {}, el('th', {}, 'Empleado'), el('th', {}, 'Plantilla'))), tb)));
 }
 
+const CH_FESTIVOS_PREDEF = {
+  'Torrelavega 2026': [
+    ['2026-01-01', 'Año Nuevo'], ['2026-01-06', 'Epifanía del Señor'], ['2026-04-02', 'Jueves Santo'], ['2026-04-03', 'Viernes Santo'],
+    ['2026-05-01', 'Fiesta del Trabajo'], ['2026-07-28', 'Día de las Instituciones de Cantabria'], ['2026-08-15', 'Asunción de la Virgen'],
+    ['2026-08-17', 'San Roque (local, trasladado del domingo 16)'], ['2026-09-15', 'La Bien Aparecida'], ['2026-09-16', 'San Cipriano (local)'],
+    ['2026-10-12', 'Fiesta Nacional de España'], ['2026-12-07', 'Lunes siguiente al Día de la Constitución'], ['2026-12-08', 'Inmaculada Concepción'],
+    ['2026-12-25', 'Natividad del Señor'],
+  ],
+};
+function chImportarFestivos(clave) {
+  const lista = CH_FESTIVOS_PREDEF[clave] || [];
+  let nuevos = 0;
+  lista.forEach(([fecha, nombre]) => { if (!chFestivo(fecha)) { chConfig.festivos.push({ fecha, nombre }); nuevos++; } });
+  chConfig.festivos.sort((a, b) => a.fecha.localeCompare(b.fecha));
+  return { nuevos, total: lista.length };
+}
 function chRenderFestivos(root) {
   const estado = el('span', { class: 'sub', style: 'margin-left:8px;' });
   const panel = el('div', { class: 'panel' },
@@ -11340,6 +11356,19 @@ function chRenderFestivos(root) {
     chGuardarConfig(estado); root.innerHTML = ''; chRenderFestivos(root);
   } }, '+ Añadir festivo'), estado));
 
+  const avisoImport = el('div', { class: 'sub', style: 'min-height:16px;' });
+  panel.appendChild(el('div', { class: 'msg msg-info', style: 'margin-top:12px;' },
+    el('div', {}, el('b', {}, 'Festivos de Torrelavega 2026'), ' (nacionales, de Cantabria y locales: San Roque y San Cipriano). Los que ya tengas no se duplican.'),
+    el('div', { class: 'toolbar', style: 'margin-top:8px;' }, el('button', { class: 'btn btn-primary btn-sm', onclick: () => {
+      const r = chImportarFestivos('Torrelavega 2026');
+      chGuardarConfig(estado);
+      root.innerHTML = ''; chRenderFestivos(root);
+      const av = root.querySelector('[data-aviso-import]');
+      if (av) av.textContent = r.nuevos ? '✅ Añadidos ' + r.nuevos + ' festivos.' : 'Ya tenías todos los festivos de Torrelavega 2026.';
+    } }, '⬇ Importar festivos de Torrelavega 2026')),
+  ));
+  avisoImport.setAttribute('data-aviso-import', '1');
+  panel.appendChild(avisoImport);
   const anios = Array.from(new Set(chConfig.festivos.map(f => f.fecha.slice(0, 4)))).sort().reverse();
   if (!anios.length) panel.appendChild(el('div', { class: 'empty-state' }, 'No hay festivos todavía.'));
   anios.forEach(a => {

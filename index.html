@@ -3,7 +3,7 @@
 <head>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&display=swap">
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261004-nom5">
+<meta name="build-id" content="v20261004-acc1">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -391,6 +391,9 @@ header.app-header::before{display:none !important;}
 .rc-club-txt{flex:1;font-size:10px;color:#333;line-height:1.4;}
 .rc-club-nom{font-size:15px;font-weight:700;color:#0F2E44;text-transform:uppercase;letter-spacing:.3px;}
 .rc-club-doc{text-align:right;font-size:12px;font-weight:700;color:#0F2E44;max-width:46%;line-height:1.3;}
+.acc-usuario{border:1px solid #E3E0D6;border-radius:12px;padding:10px 12px 8px;margin-top:10px;background:#FCFBF8;}
+.acc-usuario .field{margin-bottom:6px;}
+.acc-dos{display:grid;grid-template-columns:1fr 1.6fr;gap:10px;}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -10626,7 +10629,7 @@ function renderControlAcceso() {
 
   const panel = el('div', { class: 'panel' },
     el('h2', {}, 'Control de acceso'),
-    el('div', { class: 'sub' }, 'Crea un usuario por cada persona que vaya a entrar en la app, con su PIN y su rol. Aviso importante: esto no es una seguridad técnica fuerte (la app no tiene servidor), pero sí evita que alguien vea o toque por error lo que no debe.'),
+    el('div', { class: 'sub' }, 'Crea un usuario por cada persona que vaya a entrar en la app, con su PIN y su rol. Tú entras con tu email y contraseña; el resto, con su nombre y su PIN. Los trabajadores es mejor darlos de alta en 👔 Trabajadores, que además crea su ficha.'),
   );
 
   if (!accessControl.usuarios.length) {
@@ -10659,24 +10662,30 @@ function renderControlAcceso() {
   }, '+ Añadir usuario')));
 
   if (accessControl.usuarios.length) {
-    const table = el('table', {}, el('thead', {}, el('tr', {},
-      el('th', {}, 'Nombre'), el('th', {}, 'PIN'), el('th', {}, 'Rol'), el('th', {}, ''))));
-    const tbody = el('tbody');
+    panel.appendChild(el('h3', { style: 'margin:18px 0 4px;' }, 'Usuarios (' + accessControl.usuarios.length + ')'));
+    panel.appendChild(el('div', { class: 'sub', style: 'font-size:12px;margin-bottom:6px;' }, 'Toca el nombre, el PIN o el rol para cambiarlos. Los cambios se guardan al salir del campo.'));
     accessControl.usuarios.forEach(u => {
-      tbody.appendChild(el('tr', {},
-        el('td', {}, u.nombre),
-        el('td', {}, inputEl('text', u.pin, v => { u.pin = v; if (modoAuth) { u.provisional = false; u.authEmail = null; } saveAccessControl(); }, { style: 'max-width:100px;' })),
-        el('td', {}, selectEl(OPCIONES_ROL, u.rol, v => { u.rol = v; saveAccessControl(); if (sesionActual && sesionActual.id === u.id) { sesionActual.rol = v; saveSesion(); } renderShellHeader(); })),
-        el('td', {}, el('button', { class: 'btn btn-danger btn-sm', onclick: () => {
+      const nombreInp = inputEl('text', u.nombre, v => {
+        const nuevo = (v || '').trim();
+        if (!nuevo) { alert('El nombre no puede quedar vacío.'); renderControlAcceso(); return; }
+        if (accessControl.usuarios.some(x => x.id !== u.id && x.nombre.toLowerCase() === nuevo.toLowerCase())) { alert('Ya hay otro usuario con el nombre "' + nuevo + '".'); renderControlAcceso(); return; }
+        u.nombre = nuevo; saveAccessControl();
+        if (sesionActual && sesionActual.id === u.id) { sesionActual.nombre = nuevo; saveSesion(); renderShellHeader(); }
+      }, { 'aria-label': 'Nombre' });
+      const pinInp = inputEl('text', u.pin, v => { u.pin = v; if (modoAuth) { u.provisional = false; u.authEmail = null; } saveAccessControl(); }, { inputmode: 'numeric', 'aria-label': 'PIN' });
+      const rolSel = selectEl(OPCIONES_ROL, u.rol, v => { u.rol = v; saveAccessControl(); if (sesionActual && sesionActual.id === u.id) { sesionActual.rol = v; saveSesion(); } renderShellHeader(); });
+      const esYo = sesionActual && sesionActual.id === u.id;
+      panel.appendChild(el('div', { class: 'acc-usuario' },
+        el('div', { class: 'acc-fila' }, field('Nombre' + (esYo ? ' (tú)' : ''), nombreInp)),
+        el('div', { class: 'acc-fila acc-dos' }, field('PIN', pinInp), field('Rol', rolSel)),
+        el('div', { style: 'text-align:right;' }, el('button', { class: 'btn btn-danger btn-sm', onclick: () => {
+          if (!confirm('¿Eliminar a ' + u.nombre + '? Dejará de poder entrar en la app.')) return;
           accessControl.usuarios = accessControl.usuarios.filter(x => x.id !== u.id);
           saveAccessControl();
           if (sesionActual && sesionActual.id === u.id) { cerrarSesion(); return; }
           renderControlAcceso();
-        } }, 'Eliminar')),
-      ));
+        } }, 'Eliminar'))));
     });
-    table.appendChild(tbody);
-    panel.appendChild(table);
   }
   root.appendChild(panel);
 

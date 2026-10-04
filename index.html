@@ -3,7 +3,7 @@
 <head>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&display=swap">
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261004-fx2">
+<meta name="build-id" content="v20261004-fx3">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -10036,6 +10036,7 @@ const AYUDA_INDICE = [
   { pregunta: 'Ver el calendario anual (festivos, días trabajados, vacaciones y bajas)', ruta: 'Gestión de Club → ⏱️ Control horario → Calendario anual', palabras: 'calendario anual año festivos trabajados vacaciones baja permiso ausencia' },
   { pregunta: 'Apuntar vacaciones, bajas o permisos de un empleado', ruta: 'Gestión de Club → ⏱️ Control horario → Calendario anual (abajo)', palabras: 'vacaciones baja permiso ausencia empleado' },
   { pregunta: 'Aprobar o rechazar vacaciones y bajas que piden los empleados', ruta: 'Gestión de Club → ⏱️ Control horario → Solicitudes', palabras: 'solicitud aprobar rechazar vacaciones baja permiso empleado' },
+  { pregunta: 'Aprobar las correcciones de fichajes olvidados que piden los trabajadores', ruta: 'Gestión de Club → ⏱️ Control horario → Solicitudes', palabras: 'olvido olvide fichar correccion solicitud trabajador' },
   { pregunta: 'Corregir un fichaje mal hecho o añadir uno olvidado', ruta: 'Gestión de Club → ⏱️ Control horario → Fichajes → botón ✏️ (o "Añadir fichaje a mano")', palabras: 'corregir fichaje error olvido salida entrada modificar anular registro' },
   { pregunta: 'Añadir días festivos', ruta: 'Gestión de Club → ⏱️ Control horario → Festivos', palabras: 'festivo fiesta vacaciones dia libre calendario laboral' },
   { pregunta: 'Dar de alta a un trabajador (ficha, datos de nómina y acceso para fichar)', ruta: 'Gestión de Club → 👔 Trabajadores → "+ Nuevo trabajador"', palabras: 'trabajador fichar alta pin acceso empleado monitor' },
@@ -11607,8 +11608,8 @@ function renderFichar() {
   const linea = el('section', { class: 'fx-card fx-pad' });
   wrap.appendChild(semana); wrap.appendChild(linea);
   const zonaPedir = el('div'); wrap.appendChild(zonaPedir);
-  chRenderSolicitudesTrabajador(zonaPedir);
-  wrap.appendChild(el('div', { class: 'fx-nota' }, 'Al fichar se guardan la hora y el lugar. Si te equivocas, avisa al administrador para que lo corrija.'));
+  const solicitudesApi = chRenderSolicitudesTrabajador(zonaPedir);
+  wrap.appendChild(el('div', { class: 'fx-nota' }, 'Al fichar se guardan la hora y el lugar. Si olvidas fichar o te equivocas, pide la corrección en el apartado de arriba.'));
 
   // Reloj y contador en vivo
   let entradaAbierta = null;
@@ -11669,7 +11670,8 @@ function renderFichar() {
     let siguiente = 'entrada';
     if (ultimo && ultimo.tipo === 'entrada') {
       if (chFechaDe(ultimo.ts) === hoy) { siguiente = 'salida'; entradaAbierta = ultimo; }
-      else avisos.appendChild(el('div', { class: 'fx-aviso mal' }, 'El ' + fmtFechaDMYShell(chFechaDe(ultimo.ts)) + ' fichaste la entrada a las ' + chHora(ultimo.ts) + ' y no la salida. Avisa al administrador para que lo corrija.'));
+      else avisos.appendChild(el('div', { class: 'fx-aviso mal' }, 'El ' + fmtFechaDMYShell(chFechaDe(ultimo.ts)) + ' fichaste la entrada a las ' + chHora(ultimo.ts) + ' y no la salida. ',
+        el('button', { class: 'btn btn-ghost btn-sm', style: 'margin-top:6px;background:#fff;', onclick: () => solicitudesApi.abrirCorreccion(chFechaDe(ultimo.ts), 'salida') }, 'Pedir corrección')));
     }
     if (entradaAbierta) pintarEstado(); else { estado.className = 'fx-estado'; estado.textContent = 'Fuera de turno'; }
 
@@ -12197,27 +12199,60 @@ function coleccionSolicitudes() { return docNube().collection('ch_solicitudes');
 function coleccionAuditoria() { return docNube().collection('ch_auditoria'); }
 const CH_ESTADOS_SOL = { pendiente: ['⏳ Pendiente', '#FBF1D9', '#7A5B00'], aprobada: ['✅ Aprobada', '#E4F3E9', '#1E5B3C'], rechazada: ['❌ Rechazada', '#FBE4E2', '#B3261E'], cancelada: ['Cancelada', '#EEE', '#666'] };
 function chChipEstado(e) { const c = CH_ESTADOS_SOL[e] || CH_ESTADOS_SOL.pendiente; return el('span', { class: 'chip', style: `background:${c[1]};color:${c[2]};` }, c[0]); }
+function chEtiquetaSolicitud(s) { return s.tipo === 'correccion' ? 'Corrección de fichaje' : (CH_TIPOS_AUSENCIA[s.tipo] ? CH_TIPOS_AUSENCIA[s.tipo].label : s.tipo); }
+function chDetalleSolicitud(s) {
+  if (s.tipo === 'correccion') return fmtFechaDMYShell(s.fecha) + ': ' + [s.horaEntrada ? 'entrada a las ' + s.horaEntrada : null, s.horaSalida ? 'salida a las ' + s.horaSalida : null].filter(Boolean).join(' y ') + (s.motivo ? '. ' + s.motivo : '');
+  return chRangoTxt(s) + (s.motivo ? ' · ' + s.motivo : '');
+}
 function chRangoTxt(a) { return fmtFechaDMYShell(a.desde) + (a.hasta && a.hasta !== a.desde ? ' – ' + fmtFechaDMYShell(a.hasta) : ''); }
 
 function chRenderSolicitudesTrabajador(root) {
   const panel = el('div', { class: 'fx-pedir-cuerpo' });
-  root.appendChild(el('details', { class: 'fx-card fx-pedir' }, el('summary', {}, 'Pedir vacaciones, baja o permiso'), panel));
-  const selTipo = selectEl(Object.keys(CH_TIPOS_AUSENCIA).map(k => ({ value: k, label: CH_TIPOS_AUSENCIA[k].label })), 'vacaciones', () => {});
+  const detalles = el('details', { class: 'fx-card fx-pedir' }, el('summary', {}, 'Pedir vacaciones, permisos o corregir un fichaje'), panel);
+  root.appendChild(detalles);
+  const opciones = Object.keys(CH_TIPOS_AUSENCIA).map(k => ({ value: k, label: CH_TIPOS_AUSENCIA[k].label })).concat([{ value: 'correccion', label: 'Olvidé fichar (corregir un fichaje)' }]);
+  const selTipo = selectEl(opciones, 'vacaciones', () => alternar());
   const desde = el('input', { type: 'date' }); const hasta = el('input', { type: 'date' });
+  const fechaC = el('input', { type: 'date', max: chFechaDe(Date.now()) });
+  const horaE = el('input', { type: 'time' }); const horaS = el('input', { type: 'time' });
   const motivo = el('input', { type: 'text', placeholder: 'Motivo (opcional)' });
   const msg = el('div', { style: 'min-height:18px;font-size:13px;' });
-  panel.appendChild(el('div', { class: 'grid' }, field('Tipo', selTipo), field('Desde', desde), field('Hasta', hasta), field('Motivo', motivo)));
+  const zonaAusencia = el('div', { class: 'grid' }, field('Desde', desde), field('Hasta', hasta));
+  const zonaCorreccion = el('div', {},
+    el('div', { class: 'sub', style: 'margin:4px 0 6px;' }, 'Indica el día y la hora real a la que entraste o saliste. Rellena solo la que olvidaste.'),
+    el('div', { class: 'grid' }, field('Día', fechaC), field('Hora de entrada', horaE), field('Hora de salida', horaS)));
+  const alternar = () => {
+    const corr = selTipo.value === 'correccion';
+    zonaAusencia.style.display = corr ? 'none' : '';
+    zonaCorreccion.style.display = corr ? '' : 'none';
+    motivo.placeholder = corr ? 'Qué pasó (obligatorio). Ej.: se me olvidó fichar al salir' : 'Motivo (opcional)';
+  };
+  panel.appendChild(field('¿Qué necesitas?', selTipo));
+  panel.appendChild(zonaAusencia); panel.appendChild(zonaCorreccion); panel.appendChild(field('Motivo', motivo));
+  alternar();
   panel.appendChild(msg);
   const lista = el('div', { style: 'margin-top:10px;' }, el('div', { class: 'sub' }, 'Cargando tus solicitudes…'));
+  const enviar = (datos, limpiar) => {
+    boton.disabled = true;
+    coleccionSolicitudes().add(Object.assign({ usuarioId: sesionActual.id, nombre: sesionActual.nombre, motivo: motivo.value.trim(), estado: 'pendiente', creadoEn: Date.now() }, datos))
+      .then(() => { limpiar(); motivo.value = ''; msg.style.color = '#1E5B3C'; msg.textContent = '✅ Solicitud enviada. El administrador la revisará.'; boton.disabled = false; cargar(); })
+      .catch(e => { boton.disabled = false; msg.style.color = '#B3261E'; msg.textContent = 'No se pudo enviar: ' + (e && e.message ? e.message : 'error'); });
+  };
   const boton = el('button', { class: 'btn btn-primary', onclick: () => {
     msg.style.color = '#B3261E'; msg.textContent = '';
+    if (selTipo.value === 'correccion') {
+      if (!fechaC.value) { msg.textContent = 'Pon el día que olvidaste fichar.'; return; }
+      if (fechaC.value > chFechaDe(Date.now())) { msg.textContent = 'El día no puede ser futuro.'; return; }
+      if (!horaE.value && !horaS.value) { msg.textContent = 'Pon la hora de entrada, la de salida o las dos.'; return; }
+      if (horaE.value && horaS.value && chMinutos(horaS.value) <= chMinutos(horaE.value)) { msg.textContent = 'La salida debe ser posterior a la entrada.'; return; }
+      if (!motivo.value.trim()) { msg.textContent = 'Explica brevemente qué pasó.'; return; }
+      enviar({ tipo: 'correccion', fecha: fechaC.value, desde: fechaC.value, hasta: fechaC.value, horaEntrada: horaE.value || '', horaSalida: horaS.value || '' }, () => { fechaC.value = ''; horaE.value = ''; horaS.value = ''; });
+      return;
+    }
     const d1 = desde.value, d2 = hasta.value || desde.value;
     if (!d1) { msg.textContent = 'Pon la fecha de inicio.'; return; }
     if (d2 < d1) { msg.textContent = 'La fecha final no puede ser anterior a la inicial.'; return; }
-    boton.disabled = true;
-    coleccionSolicitudes().add({ usuarioId: sesionActual.id, nombre: sesionActual.nombre, tipo: selTipo.value, desde: d1, hasta: d2, motivo: motivo.value.trim(), estado: 'pendiente', creadoEn: Date.now() })
-      .then(() => { desde.value = ''; hasta.value = ''; motivo.value = ''; msg.style.color = '#1E5B3C'; msg.textContent = '✅ Solicitud enviada. El administrador la revisará.'; boton.disabled = false; cargar(); })
-      .catch(e => { boton.disabled = false; msg.textContent = 'No se pudo enviar: ' + (e && e.message ? e.message : 'error'); });
+    enviar({ tipo: selTipo.value, desde: d1, hasta: d2 }, () => { desde.value = ''; hasta.value = ''; });
   } }, 'Enviar solicitud');
   panel.appendChild(el('div', { class: 'toolbar' }, boton));
   panel.appendChild(lista);
@@ -12232,8 +12267,8 @@ function chRenderSolicitudesTrabajador(root) {
       arr.slice(0, 15).forEach(s => {
         lista.appendChild(el('div', { style: 'border-top:1px solid #EEE;padding:8px 0;' },
           el('div', { style: 'display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;' },
-            el('b', {}, CH_TIPOS_AUSENCIA[s.tipo] ? CH_TIPOS_AUSENCIA[s.tipo].label : s.tipo), chChipEstado(s.estado)),
-          el('div', { class: 'sub' }, chRangoTxt(s) + (s.motivo ? ' · ' + s.motivo : '')),
+            el('b', {}, chEtiquetaSolicitud(s)), chChipEstado(s.estado)),
+          el('div', { class: 'sub' }, chDetalleSolicitud(s)),
           s.respuesta ? el('div', { class: 'sub', style: 'font-style:italic;' }, 'Respuesta: ' + s.respuesta) : null,
           s.estado === 'pendiente' ? el('button', { class: 'btn btn-ghost btn-sm', style: 'margin-top:4px;', onclick: () => {
             if (!confirm('¿Cancelar esta solicitud?')) return;
@@ -12244,16 +12279,32 @@ function chRenderSolicitudesTrabajador(root) {
     }).catch(() => { lista.innerHTML = ''; });
   }
   cargar();
+  return {
+    abrirCorreccion(fecha, cual) {
+      detalles.open = true; selTipo.value = 'correccion'; alternar(); fechaC.value = fecha;
+      detalles.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setTimeout(() => (cual === 'entrada' ? horaE : horaS).focus(), 400);
+    },
+  };
 }
 
+// Lo que ya consta ese día, para decidir con contexto.
+function chFichajesDelDiaTxt(s) {
+  const caja = el('div', { class: 'sub', style: 'margin-top:4px;' }, 'Consultando lo fichado ese día…');
+  chCargarMes(s.fecha.slice(0, 7), s.usuarioId).then(lista => {
+    const delDia = lista.filter(f => !f.anulado && chFechaDe(f.ts) === s.fecha);
+    caja.textContent = delDia.length ? 'Ese día consta: ' + delDia.map(f => (f.tipo === 'entrada' ? 'entrada ' : 'salida ') + chHora(f.ts)).join(', ') + '.' : 'Ese día no consta ningún fichaje.';
+  }).catch(() => { caja.textContent = ''; });
+  return caja;
+}
 function chCargarSolicitudes() {
   if (!firebaseDisponible) return Promise.resolve([]);
   return coleccionSolicitudes().get().then(snap => { const arr = []; snap.forEach(d => arr.push(Object.assign({ id: d.id }, d.data()))); return arr.sort((a, b) => b.creadoEn - a.creadoEn); });
 }
 function chRenderSolicitudesAdmin(root) {
   const estado = el('span', { class: 'sub' });
-  const panel = el('div', { class: 'panel' }, el('h2', {}, '📨 Solicitudes de ausencia'),
-    el('div', { class: 'sub' }, 'Vacaciones, bajas y permisos que piden los empleados desde su móvil. Al aprobar, se apuntan solas en el calendario.'), estado);
+  const panel = el('div', { class: 'panel' }, el('h2', {}, '📨 Solicitudes de los trabajadores'),
+    el('div', { class: 'sub' }, 'Vacaciones, bajas, permisos y correcciones de fichajes olvidados que piden desde su móvil. Al aprobar una ausencia se apunta en el calendario; al aprobar una corrección se crea o corrige el fichaje y queda en el registro.'), estado);
   const zona = el('div', {}, el('div', { class: 'sub' }, 'Cargando…'));
   panel.appendChild(zona); root.appendChild(panel);
   chCargarSolicitudes().then(arr => {
@@ -12269,6 +12320,19 @@ function chRenderSolicitudesAdmin(root) {
         err.textContent = '';
         const datos = Object.assign({}, s); delete datos.id;
         datos.estado = aprobar ? 'aprobada' : 'rechazada'; datos.respuesta = resp.value.trim(); datos.resueltoEn = Date.now(); datos.resueltoPor = sesionActual ? sesionActual.nombre : 'Administrador';
+        if (aprobar && s.tipo === 'correccion') {
+          const motivoAud = 'Solicitado por ' + s.nombre + (s.motivo ? ': ' + s.motivo : '');
+          chCargarMes(s.fecha.slice(0, 7), s.usuarioId).then(lista => {
+            const delDia = lista.filter(f => !f.anulado && chFechaDe(f.ts) === s.fecha);
+            const existente = tipo => delDia.filter(f => f.tipo === tipo).slice(-1)[0] || null;
+            const base = { usuarioId: s.usuarioId, nombre: s.nombre, fecha: s.fecha, motivo: motivoAud };
+            return (s.horaEntrada ? chCorregirFichaje(Object.assign({}, base, { fichaje: existente('entrada'), tipo: 'entrada', nuevaHora: s.horaEntrada })) : Promise.resolve())
+              .then(() => s.horaSalida ? chCorregirFichaje(Object.assign({}, base, { fichaje: existente('salida'), tipo: 'salida', nuevaHora: s.horaSalida })) : null);
+          }).then(() => coleccionSolicitudes().doc(s.id).set(datos))
+            .then(() => { root.innerHTML = ''; chRenderSolicitudesAdmin(root); chActualizarAvisoSolicitudes(); })
+            .catch(e => { err.textContent = 'No se pudo aplicar la corrección: ' + (e && e.message ? e.message : 'error'); });
+          return;
+        }
         if (aprobar) {
           const choque = chAusencias().find(a => a.usuarioId === s.usuarioId && !(s.hasta < a.desde || s.desde > a.hasta));
           if (choque) { err.textContent = 'Se solapa con una ausencia ya apuntada (' + chRangoTxt(choque) + '). Quítala en el calendario o rechaza esta.'; return; }
@@ -12279,8 +12343,9 @@ function chRenderSolicitudesAdmin(root) {
           .catch(e => { err.textContent = 'No se pudo guardar: ' + (e && e.message ? e.message : 'error'); });
       };
       zona.appendChild(el('div', { style: 'border:1px solid #F0D98A;background:#FFFBEF;border-radius:12px;padding:10px;margin-bottom:10px;' },
-        el('div', { style: 'display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;' }, el('b', {}, s.nombre + ' · ' + (CH_TIPOS_AUSENCIA[s.tipo] ? CH_TIPOS_AUSENCIA[s.tipo].label : s.tipo)), el('span', { class: 'sub' }, 'Pedida el ' + fmtFechaDMYShell(chFechaDe(s.creadoEn)))),
-        el('div', {}, chRangoTxt(s) + (s.motivo ? ' · ' + s.motivo : '')),
+        el('div', { style: 'display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;' }, el('b', {}, s.nombre + ' · ' + chEtiquetaSolicitud(s)), el('span', { class: 'sub' }, 'Pedida el ' + fmtFechaDMYShell(chFechaDe(s.creadoEn)))),
+        el('div', {}, chDetalleSolicitud(s)),
+        s.tipo === 'correccion' ? chFichajesDelDiaTxt(s) : null,
         el('div', { style: 'margin-top:6px;' }, resp), err,
         el('div', { class: 'toolbar', style: 'margin-top:6px;' },
           el('button', { class: 'btn btn-primary btn-sm', onclick: () => resolver(true) }, '✅ Aprobar'),
@@ -12290,7 +12355,7 @@ function chRenderSolicitudesAdmin(root) {
     if (resto.length) {
       zona.appendChild(el('h3', { style: 'margin:14px 0 6px;' }, 'Resueltas recientemente'));
       const tb = el('tbody');
-      resto.forEach(s => tb.appendChild(el('tr', {}, el('td', {}, s.nombre), el('td', {}, CH_TIPOS_AUSENCIA[s.tipo] ? CH_TIPOS_AUSENCIA[s.tipo].label : s.tipo), el('td', {}, chRangoTxt(s)), el('td', {}, chChipEstado(s.estado)))));
+      resto.forEach(s => tb.appendChild(el('tr', {}, el('td', {}, s.nombre), el('td', {}, chEtiquetaSolicitud(s)), el('td', {}, s.tipo === 'correccion' ? chDetalleSolicitud(s) : chRangoTxt(s)), el('td', {}, chChipEstado(s.estado)))));
       zona.appendChild(el('div', { style: 'overflow-x:auto;' }, el('table', { style: 'width:100%;' }, tb)));
     }
   }).catch(e => { zona.innerHTML = ''; zona.appendChild(el('div', { class: 'msg msg-warn' }, 'No se pudieron cargar: ' + (e && e.message ? e.message : 'error'))); });

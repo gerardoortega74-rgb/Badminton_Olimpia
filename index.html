@@ -3,7 +3,7 @@
 <head>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&display=swap">
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261004-fac1">
+<meta name="build-id" content="v20261004-fac2">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -394,6 +394,11 @@ header.app-header::before{display:none !important;}
 .acc-usuario{border:1px solid #E3E0D6;border-radius:12px;padding:10px 12px 8px;margin-top:10px;background:#FCFBF8;}
 .acc-usuario .field{margin-bottom:6px;}
 .acc-dos{display:grid;grid-template-columns:1fr 1.6fr;gap:10px;}
+.rc-fac{position:relative;min-height:240mm;}
+.rc-fac > *:not(.rc-marca){position:relative;z-index:1;}
+.rc-marca{position:absolute;left:50%;top:30%;width:78%;max-width:560px;transform:translate(-50%,-50%) rotate(-18deg);opacity:.07;pointer-events:none;z-index:0;}
+.rc-fac .rc-t tr.h td,.rc-fac .rc-t tr.l td{background:rgba(230,230,230,.75);}
+@media print{.rc-fac{min-height:268mm;}}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -8518,7 +8523,7 @@ function facHTML(f) {
   const e = f.emisor || {}, c = f.cliente, k = f.calculo;
   const logo = e.logo ? '<img src="' + esc(e.logo) + '" alt="">' : '';
   const fila = (a, b, cls) => '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td colspan="3">' + a + '</td><td class="n">' + b + '</td></tr>';
-  return '<div class="rc">' +
+  return '<div class="rc rc-fac">' + (e.logo ? '<img class="rc-marca" src="' + esc(e.logo) + '" alt="">' : '') +
     '<div class="rc-club">' + logo + '<div class="rc-club-txt"><div class="rc-club-nom">' + esc(e.nombreComercial || e.razonSocial) + '</div><div>' + esc(e.razonSocial) + ' · NIF ' + esc(e.nif) + '</div><div>' + esc(e.domicilio) + '</div>' +
     (e.telefono || e.email ? '<div>' + esc([e.telefono, e.email].filter(Boolean).join(' · ')) + '</div>' : '') + '</div>' +
     '<div class="rc-club-doc">' + facTitulo(f) + '<br><span style="font-size:15px;">Nº ' + esc(f.id) + '</span><br><span style="font-weight:400;">Fecha: ' + fmtFechaDMYShell(f.fecha) + '</span></div></div>' +

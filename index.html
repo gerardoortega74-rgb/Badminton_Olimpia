@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261003-092751">
+<meta name="build-id" content="v20261004-ch2">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -337,6 +337,7 @@ if (window.pdfjsLib) { pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.c
       <nav class="tabs" id="pagosTabsNav" style="margin:-20px -16px 20px;"></nav>
       <div id="pagosMainArea"></div>
     </div>
+    <div id="controlhorarioScreen" style="display:none;"></div>
     <div id="accesoScreen" style="display:none;"></div>
   </div>
 
@@ -354,6 +355,8 @@ if (window.pdfjsLib) { pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.c
     <nav class="tabs" id="tallerTabsNav" style="margin:-20px -16px 20px;"></nav>
     <div id="tallerMainArea"></div>
   </div>
+
+  <div id="ficharScreen" style="display:none;"></div>
 
 </main>
 
@@ -9889,7 +9892,7 @@ function renderLogin() {
   root.innerHTML = '';
   const card = el('div', { class: 'login-card' }, el('h2', {}, '¿Quién eres?'));
   accessControl.usuarios.forEach(u => {
-    card.appendChild(el('button', { class: 'login-userbtn', onclick: () => seleccionarUsuarioLogin(u.id) }, u.nombre + ' — ' + (u.rol === 'admin' ? 'Administrador' : u.rol === 'usuario' ? 'Usuario' : 'Solo lectura')));
+    card.appendChild(el('button', { class: 'login-userbtn', onclick: () => seleccionarUsuarioLogin(u.id) }, u.nombre + ' — ' + etiquetaRol(u.rol)));
   });
   root.appendChild(card);
 }
@@ -9922,6 +9925,7 @@ function seleccionarUsuarioLogin(id) {
 }
 function iniciarAppTrasLogin() {
   document.getElementById('loginScreen').style.display = 'none';
+  if (esTrabajador()) { showSection('fichar'); return; }
   const hadClub = !!clubGlobal.nombre;
   if (!hadClub) {
     currentSection = 'onboarding';
@@ -9933,10 +9937,14 @@ function iniciarAppTrasLogin() {
   }
 }
 let currentSection = 'home';
-const SCREENS = ['onboardingScreen', 'homeScreen', 'clubGestionScreen', 'torneoScreen', 'planScreen', 'tallerScreen'];
+const SCREENS = ['onboardingScreen', 'homeScreen', 'clubGestionScreen', 'torneoScreen', 'planScreen', 'tallerScreen', 'ficharScreen'];
 let clubGestionTab = 'datos';
 
 const AYUDA_INDICE = [
+  { pregunta: 'Ver los fichajes del personal (control horario)', ruta: 'Menú → Club → Control horario (o Gestión de Club → ⏱️ Control horario)', palabras: 'fichaje fichar horario jornada entrada salida trabajador personal horas ubicacion gps' },
+  { pregunta: 'Crear plantillas de horario y asignarlas a los empleados', ruta: 'Gestión de Club → ⏱️ Control horario → Plantillas de horario', palabras: 'plantilla horario turno tarde asignar empleado semana' },
+  { pregunta: 'Añadir días festivos', ruta: 'Gestión de Club → ⏱️ Control horario → Festivos', palabras: 'festivo fiesta vacaciones dia libre calendario laboral' },
+  { pregunta: 'Dar de alta a un trabajador para que fiche', ruta: '⚙️ → Control de acceso → rol "Trabajador (solo fichar)"', palabras: 'trabajador fichar alta pin acceso empleado monitor' },
   { pregunta: 'Apuntar un gasto o ingreso del club', ruta: 'Menú → Gestión de Club → Pagos y Cuotas → Contabilidad', palabras: 'gasto ingreso recibo factura contabilidad dinero comprar material' },
   { pregunta: 'Escanear un recibo o factura con la cámara', ruta: 'Menú → Gestión de Club → Pagos y Cuotas → Contabilidad → botón "Recibo de gasto/ingreso"', palabras: 'recibo foto escanear camara ocr factura pdf' },
   { pregunta: 'Cobrar la cuota del club a los socios', ruta: 'Menú → Gestión de Club → Pagos y Cuotas → Cuotas del club', palabras: 'cuota socio mensualidad matricula tarifa pagar cobrar' },
@@ -10016,7 +10024,9 @@ function abrirAyuda() {
   input.focus();
 }
 function showSection(sec) {
-  const permitido = sec === 'clubgestion' ? (tienePermiso('club') || tienePermiso('jugadores') || tienePermiso('pagos')) : tienePermiso(sec);
+  if (esTrabajador()) sec = 'fichar';
+  if (sec === 'controlhorario') { goToClubGestion('horario'); return; }
+  const permitido = sec === 'fichar' ? !!(sesionActual || !accesoActivo()) : sec === 'clubgestion' ? (tienePermiso('club') || tienePermiso('jugadores') || tienePermiso('pagos')) : tienePermiso(sec);
   if (!permitido) { alert('No tienes permiso para ver esta sección.'); sec = 'home'; }
   currentSection = sec;
   if (sec !== 'taller') document.body.classList.remove('taller-sidebar-on');
@@ -10030,6 +10040,7 @@ function showSection(sec) {
   else if (sec === 'torneo') TorneoApp.render();
   else if (sec === 'planificacion') PlanApp.render();
   else if (sec === 'taller') TallerApp.render();
+  else if (sec === 'fichar') renderFichar();
   window.scrollTo(0, 0);
 }
 function actualizarMarcaAguaTaller(mostrar) {
@@ -10057,6 +10068,7 @@ function renderClubGestionTabsNav() {
     ['general', '🌍 Base general de jugadores', 'jugadores'],
     ['pagos', '💶 Pagos y Cuotas', 'pagos'],
   ].filter(([, , permiso]) => tienePermiso(permiso));
+  if (esAdmin()) tabs.push(['horario', '⏱️ Control horario']);
   if (esAdmin()) tabs.push(['acceso', '🔐 Control de acceso']);
   tabs.forEach(([id, label]) => {
     nav.appendChild(el('button', { class: clubGestionTab === id ? 'active' : '', onclick: () => { showClubGestionTab(id); } }, label));
@@ -10064,9 +10076,9 @@ function renderClubGestionTabsNav() {
 }
 
 function showClubGestionTab(tab) {
-  if (tab === 'acceso' && !esAdmin()) tab = 'datos';
-  const permisoDeTab = { datos: 'club', jugadores: 'jugadores', general: 'jugadores', pagos: 'pagos', acceso: null };
-  if (tab !== 'acceso' && !tienePermiso(permisoDeTab[tab])) {
+  if ((tab === 'acceso' || tab === 'horario') && !esAdmin()) tab = 'datos';
+  const permisoDeTab = { datos: 'club', jugadores: 'jugadores', general: 'jugadores', pagos: 'pagos', acceso: null, horario: null };
+  if (tab !== 'acceso' && tab !== 'horario' && !tienePermiso(permisoDeTab[tab])) {
     tab = tienePermiso('club') ? 'datos' : tienePermiso('jugadores') ? 'jugadores' : tienePermiso('pagos') ? 'pagos' : 'datos';
   }
   clubGestionTab = tab;
@@ -10076,11 +10088,13 @@ function showClubGestionTab(tab) {
   document.getElementById('jugadoresGeneralScreen').style.display = tab === 'general' ? 'block' : 'none';
   document.getElementById('pagosScreen').style.display = tab === 'pagos' ? 'block' : 'none';
   document.getElementById('accesoScreen').style.display = tab === 'acceso' ? 'block' : 'none';
+  document.getElementById('controlhorarioScreen').style.display = tab === 'horario' ? 'block' : 'none';
   if (tab === 'datos') renderClub();
   else if (tab === 'jugadores') renderJugadores();
   else if (tab === 'general') renderJugadoresGeneral();
   else if (tab === 'pagos') PagosApp.render();
   else if (tab === 'acceso') renderControlAcceso();
+  else if (tab === 'horario') renderControlHorario();
   renderShellHeader();
 }
 function nombreCompletoShell(j) {
@@ -10135,22 +10149,25 @@ function renderShellHeader() {
     torneo: [clubGlobal.nombre ? clubGlobal.nombre + ' · Torneo' : 'Gestor de Torneos', 'Grupos + eliminatoria'],
     planificacion: [clubGlobal.nombre ? clubGlobal.nombre + ' · Planificación' : 'Planificación Anual', 'Iniciación a tecnificación'],
     taller: ['Taller de Raquetas', (TallerApp.getState().config && TallerApp.getState().config.nombreTaller) || 'Encordado, clientes y contabilidad'],
+    fichar: [clubGlobal.nombre || 'Bádminton · Club', 'Fichaje'],
   };
   const clubGestionTitles = {
     datos: ['Datos del club', 'Se usan en Torneos y en Planificación'],
     jugadores: ['Jugadores', 'Lista compartida entre Torneos y Planificación'],
     pagos: [clubGlobal.nombre ? clubGlobal.nombre + ' · Pagos' : 'Pagos y Cuotas', 'Cuotas del club y competiciones'],
     acceso: ['Control de acceso', 'Usuarios, roles y permisos'],
+    horario: ['Control horario', 'Fichajes, plantillas de horario y festivos'],
   };
   const [title, sub] = currentSection === 'clubgestion' ? (clubGestionTitles[clubGestionTab] || clubGestionTitles.datos) : (titles[currentSection] || titles.home);
   document.getElementById('shellTitle').textContent = title;
   document.getElementById('shellSubtitle').textContent = sub;
-  document.getElementById('btnMenu').style.display = (currentSection === 'home' || currentSection === 'onboarding') ? 'none' : 'inline-flex';
+  document.getElementById('btnMenu').style.display = (currentSection === 'home' || currentSection === 'onboarding' || esTrabajador()) ? 'none' : 'inline-flex';
+  document.getElementById('btnAyuda').style.display = esTrabajador() ? 'none' : '';
   document.getElementById('btnLogout').style.display = accesoActivo() && sesionActual ? 'inline-flex' : 'none';
   document.getElementById('btnAcceso').style.display = (accesoActivo() && sesionActual && esAdmin()) ? 'inline-flex' : 'none';
   const sesionEl = document.getElementById('sesionIndicador');
   if (sesionActual) {
-    sesionEl.textContent = sesionActual.nombre + ' (' + (sesionActual.rol === 'admin' ? 'Administrador' : sesionActual.rol === 'usuario' ? 'Usuario' : 'Solo lectura') + ')';
+    sesionEl.textContent = sesionActual.nombre + ' (' + (sesionActual.rol === 'trabajador' ? 'Trabajador' : etiquetaRol(sesionActual.rol)) + ')';
     sesionEl.style.display = 'inline';
   } else {
     sesionEl.style.display = 'none';
@@ -10472,7 +10489,7 @@ function renderControlAcceso() {
 
   const nombreInput = el('input', { type: 'text', placeholder: 'Nombre de la persona' });
   const pinInput = el('input', { type: 'text', inputmode: 'numeric', placeholder: 'PIN (4 dígitos)', maxlength: '8' });
-  const rolSelect = selectEl([{ value: 'admin', label: 'Administrador' }, { value: 'usuario', label: 'Usuario' }, { value: 'lectura', label: 'Solo lectura' }], 'usuario', () => {});
+  const rolSelect = selectEl(OPCIONES_ROL, 'usuario', () => {});
   panel.appendChild(el('div', { class: 'grid' },
     field('Nombre', nombreInput),
     field('PIN', pinInput),
@@ -10485,6 +10502,7 @@ function renderControlAcceso() {
       const pin = pinInput.value.trim();
       if (!nombre || !pin) return;
       const eraElPrimero = accessControl.usuarios.length === 0;
+      if (eraElPrimero && rolSelect.value !== 'admin') { alert('El primer usuario tiene que ser un Administrador (tú), para no quedarte sin acceso a la app.'); return; }
       const nuevo = { id: uidAcceso(), nombre, pin, rol: rolSelect.value };
       accessControl.usuarios.push(nuevo);
       saveAccessControl();
@@ -10502,7 +10520,7 @@ function renderControlAcceso() {
       tbody.appendChild(el('tr', {},
         el('td', {}, u.nombre),
         el('td', {}, inputEl('text', u.pin, v => { u.pin = v; saveAccessControl(); }, { style: 'max-width:100px;' })),
-        el('td', {}, selectEl([{ value: 'admin', label: 'Administrador' }, { value: 'usuario', label: 'Usuario' }, { value: 'lectura', label: 'Solo lectura' }], u.rol, v => { u.rol = v; saveAccessControl(); if (sesionActual && sesionActual.id === u.id) { sesionActual.rol = v; saveSesion(); } renderShellHeader(); })),
+        el('td', {}, selectEl(OPCIONES_ROL, u.rol, v => { u.rol = v; saveAccessControl(); if (sesionActual && sesionActual.id === u.id) { sesionActual.rol = v; saveSesion(); } renderShellHeader(); })),
         el('td', {}, el('button', { class: 'btn btn-danger btn-sm', onclick: () => {
           accessControl.usuarios = accessControl.usuarios.filter(x => x.id !== u.id);
           saveAccessControl();
@@ -10518,7 +10536,7 @@ function renderControlAcceso() {
 
   const permPanel = el('div', { class: 'panel' },
     el('h2', {}, 'Qué puede ver cada rol'),
-    el('div', { class: 'sub' }, 'El Administrador siempre ve y edita todo. Marca aquí qué secciones puede ver "Usuario" y "Solo lectura" (que además nunca puede editar ni borrar nada, aunque vea la sección).'),
+    el('div', { class: 'sub' }, 'El Administrador siempre ve y edita todo. Marca aquí qué secciones puede ver "Usuario" y "Solo lectura" (que además nunca puede editar ni borrar nada, aunque vea la sección). El rol "Trabajador" solo ve la pantalla de fichaje, nada más.'),
   );
   const secciones = [
     ['torneo', 'Gestor de Torneos'],
@@ -10567,8 +10585,10 @@ function renderHome() {
     { icon: '📅', title: 'Planificación Anual', desc: 'De la iniciación a la tecnificación: macrociclo, microciclo y evaluación.', sec: 'planificacion', permiso: 'planificacion' },
     { icon: '🏛️', title: 'Gestión de Club', desc: 'Datos del club, jugadores, y pagos y cuotas.', sec: 'clubgestion', permiso: null },
   ];
+  if (esAdmin()) gruposClub.push({ icon: '⏱️', title: 'Control horario', desc: 'Fichajes del personal, plantillas de horario y festivos.', sec: 'clubgestion', tab: 'horario', permiso: null });
   const onclickClub = (c) => {
     if (c.sec !== 'clubgestion') { showSection(c.sec); return; }
+    if (c.tab) { goToClubGestion(c.tab); return; }
     const primerTab = tienePermiso('club') ? 'datos' : tienePermiso('jugadores') ? 'jugadores' : 'pagos';
     goToClubGestion(primerTab);
   };
@@ -10892,6 +10912,7 @@ function desenvolverArraysAnidados(valor) {
 let sincronizacionInicialLista = false;
 function programarSyncNube() {
   if (!firebaseDisponible) return;
+  if (typeof esTrabajador === 'function' && esTrabajador()) return;
   if (!sincronizacionInicialLista) return;
   marcarEstadoNube('☁️ Guardando en la nube…');
   clearTimeout(nubeSyncTimer);
@@ -10943,6 +10964,492 @@ function aplicarDatosDeNube(dataOriginal) {
   if (typeof esVistaPublicaTaller === 'function' && esVistaPublicaTaller() && typeof renderVistaPublicaTaller === 'function') renderVistaPublicaTaller();
   if (typeof esVistaTiendaOnline === 'function' && esVistaTiendaOnline() && typeof renderTiendaOnline === 'function') renderTiendaOnline();
 }
+// ===== CONTROL HORARIO (fase 1: fichaje con GPS + vista del administrador) =====
+// Los fichajes NO viajan en el documento grande club/datos: cada fichaje es un
+// documento propio en la subcolección ch_fichajes, así no se pisan entre móviles
+// ni se acerca al tope de ~900 KB.
+function etiquetaRol(rol) {
+  return rol === 'admin' ? 'Administrador' : rol === 'usuario' ? 'Usuario' : rol === 'trabajador' ? 'Trabajador (solo fichar)' : 'Solo lectura';
+}
+const OPCIONES_ROL = [
+  { value: 'admin', label: 'Administrador' },
+  { value: 'usuario', label: 'Usuario' },
+  { value: 'lectura', label: 'Solo lectura' },
+  { value: 'trabajador', label: 'Trabajador (solo fichar)' },
+];
+function esTrabajador() { return rolActual() === 'trabajador'; }
+function coleccionFichajes() { return docNube().collection('ch_fichajes'); }
+function chMesDe(ts) { const d = new Date(ts); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
+function chFechaDe(ts) { const d = new Date(ts); return chMesDe(ts) + '-' + String(d.getDate()).padStart(2, '0'); }
+function chMesAnterior(mes) { const [a, m] = mes.split('-').map(Number); return m === 1 ? (a - 1) + '-12' : a + '-' + String(m - 1).padStart(2, '0'); }
+function chHora(ts) { const d = new Date(ts); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+function chDuracion(ms) { const min = Math.round(ms / 60000); return Math.floor(min / 60) + ' h ' + String(min % 60).padStart(2, '0') + ' min'; }
+const CH_NOMBRE_MES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+function chNombreMes(mes) { const [a, m] = mes.split('-').map(Number); return CH_NOMBRE_MES[m - 1] + ' ' + a; }
+
+function chCargarMes(mes, usuarioId) {
+  if (!firebaseDisponible) return Promise.reject(new Error('Sin conexión con la nube'));
+  let q = coleccionFichajes().where('mes', '==', mes);
+  if (usuarioId) q = q.where('usuarioId', '==', usuarioId);
+  return q.get().then(snap => {
+    const lista = [];
+    snap.forEach(d => lista.push(Object.assign({ id: d.id }, d.data())));
+    return lista.sort((a, b) => a.ts - b.ts);
+  });
+}
+// Empareja entradas con su salida siguiente, por trabajador.
+function chEmparejar(fichajes) {
+  const porUsuario = {};
+  fichajes.filter(f => !f.anulado).forEach(f => { (porUsuario[f.usuarioId] = porUsuario[f.usuarioId] || []).push(f); });
+  const tramos = [];
+  Object.values(porUsuario).forEach(lista => {
+    lista.sort((a, b) => a.ts - b.ts);
+    let abierta = null;
+    lista.forEach(f => {
+      if (f.tipo === 'entrada') {
+        if (abierta) tramos.push({ entrada: abierta, salida: null });
+        abierta = f;
+      } else {
+        if (abierta && chFechaDe(abierta.ts) === chFechaDe(f.ts)) { tramos.push({ entrada: abierta, salida: f }); abierta = null; }
+        else { if (abierta) tramos.push({ entrada: abierta, salida: null }); abierta = null; tramos.push({ entrada: null, salida: f }); }
+      }
+    });
+    if (abierta) tramos.push({ entrada: abierta, salida: null });
+  });
+  return tramos.sort((a, b) => (a.entrada || a.salida).ts - (b.entrada || b.salida).ts);
+}
+function chObtenerGPS() {
+  return new Promise(resolve => {
+    if (!navigator.geolocation) { resolve({ error: 'Este dispositivo no tiene GPS disponible en el navegador' }); return; }
+    navigator.geolocation.getCurrentPosition(
+      pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, precision: Math.round(pos.coords.accuracy) }),
+      err => resolve({ error: err.code === 1 ? 'Permiso de ubicación denegado' : err.code === 3 ? 'El GPS tardó demasiado en responder' : 'No se pudo obtener la ubicación' }),
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+    );
+  });
+}
+function chEnlaceMapa(f) {
+  if (!f || f.lat === undefined || f.lat === null) return el('span', { class: 'chip chip-muted', title: (f && f.gpsError) || '' }, '📍 Sin GPS');
+  return el('a', { href: 'https://www.google.com/maps?q=' + f.lat + ',' + f.lng, target: '_blank', rel: 'noopener' }, '📍 Ver (±' + (f.precision || '?') + ' m)');
+}
+
+// ---------- Pantalla del trabajador ----------
+let chFichando = false;
+let chMensajePendiente = null;
+function renderFichar() {
+  const root = document.getElementById('ficharScreen');
+  root.innerHTML = '';
+  if (!sesionActual) { root.appendChild(el('div', { class: 'panel' }, 'Inicia sesión para fichar.')); return; }
+  const panel = el('div', { class: 'panel', style: 'max-width:520px;margin:0 auto;text-align:center;' },
+    el('h2', {}, '⏱️ Fichaje'),
+    el('div', { class: 'sub' }, sesionActual.nombre),
+  );
+  const reloj = el('div', { style: 'font-size:46px;font-weight:800;margin:10px 0 4px;font-variant-numeric:tabular-nums;' }, chHora(Date.now()));
+  const fechaHoy = el('div', { class: 'sub', style: 'margin-bottom:16px;' }, new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }));
+  const estado = el('div', { style: 'min-height:22px;margin:10px 0;' });
+  if (chMensajePendiente) { estado.appendChild(el('div', { class: 'msg msg-ok' }, chMensajePendiente)); chMensajePendiente = null; }
+  const zonaBoton = el('div', {}, el('div', { class: 'sub' }, 'Cargando tus fichajes…'));
+  const historial = el('div', { style: 'text-align:left;margin-top:18px;' });
+  panel.appendChild(reloj); panel.appendChild(fechaHoy); panel.appendChild(zonaBoton); panel.appendChild(estado); panel.appendChild(historial);
+  panel.appendChild(el('div', { class: 'sub', style: 'margin-top:16px;font-size:12px;' }, 'Al fichar se guarda la hora y la ubicación del móvil. Si te has equivocado, avisa al administrador para que lo corrija.'));
+  root.appendChild(panel);
+
+  clearInterval(window.__chRelojTimer);
+  window.__chRelojTimer = setInterval(() => { if (document.body.contains(reloj)) reloj.textContent = chHora(Date.now()); else clearInterval(window.__chRelojTimer); }, 15000);
+
+  if (!firebaseDisponible) { zonaBoton.innerHTML = ''; zonaBoton.appendChild(el('div', { class: 'msg msg-warn' }, 'No hay conexión con la nube. Sin conexión no se puede fichar.')); return; }
+
+  const mes = chMesDe(Date.now());
+  const zonaHorario = el('div', { class: 'sub', style: 'margin:-8px 0 14px;font-weight:600;' });
+  panel.insertBefore(zonaHorario, zonaBoton);
+  chCargarConfig().then(() => {
+    const hoy = chFechaDe(Date.now());
+    const fest = chFestivo(hoy);
+    const t = chTramoDelDia(chPlantillaDe(sesionActual.id), hoy);
+    zonaHorario.textContent = fest ? '🎉 Hoy es festivo: ' + fest.nombre : t ? '🗓️ Tu horario de hoy: ' + t.ini + ' – ' + t.fin : (chPlantillaDe(sesionActual.id) ? 'Hoy no tienes turno' : '');
+  }).catch(() => {});
+  Promise.all([chCargarMes(chMesAnterior(mes), sesionActual.id), chCargarMes(mes, sesionActual.id)]).then(([ant, act]) => {
+    const todos = ant.concat(act).filter(f => !f.anulado).sort((a, b) => a.ts - b.ts);
+    const ultimo = todos[todos.length - 1];
+    const hoy = chFechaDe(Date.now());
+    let siguiente = 'entrada';
+    zonaBoton.innerHTML = '';
+    if (ultimo && ultimo.tipo === 'entrada') {
+      if (chFechaDe(ultimo.ts) === hoy) siguiente = 'salida';
+      else zonaBoton.appendChild(el('div', { class: 'msg msg-warn', style: 'text-align:left;' }, '⚠️ El ' + fmtFechaDMYShell(chFechaDe(ultimo.ts)) + ' fichaste la entrada a las ' + chHora(ultimo.ts) + ' pero no la salida. Avisa al administrador para que lo corrija.'));
+    }
+    if (ultimo && ultimo.tipo === 'entrada' && siguiente === 'salida') {
+      zonaBoton.appendChild(el('div', { class: 'sub', style: 'margin-bottom:8px;' }, 'Dentro desde las ' + chHora(ultimo.ts) + ' (' + chDuracion(Date.now() - ultimo.ts) + ')'));
+    }
+    const esEntrada = siguiente === 'entrada';
+    const boton = el('button', {
+      class: 'btn ' + (esEntrada ? 'btn-primary' : 'btn-gold'),
+      style: 'width:100%;font-size:22px;padding:22px 10px;border-radius:16px;',
+      onclick: () => chFichar(siguiente, boton, estado),
+    }, esEntrada ? '▶ Fichar ENTRADA' : '■ Fichar SALIDA');
+    zonaBoton.appendChild(boton);
+
+    const ultimos = todos.slice(-10).reverse();
+    if (ultimos.length) {
+      historial.appendChild(el('h3', { style: 'margin:0 0 6px;' }, 'Tus últimos fichajes'));
+      const tbody = el('tbody');
+      ultimos.forEach(f => tbody.appendChild(el('tr', {},
+        el('td', {}, fmtFechaDMYShell(chFechaDe(f.ts))),
+        el('td', {}, f.tipo === 'entrada' ? '▶ Entrada' : '■ Salida'),
+        el('td', {}, chHora(f.ts)),
+        el('td', {}, f.lat !== undefined && f.lat !== null ? '📍' : el('span', { title: f.gpsError || '' }, '—')),
+      )));
+      historial.appendChild(el('table', { style: 'width:100%;' }, tbody));
+    }
+  }).catch(err => {
+    zonaBoton.innerHTML = '';
+    zonaBoton.appendChild(el('div', { class: 'msg msg-warn' }, 'No se pudieron cargar tus fichajes: ' + (err && err.message ? err.message : 'error') + '. Comprueba la conexión y vuelve a entrar.'));
+  });
+}
+function chFichar(tipo, boton, estado) {
+  if (chFichando) return;
+  if (!navigator.onLine) { estado.innerHTML = ''; estado.appendChild(el('div', { class: 'msg msg-warn' }, 'Estás sin conexión. Conéctate a internet para fichar.')); return; }
+  chFichando = true;
+  boton.disabled = true;
+  boton.textContent = '📍 Obteniendo ubicación…';
+  estado.innerHTML = '';
+  const ahora = Date.now();
+  chObtenerGPS().then(gps => {
+    boton.textContent = '☁️ Guardando…';
+    const datos = {
+      usuarioId: sesionActual.id,
+      nombre: sesionActual.nombre,
+      tipo: tipo,
+      ts: ahora,
+      tsServidor: firebase.firestore.FieldValue.serverTimestamp(),
+      mes: chMesDe(ahora),
+      fecha: chFechaDe(ahora),
+      origen: 'movil',
+      dispositivo: (navigator.userAgent || '').slice(0, 160),
+    };
+    if (gps.error) datos.gpsError = gps.error; else { datos.lat = gps.lat; datos.lng = gps.lng; datos.precision = gps.precision; }
+    const guardado = coleccionFichajes().add(datos);
+    const limite = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 15000));
+    return Promise.race([guardado, limite]).then(() => gps);
+  }).then(gps => {
+    chFichando = false;
+    chMensajePendiente = '✅ ' + (tipo === 'entrada' ? 'Entrada' : 'Salida') + ' registrada a las ' + chHora(ahora) + (gps.error ? ' (sin ubicación: ' + gps.error + ')' : ' con ubicación.');
+    renderFichar();
+  }).catch(err => {
+    chFichando = false;
+    boton.disabled = false;
+    boton.textContent = tipo === 'entrada' ? '▶ Fichar ENTRADA' : '■ Fichar SALIDA';
+    estado.innerHTML = '';
+    estado.appendChild(el('div', { class: 'msg msg-warn' }, err && err.message === 'timeout'
+      ? '⚠️ La nube no confirmó el fichaje (conexión lenta). No cierres la app y vuelve a entrar en un minuto para comprobar si aparece; si no, ficha de nuevo.'
+      : '⚠️ No se pudo guardar el fichaje: ' + (err && err.message ? err.message : 'error desconocido')));
+  });
+}
+
+// ---------- Configuración de horarios (plantillas, asignaciones y festivos) ----------
+// Se guarda en un documento aparte (club/datos/ch_config/general), solo lo edita el administrador.
+const CH_DIAS = [['1', 'Lunes'], ['2', 'Martes'], ['3', 'Miércoles'], ['4', 'Jueves'], ['5', 'Viernes'], ['6', 'Sábado'], ['7', 'Domingo']];
+let chConfig = null;
+function docConfigHorario() { return docNube().collection('ch_config').doc('general'); }
+function chNormalizarConfig(c) {
+  c = c || {};
+  return { plantillas: Array.isArray(c.plantillas) ? c.plantillas : [], asignaciones: c.asignaciones || {}, festivos: Array.isArray(c.festivos) ? c.festivos : [] };
+}
+function chCargarConfig() {
+  if (!firebaseDisponible) return Promise.resolve(chConfig = chNormalizarConfig(chConfig));
+  return docConfigHorario().get().then(d => (chConfig = chNormalizarConfig(d.exists ? d.data() : null)));
+}
+let chGuardadoTimer = null;
+function chGuardarConfig(estadoEl) {
+  if (estadoEl) estadoEl.textContent = '☁️ Guardando…';
+  clearTimeout(chGuardadoTimer);
+  chGuardadoTimer = setTimeout(() => {
+    if (!firebaseDisponible) { if (estadoEl) estadoEl.textContent = '⚠️ Sin conexión: no se ha guardado'; return; }
+    docConfigHorario().set(JSON.parse(JSON.stringify(chConfig))).then(() => {
+      if (estadoEl) estadoEl.textContent = '✅ Guardado';
+    }).catch(err => { if (estadoEl) estadoEl.textContent = '⚠️ No se pudo guardar: ' + (err && err.message ? err.message : 'error'); });
+  }, 500);
+}
+function chMinutos(hhmm) { if (!hhmm || hhmm.indexOf(':') < 0) return null; const [h, m] = hhmm.split(':').map(Number); return h * 60 + m; }
+function chDiaSemana(fechaISO) { const d = new Date(fechaISO + 'T12:00:00'); return String(d.getDay() === 0 ? 7 : d.getDay()); }
+function chPlantillaDe(usuarioId) {
+  if (!chConfig) return null;
+  const pid = chConfig.asignaciones[usuarioId];
+  return chConfig.plantillas.find(p => p.id === pid) || null;
+}
+function chTramoDelDia(plantilla, fechaISO) {
+  if (!plantilla || !plantilla.dias) return null;
+  const t = plantilla.dias[chDiaSemana(fechaISO)];
+  if (!t || !t.ini || !t.fin) return null;
+  const min = chMinutos(t.fin) - chMinutos(t.ini);
+  return min > 0 ? { ini: t.ini, fin: t.fin, min } : null;
+}
+function chFestivo(fechaISO) { return chConfig ? chConfig.festivos.find(f => f.fecha === fechaISO) || null : null; }
+function chMinutosSemana(plantilla) {
+  return CH_DIAS.reduce((s, [k]) => { const t = plantilla.dias && plantilla.dias[k]; const m = t && t.ini && t.fin ? chMinutos(t.fin) - chMinutos(t.ini) : 0; return s + (m > 0 ? m : 0); }, 0);
+}
+function chResumenPlantilla(p) {
+  const partes = CH_DIAS.filter(([k]) => p.dias && p.dias[k] && p.dias[k].ini && p.dias[k].fin).map(([k, n]) => n.slice(0, 2) + ' ' + p.dias[k].ini + '–' + p.dias[k].fin);
+  return partes.length ? partes.join(' · ') : 'Sin días configurados';
+}
+// Días del mes con turno (no festivos) hasta hoy, para un trabajador.
+function chTeoricoMes(usuarioId, mes) {
+  const plantilla = chPlantillaDe(usuarioId);
+  const res = { min: 0, dias: [] };
+  if (!plantilla) return res;
+  const [a, m] = mes.split('-').map(Number);
+  const ultimo = new Date(a, m, 0).getDate();
+  const hoy = chFechaDe(Date.now());
+  for (let d = 1; d <= ultimo; d++) {
+    const f = mes + '-' + String(d).padStart(2, '0');
+    if (f > hoy) break;
+    if (chFestivo(f)) continue;
+    const t = chTramoDelDia(plantilla, f);
+    if (t) { res.min += t.min; res.dias.push(f); }
+  }
+  return res;
+}
+
+let chTab = 'fichajes';
+function renderControlHorario() {
+  const root = document.getElementById('controlhorarioScreen');
+  root.innerHTML = '';
+  if (!esAdmin()) { root.appendChild(el('div', { class: 'panel' }, 'No tienes permiso para ver esta sección.')); return; }
+  const nav = el('div', { class: 'toolbar', style: 'margin-bottom:12px;' });
+  [['fichajes', '📋 Fichajes'], ['plantillas', '🗓️ Plantillas de horario'], ['festivos', '🎉 Festivos']].forEach(([id, label]) => {
+    nav.appendChild(el('button', { class: 'btn btn-sm ' + (chTab === id ? 'btn-primary' : 'btn-ghost'), onclick: () => { chTab = id; renderControlHorario(); } }, label));
+  });
+  root.appendChild(nav);
+  const cont = el('div', {}, el('div', { class: 'panel' }, el('div', { class: 'sub' }, 'Cargando…')));
+  root.appendChild(cont);
+  chCargarConfig().then(() => {
+    cont.innerHTML = '';
+    if (chTab === 'plantillas') chRenderPlantillas(cont);
+    else if (chTab === 'festivos') chRenderFestivos(cont);
+    else chRenderFichajesAdmin(cont);
+  }).catch(err => {
+    cont.innerHTML = '';
+    cont.appendChild(el('div', { class: 'msg msg-warn' }, 'No se pudo cargar la configuración de horarios: ' + (err && err.message ? err.message : 'error')));
+  });
+}
+
+function chRenderPlantillas(root) {
+  const estado = el('span', { class: 'sub', style: 'margin-left:8px;' });
+  const panel = el('div', { class: 'panel' },
+    el('h2', {}, '🗓️ Plantillas de horario'),
+    el('div', { class: 'sub' }, 'Crea los tipos de horario (por ejemplo "Tarde L-J" o "Tarde L-V") y luego asígnale uno a cada empleado. Las horas teóricas del mes se calculan con la plantilla asignada, descontando los festivos.'),
+  );
+  panel.appendChild(el('div', { class: 'toolbar' },
+    el('button', { class: 'btn btn-primary', onclick: () => {
+      const dias = {}; ['1', '2', '3', '4', '5'].forEach(k => { dias[k] = { ini: '17:00', fin: '21:00' }; });
+      chConfig.plantillas.push({ id: 'pl_' + Date.now(), nombre: 'Nueva plantilla', dias });
+      chGuardarConfig(estado); chRenderPlantillasRefrescar(root);
+    } }, '+ Nueva plantilla'), estado));
+
+  if (!chConfig.plantillas.length) panel.appendChild(el('div', { class: 'empty-state' }, 'Aún no hay plantillas. Pulsa "+ Nueva plantilla".'));
+
+  chConfig.plantillas.forEach(p => {
+    const totalEl = el('b', {}, chDuracion(chMinutosSemana(p) * 60000));
+    const card = el('div', { class: 'panel', style: 'border:1px solid #DEDBD0;box-shadow:none;margin-top:12px;' });
+    card.appendChild(el('div', { class: 'grid' }, field('Nombre de la plantilla', inputEl('text', p.nombre, v => { p.nombre = v.trim() || 'Sin nombre'; chGuardarConfig(estado); chRenderAsignaciones(asigZona, estado); }))));
+    const filas = el('div', { class: 'ch-dias' });
+    CH_DIAS.forEach(([k, nombre]) => {
+      const t = (p.dias && p.dias[k]) || null;
+      const ini = el('input', { type: 'time', value: t ? t.ini : '17:00', style: 'width:100%;min-width:0;padding:8px 4px;font-size:15px;' });
+      const fin = el('input', { type: 'time', value: t ? t.fin : '21:00', style: 'width:100%;min-width:0;padding:8px 4px;font-size:15px;' });
+      const check = el('input', { type: 'checkbox', style: 'width:auto;' });
+      check.checked = !!t;
+      const aviso = el('span', { style: 'color:#B3261E;font-size:12px;' });
+      const aplicar = () => {
+        p.dias = p.dias || {};
+        ini.disabled = fin.disabled = !check.checked;
+        aviso.textContent = '';
+        if (!check.checked) delete p.dias[k];
+        else {
+          if (!(chMinutos(fin.value) > chMinutos(ini.value))) { aviso.textContent = 'La salida debe ser posterior a la entrada'; return; }
+          p.dias[k] = { ini: ini.value, fin: fin.value };
+        }
+        totalEl.textContent = chDuracion(chMinutosSemana(p) * 60000);
+        chGuardarConfig(estado);
+      };
+      ini.disabled = fin.disabled = !t;
+      check.addEventListener('change', aplicar); ini.addEventListener('change', aplicar); fin.addEventListener('change', aplicar);
+      filas.appendChild(el('div', { style: 'display:grid;grid-template-columns:98px 1fr 1fr;gap:6px 8px;align-items:center;padding:6px 0;border-bottom:1px solid #EEE;' },
+        el('label', { style: 'display:flex;gap:6px;align-items:center;margin:0;text-transform:none;letter-spacing:0;font-size:13px;font-weight:600;' }, check, nombre),
+        ini, fin,
+        el('div', { style: 'grid-column:1 / -1;' }, aviso)));
+    });
+    card.appendChild(el('div', { style: 'display:grid;grid-template-columns:98px 1fr 1fr;gap:8px;font-size:12px;font-weight:700;color:#666;' }, el('span', {}, 'Día'), el('span', {}, 'Entrada'), el('span', {}, 'Salida')));
+    card.appendChild(filas);
+    card.appendChild(el('div', { class: 'toolbar', style: 'justify-content:space-between;align-items:center;' },
+      el('span', {}, 'Total semanal: ', totalEl),
+      el('button', { class: 'btn btn-danger btn-sm', onclick: () => {
+        const usados = Object.keys(chConfig.asignaciones).filter(uid => chConfig.asignaciones[uid] === p.id).length;
+        if (!confirm(usados ? 'Esta plantilla está asignada a ' + usados + ' empleado(s), que se quedarán sin horario. ¿Borrarla?' : '¿Borrar la plantilla "' + p.nombre + '"?')) return;
+        chConfig.plantillas = chConfig.plantillas.filter(x => x.id !== p.id);
+        Object.keys(chConfig.asignaciones).forEach(uid => { if (chConfig.asignaciones[uid] === p.id) delete chConfig.asignaciones[uid]; });
+        chGuardarConfig(estado); chRenderPlantillasRefrescar(root);
+      } }, 'Borrar plantilla'),
+    ));
+    panel.appendChild(card);
+  });
+  root.appendChild(panel);
+
+  const asigZona = el('div', { class: 'panel' });
+  chRenderAsignaciones(asigZona, estado);
+  root.appendChild(asigZona);
+}
+function chRenderPlantillasRefrescar(root) { root.innerHTML = ''; chRenderPlantillas(root); }
+function chRenderAsignaciones(zona, estado) {
+  zona.innerHTML = '';
+  zona.appendChild(el('h2', {}, '👥 Horario de cada empleado'));
+  const trabajadores = accessControl.usuarios.filter(u => u.rol === 'trabajador');
+  if (!trabajadores.length) { zona.appendChild(el('div', { class: 'msg msg-info' }, 'No hay empleados todavía. Créalos en ⚙️ → Control de acceso con el rol "Trabajador (solo fichar)".')); return; }
+  if (!chConfig.plantillas.length) { zona.appendChild(el('div', { class: 'sub' }, 'Crea primero una plantilla para poder asignarla.')); return; }
+  const tb = el('tbody');
+  trabajadores.forEach(u => {
+    const resumen = el('div', { class: 'sub', style: 'font-size:12px;' });
+    const pintar = () => { const p = chPlantillaDe(u.id); resumen.textContent = p ? chResumenPlantilla(p) + ' (' + chDuracion(chMinutosSemana(p) * 60000) + '/semana)' : 'Sin horario asignado'; };
+    const sel = selectEl([{ value: '', label: '— Sin horario —' }].concat(chConfig.plantillas.map(p => ({ value: p.id, label: p.nombre }))), chConfig.asignaciones[u.id] || '', v => {
+      if (v) chConfig.asignaciones[u.id] = v; else delete chConfig.asignaciones[u.id];
+      pintar(); chGuardarConfig(estado);
+    });
+    pintar();
+    tb.appendChild(el('tr', {}, el('td', {}, el('b', {}, u.nombre)), el('td', {}, sel, resumen)));
+  });
+  zona.appendChild(el('div', { style: 'overflow-x:auto;' }, el('table', { style: 'width:100%;' }, el('thead', {}, el('tr', {}, el('th', {}, 'Empleado'), el('th', {}, 'Plantilla'))), tb)));
+}
+
+function chRenderFestivos(root) {
+  const estado = el('span', { class: 'sub', style: 'margin-left:8px;' });
+  const panel = el('div', { class: 'panel' },
+    el('h2', {}, '🎉 Festivos'),
+    el('div', { class: 'sub' }, 'Los días festivos no cuentan como horas teóricas ni como ausencias en el informe. Mete los nacionales, los de Cantabria y los locales de Torrelavega.'),
+  );
+  const fecha = el('input', { type: 'date' });
+  const nombre = el('input', { type: 'text', placeholder: 'Ej.: Virgen Grande' });
+  const error = el('div', { style: 'color:#B3261E;font-size:13px;min-height:16px;' });
+  panel.appendChild(el('div', { class: 'grid' }, field('Fecha', fecha), field('Nombre', nombre)));
+  panel.appendChild(error);
+  panel.appendChild(el('div', { class: 'toolbar' }, el('button', { class: 'btn btn-primary', onclick: () => {
+    error.textContent = '';
+    if (!fecha.value) { error.textContent = 'Elige la fecha.'; return; }
+    if (chFestivo(fecha.value)) { error.textContent = 'Ese día ya está como festivo.'; return; }
+    chConfig.festivos.push({ fecha: fecha.value, nombre: nombre.value.trim() || 'Festivo' });
+    chConfig.festivos.sort((a, b) => a.fecha.localeCompare(b.fecha));
+    chGuardarConfig(estado); root.innerHTML = ''; chRenderFestivos(root);
+  } }, '+ Añadir festivo'), estado));
+
+  const anios = Array.from(new Set(chConfig.festivos.map(f => f.fecha.slice(0, 4)))).sort().reverse();
+  if (!anios.length) panel.appendChild(el('div', { class: 'empty-state' }, 'No hay festivos todavía.'));
+  anios.forEach(a => {
+    panel.appendChild(el('h3', { style: 'margin:14px 0 6px;' }, a));
+    const tb = el('tbody');
+    chConfig.festivos.filter(f => f.fecha.startsWith(a)).forEach(f => {
+      const d = new Date(f.fecha + 'T12:00:00');
+      tb.appendChild(el('tr', {},
+        el('td', {}, fmtFechaDMYShell(f.fecha)),
+        el('td', {}, d.toLocaleDateString('es-ES', { weekday: 'long' })),
+        el('td', {}, f.nombre),
+        el('td', {}, el('button', { class: 'btn btn-danger btn-sm', onclick: () => {
+          chConfig.festivos = chConfig.festivos.filter(x => x.fecha !== f.fecha);
+          chGuardarConfig(estado); root.innerHTML = ''; chRenderFestivos(root);
+        } }, 'Quitar')),
+      ));
+    });
+    panel.appendChild(el('div', { style: 'overflow-x:auto;' }, el('table', { style: 'width:100%;' }, tb)));
+  });
+  root.appendChild(panel);
+}
+
+// ---------- Pantalla del administrador ----------
+let chMesVista = null;
+let chFiltroUsuario = '';
+function chRenderFichajesAdmin(root) {
+  if (!chMesVista) chMesVista = chMesDe(Date.now());
+  const trabajadores = accessControl.usuarios.filter(u => u.rol === 'trabajador');
+
+  const panel = el('div', { class: 'panel' },
+    el('h2', {}, '⏱️ Control horario'),
+    el('div', { class: 'sub' }, 'Fichajes de entrada y salida del personal, con la ubicación del móvil en el momento de fichar.'),
+  );
+  if (!trabajadores.length) {
+    panel.appendChild(el('div', { class: 'msg msg-info' }, 'Todavía no hay trabajadores. Créalos en ⚙️ → Control de acceso, con el rol "Trabajador (solo fichar)": al entrar con su PIN solo verán la pantalla de fichaje.'));
+  }
+  const selMes = el('input', { type: 'month', value: chMesVista, onchange: (e) => { if (e.target.value) { chMesVista = e.target.value; renderControlHorario(); } } });
+  const selUsuario = selectEl([{ value: '', label: 'Todos' }].concat(trabajadores.map(u => ({ value: u.id, label: u.nombre }))), chFiltroUsuario, v => { chFiltroUsuario = v; renderControlHorario(); });
+  panel.appendChild(el('div', { class: 'grid' }, field('Mes', selMes), field('Trabajador', selUsuario)));
+  panel.appendChild(el('div', { class: 'toolbar' },
+    el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { chMesVista = chMesAnterior(chMesVista); renderControlHorario(); } }, '◀ Mes anterior'),
+    el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { chMesVista = chMesDe(Date.now()); renderControlHorario(); } }, 'Mes actual'),
+    el('button', { class: 'btn btn-ghost btn-sm', onclick: () => renderControlHorario() }, '🔄 Recargar'),
+  ));
+  const zona = el('div', {}, el('div', { class: 'sub' }, 'Cargando fichajes de ' + chNombreMes(chMesVista) + '…'));
+  panel.appendChild(zona);
+  root.appendChild(panel);
+
+  chCargarMes(chMesVista, chFiltroUsuario || null).then(fichajes => {
+    zona.innerHTML = '';
+    const conHorario = trabajadores.filter(u => (!chFiltroUsuario || u.id === chFiltroUsuario) && chPlantillaDe(u.id));
+    if (!fichajes.length && !conHorario.length) { zona.appendChild(el('div', { class: 'empty-state' }, 'No hay fichajes en ' + chNombreMes(chMesVista) + '.')); return; }
+    const tramos = chEmparejar(fichajes);
+    const totales = {};
+    conHorario.forEach(u => { totales[u.id] = { nombre: u.nombre, ms: 0, incompletos: 0, sinGps: 0 }; });
+    tramos.forEach(t => {
+      const ref = t.entrada || t.salida;
+      const tot = totales[ref.usuarioId] = totales[ref.usuarioId] || { nombre: ref.nombre, ms: 0, incompletos: 0, sinGps: 0 };
+      if (t.entrada && t.salida) tot.ms += t.salida.ts - t.entrada.ts; else tot.incompletos++;
+      [t.entrada, t.salida].forEach(f => { if (f && (f.lat === undefined || f.lat === null)) tot.sinGps++; });
+    });
+    const hoyISO = chFechaDe(Date.now());
+    const tbRes = el('tbody');
+    Object.keys(totales).map(uid => Object.assign({ uid }, totales[uid])).sort((a, b) => a.nombre.localeCompare(b.nombre)).forEach(t => {
+      const plantilla = chPlantillaDe(t.uid);
+      const teo = chTeoricoMes(t.uid, chMesVista);
+      const diasConFichaje = new Set(fichajes.filter(f => f.usuarioId === t.uid && !f.anulado).map(f => chFechaDe(f.ts)));
+      const ausencias = teo.dias.filter(f => f < hoyISO && !diasConFichaje.has(f));
+      const difMin = Math.round(t.ms / 60000) - teo.min;
+      const incid = [];
+      if (t.incompletos) incid.push(el('span', { class: 'chip', style: 'background:#FBF1D9;color:#7A5B00;' }, t.incompletos + ' sin cerrar'));
+      if (ausencias.length) incid.push(el('span', { class: 'chip', style: 'background:#FBE4E2;color:#B3261E;', title: ausencias.map(fmtFechaDMYShell).join(', ') }, ausencias.length + ' día(s) sin fichar'));
+      tbRes.appendChild(el('tr', {},
+        el('td', {}, el('b', {}, t.nombre), el('div', { class: 'sub', style: 'font-size:12px;' }, plantilla ? plantilla.nombre : 'Sin horario')),
+        el('td', {}, chDuracion(t.ms)),
+        el('td', {}, plantilla ? chDuracion(teo.min * 60000) : '—'),
+        el('td', { style: plantilla ? ('font-weight:700;color:' + (difMin < 0 ? '#B3261E' : '#1E5B3C') + ';') : '' }, plantilla ? (difMin < 0 ? '− ' : '+ ') + chDuracion(Math.abs(difMin) * 60000) : '—'),
+        el('td', {}, incid.length ? incid : '—'),
+        el('td', {}, t.sinGps ? t.sinGps + ' sin GPS' : '—'),
+      ));
+    });
+    zona.appendChild(el('h3', { style: 'margin:6px 0;' }, 'Resumen de ' + chNombreMes(chMesVista)));
+    zona.appendChild(el('div', { style: 'overflow-x:auto;' }, el('table', {}, el('thead', {}, el('tr', {}, el('th', {}, 'Trabajador'), el('th', {}, 'Fichadas'), el('th', {}, 'Teóricas'), el('th', {}, 'Diferencia'), el('th', {}, 'Incidencias'), el('th', {}, 'Ubicación'))), tbRes)));
+    zona.appendChild(el('div', { class: 'sub', style: 'margin-top:6px;font-size:12px;' }, 'Teóricas = horas de su plantilla en los días ya pasados del mes (incluido hoy), sin contar festivos.'));
+    if (!tramos.length) return;
+
+    const tb = el('tbody');
+    tramos.forEach(t => {
+      const ref = t.entrada || t.salida;
+      const relojRaro = [t.entrada, t.salida].some(f => f && f.tsServidor && f.tsServidor.toMillis && Math.abs(f.tsServidor.toMillis() - f.ts) > 5 * 60000);
+      tb.appendChild(el('tr', {},
+        el('td', {}, fmtFechaDMYShell(chFechaDe(ref.ts)), chFestivo(chFechaDe(ref.ts)) ? el('div', { class: 'sub', style: 'font-size:11px;' }, '🎉 ' + chFestivo(chFechaDe(ref.ts)).nombre) : null),
+        el('td', {}, ref.nombre),
+        el('td', {}, t.entrada ? chHora(t.entrada.ts) : el('span', { style: 'color:#B3261E;' }, 'falta')),
+        el('td', {}, t.entrada ? chEnlaceMapa(t.entrada) : ''),
+        el('td', {}, t.salida ? chHora(t.salida.ts) : el('span', { style: 'color:#B3261E;' }, 'falta')),
+        el('td', {}, t.salida ? chEnlaceMapa(t.salida) : ''),
+        el('td', {}, (t.entrada && t.salida ? chDuracion(t.salida.ts - t.entrada.ts) : '—') + (relojRaro ? ' ⚠️' : '')),
+      ));
+    });
+    zona.appendChild(el('h3', { style: 'margin:16px 0 6px;' }, 'Detalle de fichajes'));
+    zona.appendChild(el('div', { style: 'overflow-x:auto;' }, el('table', {}, el('thead', {}, el('tr', {},
+      el('th', {}, 'Fecha'), el('th', {}, 'Trabajador'), el('th', {}, 'Entrada'), el('th', {}, 'Ubicación'), el('th', {}, 'Salida'), el('th', {}, 'Ubicación'), el('th', {}, 'Horas'))), tb)));
+    zona.appendChild(el('div', { class: 'sub', style: 'margin-top:8px;font-size:12px;' }, '⚠️ junto a las horas = la hora del móvil no coincidía con la del servidor al fichar (más de 5 min de diferencia).'));
+  }).catch(err => {
+    zona.innerHTML = '';
+    zona.appendChild(el('div', { class: 'msg msg-warn' }, 'No se pudieron cargar los fichajes: ' + (err && err.message ? err.message : 'error')));
+  });
+}
+
 function arrancarAppLocal() {
   if (esVistaTiendaOnline()) {
     renderTiendaOnline();
@@ -10960,6 +11467,8 @@ function arrancarAppLocal() {
   syncClubIntoModules();
   if (accesoActivo() && !sesionActual) {
     mostrarLogin();
+  } else if (esTrabajador()) {
+    showSection('fichar');
   } else if (!hadClubAhora) {
     currentSection = 'onboarding';
     renderOnboarding();

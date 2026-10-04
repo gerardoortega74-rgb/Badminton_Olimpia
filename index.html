@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261004-pub1">
+<meta name="build-id" content="v20261004-auth1">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -275,6 +275,7 @@ header.app-header::before{display:none !important;}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
 if (window.pdfjsLib) { pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; }
@@ -9280,7 +9281,7 @@ let accessControl = { usuarios: [], permisos: {
   usuario: { torneo: true, planificacion: true, jugadores: true, pagos: false, club: false, taller: false },
   lectura: { torneo: true, planificacion: true, jugadores: true, pagos: false, club: false, taller: false },
 } };
-function saveAccessControl() { try { localStorage.setItem('badmintonAccessControl', JSON.stringify(accessControl)); } catch (e) {} if (typeof programarSyncNube === 'function') programarSyncNube(); }
+function saveAccessControl() { try { localStorage.setItem('badmintonAccessControl', JSON.stringify(accessControl)); } catch (e) {} if (typeof programarSyncNube === 'function') programarSyncNube(); if (typeof modoAuth !== 'undefined' && modoAuth && esAdmin()) programarSincronizarCuentas(); }
 function loadAccessControl() {
   try {
     const raw = localStorage.getItem('badmintonAccessControl');
@@ -9290,8 +9291,11 @@ function loadAccessControl() {
 let sesionActual = null;
 function saveSesion() { try { if (sesionActual) localStorage.setItem('badmintonSesion', JSON.stringify(sesionActual)); else localStorage.removeItem('badmintonSesion'); } catch (e) {} }
 function loadSesion() { try { const raw = localStorage.getItem('badmintonSesion'); if (raw) sesionActual = JSON.parse(raw); } catch (e) {} }
-function accesoActivo() { return accessControl.usuarios.length > 0; }
-function rolActual() { return (accesoActivo() && sesionActual) ? sesionActual.rol : 'admin'; }
+function accesoActivo() { return (typeof modoAuth !== 'undefined' && modoAuth) || accessControl.usuarios.length > 0; }
+function rolActual() {
+  if (typeof modoAuth !== 'undefined' && modoAuth) return sesionActual ? sesionActual.rol : 'anonimo';
+  return (accesoActivo() && sesionActual) ? sesionActual.rol : 'admin';
+}
 function esAdmin() { return rolActual() === 'admin'; }
 function esSoloLectura() { return rolActual() === 'lectura'; }
 function tienePermiso(seccion) {
@@ -9307,6 +9311,7 @@ function aplicarModoLectura() {
 function cerrarSesion() {
   sesionActual = null;
   saveSesion();
+  if (typeof modoAuth !== 'undefined' && modoAuth) { authFb().signOut().finally(() => location.reload()); return; }
   mostrarLogin();
 }
 function esVistaPublicaTaller() {
@@ -9889,6 +9894,7 @@ function mostrarLogin() {
   renderLogin();
 }
 function renderLogin() {
+  if (typeof modoAuth !== 'undefined' && modoAuth) { renderLoginCuentas(); return; }
   const root = document.getElementById('loginScreen');
   root.innerHTML = '';
   const card = el('div', { class: 'login-card' }, el('h2', {}, '¿Quién eres?'));
@@ -10530,7 +10536,7 @@ function renderControlAcceso() {
     accessControl.usuarios.forEach(u => {
       tbody.appendChild(el('tr', {},
         el('td', {}, u.nombre),
-        el('td', {}, inputEl('text', u.pin, v => { u.pin = v; saveAccessControl(); }, { style: 'max-width:100px;' })),
+        el('td', {}, inputEl('text', u.pin, v => { u.pin = v; if (modoAuth) { u.provisional = false; u.authEmail = null; } saveAccessControl(); }, { style: 'max-width:100px;' })),
         el('td', {}, selectEl(OPCIONES_ROL, u.rol, v => { u.rol = v; saveAccessControl(); if (sesionActual && sesionActual.id === u.id) { sesionActual.rol = v; saveSesion(); } renderShellHeader(); })),
         el('td', {}, el('button', { class: 'btn btn-danger btn-sm', onclick: () => {
           accessControl.usuarios = accessControl.usuarios.filter(x => x.id !== u.id);
@@ -10578,6 +10584,8 @@ let homeGrupoAbierto = null;
 function renderHome() {
   const root = document.getElementById('homeScreen');
   root.innerHTML = '';
+  if (typeof avisoVerificarEmail === 'function') { const av = avisoVerificarEmail(); if (av) root.appendChild(av); }
+  if (typeof panelActivarCuentas === 'function') { const pa = panelActivarCuentas(); if (pa) root.appendChild(pa); }
 
   function construirGrid(cards, onclickBase) {
     const grid = el('div', { class: 'home-grid' });
@@ -10981,6 +10989,302 @@ function subirCopiaPublica() {
   }, 1500);
 }
 
+// ===== CUENTAS SEGURAS (Firebase Authentication) =====
+// El administrador entra con su email y contraseña. El resto entra con nombre + PIN, pero por detrás
+// cada persona tiene su propia cuenta de Firebase, creada automáticamente por el administrador.
+// Mientras no exista la lista pública de accesos (publico/acceso), la app funciona como antes (PIN local).
+const ADMIN_EMAIL = 'gerardoortega74@gmail.com';
+const DOMINIO_CUENTAS = 'cuentas.badminton-olimpia.app';
+let authDisponible = false;
+let modoAuth = false;
+let accesoPublico = [];
+let estadosCuentas = {};
+function authFb() { return firebase.auth(); }
+function inicializarAuth() {
+  try { if (firebaseDisponible && typeof firebase.auth === 'function') { firebase.auth(); authDisponible = true; } }
+  catch (e) { console.warn('Cuentas no disponibles:', e); authDisponible = false; }
+}
+function derivarClave(pin, usuarioId) { return 'Olimpia#' + pin + '#' + usuarioId; }
+function docAccesoPublico() { return firebaseDb.collection('publico').doc('acceso'); }
+function coleccionRoles() { return firebaseDb.collection('roles'); }
+function coleccionEstadoCuentas() { return docNube().collection('ch_estado_cuentas'); }
+function docHorarioTrabajador(usuarioId) { return docNube().collection('ch_horarios').doc(usuarioId); }
+function mensajeErrorAuth(e) {
+  const c = (e && e.code) || '';
+  if (/invalid-credential|wrong-password|user-not-found|invalid-login/.test(c)) return 'Datos incorrectos.';
+  if (/too-many-requests/.test(c)) return 'Demasiados intentos seguidos. Espera unos minutos y vuelve a probar.';
+  if (/network/.test(c)) return 'Sin conexión. Comprueba internet.';
+  if (/email-already-in-use/.test(c)) return 'Esa cuenta ya existe: usa "Entrar".';
+  if (/weak-password/.test(c)) return 'La contraseña es demasiado débil (mínimo 8 caracteres).';
+  if (/invalid-email/.test(c)) return 'El email no es válido.';
+  if (/requires-recent-login/.test(c)) return 'Por seguridad, sal y vuelve a entrar antes de cambiar el PIN.';
+  return 'Error: ' + ((e && e.message) || c || 'desconocido');
+}
+function adminEnAccessControl() { return accessControl.usuarios.find(u => u.rol === 'admin') || null; }
+
+// ---------- Arranque con cuentas ----------
+function arranqueConCuentas(arranqueLegado) {
+  marcarEstadoNube('☁️ Conectando…');
+  let primera = true;
+  authFb().onAuthStateChanged(user => {
+    if (!primera) { if (user && modoAuth && !sesionActual) entrarConCuenta(user); return; }
+    primera = false;
+    if (user) { modoAuth = true; entrarConCuenta(user); return; }
+    docAccesoPublico().get().then(d => {
+      const lista = d.exists ? desenvolverArraysAnidados(d.data()).usuarios : null;
+      if (Array.isArray(lista)) {
+        modoAuth = true; accesoPublico = lista; sesionActual = null; saveSesion();
+        cargarClubPublico().then(() => { marcarEstadoNube(''); mostrarLogin(); });
+      } else arranqueLegado();
+    }).catch(() => arranqueLegado());
+  });
+}
+// En el móvil de un trabajador no debe quedar ninguna copia de los datos del club (por ejemplo, de cuando se usó la app antigua).
+function limpiarDatosLocalesClub() {
+  ['badmintonAccessControl', 'badmintonJugadoresExternos', 'badmintonJugadoresGlobal', 'badmintonPagosState', 'badmintonPlanSensibles', 'badmintonPlanState', 'badmintonTallerState', 'badmintonTorneoState', 'badmintonTorneosHistorial', 'badmintonTorneoActivoId']
+    .forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
+  accessControl = { usuarios: [], permisos: { usuario: {}, lectura: {} } };
+  jugadoresGlobal = []; jugadoresExternos = [];
+}
+function cargarClubPublico() {
+  return docPublico().get().then(d => {
+    if (d.exists) { const p = desenvolverArraysAnidados(d.data()); clubGlobal = Object.assign({ nombre: '', localidad: '', temporadaInicio: '', temporadaFin: '', logo: '', tecnicos: [] }, p.club || {}); }
+  }).catch(() => {});
+}
+function cargarDatosClubCompletos() {
+  return docNube().get().then(doc => {
+    if (doc.exists) aplicarDatosDeNube(doc.data());
+    marcarEstadoNube('☁️ Sincronizado');
+    sincronizacionInicialLista = true;
+    if (!doc.exists && clubGlobal.nombre) programarSyncNube();
+    if (doc.exists) subirCopiaPublica();
+    cargarRecibosDeNube().then(() => { const s = document.getElementById('pagosScreen'); if (s && s.style.display !== 'none') PagosApp.render(); }).catch(() => {});
+    cargarFotosTallerDeNube().then(() => { const s = document.getElementById('tallerScreen'); if (s && s.style.display !== 'none') { TallerApp.render(); renderShellHeader(); } }).catch(() => {});
+  });
+}
+function errorDeEntrada(texto) {
+  const root = document.getElementById('loginScreen');
+  SCREENS.forEach(id => { const e = document.getElementById(id); if (e) e.style.display = 'none'; });
+  root.style.display = 'block'; root.innerHTML = '';
+  root.appendChild(el('div', { class: 'login-card' }, el('h2', {}, 'No se pudo entrar'), el('div', { class: 'msg msg-warn' }, texto),
+    el('div', { class: 'toolbar' }, el('button', { class: 'btn btn-primary', onclick: () => { authFb().signOut().finally(() => location.reload()); } }, 'Volver'))));
+}
+function entrarConCuenta(user) {
+  marcarEstadoNube('☁️ Conectando…');
+  if ((user.email || '').toLowerCase() === ADMIN_EMAIL) {
+    sesionActual = { id: 'admin', nombre: 'Administrador', rol: 'admin', uid: user.uid };
+    cargarDatosClubCompletos().then(() => {
+      const a = adminEnAccessControl();
+      sesionActual = { id: a ? a.id : 'admin', nombre: a ? a.nombre : 'Administrador', rol: 'admin', uid: user.uid };
+      saveSesion();
+      arrancarAppLocal();
+      sincronizarCuentas();
+      chCargarConfig().then(publicarHorariosTrabajadores).catch(() => {});
+    }).catch(e => errorDeEntrada('No se pudieron cargar los datos del club: ' + mensajeErrorAuth(e)));
+    return;
+  }
+  coleccionRoles().doc(user.uid).get().then(r => {
+    if (!r.exists) { errorDeEntrada('Tu acceso no está activo. Avisa al administrador del club.'); return; }
+    const d = r.data();
+    sesionActual = { id: d.usuarioId, nombre: d.nombre, rol: d.rol, uid: user.uid };
+    saveSesion();
+    const continuar = () => {
+      if (d.rol === 'trabajador') { limpiarDatosLocalesClub(); cargarClubPublico().then(() => { marcarEstadoNube(''); showSection('fichar'); }); }
+      else cargarDatosClubCompletos().then(arrancarAppLocal).catch(e => errorDeEntrada('No se pudieron cargar los datos del club: ' + mensajeErrorAuth(e)));
+    };
+    if (!d.provisional) { continuar(); return; }
+    coleccionEstadoCuentas().doc(d.usuarioId).get().then(e => {
+      if (e.exists && e.data().version === d.version) continuar();
+      else pantallaCambiarPinCuenta(d, continuar);
+    }).catch(() => pantallaCambiarPinCuenta(d, continuar));
+  }).catch(e => errorDeEntrada(mensajeErrorAuth(e)));
+}
+function pantallaCambiarPinCuenta(d, alTerminar) {
+  const root = document.getElementById('loginScreen');
+  SCREENS.forEach(id => { const e = document.getElementById(id); if (e) e.style.display = 'none'; });
+  root.style.display = 'block'; root.innerHTML = '';
+  const p1 = el('input', { type: 'text', inputmode: 'numeric', autocomplete: 'off', placeholder: 'Nuevo PIN (4 a 8 cifras)', style: 'font-size:20px;text-align:center;-webkit-text-security:disc;' });
+  const p2 = el('input', { type: 'text', inputmode: 'numeric', autocomplete: 'off', placeholder: 'Repite el PIN', style: 'font-size:20px;text-align:center;-webkit-text-security:disc;' });
+  const err = el('div', { class: 'sub', style: 'color:#B3261E;min-height:18px;' });
+  const btn = el('button', { class: 'btn btn-primary', onclick: () => {
+    err.textContent = '';
+    if (!/^\d{4,8}$/.test(p1.value)) { err.textContent = 'El PIN debe tener entre 4 y 8 cifras.'; return; }
+    if (p1.value !== p2.value) { err.textContent = 'Los dos PIN no coinciden.'; return; }
+    btn.disabled = true;
+    authFb().currentUser.updatePassword(derivarClave(p1.value, d.usuarioId))
+      .then(() => coleccionEstadoCuentas().doc(d.usuarioId).set({ version: d.version, cambiadoEn: Date.now() }))
+      .then(() => { root.style.display = 'none'; alTerminar(); })
+      .catch(e => { btn.disabled = false; err.textContent = mensajeErrorAuth(e); });
+  } }, 'Guardar mi PIN');
+  root.appendChild(el('div', { class: 'login-card' }, el('h2', {}, 'Hola, ' + d.nombre),
+    el('div', { class: 'sub', style: 'margin-bottom:10px;' }, 'Es tu primera vez. Elige tu PIN personal: lo usarás siempre para entrar.'),
+    field('Nuevo PIN', p1), field('Repítelo', p2), err, el('div', { class: 'toolbar' }, btn)));
+  p1.focus();
+}
+
+// ---------- Pantallas de entrada ----------
+function renderLoginCuentas() {
+  const root = document.getElementById('loginScreen');
+  root.innerHTML = '';
+  const card = el('div', { class: 'login-card' }, el('h2', {}, '¿Quién eres?'));
+  accesoPublico.filter(u => u.rol !== 'admin').forEach(u => card.appendChild(el('button', { class: 'login-userbtn', onclick: () => loginConPin(u) }, u.nombre)));
+  card.appendChild(el('button', { class: 'login-userbtn', style: 'margin-top:12px;', onclick: () => loginAdministrador() }, '🔐 Administrador'));
+  root.appendChild(card);
+}
+function loginConPin(u) {
+  const root = document.getElementById('loginScreen');
+  root.innerHTML = '';
+  const pin = el('input', { type: 'text', autocomplete: 'off', inputmode: 'numeric', placeholder: 'PIN', style: 'font-size:20px;text-align:center;padding-left:4px;-webkit-text-security:disc;' });
+  const err = el('div', { class: 'sub', style: 'color:#B3261E;min-height:18px;' });
+  const btn = el('button', { class: 'btn btn-primary', onclick: () => {
+    if (!pin.value) return;
+    err.textContent = ''; btn.disabled = true; btn.textContent = 'Entrando…';
+    authFb().signInWithEmailAndPassword(u.authEmail, derivarClave(pin.value, u.id)).catch(e => {
+      btn.disabled = false; btn.textContent = 'Entrar';
+      err.textContent = /invalid-credential|wrong-password|user-not-found|invalid-login/.test((e && e.code) || '') ? 'PIN incorrecto.' : mensajeErrorAuth(e);
+    });
+  } }, 'Entrar');
+  pin.addEventListener('keydown', e => { if (e.key === 'Enter') btn.click(); });
+  root.appendChild(el('div', { class: 'login-card' }, el('h2', {}, u.nombre), field('Introduce tu PIN', pin), err,
+    el('div', { class: 'toolbar' }, btn, el('button', { class: 'btn btn-ghost', onclick: () => renderLoginCuentas() }, 'Atrás'))));
+  pin.focus();
+}
+function formularioCuentaAdmin(contenedor, opciones) {
+  // opciones.modo: 'entrar' (pantalla de acceso) o 'activar' (desde la app antigua, con PIN)
+  const email = el('input', { type: 'email', value: ADMIN_EMAIL, autocomplete: 'username' });
+  const clave = el('input', { type: 'password', autocomplete: opciones.modo === 'activar' ? 'new-password' : 'current-password', placeholder: 'Contraseña' });
+  const clave2 = el('input', { type: 'password', autocomplete: 'new-password', placeholder: 'Repite la contraseña' });
+  const msg = el('div', { class: 'sub', style: 'min-height:18px;' });
+  const ponMsg = (t, ok) => { msg.style.color = ok ? '#1E5B3C' : '#B3261E'; msg.textContent = t; };
+  const crear = () => {
+    if ((email.value || '').trim().toLowerCase() !== ADMIN_EMAIL) { ponMsg('Solo se puede crear la cuenta del administrador del club.'); return; }
+    if (clave.value.length < 8) { ponMsg('La contraseña debe tener al menos 8 caracteres.'); return; }
+    if (clave.value !== clave2.value) { ponMsg('Las contraseñas no coinciden.'); return; }
+    ponMsg('Creando tu cuenta…', true);
+    authFb().createUserWithEmailAndPassword(ADMIN_EMAIL, clave.value)
+      .catch(e => { if (/email-already-in-use/.test(e.code || '')) return authFb().signInWithEmailAndPassword(ADMIN_EMAIL, clave.value); throw e; })
+      .then(cred => cred.user.emailVerified ? null : cred.user.sendEmailVerification().catch(() => {}))
+      .then(() => { ponMsg('✅ Cuenta lista. Te hemos enviado un email para confirmarla. Recargando…', true); setTimeout(() => location.reload(), 1800); })
+      .catch(e => ponMsg(mensajeErrorAuth(e)));
+  };
+  const entrar = () => {
+    if (!clave.value) { ponMsg('Escribe tu contraseña.'); return; }
+    ponMsg('Entrando…', true);
+    authFb().signInWithEmailAndPassword((email.value || '').trim(), clave.value).catch(e => ponMsg(mensajeErrorAuth(e)));
+  };
+  const olvido = () => {
+    authFb().sendPasswordResetEmail((email.value || '').trim()).then(() => ponMsg('✅ Te hemos enviado un email para crear una contraseña nueva.', true)).catch(e => ponMsg(mensajeErrorAuth(e)));
+  };
+  const zonaRepetir = el('div', { style: opciones.modo === 'activar' ? '' : 'display:none;' }, field('Repite la contraseña', clave2));
+  contenedor.appendChild(field('Email', email));
+  contenedor.appendChild(field(opciones.modo === 'activar' ? 'Elige una contraseña (mínimo 8 caracteres)' : 'Contraseña', clave));
+  contenedor.appendChild(zonaRepetir);
+  contenedor.appendChild(msg);
+  if (opciones.modo === 'activar') {
+    contenedor.appendChild(el('div', { class: 'toolbar' }, el('button', { class: 'btn btn-primary', onclick: crear }, 'Activar acceso seguro')));
+  } else {
+    clave.addEventListener('keydown', e => { if (e.key === 'Enter') entrar(); });
+    contenedor.appendChild(el('div', { class: 'toolbar' },
+      el('button', { class: 'btn btn-primary', onclick: entrar }, 'Entrar'),
+      el('button', { class: 'btn btn-ghost btn-sm', onclick: olvido }, 'He olvidado la contraseña')));
+    contenedor.appendChild(el('details', { style: 'margin-top:8px;' }, el('summary', { style: 'cursor:pointer;font-size:13px;' }, 'Es mi primera vez: crear mi cuenta'),
+      el('div', { class: 'sub', style: 'margin:6px 0;' }, 'Escribe arriba la contraseña que quieras, repítela aquí y pulsa Crear.'),
+      field('Repite la contraseña', clave2), el('button', { class: 'btn btn-ghost btn-sm', onclick: crear }, 'Crear mi cuenta')));
+  }
+}
+function loginAdministrador() {
+  const root = document.getElementById('loginScreen');
+  root.innerHTML = '';
+  const card = el('div', { class: 'login-card' }, el('h2', {}, '🔐 Administrador'));
+  formularioCuentaAdmin(card, { modo: 'entrar' });
+  card.appendChild(el('div', { class: 'toolbar' }, el('button', { class: 'btn btn-ghost btn-sm', onclick: () => renderLoginCuentas() }, '← Atrás')));
+  root.appendChild(card);
+}
+// Panel que ve el administrador en la app antigua (con PIN) para dar el salto a las cuentas seguras.
+function panelActivarCuentas() {
+  if (!authDisponible || modoAuth || !esAdmin()) return null;
+  const panel = el('div', { class: 'panel', style: 'border:2px solid #E8B924;' }, el('h2', {}, '🔐 Activa el acceso seguro'),
+    el('div', { class: 'sub', style: 'margin-bottom:8px;' }, 'A partir de ahora entrarás con tu email y una contraseña. Tus trabajadores y monitores seguirán entrando con su nombre y su PIN de siempre: sus cuentas se crean solas al activar.'));
+  formularioCuentaAdmin(panel, { modo: 'activar' });
+  return panel;
+}
+function avisoVerificarEmail() {
+  if (!modoAuth || !esAdmin() || !authFb().currentUser || authFb().currentUser.emailVerified) return null;
+  const msg = el('span', {});
+  return el('div', { class: 'msg msg-warn', style: 'display:block;margin-bottom:12px;' },
+    el('b', {}, '📧 Confirma tu email. '), 'Te enviamos un enlace a ' + ADMIN_EMAIL + '. Hasta que lo confirmes no podremos cerrar la base de datos. ',
+    el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { authFb().currentUser.sendEmailVerification().then(() => { msg.textContent = ' ✅ Reenviado.'; }).catch(e => { msg.textContent = ' ' + mensajeErrorAuth(e); }); } }, 'Reenviar'),
+    el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { authFb().currentUser.reload().then(() => renderHome()); } }, 'Ya lo he confirmado'), msg);
+}
+
+// ---------- Cuentas de los usuarios (las crea el administrador) ----------
+let appSecundaria = null;
+function obtenerAppSecundaria() {
+  if (!appSecundaria) appSecundaria = firebase.initializeApp(firebaseConfig, 'cuentas');
+  return appSecundaria;
+}
+let sincronizandoCuentas = false, sincronizarCuentasTimer = null;
+function programarSincronizarCuentas() { clearTimeout(sincronizarCuentasTimer); sincronizarCuentasTimer = setTimeout(sincronizarCuentas, 800); }
+async function sincronizarCuentas() {
+  if (!modoAuth || !esAdmin() || sincronizandoCuentas) return;
+  sincronizandoCuentas = true;
+  let cambios = false;
+  try {
+    const app2 = obtenerAppSecundaria();
+    for (const u of accessControl.usuarios) {
+      if (u.rol === 'admin') continue;
+      if (!u.authEmail) {
+        const version = (u.authVersion || 0) + 1;
+        const email = ('u' + version + '-' + u.id).toLowerCase().replace(/[^a-z0-9._-]/g, '') + '@' + DOMINIO_CUENTAS;
+        let uid = null;
+        try { uid = (await app2.auth().createUserWithEmailAndPassword(email, derivarClave(u.pin, u.id))).user.uid; }
+        catch (e) {
+          if (/email-already-in-use/.test(e.code || '')) {
+            try { uid = (await app2.auth().signInWithEmailAndPassword(email, derivarClave(u.pin, u.id))).user.uid; }
+            catch (e2) { u.authVersion = version; cambios = true; continue; } // la próxima vez se crea con otra versión
+          } else throw e;
+        }
+        await app2.auth().signOut().catch(() => {});
+        await coleccionRoles().doc(uid).set({ rol: u.rol, usuarioId: u.id, nombre: u.nombre, version, provisional: !!u.provisional });
+        if (u.authUid && u.authUid !== uid) await coleccionRoles().doc(u.authUid).delete().catch(() => {});
+        Object.assign(u, { authEmail: email, authUid: uid, authVersion: version, authRol: u.rol, authNombre: u.nombre });
+        cambios = true;
+      } else if (u.authRol !== u.rol || u.authNombre !== u.nombre) {
+        await coleccionRoles().doc(u.authUid).set({ rol: u.rol, usuarioId: u.id, nombre: u.nombre, version: u.authVersion, provisional: !!u.provisional });
+        u.authRol = u.rol; u.authNombre = u.nombre; cambios = true;
+      }
+    }
+    const vivos = new Set(accessControl.usuarios.map(u => u.authUid).filter(Boolean));
+    const snap = await coleccionRoles().get();
+    const borrar = []; snap.forEach(d => { if (!vivos.has(d.id)) borrar.push(d.id); });
+    for (const id of borrar) await coleccionRoles().doc(id).delete().catch(() => {});
+  } catch (e) {
+    console.warn('No se pudieron sincronizar las cuentas:', e);
+  } finally {
+    sincronizandoCuentas = false;
+    if (cambios) saveAccessControl(); else subirAccesoPublico();
+  }
+}
+function subirAccesoPublico() {
+  if (!modoAuth || !esAdmin() || !firebaseDisponible) return;
+  const usuarios = accessControl.usuarios.filter(u => u.rol !== 'admin' && u.authEmail).map(u => ({ id: u.id, nombre: u.nombre, rol: u.rol, authEmail: u.authEmail }));
+  docAccesoPublico().set({ usuarios, actualizadoEn: Date.now() }).catch(e => console.warn('No se pudo publicar la lista de accesos:', e));
+}
+// Horario de cada trabajador en su propio documento: así su móvil no necesita leer la configuración de todos.
+function publicarHorariosTrabajadores() {
+  if (!firebaseDisponible || !chConfig || !esAdmin()) return;
+  accessControl.usuarios.filter(u => u.rol === 'trabajador').forEach(u => {
+    const pl = chPlantillaDe(u.id);
+    const datos = {
+      plantillas: pl ? [pl] : [], asignaciones: pl ? { [u.id]: pl.id } : {},
+      altas: chConfig.altas && chConfig.altas[u.id] ? { [u.id]: chConfig.altas[u.id] } : {},
+      festivos: chConfig.festivos || [], ausencias: (chConfig.ausencias || []).filter(a => a.usuarioId === u.id),
+      actualizadoEn: Date.now(),
+    };
+    docHorarioTrabajador(u.id).set(JSON.parse(JSON.stringify(datos))).catch(() => {});
+  });
+}
+
 let sincronizacionInicialLista = false;
 function programarSyncNube() {
   if (!firebaseDisponible) return;
@@ -11235,6 +11539,7 @@ function chNormalizarConfig(c) {
 }
 function chCargarConfig() {
   if (!firebaseDisponible) return Promise.resolve(chConfig = chNormalizarConfig(chConfig));
+  if (modoAuth && esTrabajador()) return docHorarioTrabajador(sesionActual.id).get().then(d => (chConfig = chNormalizarConfig(d.exists ? d.data() : null)));
   return docConfigHorario().get().then(d => (chConfig = chNormalizarConfig(d.exists ? d.data() : null)));
 }
 let chGuardadoTimer = null;
@@ -11245,6 +11550,7 @@ function chGuardarConfig(estadoEl) {
     if (!firebaseDisponible) { if (estadoEl) estadoEl.textContent = '⚠️ Sin conexión: no se ha guardado'; return; }
     docConfigHorario().set(JSON.parse(JSON.stringify(chConfig))).then(() => {
       if (estadoEl) estadoEl.textContent = '✅ Guardado';
+      publicarHorariosTrabajadores();
     }).catch(err => { if (estadoEl) estadoEl.textContent = '⚠️ No se pudo guardar: ' + (err && err.message ? err.message : 'error'); });
   }, 500);
 }
@@ -11860,12 +12166,16 @@ function coleccionPins() { return docNube().collection('ch_pins'); }
 let chPinsCache = {};
 function chCargarPins() {
   if (!firebaseDisponible) return Promise.resolve();
+  if (modoAuth) return coleccionEstadoCuentas().get().then(snap => { const m = {}; snap.forEach(d => { m[d.id] = d.data(); }); estadosCuentas = m; }).catch(() => {});
   return coleccionPins().get().then(snap => { const m = {}; snap.forEach(d => { m[d.id] = d.data(); }); chPinsCache = m; }).catch(() => {});
 }
 // El PIN que el trabajador eligió solo vale mientras el administrador no le asigne otro PIN.
 function chPinPersonal(u) { const o = chPinsCache[u.id]; return o && o.basadoEn === u.pin ? o.pin : null; }
 function chPinEfectivo(u) { return chPinPersonal(u) || u.pin; }
-function chDebeCambiarPin(u) { return !!u.provisional && !chPinPersonal(u); }
+function chDebeCambiarPin(u) {
+  if (modoAuth) return !!u.provisional && (!u.authEmail || !(estadosCuentas[u.id] && estadosCuentas[u.id].version === u.authVersion));
+  return !!u.provisional && !chPinPersonal(u);
+}
 function chPinAleatorio() { return String(Math.floor(100000 + Math.random() * 900000)); }
 
 function chPantallaCambiarPin(usuario) {
@@ -12078,7 +12388,7 @@ function chPintarAcceso(zona, emp, u) {
   if (!provisional) {
     zona.appendChild(el('div', { class: 'toolbar' }, el('button', { class: 'btn btn-ghost btn-sm', onclick: () => {
       if (!confirm('Se generará una clave provisional nueva y su PIN actual dejará de valer. ¿Continuar?')) return;
-      u.pin = chPinAleatorio(); u.provisional = true; saveAccessControl();
+      u.pin = chPinAleatorio(); u.provisional = true; if (modoAuth) u.authEmail = null; saveAccessControl();
       chPintarAcceso(zona, emp, u);
     } }, '🔑 Generar nueva clave provisional')));
     return;
@@ -12287,7 +12597,8 @@ PagosApp.mount();
 TallerApp.mount();
 
 inicializarFirebase();
-if (firebaseDisponible) {
+inicializarAuth();
+function arranqueLegado() {
   marcarEstadoNube('☁️ Conectando…');
   const refInicial = esVistaPublica() ? docPublico() : docNube();
   refInicial.get().then(doc => {
@@ -12338,6 +12649,10 @@ if (firebaseDisponible) {
     sincronizacionInicialLista = true;
     arrancarAppLocal();
   });
+}
+if (firebaseDisponible) {
+  if (!esVistaPublica() && authDisponible) arranqueConCuentas(arranqueLegado);
+  else arranqueLegado();
 } else {
   arrancarAppLocal();
 }

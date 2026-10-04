@@ -3,7 +3,7 @@
 <head>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&display=swap">
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261004-fx1">
+<meta name="build-id" content="v20261004-fx2">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -275,7 +275,11 @@ header.app-header::before{display:none !important;}
 /* ===== Pantalla de fichaje ===== */
 .fx-wrap{max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:14px;}
 .fx-hero{position:relative;overflow:hidden;border-radius:22px;background:var(--court-dark);color:#fff;padding:22px 18px 26px;text-align:center;isolation:isolate;}
-.fx-hero svg.fx-pista{position:absolute;inset:0;width:100%;height:100%;z-index:-1;opacity:.55;}
+.fx-pista{position:absolute;inset:0;z-index:-1;opacity:.5;border:2px solid #F7F5F0;border-radius:inherit;pointer-events:none;}
+.fx-pista i{position:absolute;display:block;background:#F7F5F0;}
+.fx-pista i.v{top:0;bottom:0;width:2px;margin-left:-1px;}
+.fx-pista i.h{left:0;right:0;height:2px;margin-top:-1px;}
+.fx-pista i.red{left:0;right:0;top:50%;height:0;background:none;border-top:2px dashed rgba(247,245,240,.7);}
 .fx-hola{font-size:15px;color:#C9D6E2;}
 .fx-reloj{font-family:'Barlow Condensed',-apple-system,"Segoe UI",Roboto,sans-serif;font-weight:700;font-size:92px;line-height:.95;letter-spacing:1px;font-variant-numeric:tabular-nums;margin:6px 0 2px;}
 .fx-reloj small{font-size:34px;font-weight:600;color:var(--gold);margin-left:4px;vertical-align:top;}
@@ -11527,19 +11531,15 @@ function fxDur(ms) { const m = Math.floor(ms / 60000); if (m < 1) return 'menos 
 function fxMarcador(min) { return Math.floor(min / 60) + 'h ' + String(Math.round(min % 60)).padStart(2, '0') + '′'; }
 function fxSaludo() { const h = new Date().getHours(); return h < 14 ? 'Buenos días' : h < 21 ? 'Buenas tardes' : 'Buenas noches'; }
 function fxPistaSVG() {
-  // Pista de dobles vista desde arriba (13,40 × 6,10 m), estirada al tamaño de la tarjeta.
-  const ns = 'http://www.w3.org/2000/svg';
-  const svg = document.createElementNS(ns, 'svg');
-  svg.setAttribute('class', 'fx-pista'); svg.setAttribute('viewBox', '0 0 610 1340'); svg.setAttribute('preserveAspectRatio', 'none'); svg.setAttribute('aria-hidden', 'true');
-  const linea = (x1, y1, x2, y2, extra) => { const l = document.createElementNS(ns, 'line'); [['x1', x1], ['y1', y1], ['x2', x2], ['y2', y2], ['stroke', '#F7F5F0'], ['stroke-width', '2'], ['vector-effect', 'non-scaling-stroke']].forEach(([k, v]) => l.setAttribute(k, v)); if (extra) Object.keys(extra).forEach(k => l.setAttribute(k, extra[k])); svg.appendChild(l); };
-  const W = 610, H = 1340, si = 46, net = H / 2, cs = 198, lsd = 76;
-  linea(1, 1, W - 1, 1); linea(1, H - 1, W - 1, H - 1); linea(1, 1, 1, H - 1); linea(W - 1, 1, W - 1, H - 1);
-  linea(si, 1, si, H - 1); linea(W - si, 1, W - si, H - 1);
-  linea(1, net - cs, W - 1, net - cs); linea(1, net + cs, W - 1, net + cs);
-  linea(1, lsd, W - 1, lsd); linea(1, H - lsd, W - 1, H - lsd);
-  linea(W / 2, 1, W / 2, net - cs); linea(W / 2, net + cs, W / 2, H - 1);
-  linea(1, net, W - 1, net, { 'stroke-dasharray': '4 8', 'stroke-opacity': '.45' });
-  return svg;
+  // Pista de dobles vista desde arriba (13,40 × 6,10 m) con líneas en porcentaje: se ve igual en cualquier navegador.
+  const capa = el('div', { class: 'fx-pista', 'aria-hidden': 'true' });
+  const lat = 46 / 610 * 100, saque = 198 / 1340 * 100, fondo = 76 / 1340 * 100;
+  [lat, 100 - lat].forEach(x => capa.appendChild(el('i', { class: 'v', style: 'left:' + x + '%' })));
+  [fondo, 50 - saque, 50 + saque, 100 - fondo].forEach(y => capa.appendChild(el('i', { class: 'h', style: 'top:' + y + '%' })));
+  capa.appendChild(el('i', { class: 'v', style: 'left:50%;top:0;bottom:auto;height:' + (50 - saque) + '%' }));
+  capa.appendChild(el('i', { class: 'v', style: 'left:50%;top:auto;bottom:0;height:' + (50 - saque) + '%' }));
+  capa.appendChild(el('i', { class: 'red' }));
+  return capa;
 }
 function fxConfirmar({ titulo, hora, alerta, textoSi, alAceptar }) {
   const velo = el('div', { class: 'fx-velo', role: 'dialog', 'aria-modal': 'true' });
@@ -11637,7 +11637,7 @@ function renderFichar() {
     if (!document.body.contains(mapaEl)) return;
     mapaEl.innerHTML = '';
     const mapa = L.map(mapaEl, { zoomControl: false, attributionControl: true, scrollWheelZoom: false }).setView([43.3492, -4.0479], 14);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19, subdomains: 'abcd', attribution: '© OpenStreetMap © CARTO' }).addTo(mapa);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(mapa);
     const icono = L.divIcon({ className: '', html: '<div class="fx-yo"></div>', iconSize: [18, 18], iconAnchor: [9, 9] });
     let marca = null, circulo = null, centrado = false;
     fxMapaApi = { mover(p) {

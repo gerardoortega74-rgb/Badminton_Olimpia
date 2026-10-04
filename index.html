@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261004-ch3">
+<meta name="build-id" content="v20261004-ch5">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -9943,6 +9943,8 @@ let clubGestionTab = 'datos';
 const AYUDA_INDICE = [
   { pregunta: 'Ver los fichajes del personal (control horario)', ruta: 'Menú → Club → Control horario (o Gestión de Club → ⏱️ Control horario)', palabras: 'fichaje fichar horario jornada entrada salida trabajador personal horas ubicacion gps' },
   { pregunta: 'Crear plantillas de horario y asignarlas a los empleados', ruta: 'Gestión de Club → ⏱️ Control horario → Plantillas de horario', palabras: 'plantilla horario turno tarde asignar empleado semana' },
+  { pregunta: 'Ver el calendario anual (festivos, días trabajados, vacaciones y bajas)', ruta: 'Gestión de Club → ⏱️ Control horario → Calendario anual', palabras: 'calendario anual año festivos trabajados vacaciones baja permiso ausencia' },
+  { pregunta: 'Apuntar vacaciones, bajas o permisos de un empleado', ruta: 'Gestión de Club → ⏱️ Control horario → Calendario anual (abajo)', palabras: 'vacaciones baja permiso ausencia empleado' },
   { pregunta: 'Añadir días festivos', ruta: 'Gestión de Club → ⏱️ Control horario → Festivos', palabras: 'festivo fiesta vacaciones dia libre calendario laboral' },
   { pregunta: 'Dar de alta a un trabajador para que fiche', ruta: '⚙️ → Control de acceso → rol "Trabajador (solo fichar)"', palabras: 'trabajador fichar alta pin acceso empleado monitor' },
   { pregunta: 'Apuntar un gasto o ingreso del club', ruta: 'Menú → Gestión de Club → Pagos y Cuotas → Contabilidad', palabras: 'gasto ingreso recibo factura contabilidad dinero comprar material' },
@@ -11066,7 +11068,8 @@ function renderFichar() {
     const hoy = chFechaDe(Date.now());
     const fest = chFestivo(hoy);
     const t = chTramoDelDia(chPlantillaDe(sesionActual.id), hoy);
-    zonaHorario.textContent = fest ? '🎉 Hoy es festivo: ' + fest.nombre : t ? '🗓️ Tu horario de hoy: ' + t.ini + ' – ' + t.fin : (chPlantillaDe(sesionActual.id) ? 'Hoy no tienes turno' : '');
+    const ausHoy = (chConfig.ausencias || []).find(a => a.usuarioId === sesionActual.id && a.desde <= hoy && hoy <= a.hasta);
+    zonaHorario.textContent = ausHoy ? '🏷️ Hoy: ' + CH_TIPOS_AUSENCIA[ausHoy.tipo].label : fest ? '🎉 Hoy es festivo: ' + fest.nombre : t ? '🗓️ Tu horario de hoy: ' + t.ini + ' – ' + t.fin : (chPlantillaDe(sesionActual.id) ? 'Hoy no tienes turno' : '');
   }).catch(() => {});
   Promise.all([chCargarMes(chMesAnterior(mes), sesionActual.id), chCargarMes(mes, sesionActual.id)]).then(([ant, act]) => {
     const todos = ant.concat(act).filter(f => !f.anulado).sort((a, b) => a.ts - b.ts);
@@ -11153,7 +11156,7 @@ let chConfig = null;
 function docConfigHorario() { return docNube().collection('ch_config').doc('general'); }
 function chNormalizarConfig(c) {
   c = c || {};
-  return { plantillas: Array.isArray(c.plantillas) ? c.plantillas : [], asignaciones: c.asignaciones || {}, festivos: Array.isArray(c.festivos) ? c.festivos : [] };
+  return { plantillas: Array.isArray(c.plantillas) ? c.plantillas : [], asignaciones: c.asignaciones || {}, festivos: Array.isArray(c.festivos) ? c.festivos : [], ausencias: Array.isArray(c.ausencias) ? c.ausencias : [], altas: c.altas || {} };
 }
 function chCargarConfig() {
   if (!firebaseDisponible) return Promise.resolve(chConfig = chNormalizarConfig(chConfig));
@@ -11184,6 +11187,7 @@ function chTramoDelDia(plantilla, fechaISO) {
   const min = chMinutos(t.fin) - chMinutos(t.ini);
   return min > 0 ? { ini: t.ini, fin: t.fin, min } : null;
 }
+function chAlta(usuarioId) { return (chConfig && chConfig.altas && chConfig.altas[usuarioId]) || ''; }
 function chFestivo(fechaISO) { return chConfig ? chConfig.festivos.find(f => f.fecha === fechaISO) || null : null; }
 function chMinutosSemana(plantilla) {
   return CH_DIAS.reduce((s, [k]) => { const t = plantilla.dias && plantilla.dias[k]; const m = t && t.ini && t.fin ? chMinutos(t.fin) - chMinutos(t.ini) : 0; return s + (m > 0 ? m : 0); }, 0);
@@ -11203,7 +11207,9 @@ function chTeoricoMes(usuarioId, mes) {
   for (let d = 1; d <= ultimo; d++) {
     const f = mes + '-' + String(d).padStart(2, '0');
     if (f > hoy) break;
+    if (f < chAlta(usuarioId)) continue;
     if (chFestivo(f)) continue;
+    if (chConfig.ausencias && chConfig.ausencias.some(a => a.usuarioId === usuarioId && a.desde <= f && f <= a.hasta)) continue;
     const t = chTramoDelDia(plantilla, f);
     if (t) { res.min += t.min; res.dias.push(f); }
   }
@@ -11216,7 +11222,7 @@ function renderControlHorario() {
   root.innerHTML = '';
   if (!esAdmin()) { root.appendChild(el('div', { class: 'panel' }, 'No tienes permiso para ver esta sección.')); return; }
   const nav = el('div', { class: 'toolbar', style: 'margin-bottom:12px;' });
-  [['fichajes', '📋 Fichajes'], ['plantillas', '🗓️ Plantillas de horario'], ['festivos', '🎉 Festivos']].forEach(([id, label]) => {
+  [['fichajes', '📋 Fichajes'], ['calendario', '📅 Calendario anual'], ['plantillas', '🗓️ Plantillas de horario'], ['festivos', '🎉 Festivos']].forEach(([id, label]) => {
     nav.appendChild(el('button', { class: 'btn btn-sm ' + (chTab === id ? 'btn-primary' : 'btn-ghost'), onclick: () => { chTab = id; renderControlHorario(); } }, label));
   });
   root.appendChild(nav);
@@ -11226,6 +11232,7 @@ function renderControlHorario() {
     cont.innerHTML = '';
     if (chTab === 'plantillas') chRenderPlantillas(cont);
     else if (chTab === 'festivos') chRenderFestivos(cont);
+    else if (chTab === 'calendario') chRenderCalendario(cont);
     else chRenderFichajesAdmin(cont);
   }).catch(err => {
     cont.innerHTML = '';
@@ -11310,12 +11317,16 @@ function chRenderAsignaciones(zona, estado) {
   trabajadores.forEach(u => {
     const resumen = el('div', { class: 'sub', style: 'font-size:12px;' });
     const pintar = () => { const p = chPlantillaDe(u.id); resumen.textContent = p ? chResumenPlantilla(p) + ' (' + chDuracion(chMinutosSemana(p) * 60000) + '/semana)' : 'Sin horario asignado'; };
+    chConfig.altas = chConfig.altas || {};
+    const alta = el('input', { type: 'date', value: chConfig.altas[u.id] || '', style: 'max-width:170px;' });
+    alta.addEventListener('change', () => { if (alta.value) chConfig.altas[u.id] = alta.value; else delete chConfig.altas[u.id]; chGuardarConfig(estado); });
     const sel = selectEl([{ value: '', label: '— Sin horario —' }].concat(chConfig.plantillas.map(p => ({ value: p.id, label: p.nombre }))), chConfig.asignaciones[u.id] || '', v => {
       if (v) chConfig.asignaciones[u.id] = v; else delete chConfig.asignaciones[u.id];
+      if (v && !chConfig.altas[u.id]) { chConfig.altas[u.id] = chFechaDe(Date.now()); alta.value = chConfig.altas[u.id]; }
       pintar(); chGuardarConfig(estado);
     });
     pintar();
-    tb.appendChild(el('tr', {}, el('td', {}, el('b', {}, u.nombre)), el('td', {}, sel, resumen)));
+    tb.appendChild(el('tr', {}, el('td', {}, el('b', {}, u.nombre)), el('td', {}, sel, resumen, el('div', { style: 'margin-top:6px;' }, el('label', { style: 'font-size:12px;margin:0 0 2px;' }, 'Trabaja con este horario desde'), alta))));
   });
   zona.appendChild(el('div', { style: 'overflow-x:auto;' }, el('table', { style: 'width:100%;' }, el('thead', {}, el('tr', {}, el('th', {}, 'Empleado'), el('th', {}, 'Plantilla'))), tb)));
 }
@@ -11389,6 +11400,171 @@ function chRenderFestivos(root) {
     panel.appendChild(el('div', { style: 'overflow-x:auto;' }, el('table', { style: 'width:100%;' }, tb)));
   });
   root.appendChild(panel);
+}
+
+// ---------- Ausencias (vacaciones, baja, permiso) y calendario anual ----------
+const CH_TIPOS_AUSENCIA = {
+  vacaciones: { label: 'Vacaciones', color: '#CFE3FA', borde: '#3B7DD8' },
+  baja: { label: 'Baja médica', color: '#E9D8F5', borde: '#8A4FBF' },
+  permiso: { label: 'Permiso', color: '#FDE7C8', borde: '#D98A1A' },
+  otro: { label: 'Otra ausencia', color: '#E2E2E2', borde: '#777' },
+};
+function chAusencias() { if (!Array.isArray(chConfig.ausencias)) chConfig.ausencias = []; return chConfig.ausencias; }
+function chAusenciaDe(usuarioId, fechaISO) { return chAusencias().find(a => a.usuarioId === usuarioId && a.desde <= fechaISO && fechaISO <= a.hasta) || null; }
+function chCargarFichajesUsuario(usuarioId) {
+  if (!firebaseDisponible) return Promise.reject(new Error('Sin conexión con la nube'));
+  return coleccionFichajes().where('usuarioId', '==', usuarioId).get().then(snap => {
+    const lista = []; snap.forEach(d => lista.push(Object.assign({ id: d.id }, d.data())));
+    return lista.filter(f => !f.anulado).sort((a, b) => a.ts - b.ts);
+  });
+}
+const CH_COLORES = {
+  festivo: { fondo: '#F8D7D4', borde: '#C0392B', label: 'Festivo' },
+  trabajado: { fondo: '#CDEBD6', borde: '#1E7B45', label: 'Trabajado (fichó)' },
+  sinfichar: { fondo: '#FFF0B3', borde: '#C99700', label: 'Tenía turno y no fichó' },
+  turno: { fondo: '#FFFFFF', borde: '#9BB8A7', label: 'Día con turno (futuro)' },
+};
+let chCalAnio = null;
+let chCalUsuario = null;
+function chRenderCalendario(root) {
+  if (!chCalAnio) chCalAnio = new Date().getFullYear();
+  const trabajadores = accessControl.usuarios.filter(u => u.rol === 'trabajador');
+  if (chCalUsuario && !trabajadores.some(u => u.id === chCalUsuario)) chCalUsuario = null;
+  if (!chCalUsuario && trabajadores.length) chCalUsuario = trabajadores[0].id;
+  const estado = el('span', { class: 'sub', style: 'margin-left:8px;' });
+
+  const panel = el('div', { class: 'panel' }, el('h2', {}, '📅 Calendario anual'),
+    el('div', { class: 'sub' }, 'Festivos, días trabajados y ausencias de cada empleado. Toca un día para ver el detalle.'));
+  const selAnio = selectEl([chCalAnio - 1, chCalAnio, chCalAnio + 1].map(a => ({ value: String(a), label: String(a) })), String(chCalAnio), v => { chCalAnio = Number(v); root.innerHTML = ''; chRenderCalendario(root); });
+  const selUsu = selectEl([{ value: '', label: '— Solo festivos —' }].concat(trabajadores.map(u => ({ value: u.id, label: u.nombre }))), chCalUsuario || '', v => { chCalUsuario = v || null; root.innerHTML = ''; chRenderCalendario(root); });
+  panel.appendChild(el('div', { class: 'grid' }, field('Año', selAnio), field('Empleado', selUsu)));
+
+  // Leyenda
+  const leyenda = el('div', { style: 'display:flex;flex-wrap:wrap;gap:6px 12px;margin:6px 0 10px;font-size:12px;' });
+  const chipLey = (fondo, borde, txt) => el('span', { style: 'display:inline-flex;align-items:center;gap:5px;' }, el('span', { style: `width:14px;height:14px;border-radius:4px;background:${fondo};border:2px solid ${borde};display:inline-block;` }), txt);
+  Object.values(CH_COLORES).forEach(c => leyenda.appendChild(chipLey(c.fondo, c.borde, c.label)));
+  Object.values(CH_TIPOS_AUSENCIA).forEach(c => leyenda.appendChild(chipLey(c.color, c.borde, c.label)));
+  panel.appendChild(leyenda);
+  const resumen = el('div', { style: 'margin-bottom:10px;' });
+  const detalle = el('div', { class: 'msg msg-info', style: 'display:none;margin-bottom:10px;' });
+  panel.appendChild(resumen); panel.appendChild(detalle);
+  const rejilla = el('div', { style: 'display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;' }, el('div', { class: 'sub' }, 'Cargando…'));
+  panel.appendChild(rejilla);
+  root.appendChild(panel);
+
+  // Formulario de ausencias
+  const panelAus = el('div', { class: 'panel' });
+  root.appendChild(panelAus);
+
+  const pFich = chCalUsuario ? chCargarFichajesUsuario(chCalUsuario) : Promise.resolve([]);
+  pFich.then(fichajes => {
+    const porDia = {};
+    fichajes.forEach(f => { const d = chFechaDe(f.ts); (porDia[d] = porDia[d] || []).push(f); });
+    const plantilla = chCalUsuario ? chPlantillaDe(chCalUsuario) : null;
+    const hoy = chFechaDe(Date.now());
+    const cuenta = { trabajado: 0, sinfichar: 0, festivo: 0, vacaciones: 0, baja: 0, permiso: 0, otro: 0, ms: 0 };
+    rejilla.innerHTML = '';
+    for (let m = 1; m <= 12; m++) {
+      const mes = chCalAnio + '-' + String(m).padStart(2, '0');
+      const caja = el('div', { style: 'border:1px solid #DEDBD0;border-radius:12px;padding:8px;' }, el('div', { style: 'font-weight:700;text-transform:capitalize;margin-bottom:6px;' }, CH_NOMBRE_MES[m - 1]));
+      const g = el('div', { style: 'display:grid;grid-template-columns:repeat(7,1fr);gap:3px;text-align:center;font-size:12px;' });
+      ['L', 'M', 'X', 'J', 'V', 'S', 'D'].forEach(d => g.appendChild(el('div', { style: 'color:#888;font-weight:700;' }, d)));
+      const primero = new Date(chCalAnio, m - 1, 1).getDay();
+      for (let i = 0; i < (primero === 0 ? 6 : primero - 1); i++) g.appendChild(el('div', {}));
+      const ultimo = new Date(chCalAnio, m, 0).getDate();
+      for (let d = 1; d <= ultimo; d++) {
+        const f = mes + '-' + String(d).padStart(2, '0');
+        const fest = chFestivo(f);
+        const aus = chCalUsuario ? chAusenciaDe(chCalUsuario, f) : null;
+        const fichs = porDia[f] || [];
+        const turno = plantilla && f >= chAlta(chCalUsuario) ? chTramoDelDia(plantilla, f) : null;
+        let fondo = 'transparent', borde = 'transparent', tipo = null;
+        if (fichs.length) { tipo = 'trabajado'; }
+        else if (aus) { tipo = 'aus'; }
+        else if (fest) { tipo = 'festivo'; }
+        else if (turno && f < hoy) { tipo = 'sinfichar'; }
+        else if (turno) { tipo = 'turno'; }
+        if (tipo === 'aus') { fondo = CH_TIPOS_AUSENCIA[aus.tipo].color; borde = CH_TIPOS_AUSENCIA[aus.tipo].borde; }
+        else if (tipo) { fondo = CH_COLORES[tipo].fondo; borde = CH_COLORES[tipo].borde; }
+        if (fest) cuenta.festivo++;
+        if (tipo === 'trabajado') cuenta.trabajado++;
+        if (tipo === 'sinfichar') cuenta.sinfichar++;
+        if (aus && (turno || fichs.length)) cuenta[aus.tipo]++;
+        const esHoy = f === hoy;
+        g.appendChild(el('div', {
+          style: `padding:5px 0;border-radius:6px;cursor:pointer;background:${fondo};border:2px solid ${esHoy ? '#111' : borde};${fest ? 'font-weight:800;color:#A93226;' : ''}`,
+          onclick: () => {
+            const lineas = [el('b', {}, new Date(f + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))];
+            if (fest) lineas.push(el('div', {}, '🎉 Festivo: ' + fest.nombre));
+            if (chCalUsuario) {
+              lineas.push(el('div', {}, turno ? '🗓️ Turno: ' + turno.ini + ' – ' + turno.fin : 'Sin turno ese día'));
+              if (aus) lineas.push(el('div', {}, '🏷️ ' + CH_TIPOS_AUSENCIA[aus.tipo].label + (aus.nota ? ': ' + aus.nota : '') + ' (' + fmtFechaDMYShell(aus.desde) + ' – ' + fmtFechaDMYShell(aus.hasta) + ')'));
+              if (fichs.length) {
+                const tr = chEmparejar(fichs);
+                tr.forEach(t => lineas.push(el('div', {}, '⏱️ ' + (t.entrada ? chHora(t.entrada.ts) : '¿?') + ' → ' + (t.salida ? chHora(t.salida.ts) : 'sin salida') + (t.entrada && t.salida ? ' (' + chDuracion(t.salida.ts - t.entrada.ts) + ')' : ''))));
+              } else if (turno && f < hoy && !aus && !fest) lineas.push(el('div', { style: 'color:#B3261E;' }, 'No fichó'));
+            }
+            detalle.innerHTML = ''; lineas.forEach(x => detalle.appendChild(x)); detalle.style.display = 'block';
+            detalle.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          },
+        }, String(d)));
+      }
+      caja.appendChild(g);
+      rejilla.appendChild(caja);
+    }
+    chEmparejar(fichajes.filter(f => f.fecha ? f.fecha.startsWith(String(chCalAnio)) : chFechaDe(f.ts).startsWith(String(chCalAnio))))
+      .forEach(t => { if (t.entrada && t.salida) cuenta.ms += t.salida.ts - t.entrada.ts; });
+    const chip = (txt, fondo, borde) => el('span', { class: 'chip', style: `background:${fondo};border:1px solid ${borde};color:#222;margin:2px;` }, txt);
+    resumen.innerHTML = '';
+    resumen.appendChild(el('div', { style: 'display:flex;flex-wrap:wrap;' },
+      chip(cuenta.festivo + ' festivos', CH_COLORES.festivo.fondo, CH_COLORES.festivo.borde),
+      chCalUsuario ? [
+        chip(cuenta.trabajado + ' días trabajados · ' + chDuracion(cuenta.ms), CH_COLORES.trabajado.fondo, CH_COLORES.trabajado.borde),
+        chip(cuenta.sinfichar + ' sin fichar', CH_COLORES.sinfichar.fondo, CH_COLORES.sinfichar.borde),
+        chip(cuenta.vacaciones + ' de vacaciones', CH_TIPOS_AUSENCIA.vacaciones.color, CH_TIPOS_AUSENCIA.vacaciones.borde),
+        chip(cuenta.baja + ' de baja', CH_TIPOS_AUSENCIA.baja.color, CH_TIPOS_AUSENCIA.baja.borde),
+        chip(cuenta.permiso + ' de permiso', CH_TIPOS_AUSENCIA.permiso.color, CH_TIPOS_AUSENCIA.permiso.borde),
+      ] : null));
+    if (chCalUsuario) resumen.appendChild(el('div', { class: 'sub', style: 'font-size:12px;' }, 'Las ausencias cuentan solo los días en que tenía turno.'));
+  }).catch(err => { rejilla.innerHTML = ''; rejilla.appendChild(el('div', { class: 'msg msg-warn' }, 'No se pudieron cargar los fichajes: ' + (err && err.message ? err.message : 'error'))); });
+
+  // ---- Ausencias del empleado ----
+  panelAus.appendChild(el('h2', {}, '🏷️ Vacaciones, bajas y permisos'));
+  if (!chCalUsuario) { panelAus.appendChild(el('div', { class: 'sub' }, 'Elige un empleado arriba para ver y apuntar sus ausencias.')); return; }
+  const nombreUsu = (trabajadores.find(u => u.id === chCalUsuario) || {}).nombre || '';
+  panelAus.appendChild(el('div', { class: 'sub' }, 'Apunta las ausencias de ' + nombreUsu + '. Esos días no cuentan como horas teóricas ni como "sin fichar".'));
+  const selTipo = selectEl(Object.keys(CH_TIPOS_AUSENCIA).map(k => ({ value: k, label: CH_TIPOS_AUSENCIA[k].label })), 'vacaciones', () => {});
+  const desde = el('input', { type: 'date' }); const hasta = el('input', { type: 'date' });
+  const nota = el('input', { type: 'text', placeholder: 'Opcional (ej.: verano, gripe…)' });
+  const err = el('div', { style: 'color:#B3261E;font-size:13px;min-height:16px;' });
+  panelAus.appendChild(el('div', { class: 'grid' }, field('Tipo', selTipo), field('Desde', desde), field('Hasta', hasta), field('Nota', nota)));
+  panelAus.appendChild(err);
+  panelAus.appendChild(el('div', { class: 'toolbar' }, el('button', { class: 'btn btn-primary', onclick: () => {
+    err.textContent = '';
+    const d1 = desde.value, d2 = hasta.value || desde.value;
+    if (!d1) { err.textContent = 'Pon al menos la fecha de inicio.'; return; }
+    if (d2 < d1) { err.textContent = 'La fecha final no puede ser anterior a la inicial.'; return; }
+    const choque = chAusencias().find(a => a.usuarioId === chCalUsuario && !(d2 < a.desde || d1 > a.hasta));
+    if (choque) { err.textContent = 'Se solapa con otra ausencia (' + fmtFechaDMYShell(choque.desde) + ' – ' + fmtFechaDMYShell(choque.hasta) + '). Quítala primero o ajusta las fechas.'; return; }
+    chAusencias().push({ id: 'au_' + Date.now(), usuarioId: chCalUsuario, nombre: nombreUsu, tipo: selTipo.value, desde: d1, hasta: d2, nota: nota.value.trim(), creadoEn: Date.now(), creadoPor: sesionActual ? sesionActual.nombre : 'Administrador' });
+    chGuardarConfig(estado); root.innerHTML = ''; chRenderCalendario(root);
+  } }, '+ Añadir ausencia'), estado));
+  const lista = chAusencias().filter(a => a.usuarioId === chCalUsuario && (a.desde.startsWith(String(chCalAnio)) || a.hasta.startsWith(String(chCalAnio)))).sort((a, b) => a.desde.localeCompare(b.desde));
+  if (!lista.length) panelAus.appendChild(el('div', { class: 'empty-state' }, 'Sin ausencias en ' + chCalAnio + '.'));
+  else {
+    const tb = el('tbody');
+    lista.forEach(a => tb.appendChild(el('tr', {},
+      el('td', {}, el('span', { class: 'chip', style: `background:${CH_TIPOS_AUSENCIA[a.tipo].color};border:1px solid ${CH_TIPOS_AUSENCIA[a.tipo].borde};color:#222;` }, CH_TIPOS_AUSENCIA[a.tipo].label)),
+      el('td', {}, fmtFechaDMYShell(a.desde) + (a.hasta !== a.desde ? ' – ' + fmtFechaDMYShell(a.hasta) : '')),
+      el('td', {}, a.nota || ''),
+      el('td', {}, el('button', { class: 'btn btn-danger btn-sm', onclick: () => {
+        if (!confirm('¿Quitar esta ausencia?')) return;
+        chConfig.ausencias = chAusencias().filter(x => x.id !== a.id);
+        chGuardarConfig(estado); root.innerHTML = ''; chRenderCalendario(root);
+      } }, 'Quitar')),
+    )));
+    panelAus.appendChild(el('div', { style: 'overflow-x:auto;' }, el('table', { style: 'width:100%;' }, tb)));
+  }
 }
 
 // ---------- Pantalla del administrador ----------

@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261004-ch6">
+<meta name="build-id" content="v20261004-ch7">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -337,6 +337,7 @@ if (window.pdfjsLib) { pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.c
       <nav class="tabs" id="pagosTabsNav" style="margin:-20px -16px 20px;"></nav>
       <div id="pagosMainArea"></div>
     </div>
+    <div id="trabajadoresScreen" style="display:none;"></div>
     <div id="controlhorarioScreen" style="display:none;"></div>
     <div id="accesoScreen" style="display:none;"></div>
   </div>
@@ -9909,7 +9910,8 @@ function seleccionarUsuarioLogin(id) {
     errorMsg,
     el('div', { class: 'toolbar' },
       el('button', { class: 'btn btn-primary', onclick: () => {
-        if (pinInput.value === usuario.pin) {
+        if (pinInput.value === chPinEfectivo(usuario)) {
+          if (chDebeCambiarPin(usuario)) { chPantallaCambiarPin(usuario); return; }
           sesionActual = { id: usuario.id, nombre: usuario.nombre, rol: usuario.rol };
           saveSesion();
           iniciarAppTrasLogin();
@@ -9942,13 +9944,14 @@ let clubGestionTab = 'datos';
 
 const AYUDA_INDICE = [
   { pregunta: 'Ver los fichajes del personal (control horario)', ruta: 'Menú → Club → Control horario (o Gestión de Club → ⏱️ Control horario)', palabras: 'fichaje fichar horario jornada entrada salida trabajador personal horas ubicacion gps' },
+  { pregunta: 'Enviar a un trabajador sus credenciales por WhatsApp o email', ruta: 'Gestión de Club → 👔 Trabajadores → (su ficha) → Acceso a la app', palabras: 'credenciales clave pin whatsapp email enviar acceso enlace instalar movil' },
   { pregunta: 'Crear plantillas de horario y asignarlas a los empleados', ruta: 'Gestión de Club → ⏱️ Control horario → Plantillas de horario', palabras: 'plantilla horario turno tarde asignar empleado semana' },
   { pregunta: 'Ver el calendario anual (festivos, días trabajados, vacaciones y bajas)', ruta: 'Gestión de Club → ⏱️ Control horario → Calendario anual', palabras: 'calendario anual año festivos trabajados vacaciones baja permiso ausencia' },
   { pregunta: 'Apuntar vacaciones, bajas o permisos de un empleado', ruta: 'Gestión de Club → ⏱️ Control horario → Calendario anual (abajo)', palabras: 'vacaciones baja permiso ausencia empleado' },
   { pregunta: 'Aprobar o rechazar vacaciones y bajas que piden los empleados', ruta: 'Gestión de Club → ⏱️ Control horario → Solicitudes', palabras: 'solicitud aprobar rechazar vacaciones baja permiso empleado' },
   { pregunta: 'Corregir un fichaje mal hecho o añadir uno olvidado', ruta: 'Gestión de Club → ⏱️ Control horario → Fichajes → botón ✏️ (o "Añadir fichaje a mano")', palabras: 'corregir fichaje error olvido salida entrada modificar anular registro' },
   { pregunta: 'Añadir días festivos', ruta: 'Gestión de Club → ⏱️ Control horario → Festivos', palabras: 'festivo fiesta vacaciones dia libre calendario laboral' },
-  { pregunta: 'Dar de alta a un trabajador para que fiche', ruta: '⚙️ → Control de acceso → rol "Trabajador (solo fichar)"', palabras: 'trabajador fichar alta pin acceso empleado monitor' },
+  { pregunta: 'Dar de alta a un trabajador (ficha, datos de nómina y acceso para fichar)', ruta: 'Gestión de Club → 👔 Trabajadores → "+ Nuevo trabajador"', palabras: 'trabajador fichar alta pin acceso empleado monitor' },
   { pregunta: 'Apuntar un gasto o ingreso del club', ruta: 'Menú → Gestión de Club → Pagos y Cuotas → Contabilidad', palabras: 'gasto ingreso recibo factura contabilidad dinero comprar material' },
   { pregunta: 'Escanear un recibo o factura con la cámara', ruta: 'Menú → Gestión de Club → Pagos y Cuotas → Contabilidad → botón "Recibo de gasto/ingreso"', palabras: 'recibo foto escanear camara ocr factura pdf' },
   { pregunta: 'Cobrar la cuota del club a los socios', ruta: 'Menú → Gestión de Club → Pagos y Cuotas → Cuotas del club', palabras: 'cuota socio mensualidad matricula tarifa pagar cobrar' },
@@ -10072,6 +10075,7 @@ function renderClubGestionTabsNav() {
     ['general', '🌍 Base general de jugadores', 'jugadores'],
     ['pagos', '💶 Pagos y Cuotas', 'pagos'],
   ].filter(([, , permiso]) => tienePermiso(permiso));
+  if (esAdmin()) tabs.push(['trabajadores', '👔 Trabajadores']);
   if (esAdmin()) tabs.push(['horario', '⏱️ Control horario']);
   if (esAdmin()) tabs.push(['acceso', '🔐 Control de acceso']);
   tabs.forEach(([id, label]) => {
@@ -10080,9 +10084,9 @@ function renderClubGestionTabsNav() {
 }
 
 function showClubGestionTab(tab) {
-  if ((tab === 'acceso' || tab === 'horario') && !esAdmin()) tab = 'datos';
-  const permisoDeTab = { datos: 'club', jugadores: 'jugadores', general: 'jugadores', pagos: 'pagos', acceso: null, horario: null };
-  if (tab !== 'acceso' && tab !== 'horario' && !tienePermiso(permisoDeTab[tab])) {
+  if ((tab === 'acceso' || tab === 'horario' || tab === 'trabajadores') && !esAdmin()) tab = 'datos';
+  const permisoDeTab = { datos: 'club', jugadores: 'jugadores', general: 'jugadores', pagos: 'pagos', acceso: null, horario: null, trabajadores: null };
+  if (tab !== 'acceso' && tab !== 'horario' && tab !== 'trabajadores' && !tienePermiso(permisoDeTab[tab])) {
     tab = tienePermiso('club') ? 'datos' : tienePermiso('jugadores') ? 'jugadores' : tienePermiso('pagos') ? 'pagos' : 'datos';
   }
   clubGestionTab = tab;
@@ -10093,12 +10097,14 @@ function showClubGestionTab(tab) {
   document.getElementById('pagosScreen').style.display = tab === 'pagos' ? 'block' : 'none';
   document.getElementById('accesoScreen').style.display = tab === 'acceso' ? 'block' : 'none';
   document.getElementById('controlhorarioScreen').style.display = tab === 'horario' ? 'block' : 'none';
+  document.getElementById('trabajadoresScreen').style.display = tab === 'trabajadores' ? 'block' : 'none';
   if (tab === 'datos') renderClub();
   else if (tab === 'jugadores') renderJugadores();
   else if (tab === 'general') renderJugadoresGeneral();
   else if (tab === 'pagos') PagosApp.render();
   else if (tab === 'acceso') renderControlAcceso();
   else if (tab === 'horario') renderControlHorario();
+  else if (tab === 'trabajadores') { chEmpEditando = null; renderTrabajadores(); }
   renderShellHeader();
 }
 function nombreCompletoShell(j) {
@@ -10161,6 +10167,7 @@ function renderShellHeader() {
     pagos: [clubGlobal.nombre ? clubGlobal.nombre + ' · Pagos' : 'Pagos y Cuotas', 'Cuotas del club y competiciones'],
     acceso: ['Control de acceso', 'Usuarios, roles y permisos'],
     horario: ['Control horario', 'Fichajes, plantillas de horario y festivos'],
+    trabajadores: ['Trabajadores', 'Fichas del personal y acceso a la app'],
   };
   const [title, sub] = currentSection === 'clubgestion' ? (clubGestionTitles[clubGestionTab] || clubGestionTitles.datos) : (titles[currentSection] || titles.home);
   document.getElementById('shellTitle').textContent = title;
@@ -10589,6 +10596,7 @@ function renderHome() {
     { icon: '📅', title: 'Planificación Anual', desc: 'De la iniciación a la tecnificación: macrociclo, microciclo y evaluación.', sec: 'planificacion', permiso: 'planificacion' },
     { icon: '🏛️', title: 'Gestión de Club', desc: 'Datos del club, jugadores, y pagos y cuotas.', sec: 'clubgestion', permiso: null },
   ];
+  if (esAdmin()) gruposClub.push({ icon: '👔', title: 'Trabajadores', desc: 'Fichas del personal (datos personales y de nómina) y su acceso para fichar.', sec: 'clubgestion', tab: 'trabajadores', permiso: null });
   if (esAdmin()) gruposClub.push({ icon: '⏱️', title: 'Control horario', desc: 'Fichajes, solicitudes de ausencia, calendario, plantillas y festivos.' + (chPendientesSolicitudes ? ' 📨 ' + chPendientesSolicitudes + ' solicitud(es) pendiente(s).' : ''), sec: 'clubgestion', tab: 'horario', permiso: null });
   const onclickClub = (c) => {
     if (c.sec !== 'clubgestion') { showSection(c.sec); return; }
@@ -11318,7 +11326,7 @@ function chRenderAsignaciones(zona, estado) {
   zona.innerHTML = '';
   zona.appendChild(el('h2', {}, '👥 Horario de cada empleado'));
   const trabajadores = accessControl.usuarios.filter(u => u.rol === 'trabajador');
-  if (!trabajadores.length) { zona.appendChild(el('div', { class: 'msg msg-info' }, 'No hay empleados todavía. Créalos en ⚙️ → Control de acceso con el rol "Trabajador (solo fichar)".')); return; }
+  if (!trabajadores.length) { zona.appendChild(el('div', { class: 'msg msg-info' }, 'No hay empleados todavía. Créalos en Gestión de Club → 👔 Trabajadores.')); return; }
   if (!chConfig.plantillas.length) { zona.appendChild(el('div', { class: 'sub' }, 'Crea primero una plantilla para poder asignarla.')); return; }
   const tb = el('tbody');
   trabajadores.forEach(u => {
@@ -11783,6 +11791,252 @@ function chTextoCambio(a) {
   return 'Cambiada ' + tipo + ' del ' + dia + ': ' + chHora(a.antes.ts) + ' → ' + chHora(a.despues.ts);
 }
 
+// ===== TRABAJADORES: ficha completa (datos personales y de nómina) + acceso a la app =====
+// Las fichas van en su propia colección (club/datos/ch_empleados); el móvil de un trabajador nunca las descarga.
+function coleccionEmpleados() { return docNube().collection('ch_empleados'); }
+function coleccionPins() { return docNube().collection('ch_pins'); }
+let chPinsCache = {};
+function chCargarPins() {
+  if (!firebaseDisponible) return Promise.resolve();
+  return coleccionPins().get().then(snap => { const m = {}; snap.forEach(d => { m[d.id] = d.data(); }); chPinsCache = m; }).catch(() => {});
+}
+// El PIN que el trabajador eligió solo vale mientras el administrador no le asigne otro PIN.
+function chPinPersonal(u) { const o = chPinsCache[u.id]; return o && o.basadoEn === u.pin ? o.pin : null; }
+function chPinEfectivo(u) { return chPinPersonal(u) || u.pin; }
+function chDebeCambiarPin(u) { return !!u.provisional && !chPinPersonal(u); }
+function chPinAleatorio() { return String(Math.floor(100000 + Math.random() * 900000)); }
+
+function chPantallaCambiarPin(usuario) {
+  const root = document.getElementById('loginScreen');
+  root.innerHTML = '';
+  const p1 = el('input', { type: 'text', inputmode: 'numeric', autocomplete: 'off', placeholder: 'Nuevo PIN (4 a 8 cifras)', style: 'font-size:20px;text-align:center;-webkit-text-security:disc;' });
+  const p2 = el('input', { type: 'text', inputmode: 'numeric', autocomplete: 'off', placeholder: 'Repite el PIN', style: 'font-size:20px;text-align:center;-webkit-text-security:disc;' });
+  const err = el('div', { class: 'sub', style: 'color:#B3261E;min-height:18px;' });
+  const btn = el('button', { class: 'btn btn-primary', onclick: () => {
+    err.textContent = '';
+    if (!/^\d{4,8}$/.test(p1.value)) { err.textContent = 'El PIN debe tener entre 4 y 8 cifras.'; return; }
+    if (p1.value !== p2.value) { err.textContent = 'Los dos PIN no coinciden.'; return; }
+    if (p1.value === usuario.pin) { err.textContent = 'Elige un PIN distinto del provisional.'; return; }
+    btn.disabled = true;
+    const datos = { pin: p1.value, basadoEn: usuario.pin, cambiadoEn: Date.now() };
+    coleccionPins().doc(usuario.id).set(datos).then(() => {
+      chPinsCache[usuario.id] = datos;
+      sesionActual = { id: usuario.id, nombre: usuario.nombre, rol: usuario.rol };
+      saveSesion(); iniciarAppTrasLogin();
+    }).catch(e => { btn.disabled = false; err.textContent = 'No se pudo guardar: ' + (e && e.message ? e.message : 'sin conexión'); });
+  } }, 'Guardar mi PIN');
+  root.appendChild(el('div', { class: 'login-card' },
+    el('h2', {}, 'Hola, ' + usuario.nombre),
+    el('div', { class: 'sub', style: 'margin-bottom:10px;' }, 'Es tu primera vez. Elige tu PIN personal: lo usarás siempre para entrar a fichar.'),
+    field('Nuevo PIN', p1), field('Repítelo', p2), err, el('div', { class: 'toolbar' }, btn)));
+  p1.focus();
+}
+
+const CH_PROVINCIAS = { '01': 'Álava', '02': 'Albacete', '03': 'Alicante', '04': 'Almería', '05': 'Ávila', '06': 'Badajoz', '07': 'Illes Balears', '08': 'Barcelona', '09': 'Burgos', '10': 'Cáceres', '11': 'Cádiz', '12': 'Castellón', '13': 'Ciudad Real', '14': 'Córdoba', '15': 'A Coruña', '16': 'Cuenca', '17': 'Girona', '18': 'Granada', '19': 'Guadalajara', '20': 'Gipuzkoa', '21': 'Huelva', '22': 'Huesca', '23': 'Jaén', '24': 'León', '25': 'Lleida', '26': 'La Rioja', '27': 'Lugo', '28': 'Madrid', '29': 'Málaga', '30': 'Murcia', '31': 'Navarra', '32': 'Ourense', '33': 'Asturias', '34': 'Palencia', '35': 'Las Palmas', '36': 'Pontevedra', '37': 'Salamanca', '38': 'Santa Cruz de Tenerife', '39': 'Cantabria', '40': 'Segovia', '41': 'Sevilla', '42': 'Soria', '43': 'Tarragona', '44': 'Teruel', '45': 'Toledo', '46': 'Valencia', '47': 'Valladolid', '48': 'Bizkaia', '49': 'Zamora', '50': 'Zaragoza', '51': 'Ceuta', '52': 'Melilla' };
+function chValidarDNI(v) {
+  v = (v || '').toUpperCase().replace(/[\s-]/g, '');
+  const m = v.match(/^([XYZ]?)(\d{7,8})([A-Z])$/);
+  if (!m) return false;
+  const num = Number(({ X: '0', Y: '1', Z: '2' }[m[1]] || '') + m[2]);
+  return 'TRWAGMYFPDXBNJZSQVHLCKE'[num % 23] === m[3];
+}
+function chValidarIBAN(v) {
+  v = (v || '').toUpperCase().replace(/\s/g, '');
+  if (!/^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/.test(v)) return false;
+  const r = (v.slice(4) + v.slice(0, 4)).replace(/[A-Z]/g, c => String(c.charCodeAt(0) - 55));
+  let resto = 0; for (const d of r) resto = (resto * 10 + Number(d)) % 97;
+  return resto === 1;
+}
+function chFormatearIBAN(v) { return (v || '').toUpperCase().replace(/\s/g, '').replace(/(.{4})/g, '$1 ').trim(); }
+function chNombreCompleto(e) { return [e.nombre, e.apellido1, e.apellido2].filter(Boolean).join(' '); }
+function chUrlApp() { return location.origin + location.pathname; }
+function chTelefonoWhatsApp(t) { let d = (t || '').replace(/\D/g, ''); if (d.length === 9) d = '34' + d; if (d.startsWith('0034')) d = d.slice(2); return d; }
+function chMensajeCredenciales(emp, usuario) {
+  const club = clubGlobal.nombre || 'el club';
+  return 'Hola ' + emp.nombre + ',\n\n' +
+    'Ya tienes acceso a la app de fichaje de ' + club + '.\n\n' +
+    '1) Abre este enlace en tu móvil:\n' + chUrlApp() + '\n\n' +
+    '2) Pulsa en tu nombre: ' + usuario.nombre + '\n' +
+    '3) Clave provisional: ' + usuario.pin + '\n' +
+    '   La primera vez te pedirá crear tu PIN personal.\n\n' +
+    '4) Guárdala como una app en la pantalla de inicio:\n' +
+    '   • iPhone (Safari): botón Compartir (cuadrado con flecha) → "Añadir a pantalla de inicio".\n' +
+    '   • Android (Chrome): menú ⋮ → "Añadir a pantalla de inicio" o "Instalar aplicación".\n\n' +
+    '5) Al fichar, cuando el móvil lo pregunte, permite el acceso a la ubicación: se registra la hora y el lugar de cada entrada y salida.\n\n' +
+    'Si tienes cualquier problema, avísame.';
+}
+
+let chEmpleadosCache = [];
+let chEmpEditando = null;   // null = lista; {} = ficha nueva; objeto = editar
+let chEmpVerBajas = false;
+function chCargarEmpleados() {
+  if (!firebaseDisponible) return Promise.reject(new Error('Sin conexión con la nube'));
+  return coleccionEmpleados().get().then(snap => { const a = []; snap.forEach(d => a.push(Object.assign({ id: d.id }, d.data()))); chEmpleadosCache = a.sort((x, y) => chNombreCompleto(x).localeCompare(chNombreCompleto(y))); return chEmpleadosCache; });
+}
+function renderTrabajadores() {
+  const root = document.getElementById('trabajadoresScreen');
+  root.innerHTML = '';
+  if (!esAdmin()) { root.appendChild(el('div', { class: 'panel' }, 'No tienes permiso para ver esta sección.')); return; }
+  const cont = el('div', {}, el('div', { class: 'panel' }, el('div', { class: 'sub' }, 'Cargando trabajadores…')));
+  root.appendChild(cont);
+  Promise.all([chCargarEmpleados(), chCargarPins()]).then(() => {
+    cont.innerHTML = '';
+    if (chEmpEditando) chRenderFichaEmpleado(cont, chEmpEditando); else chRenderListaEmpleados(cont);
+  }).catch(e => { cont.innerHTML = ''; cont.appendChild(el('div', { class: 'msg msg-warn' }, 'No se pudieron cargar los trabajadores: ' + (e && e.message ? e.message : 'error'))); });
+}
+function chRenderListaEmpleados(root) {
+  const panel = el('div', { class: 'panel' }, el('h2', {}, '👔 Trabajadores'),
+    el('div', { class: 'sub' }, 'Ficha de cada empleado con sus datos personales y de nómina, y su acceso a la app para fichar.'));
+  panel.appendChild(el('div', { class: 'toolbar' },
+    el('button', { class: 'btn btn-primary', onclick: () => { chEmpEditando = {}; renderTrabajadores(); } }, '+ Nuevo trabajador'),
+    el('label', { style: 'display:flex;gap:6px;align-items:center;margin:0;text-transform:none;letter-spacing:0;font-size:13px;' },
+      el('input', { type: 'checkbox', style: 'width:auto;', checked: chEmpVerBajas ? 'checked' : null, onchange: (e) => { chEmpVerBajas = e.target.checked; renderTrabajadores(); } }), 'Mostrar dados de baja')));
+  const lista = chEmpleadosCache.filter(e => chEmpVerBajas || !e.fechaBaja);
+  if (!lista.length) panel.appendChild(el('div', { class: 'empty-state' }, 'No hay trabajadores. Pulsa "+ Nuevo trabajador".'));
+  lista.forEach(e => {
+    const u = accessControl.usuarios.find(x => x.id === e.usuarioId);
+    const estadoAcceso = !u ? el('span', { class: 'chip chip-muted' }, 'Sin acceso a la app')
+      : chDebeCambiarPin(u) ? el('span', { class: 'chip', style: 'background:#FBF1D9;color:#7A5B00;' }, '🔑 Clave provisional (aún no ha entrado)')
+      : el('span', { class: 'chip', style: 'background:#E4F3E9;color:#1E5B3C;' }, '✅ Acceso activo');
+    panel.appendChild(el('div', { style: 'border:1px solid #DEDBD0;border-radius:12px;padding:10px;margin-top:10px;cursor:pointer;' + (e.fechaBaja ? 'opacity:.6;' : ''), onclick: () => { chEmpEditando = e; renderTrabajadores(); } },
+      el('div', { style: 'display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;' }, el('b', {}, chNombreCompleto(e)), e.fechaBaja ? el('span', { class: 'chip chip-muted' }, 'Baja ' + fmtFechaDMYShell(e.fechaBaja)) : estadoAcceso),
+      el('div', { class: 'sub' }, [e.puesto, e.dni, e.telefono].filter(Boolean).join(' · ') || 'Ficha incompleta')));
+  });
+  // Usuarios "Trabajador" creados antes de existir esta ficha
+  const sinFicha = accessControl.usuarios.filter(u => u.rol === 'trabajador' && !chEmpleadosCache.some(e => e.usuarioId === u.id));
+  if (sinFicha.length) {
+    panel.appendChild(el('h3', { style: 'margin:16px 0 6px;' }, 'Usuarios de fichaje sin ficha'));
+    panel.appendChild(el('div', { class: 'sub' }, 'Se crearon desde Control de acceso. Completa su ficha para tener sus datos.'));
+    sinFicha.forEach(u => panel.appendChild(el('div', { class: 'toolbar', style: 'align-items:center;' }, el('b', {}, u.nombre),
+      el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { const partes = u.nombre.split(' '); chEmpEditando = { nombre: partes[0], apellido1: partes.slice(1).join(' '), usuarioId: u.id }; renderTrabajadores(); } }, 'Completar ficha'))));
+  }
+  root.appendChild(panel);
+}
+function chRenderFichaEmpleado(root, emp) {
+  const esNueva = !emp.id;
+  const d = Object.assign({}, emp);
+  const err = el('div', { style: 'color:#B3261E;font-size:13px;min-height:18px;' });
+  const campos = {};
+  const inp = (k, tipo, extra) => { const i = el('input', Object.assign({ type: tipo || 'text', value: d[k] || '' }, extra || {})); campos[k] = i; return i; };
+  const sel = (k, opciones) => { const s = selectEl(opciones, d[k] || opciones[0].value, () => {}); campos[k] = s; return s; };
+  const panel = el('div', { class: 'panel' });
+  panel.appendChild(el('div', { class: 'toolbar' }, el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { chEmpEditando = null; renderTrabajadores(); } }, '← Volver a la lista')));
+  panel.appendChild(el('h2', {}, esNueva ? '+ Nuevo trabajador' : chNombreCompleto(d)));
+
+  panel.appendChild(el('h3', { style: 'margin:12px 0 6px;' }, '🪪 Datos personales'));
+  const cp = inp('cp', 'text', { inputmode: 'numeric', maxlength: '5', placeholder: '39300' });
+  const provincia = inp('provincia');
+  cp.addEventListener('input', () => { const p = CH_PROVINCIAS[cp.value.slice(0, 2)]; if (cp.value.length >= 2 && p && !provincia.value) provincia.value = p; });
+  panel.appendChild(el('div', { class: 'grid' },
+    field('Nombre *', inp('nombre')), field('Primer apellido *', inp('apellido1')), field('Segundo apellido', inp('apellido2')),
+    field('DNI / NIE *', inp('dni', 'text', { placeholder: '12345678Z', style: 'text-transform:uppercase;' })), field('Fecha de nacimiento', inp('fechaNacimiento', 'date')),
+    field('Teléfono móvil *', inp('telefono', 'tel', { placeholder: '600 000 000' })), field('Email', inp('email', 'email')),
+    field('Dirección', inp('direccion', 'text', { placeholder: 'Calle, número, piso' })), field('Código postal', cp), field('Localidad', inp('localidad')), field('Provincia', provincia)));
+
+  panel.appendChild(el('h3', { style: 'margin:16px 0 6px;' }, '💼 Datos laborales y de nómina'));
+  panel.appendChild(el('div', { class: 'grid' },
+    field('Nº afiliación Seguridad Social', inp('nss', 'text', { inputmode: 'numeric', placeholder: '12 digitos' })),
+    field('IBAN (para la nómina)', inp('iban', 'text', { placeholder: 'ES00 0000 0000 0000 0000 0000', style: 'text-transform:uppercase;' })),
+    field('Puesto / categoría', inp('puesto', 'text', { placeholder: 'Monitor/a, entrenador/a…' })),
+    field('Grupo de cotización', sel('grupoCotizacion', [{ value: '', label: '—' }].concat(Array.from({ length: 11 }, (_, i) => ({ value: String(i + 1), label: 'Grupo ' + (i + 1) }))))),
+    field('Tipo de contrato', sel('tipoContrato', [{ value: '', label: '—' }, { value: 'indefinido', label: 'Indefinido' }, { value: 'fijo-discontinuo', label: 'Fijo discontinuo' }, { value: 'temporal', label: 'Temporal' }, { value: 'formacion', label: 'Formación' }, { value: 'practicas', label: 'Prácticas' }])),
+    field('Convenio colectivo', inp('convenio', 'text', { placeholder: 'Ej.: Instalaciones deportivas y gimnasios' })),
+    field('Fecha de alta *', inp('fechaAlta', 'date')), field('Fecha de baja', inp('fechaBaja', 'date')),
+    field('Jornada', sel('jornada', [{ value: 'parcial', label: 'Parcial' }, { value: 'completa', label: 'Completa' }])),
+    field('Horas semanales de contrato', inp('horasSemanales', 'number', { step: '0.5', min: '0' })),
+    field('Salario bruto anual (€)', inp('salarioBrutoAnual', 'number', { step: '0.01', min: '0' })),
+    field('Número de pagas', sel('numPagas', [{ value: '14', label: '14 (con extras aparte)' }, { value: '12', label: '12 (extras prorrateadas)' }])),
+    field('Retención IRPF (%)', inp('irpf', 'number', { step: '0.01', min: '0', max: '50' })),
+    field('Situación familiar (IRPF)', sel('situacionFamiliar', [{ value: '', label: '—' }, { value: '1', label: '1 · Monoparental' }, { value: '2', label: '2 · Con cónyuge a cargo' }, { value: '3', label: '3 · Otras situaciones' }])),
+    field('Hijos a cargo', inp('hijos', 'number', { min: '0', step: '1' })),
+    field('Discapacidad (%)', inp('discapacidad', 'number', { min: '0', max: '100', step: '1' }))));
+  panel.appendChild(field('Observaciones', (() => { const t = el('textarea', { rows: '2' }); t.value = d.observaciones || ''; campos.observaciones = t; return t; })()));
+
+  // Acceso
+  const u = d.usuarioId ? accessControl.usuarios.find(x => x.id === d.usuarioId) : null;
+  const chkAcceso = el('input', { type: 'checkbox', style: 'width:auto;' }); chkAcceso.checked = esNueva || !!u;
+  panel.appendChild(el('h3', { style: 'margin:16px 0 6px;' }, '📱 Acceso a la app (fichaje)'));
+  if (!u) panel.appendChild(el('label', { style: 'display:flex;gap:8px;align-items:center;text-transform:none;letter-spacing:0;font-size:14px;' }, chkAcceso, 'Crear su usuario para fichar, con una clave provisional'));
+  const zonaAcceso = el('div');
+  panel.appendChild(zonaAcceso);
+  if (u) chPintarAcceso(zonaAcceso, d, u);
+
+  panel.appendChild(err);
+  const btnGuardar = el('button', { class: 'btn btn-primary', onclick: () => {
+    err.textContent = '';
+    Object.keys(campos).forEach(k => { d[k] = (campos[k].value || '').trim(); });
+    d.dni = d.dni.toUpperCase().replace(/[\s-]/g, ''); d.iban = d.iban ? chFormatearIBAN(d.iban) : '';
+    const fallos = [];
+    if (!d.nombre || !d.apellido1) fallos.push('nombre y primer apellido');
+    if (!d.dni) fallos.push('DNI/NIE'); else if (!chValidarDNI(d.dni)) fallos.push('el DNI/NIE no es válido (revisa la letra)');
+    if (!d.telefono) fallos.push('teléfono');
+    if (!d.fechaAlta) fallos.push('fecha de alta');
+    if (d.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email)) fallos.push('el email no es válido');
+    if (d.cp && !/^\d{5}$/.test(d.cp)) fallos.push('el código postal debe tener 5 cifras');
+    if (d.iban && !chValidarIBAN(d.iban)) fallos.push('el IBAN no es válido (revisa los dígitos)');
+    if (d.nss && !/^\d{12}$/.test(d.nss.replace(/\D/g, ''))) fallos.push('el nº de Seguridad Social debe tener 12 cifras');
+    if (d.fechaBaja && d.fechaBaja < d.fechaAlta) fallos.push('la baja no puede ser anterior al alta');
+    const dup = chEmpleadosCache.find(x => x.dni === d.dni && x.id !== d.id);
+    if (dup) fallos.push('ya existe otro trabajador con ese DNI (' + chNombreCompleto(dup) + ')');
+    if (fallos.length) { err.textContent = 'Revisa: ' + fallos.join('; ') + '.'; return; }
+    if (d.fechaBaja && u && !confirm('Al poner fecha de baja se le quitará el acceso a la app. Sus fichajes se conservan. ¿Continuar?')) return;
+    btnGuardar.disabled = true;
+    const id = d.id || ('emp_' + Date.now());
+    let usuario = u;
+    if (!usuario && chkAcceso.checked && !d.fechaBaja) {
+      let nombreUsu = d.nombre + ' ' + d.apellido1;
+      if (accessControl.usuarios.some(x => x.nombre.toLowerCase() === nombreUsu.toLowerCase())) nombreUsu = chNombreCompleto(d);
+      usuario = { id: uidAcceso(), nombre: nombreUsu, pin: chPinAleatorio(), rol: 'trabajador', provisional: true };
+      if (!accessControl.usuarios.length) { err.textContent = 'Crea primero tu usuario de Administrador en ⚙️ → Control de acceso.'; btnGuardar.disabled = false; return; }
+      accessControl.usuarios.push(usuario); d.usuarioId = usuario.id; saveAccessControl();
+    } else if (usuario && d.fechaBaja) {
+      accessControl.usuarios = accessControl.usuarios.filter(x => x.id !== usuario.id); saveAccessControl(); usuario = null;
+    } else if (usuario) {
+      const nuevoNombre = d.nombre + ' ' + d.apellido1;
+      if (usuario.nombre !== nuevoNombre && !accessControl.usuarios.some(x => x.id !== usuario.id && x.nombre.toLowerCase() === nuevoNombre.toLowerCase())) { usuario.nombre = nuevoNombre; saveAccessControl(); }
+    }
+    const datos = Object.assign({}, d); delete datos.id;
+    datos.actualizadoEn = Date.now(); if (!datos.creadoEn) datos.creadoEn = Date.now();
+    coleccionEmpleados().doc(id).set(datos).then(() => {
+      // La fecha de alta marca desde cuándo cuenta su horario, si aún no se había puesto.
+      if (datos.usuarioId && datos.fechaAlta) return chCargarConfig().then(() => { chConfig.altas = chConfig.altas || {}; if (!chConfig.altas[datos.usuarioId]) { chConfig.altas[datos.usuarioId] = datos.fechaAlta; chGuardarConfig(null); } });
+    }).then(() => {
+      chEmpEditando = Object.assign({ id }, datos);
+      renderTrabajadores();
+    }).catch(e => { btnGuardar.disabled = false; err.textContent = 'No se pudo guardar: ' + (e && e.message ? e.message : 'error'); });
+  } }, esNueva ? 'Guardar trabajador' : 'Guardar cambios');
+  panel.appendChild(el('div', { class: 'toolbar' }, btnGuardar));
+  panel.appendChild(el('div', { class: 'sub', style: 'font-size:12px;margin-top:6px;' }, '* Obligatorio. Estos datos son personales: no los compartas fuera de la gestión del club.'));
+  root.appendChild(panel);
+}
+function chPintarAcceso(zona, emp, u) {
+  zona.innerHTML = '';
+  const provisional = chDebeCambiarPin(u);
+  zona.appendChild(el('div', { class: 'sub' }, 'Usuario: ', el('b', {}, u.nombre), provisional ? ' · Clave provisional: ' : ' · Ya ha creado su PIN personal.', provisional ? el('b', { style: 'font-size:16px;letter-spacing:2px;' }, u.pin) : null));
+  if (!provisional) {
+    zona.appendChild(el('div', { class: 'toolbar' }, el('button', { class: 'btn btn-ghost btn-sm', onclick: () => {
+      if (!confirm('Se generará una clave provisional nueva y su PIN actual dejará de valer. ¿Continuar?')) return;
+      u.pin = chPinAleatorio(); u.provisional = true; saveAccessControl();
+      chPintarAcceso(zona, emp, u);
+    } }, '🔑 Generar nueva clave provisional')));
+    return;
+  }
+  const msg = chMensajeCredenciales(emp, u);
+  const tel = chTelefonoWhatsApp(emp.telefono);
+  const aviso = el('div', { class: 'sub', style: 'min-height:16px;' });
+  zona.appendChild(el('div', { class: 'toolbar', style: 'margin-top:6px;' },
+    el('button', { class: 'btn btn-primary btn-sm', onclick: () => { window.open('https://wa.me/' + tel + '?text=' + encodeURIComponent(msg), '_blank'); } }, '💬 Enviar por WhatsApp'),
+    emp.email ? el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { location.href = 'mailto:' + emp.email + '?subject=' + encodeURIComponent('Tu acceso al fichaje de ' + (clubGlobal.nombre || 'el club')) + '&body=' + encodeURIComponent(msg); } }, '✉️ Enviar por email') : null,
+    el('button', { class: 'btn btn-ghost btn-sm', onclick: () => {
+      const ok = () => { aviso.textContent = '✅ Mensaje copiado.'; };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(msg).then(ok, () => { aviso.textContent = 'No se pudo copiar.'; });
+      else aviso.textContent = 'Tu navegador no permite copiar.';
+    } }, '📋 Copiar mensaje')));
+  zona.appendChild(aviso);
+  const vista = el('pre', { style: 'white-space:pre-wrap;font-family:inherit;font-size:12px;background:#F6F5F1;border-radius:10px;padding:10px;margin-top:6px;' }, msg);
+  zona.appendChild(el('details', {}, el('summary', { style: 'cursor:pointer;font-size:13px;' }, 'Ver el mensaje que se enviará'), vista));
+}
+
 // ---------- Pantalla del administrador ----------
 let chMesVista = null;
 let chFiltroUsuario = '';
@@ -11795,7 +12049,7 @@ function chRenderFichajesAdmin(root) {
     el('div', { class: 'sub' }, 'Fichajes de entrada y salida del personal, con la ubicación del móvil en el momento de fichar.'),
   );
   if (!trabajadores.length) {
-    panel.appendChild(el('div', { class: 'msg msg-info' }, 'Todavía no hay trabajadores. Créalos en ⚙️ → Control de acceso, con el rol "Trabajador (solo fichar)": al entrar con su PIN solo verán la pantalla de fichaje.'));
+    panel.appendChild(el('div', { class: 'msg msg-info' }, 'Todavía no hay trabajadores. Créalos en Gestión de Club → 👔 Trabajadores: se les crea el acceso para fichar y puedes enviarles las credenciales por WhatsApp o email.'));
   }
   const selMes = el('input', { type: 'month', value: chMesVista, onchange: (e) => { if (e.target.value) { chMesVista = e.target.value; renderControlHorario(); } } });
   const selUsuario = selectEl([{ value: '', label: 'Todos' }].concat(trabajadores.map(u => ({ value: u.id, label: u.nombre }))), chFiltroUsuario, v => { chFiltroUsuario = v; renderControlHorario(); });
@@ -11982,7 +12236,7 @@ if (firebaseDisponible) {
     }
     sincronizacionInicialLista = true;
     if (!doc.exists && clubGlobal.nombre) programarSyncNube();
-    arrancarAppLocal();
+    chCargarPins().then(arrancarAppLocal, arrancarAppLocal);
     cargarRecibosDeNube().then(() => {
       const pagosScreen = document.getElementById('pagosScreen');
       if (pagosScreen && pagosScreen.style.display !== 'none') PagosApp.render();

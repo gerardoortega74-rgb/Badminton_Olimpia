@@ -3,7 +3,7 @@
 <head>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&display=swap">
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261004-nom1">
+<meta name="build-id" content="v20261004-nom4">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -382,6 +382,10 @@ header.app-header::before{display:none !important;}
   .rc{font-size:10.5px;} .rc-cab td{display:table-cell;width:50%;}
 }
 
+.rc-titulo{font-size:14px;font-weight:700;margin-bottom:8px;}
+.rc-dias td{font-size:10px;padding:2px 5px;}
+.rc-dias tr.v td{color:#666;}
+.rc-nota{font-size:9.5px;color:#333;margin-top:10px;line-height:1.4;}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -12859,7 +12863,12 @@ function nomMesTxt(mes) { const [a, m] = mes.split('-').map(Number); return NOM_
 function nomDiasMes(mes) { const [a, m] = mes.split('-').map(Number); return new Date(a, m, 0).getDate(); }
 function nomEmpresa() { return (chConfig && chConfig.nominasEmpresa) || {}; }
 let nomMes = null;
-function nomMesPorDefecto() { const d = new Date(); d.setDate(1); if (new Date().getDate() < 20) d.setMonth(d.getMonth() - 1); return chMesDe(d.getTime()); }
+function nomMesPorDefecto() { const hoy = new Date(); return chMesDe(hoy.getTime()); }
+let nomMesComprobado = false;
+function nomDetalleHoras(fichajes, usuarioId) {
+  const tramos = chEmparejar(fichajes.filter(f => f.usuarioId === usuarioId));
+  return { completos: tramos.filter(t => t.entrada && t.salida), abiertos: tramos.filter(t => !(t.entrada && t.salida)) };
+}
 function nomHorasFichadas(fichajes, usuarioId) {
   return chEmparejar(fichajes.filter(f => f.usuarioId === usuarioId)).reduce((s, t) => s + (t.entrada && t.salida ? t.salida.ts - t.entrada.ts : 0), 0) / 3600000;
 }
@@ -12870,13 +12879,24 @@ function renderNominas() {
   if (!nomMes) nomMes = nomMesPorDefecto();
   const cont = el('div', {}, el('div', { class: 'panel' }, el('div', { class: 'sub' }, 'Cargando…')));
   root.appendChild(cont);
-  Promise.all([chCargarConfig(), chCargarEmpleados(), chCargarMes(nomMes, null), coleccionNominas().where('mes', '==', nomMes).get()]).then(([, empleados, fichajes, snap]) => {
-    const guardadas = {}; snap.forEach(d => { guardadas[d.data().usuarioId] = Object.assign({ id: d.id }, d.data()); });
+  // La primera vez: antes del día 25 se propone el mes anterior, siempre que tenga fichajes.
+  if (!nomMesComprobado) {
+    nomMesComprobado = true;
+    if (new Date().getDate() < 25) {
+      const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1); const anterior = chMesDe(d.getTime());
+      chCargarMes(anterior, null).then(l => { if (l.some(f => !f.anulado)) { nomMes = anterior; } renderNominas(); }).catch(() => renderNominas());
+      return;
+    }
+  }
+  Promise.all([chCargarConfig(), chCargarEmpleados(), chCargarMes(nomMes, null), coleccionNominas().where('mes', '==', nomMes).get(), chCargarAuditoriaMes(nomMes).catch(() => [])]).then(([, empleados, fichajes, snap, auditoria]) => {
+    const guardadas = {}, archivo = [];
+    snap.forEach(d => { const x = Object.assign({ id: d.id }, d.data()); if (x.archivo) archivo.push(x); else guardadas[x.usuarioId] = x; });
     cont.innerHTML = '';
-    nomPintar(cont, empleados, fichajes, guardadas);
+    nomPintar(cont, empleados, fichajes, guardadas, auditoria);
+    nomPintarArchivo(cont, archivo, guardadas);
   }).catch(e => { cont.innerHTML = ''; cont.appendChild(el('div', { class: 'msg msg-warn' }, 'No se pudieron cargar las nóminas: ' + (e && e.message ? e.message : 'error'))); });
 }
-function nomPintar(root, empleados, fichajes, guardadas) {
+function nomPintar(root, empleados, fichajes, guardadas, auditoria) {
   const emp = nomEmpresa();
   const panel = el('div', { class: 'panel' }, el('h2', {}, '💶 Nóminas'),
     el('div', { class: 'sub' }, 'Nóminas por horas trabajadas con los tipos de cotización de 2026. Revisa las horas, guarda y genera el recibo. El primer mes, compáralas con las de tu gestoría.'));
@@ -12920,10 +12940,13 @@ function nomPintar(root, empleados, fichajes, guardadas) {
     const previa = guardadas[e.usuarioId];
     const fich = nomR(nomHorasFichadas(fichajes, e.usuarioId));
     const ent = previa ? Object.assign({}, previa.entrada) : { horas: fich, otros: [] };
+    const horasCambiadas = previa && nomR(previa.entrada.horas) !== fich;
+    ent.horas = fich;
+    const det = nomDetalleHoras(fichajes, e.usuarioId);
     const card = el('div', { class: 'panel' });
     const zonaCalc = el('div');
     const msg = el('div', { class: 'sub', style: 'min-height:16px;' });
-    const horas = el('input', { type: 'number', step: '0.25', min: '0', value: String(ent.horas) });
+    const horas = el('input', { type: 'number', value: String(fich), readonly: 'readonly', style: 'background:#EEF1F4;font-weight:700;', title: 'Horas fichadas en el mes. Para cambiarlas, corrige los fichajes.' });
     const precio = el('input', { type: 'number', step: '0.01', min: '0', value: String(ent.precioHora != null ? ent.precioHora : (e.precioHora || '')) });
     const irpf = el('input', { type: 'number', step: '0.01', min: '0', value: String(ent.irpf != null ? ent.irpf : (e.irpf || 0)) });
     const esMesExtra = ['06', '12'].includes(nomMes.slice(5)) && String(e.numPagas || '14') !== '12';
@@ -12961,18 +12984,35 @@ function nomPintar(root, empleados, fichajes, guardadas) {
     card.appendChild(el('div', { style: 'display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center;' }, el('h3', { style: 'margin:0;' }, chNombreCompleto(e)), estadoChip));
     card.appendChild(el('div', { class: 'sub' }, (e.puesto || 'Sin puesto') + '. Horas fichadas en ' + NOM_MESES[Number(nomMes.slice(5)) - 1] + ': ' + fich.toLocaleString('es-ES') + ' h.' + (u ? '' : ' (sin usuario de fichaje)')));
     if (!e.precioHora && !(previa && previa.entrada.precioHora)) card.appendChild(el('div', { class: 'sub', style: 'color:#7A5B00;' }, '⚠️ Pon su precio por hora en su ficha de 👔 Trabajadores (o aquí para este mes).'));
-    card.appendChild(el('div', { class: 'grid', style: 'margin-top:8px;' }, field('Horas a pagar', horas), field('Precio por hora (€ brutos)', precio), field('IRPF (%)', irpf),
+    const irAFichajes = () => { chMesVista = nomMes; chFiltroUsuario = e.usuarioId; chTab = 'fichajes'; goToClubGestion('horario'); };
+    if (horasCambiadas) card.appendChild(el('div', { class: 'msg msg-warn', style: 'display:block;margin-top:8px;' }, 'Los fichajes han cambiado desde que guardaste esta nómina: se guardó con ' + nomR(previa.entrada.horas).toLocaleString('es-ES') + ' h y ahora hay ' + fich.toLocaleString('es-ES') + ' h fichadas. Vuelve a guardarla para actualizarla.'));
+    if (det.abiertos.length) card.appendChild(el('div', { class: 'msg msg-warn', style: 'display:block;margin-top:8px;' },
+      det.abiertos.length + ' fichaje(s) sin cerrar (' + det.abiertos.map(t => fmtFechaDMYShell(chFechaDe((t.entrada || t.salida).ts)) + (t.entrada ? ' sin salida' : ' sin entrada')).join(', ') + '). No cuentan para la nómina hasta que se corrijan. ',
+      el('button', { class: 'btn btn-ghost btn-sm', onclick: irAFichajes }, 'Corregir fichajes')));
+    card.appendChild(el('div', { class: 'grid', style: 'margin-top:8px;' }, field('Horas a pagar (del fichaje)', horas), field('Precio por hora (€ brutos)', precio), field('IRPF (%)', irpf),
       esMesExtra ? field('Paga extra de ' + (nomMes.slice(5) === '06' ? 'junio' : 'diciembre') + ' (€)', pagaExtra) : null));
     if (esMesExtra && !ent.pagaExtra) {
       const ini = nomMes.slice(5) === '06' ? 1 : 7;
       const meses = []; for (let m = ini; m < ini + 6; m++) meses.push(nomMes.slice(0, 4) + '-' + String(m).padStart(2, '0'));
       coleccionNominas().where('usuarioId', '==', e.usuarioId).get().then(sn => {
-        let suma = 0; sn.forEach(d => { const n = d.data(); if (meses.includes(n.mes) && n.mes !== nomMes) suma += n.calculo.salarioBase || 0; });
+        let suma = 0; sn.forEach(d => { const n = d.data(); if (!n.archivo && meses.includes(n.mes) && n.mes !== nomMes) suma += n.calculo.salarioBase || 0; });
         suma += nomR((Number(horas.value) || 0) * (Number(precio.value) || 0));
         pagaExtra.value = String(nomR(suma / 6)); recalcular();
         pagaExtra.parentNode.appendChild(el('div', { class: 'sub', style: 'font-size:12px;' }, 'Propuesta: media del salario base del semestre. Ajústala si tu convenio dice otra cosa.'));
       }).catch(() => {});
     }
+    const porDia = {};
+    det.completos.forEach(t => { const f = chFechaDe(t.entrada.ts); (porDia[f] = porDia[f] || []).push(t); });
+    const listaDias = el('div', { style: 'font-size:13px;margin-top:6px;' });
+    Object.keys(porDia).sort().forEach(f => {
+      const ms = porDia[f].reduce((s, t) => s + (t.salida.ts - t.entrada.ts), 0);
+      listaDias.appendChild(el('div', { style: 'display:flex;justify-content:space-between;gap:8px;padding:3px 0;border-bottom:1px solid #EEF0F2;' },
+        el('span', {}, fmtFechaDMYShell(f) + '  ' + porDia[f].map(t => chHora(t.entrada.ts) + '–' + chHora(t.salida.ts)).join(', ')),
+        el('b', {}, chDuracion(ms))));
+    });
+    card.appendChild(el('details', { style: 'margin-top:6px;' }, el('summary', { style: 'cursor:pointer;font-size:13px;' }, 'Ver los ' + Object.keys(porDia).length + ' días fichados'),
+      Object.keys(porDia).length ? listaDias : el('div', { class: 'sub' }, 'No hay fichajes completos en este mes.'),
+      el('button', { class: 'btn btn-ghost btn-sm', style: 'margin-top:6px;', onclick: irAFichajes }, 'Ver o corregir los fichajes')));
     card.appendChild(el('div', { style: 'margin-top:6px;font-weight:600;font-size:14px;' }, 'Otros conceptos'));
     card.appendChild(otrosZona);
     card.appendChild(el('button', { class: 'btn btn-ghost btn-sm', style: 'margin-top:6px;', onclick: () => { otros.push({ concepto: '', importe: 0, cotiza: true, salarial: true }); pintarOtros(); } }, '+ Añadir concepto'));
@@ -12980,16 +13020,21 @@ function nomPintar(root, empleados, fichajes, guardadas) {
     const guardar = (publicar) => {
       const datos = { usuarioId: e.usuarioId, empleadoId: e.id, nombre: chNombreCompleto(e), mes: nomMes, entrada: entrada(), calculo: calculos[e.usuarioId],
         trabajador: { nombre: chNombreCompleto(e), dni: e.dni || '', nss: e.nss || '', puesto: e.puesto || '', grupo: e.grupoCotizacion || '', contrato: e.tipoContrato || '', fechaAlta: e.fechaAlta || '' },
-        empresa: Object.assign({}, nomEmpresa()), publicada: publicar === undefined ? !!(previa && previa.publicada) : publicar,
+        empresa: Object.assign({}, nomEmpresa()), informe: nomDatosInforme(e, nomMes, fichajes, auditoria), publicada: publicar === undefined ? !!(previa && previa.publicada) : publicar,
         actualizadoEn: Date.now(), creadoEn: previa ? previa.creadoEn : Date.now() };
       msg.textContent = 'Guardando…';
-      return coleccionNominas().doc(nomMes + '_' + e.usuarioId).set(JSON.parse(JSON.stringify(datos))).then(() => { guardadas[e.usuarioId] = Object.assign({ id: nomMes + '_' + e.usuarioId }, JSON.parse(JSON.stringify(datos))); renderNominas(); return datos; })
+      const limpio = JSON.parse(JSON.stringify(datos));
+      const generadoEn = Date.now();
+      const copia = Object.assign({}, limpio, { archivo: true, publicada: false, enviadaAlTrabajador: !!limpio.publicada, generadoEn, generadoPor: sesionActual ? sesionActual.nombre : 'Administrador' });
+      return coleccionNominas().doc(nomMes + '_' + e.usuarioId).set(limpio)
+        .then(() => coleccionNominas().doc('arch_' + nomMes + '_' + e.usuarioId + '_' + generadoEn).set(copia)).then(() => { guardadas[e.usuarioId] = Object.assign({ id: nomMes + '_' + e.usuarioId }, JSON.parse(JSON.stringify(datos))); renderNominas(); return datos; })
         .catch(err => { msg.textContent = 'No se pudo guardar: ' + (err && err.message ? err.message : 'error'); });
     };
     card.appendChild(msg);
     card.appendChild(el('div', { class: 'toolbar' },
       el('button', { class: 'btn btn-primary btn-sm', onclick: () => guardar() }, '💾 Guardar'),
       el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { const d = { nombre: chNombreCompleto(e), mes: nomMes, calculo: calculos[e.usuarioId], trabajador: { nombre: chNombreCompleto(e), dni: e.dni || '', nss: e.nss || '', puesto: e.puesto || '', grupo: e.grupoCotizacion || '', contrato: e.tipoContrato || '', fechaAlta: e.fechaAlta || '' }, empresa: nomEmpresa() }; nomVerRecibo(d); } }, '🧾 Ver recibo / PDF'),
+      el('button', { class: 'btn btn-ghost btn-sm', onclick: () => nomVerInforme({ mes: nomMes, trabajador: { nombre: chNombreCompleto(e), dni: e.dni || '', nss: e.nss || '' }, empresa: nomEmpresa(), informe: nomDatosInforme(e, nomMes, fichajes, auditoria) }) }, '📋 Informe de fichajes'),
       previa && previa.publicada
         ? el('button', { class: 'btn btn-ghost btn-sm', onclick: () => guardar(false) }, 'Ocultar al trabajador')
         : el('button', { class: 'btn btn-ghost btn-sm', onclick: () => guardar(true) }, '📲 Guardar y enviar al trabajador')));
@@ -12998,6 +13043,98 @@ function nomPintar(root, empleados, fichajes, guardadas) {
   });
   root.appendChild(totales);
   pintarTotales();
+}
+// ---- Informe mensual de fichajes (registro de jornada) que acompaña a cada nómina ----
+const NOM_DIAS_SEM = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+function nomDatosInforme(e, mes, fichajes, auditoria) {
+  const uid = e.usuarioId;
+  const propios = fichajes.filter(f => f.usuarioId === uid);
+  const tramos = chEmparejar(propios);
+  const plantilla = chConfig ? chPlantillaDe(uid) : null;
+  const hoy = chFechaDe(Date.now());
+  const dias = []; let msTot = 0, minTeo = 0, trabajados = 0, sinFichar = 0; const ausCuenta = {};
+  for (let d = 1; d <= nomDiasMes(mes); d++) {
+    const f = mes + '-' + String(d).padStart(2, '0');
+    const fest = chConfig ? chFestivo(f) : null;
+    const aus = chConfig ? (chConfig.ausencias || []).find(a => a.usuarioId === uid && a.desde <= f && f <= a.hasta) : null;
+    const turno = plantilla && f >= chAlta(uid) && !fest && !aus ? chTramoDelDia(plantilla, f) : null;
+    const delDia = tramos.filter(t => chFechaDe((t.entrada || t.salida).ts) === f);
+    const ms = delDia.reduce((s, t) => s + (t.entrada && t.salida ? t.salida.ts - t.entrada.ts : 0), 0);
+    const obs = [];
+    if (fest) obs.push('Festivo: ' + fest.nombre);
+    if (aus) { obs.push(CH_TIPOS_AUSENCIA[aus.tipo].label); ausCuenta[aus.tipo] = (ausCuenta[aus.tipo] || 0) + 1; }
+    if (delDia.some(t => !(t.entrada && t.salida))) obs.push('Fichaje sin cerrar');
+    if (delDia.some(t => [t.entrada, t.salida].some(x => x && (x.modificado || x.origen === 'manual')))) obs.push('Corregido');
+    if (delDia.some(t => [t.entrada, t.salida].some(x => x && x.origen !== 'manual' && (x.lat === undefined || x.lat === null)))) obs.push('Sin ubicación');
+    if (turno && f <= hoy && !delDia.length) { obs.push('Sin fichar'); sinFichar++; }
+    if (turno && f <= hoy) minTeo += turno.min;
+    if (ms > 0) trabajados++;
+    msTot += ms;
+    dias.push({ fecha: f, dia: NOM_DIAS_SEM[new Date(f + 'T12:00:00').getDay()], previsto: turno ? turno.ini + '–' + turno.fin : '',
+      tramos: delDia.map(t => ({ ini: t.entrada ? chHora(t.entrada.ts) : '—', fin: t.salida ? chHora(t.salida.ts) : '—' })), horas: nomR(ms / 3600000), obs: obs.join('. ') });
+  }
+  const correcciones = (auditoria || []).filter(a => a.usuarioId === uid).sort((a, b) => a.ts - b.ts)
+    .map(a => ({ cuando: fmtFechaDMYShell(chFechaDe(a.ts)) + ' ' + chHora(a.ts), cambio: chTextoCambio(a), motivo: a.motivo || '', quien: a.autorNombre || '' }));
+  return { mes, plantilla: plantilla ? plantilla.nombre + ' (' + chResumenPlantilla(plantilla) + ')' : 'Sin horario asignado', dias,
+    totales: { horas: nomR(msTot / 3600000), teoricas: nomR(minTeo / 60), trabajados, sinFichar, ausencias: ausCuenta }, correcciones, generadoEn: Date.now() };
+}
+function nomInformeHTML(n) {
+  const inf = n.informe, t = n.trabajador || {}, e = n.empresa || {};
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+  const h = x => nomR(x).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const [a, m] = n.mes.split('-').map(Number);
+  const dif = nomR(inf.totales.horas - inf.totales.teoricas);
+  const aus = Object.keys(inf.totales.ausencias || {}).map(k => CH_TIPOS_AUSENCIA[k].label + ': ' + inf.totales.ausencias[k] + ' día(s)').join(', ');
+  return '<div class="rc">' +
+    '<div class="rc-titulo">Registro de jornada · Informe mensual de ' + NOM_MESES[m - 1] + ' de ' + a + '</div>' +
+    '<table class="rc-cab"><tr><td><b>Empresa:</b> ' + esc(e.razonSocial || '—') + '<br><b>CIF:</b> ' + esc(e.cif || '—') + ' &nbsp; <b>CCC:</b> ' + esc(e.ccc || '—') + '<br><b>Centro de trabajo:</b> ' + esc(e.domicilio || '—') + '</td>' +
+    '<td><b>Trabajador/a:</b> ' + esc(t.nombre) + '<br><b>NIF:</b> ' + esc(t.dni || '—') + ' &nbsp; <b>Nº afiliación SS:</b> ' + esc(t.nss || '—') + '<br><b>Horario asignado:</b> ' + esc(inf.plantilla) + '</td></tr></table>' +
+    '<table class="rc-t rc-dias"><tr class="h"><td>Fecha</td><td>Día</td><td>Previsto</td><td>Entrada</td><td>Salida</td><td class="n">Horas</td><td>Observaciones</td></tr>' +
+    inf.dias.map(d => '<tr' + (d.tramos.length ? '' : ' class="v"') + '><td>' + fmtFechaDMYShell(d.fecha) + '</td><td>' + d.dia + '</td><td>' + esc(d.previsto) + '</td><td>' +
+      d.tramos.map(x => x.ini).join('<br>') + '</td><td>' + d.tramos.map(x => x.fin).join('<br>') + '</td><td class="n">' + (d.horas ? h(d.horas) : '') + '</td><td>' + esc(d.obs) + '</td></tr>').join('') +
+    '<tr class="t"><td colspan="5"><b>Total horas trabajadas</b></td><td class="n"><b>' + h(inf.totales.horas) + '</b></td><td></td></tr></table>' +
+    '<table class="rc-t"><tr class="h"><td colspan="2">Resumen del mes</td></tr>' +
+    '<tr><td>Horas trabajadas</td><td class="n">' + h(inf.totales.horas) + ' h</td></tr>' +
+    '<tr><td>Horas según su horario (días transcurridos, sin festivos ni ausencias)</td><td class="n">' + h(inf.totales.teoricas) + ' h</td></tr>' +
+    '<tr><td>Diferencia</td><td class="n">' + (dif > 0 ? '+' : '') + h(dif) + ' h</td></tr>' +
+    '<tr><td>Días trabajados</td><td class="n">' + inf.totales.trabajados + '</td></tr>' +
+    '<tr><td>Días con turno sin fichar</td><td class="n">' + inf.totales.sinFichar + '</td></tr>' +
+    '<tr><td>Ausencias</td><td class="n">' + esc(aus || 'Ninguna') + '</td></tr></table>' +
+    '<table class="rc-t"><tr class="h"><td colspan="4">Correcciones de fichajes del mes</td></tr>' +
+    (inf.correcciones.length ? '<tr class="s"><td>Fecha del cambio</td><td>Cambio</td><td>Motivo</td><td>Realizado por</td></tr>' +
+      inf.correcciones.map(c => '<tr><td>' + esc(c.cuando) + '</td><td>' + esc(c.cambio) + '</td><td>' + esc(c.motivo) + '</td><td>' + esc(c.quien) + '</td></tr>').join('')
+      : '<tr><td colspan="4">No se ha corregido ningún fichaje este mes.</td></tr>') + '</table>' +
+    '<div class="rc-nota">Registro diario de jornada (art. 34.9 del Estatuto de los Trabajadores). Las entradas y salidas se registran desde el móvil del trabajador con hora del servidor y ubicación. Este registro se conserva durante cuatro años. Generado el ' + fmtFechaDMYShell(chFechaDe(inf.generadoEn)) + '.</div>' +
+    '<div class="rc-firmas"><div>Firma de la empresa</div><div>Firma del trabajador/a</div></div></div>';
+}
+function nomVerDocumento(titulo, html) {
+  document.querySelectorAll('#nomReciboVelo').forEach(x => x.remove());
+  const velo = el('div', { id: 'nomReciboVelo' });
+  const hoja = el('div', { class: 'rc-hoja' }); hoja.innerHTML = html;
+  velo.appendChild(el('div', { class: 'rc-barra' }, el('b', {}, titulo),
+    el('div', {}, el('button', { class: 'btn btn-primary btn-sm', onclick: () => window.print() }, '🖨 Imprimir / Guardar PDF'), ' ',
+      el('button', { class: 'btn btn-ghost btn-sm', onclick: () => velo.remove() }, 'Cerrar'))));
+  velo.appendChild(hoja); document.body.appendChild(velo);
+}
+
+// ---- Archivo del club: copia fija de cada nómina generada, con su informe ----
+function nomPintarArchivo(root, archivo, guardadas) {
+  const panel = el('div', { class: 'panel' }, el('h2', {}, '📁 Archivo del club'),
+    el('div', { class: 'sub' }, 'Copia de cada nómina generada en ' + nomMesTxt(nomMes) + ', con su informe de fichajes, tal como se guardó. Si una nómina se rehace, se conservan todas las versiones.'));
+  if (!archivo.length) { panel.appendChild(el('div', { class: 'empty-state' }, 'Aún no hay nóminas archivadas este mes. Se archivan al pulsar Guardar o Enviar.')); root.appendChild(panel); return; }
+  const porTrab = {};
+  archivo.forEach(a => { (porTrab[a.usuarioId] = porTrab[a.usuarioId] || []).push(a); });
+  Object.keys(porTrab).sort((x, y) => porTrab[x][0].nombre.localeCompare(porTrab[y][0].nombre)).forEach(uid => {
+    const lista = porTrab[uid].sort((a, b) => b.generadoEn - a.generadoEn);
+    panel.appendChild(el('h3', { style: 'margin:14px 0 4px;' }, lista[0].nombre));
+    lista.forEach((a, i) => panel.appendChild(el('div', { style: 'display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 0;border-top:1px solid #EEF0F2;' },
+      el('div', { style: 'flex:1;min-width:180px;' },
+        el('div', {}, 'Versión ' + (lista.length - i) + (i === 0 ? ' · vigente' : '') + (a.enviadaAlTrabajador ? ' · enviada al trabajador' : '')),
+        el('div', { class: 'sub', style: 'font-size:12px;' }, 'Generada el ' + fmtFechaDMYShell(chFechaDe(a.generadoEn)) + ' a las ' + chHora(a.generadoEn) + (a.generadoPor ? ' por ' + a.generadoPor : '') + '. Líquido ' + nomEur(a.calculo.liquido) + ', ' + a.calculo.horas.toLocaleString('es-ES') + ' h.')),
+      el('button', { class: 'btn btn-ghost btn-sm', onclick: () => nomVerRecibo(a) }, '🧾 Nómina'),
+      a.informe ? el('button', { class: 'btn btn-ghost btn-sm', onclick: () => nomVerInforme(a) }, '📋 Fichajes') : null)));
+  });
+  root.appendChild(panel);
 }
 // ---- Recibo oficial (modelo de recibo individual de salarios) ----
 function nomReciboHTML(n) {
@@ -13032,7 +13169,9 @@ function nomReciboHTML(n) {
     c.empresa.map(d => '<tr><td>' + esc(d.concepto) + '</td><td class="n">' + nomPct(d.pct) + '</td><td class="n">' + nomEur(d.base) + '</td><td class="n">' + nomEur(d.importe) + '</td></tr>').join('') +
     '<tr class="t"><td colspan="3"><b>Total aportación empresa</b></td><td class="n"><b>' + nomEur(c.totalEmpresa) + '</b></td></tr></table></div>';
 }
-function nomVerRecibo(n) {
+function nomVerRecibo(n) { nomVerDocumento('Nómina de ' + nomMesTxt(n.mes), nomReciboHTML(n)); }
+function nomVerInforme(n) { nomVerDocumento('Fichajes de ' + nomMesTxt(n.mes), nomInformeHTML(n)); }
+function nomVerReciboAntiguo(n) {
   document.querySelectorAll('#nomReciboVelo').forEach(x => x.remove());
   const velo = el('div', { id: 'nomReciboVelo' });
   const hoja = el('div', { class: 'rc-hoja' });
@@ -13073,8 +13212,11 @@ function nomMisNominas(root) {
     zona.innerHTML = '';
     if (!arr.length) { zona.appendChild(el('div', { class: 'sub' }, 'Aún no tienes nóminas disponibles. Aparecerán aquí cuando el club las publique.')); return; }
     const ul = el('ul', { class: 'fx-linea' });
-    arr.forEach(n => ul.appendChild(el('li', { style: 'cursor:pointer;', onclick: () => nomVerRecibo(n) },
-      el('span', {}, nomMesTxt(n.mes).charAt(0).toUpperCase() + nomMesTxt(n.mes).slice(1)), el('b', { style: 'margin-left:auto;' }, nomEur(n.calculo.liquido)), el('span', { class: 'sub' }, '🧾'))));
+    arr.forEach(n => ul.appendChild(el('li', { style: 'flex-wrap:wrap;' },
+      el('span', {}, nomMesTxt(n.mes).charAt(0).toUpperCase() + nomMesTxt(n.mes).slice(1)), el('b', { style: 'margin-left:auto;' }, nomEur(n.calculo.liquido)),
+      el('div', { style: 'width:100%;display:flex;gap:8px;margin-top:6px;' },
+        el('button', { class: 'btn btn-ghost btn-sm', onclick: () => nomVerRecibo(n) }, '🧾 Nómina'),
+        n.informe ? el('button', { class: 'btn btn-ghost btn-sm', onclick: () => nomVerInforme(n) }, '📋 Fichajes') : null))));
     zona.appendChild(ul);
   }).catch(() => { zona.innerHTML = ''; zona.appendChild(el('div', { class: 'sub' }, 'No se pudieron cargar tus nóminas.')); });
 }

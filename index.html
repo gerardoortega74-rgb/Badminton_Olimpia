@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261004-auth1">
+<meta name="build-id" content="v20261004-auth2">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -11209,6 +11209,7 @@ function panelActivarCuentas() {
   return panel;
 }
 function avisoVerificarEmail() {
+  return null; // No es necesario: las reglas identifican al administrador por su cuenta, que ya existe.
   if (!modoAuth || !esAdmin() || !authFb().currentUser || authFb().currentUser.emailVerified) return null;
   const msg = el('span', {});
   return el('div', { class: 'msg msg-warn', style: 'display:block;margin-bottom:12px;' },

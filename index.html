@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261004-auth2">
+<meta name="build-id" content="v20261004-auth3">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -11071,6 +11071,8 @@ function errorDeEntrada(texto) {
 }
 function entrarConCuenta(user) {
   marcarEstadoNube('☁️ Conectando…');
+  const pantallaLogin = document.getElementById('loginScreen');
+  pantallaLogin.innerHTML = ''; pantallaLogin.style.display = 'none';
   if ((user.email || '').toLowerCase() === ADMIN_EMAIL) {
     sesionActual = { id: 'admin', nombre: 'Administrador', rol: 'admin', uid: user.uid };
     cargarDatosClubCompletos().then(() => {

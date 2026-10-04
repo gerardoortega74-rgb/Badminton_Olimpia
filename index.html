@@ -3,7 +3,7 @@
 <head>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&display=swap">
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261004-nom4">
+<meta name="build-id" content="v20261004-nom5">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -386,6 +386,11 @@ header.app-header::before{display:none !important;}
 .rc-dias td{font-size:10px;padding:2px 5px;}
 .rc-dias tr.v td{color:#666;}
 .rc-nota{font-size:9.5px;color:#333;margin-top:10px;line-height:1.4;}
+.rc-club{display:flex;align-items:center;gap:12px;border-bottom:3px solid #1B4A6B;padding-bottom:8px;margin-bottom:10px;}
+.rc-club img{height:54px;width:auto;max-width:90px;object-fit:contain;}
+.rc-club-txt{flex:1;font-size:10px;color:#333;line-height:1.4;}
+.rc-club-nom{font-size:15px;font-weight:700;color:#0F2E44;text-transform:uppercase;letter-spacing:.3px;}
+.rc-club-doc{text-align:right;font-size:12px;font-weight:700;color:#0F2E44;max-width:46%;line-height:1.3;}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -12799,7 +12804,8 @@ const NOM_2026 = {
   baseMinHora: { 1: 11.98, 2: 9.94, 3: 8.65 }, baseMinHoraResto: 8.58, baseMax: 5101.20,
 };
 function nomR(n) { return Math.round((Number(n) || 0) * 100) / 100; }
-function nomEur(n) { return nomR(n).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'; }
+function nomNum(n) { const v = nomR(n); const neg = v < 0; const [ent, dec] = Math.abs(v).toFixed(2).split('.'); return (neg ? '−' : '') + ent.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ',' + dec; }
+function nomEur(n) { return nomNum(n) + ' €'; }
 function nomPct(n) { return (Number(n) || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' %'; }
 // Calcula una nómina mensual de un trabajador por horas.
 // e: { horas, precioHora, numPagas ('12' prorrateadas | '14' aparte), pagaExtra (importe si se paga este mes), otros:[{concepto, importe, salarial, cotiza, tributa}], irpf, grupo, contrato, atep }
@@ -13085,8 +13091,7 @@ function nomInformeHTML(n) {
   const [a, m] = n.mes.split('-').map(Number);
   const dif = nomR(inf.totales.horas - inf.totales.teoricas);
   const aus = Object.keys(inf.totales.ausencias || {}).map(k => CH_TIPOS_AUSENCIA[k].label + ': ' + inf.totales.ausencias[k] + ' día(s)').join(', ');
-  return '<div class="rc">' +
-    '<div class="rc-titulo">Registro de jornada · Informe mensual de ' + NOM_MESES[m - 1] + ' de ' + a + '</div>' +
+  return '<div class="rc">' + nomCabeceraClub('Registro de jornada<br>' + NOM_MESES[m - 1] + ' de ' + a, e) +
     '<table class="rc-cab"><tr><td><b>Empresa:</b> ' + esc(e.razonSocial || '—') + '<br><b>CIF:</b> ' + esc(e.cif || '—') + ' &nbsp; <b>CCC:</b> ' + esc(e.ccc || '—') + '<br><b>Centro de trabajo:</b> ' + esc(e.domicilio || '—') + '</td>' +
     '<td><b>Trabajador/a:</b> ' + esc(t.nombre) + '<br><b>NIF:</b> ' + esc(t.dni || '—') + ' &nbsp; <b>Nº afiliación SS:</b> ' + esc(t.nss || '—') + '<br><b>Horario asignado:</b> ' + esc(inf.plantilla) + '</td></tr></table>' +
     '<table class="rc-t rc-dias"><tr class="h"><td>Fecha</td><td>Día</td><td>Previsto</td><td>Entrada</td><td>Salida</td><td class="n">Horas</td><td>Observaciones</td></tr>' +
@@ -13137,6 +13142,12 @@ function nomPintarArchivo(root, archivo, guardadas) {
   root.appendChild(panel);
 }
 // ---- Recibo oficial (modelo de recibo individual de salarios) ----
+function nomCabeceraClub(titulo, e) {
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+  const logo = clubGlobal && clubGlobal.logo ? '<img src="' + esc(clubGlobal.logo) + '" alt="">' : '';
+  return '<div class="rc-club">' + logo + '<div class="rc-club-txt"><div class="rc-club-nom">' + esc((clubGlobal && clubGlobal.nombre) || e.razonSocial || '') + '</div>' +
+    '<div>' + esc(e.razonSocial || '') + (e.cif ? ' · CIF ' + esc(e.cif) : '') + '</div></div><div class="rc-club-doc">' + titulo + '</div></div>';
+}
 function nomReciboHTML(n) {
   const c = n.calculo, t = n.trabajador || {}, e = n.empresa || {};
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
@@ -13144,7 +13155,7 @@ function nomReciboHTML(n) {
   const contratos = { indefinido: 'Indefinido', 'fijo-discontinuo': 'Fijo discontinuo', temporal: 'Temporal', formacion: 'Formación', practicas: 'Prácticas' };
   const [a, m] = n.mes.split('-').map(Number);
   const sal = c.devengos.filter(d => d.salarial !== false), noSal = c.devengos.filter(d => d.salarial === false);
-  return '<div class="rc">' +
+  return '<div class="rc">' + nomCabeceraClub('Recibo individual justificativo del pago de salarios', e) +
     '<table class="rc-cab"><tr><td><b>Empresa:</b> ' + esc(e.razonSocial || '—') + '<br><b>Domicilio:</b> ' + esc(e.domicilio || '—') + '<br><b>CIF:</b> ' + esc(e.cif || '—') + ' &nbsp; <b>CCC:</b> ' + esc(e.ccc || '—') + '</td>' +
     '<td><b>Trabajador/a:</b> ' + esc(t.nombre) + '<br><b>NIF:</b> ' + esc(t.dni || '—') + ' &nbsp; <b>Nº afiliación SS:</b> ' + esc(t.nss || '—') + '<br><b>Categoría:</b> ' + esc(t.puesto || '—') + ' &nbsp; <b>Grupo cotización:</b> ' + esc(t.grupo || '—') +
     '<br><b>Contrato:</b> ' + esc(contratos[t.contrato] || '—') + ' &nbsp; <b>Antigüedad:</b> ' + esc(t.fechaAlta ? fmtFechaDMYShell(t.fechaAlta) : '—') + '</td></tr></table>' +

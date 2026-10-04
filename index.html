@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&display=swap">
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261004-auth3">
+<meta name="build-id" content="v20261004-fx1">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -270,6 +271,82 @@ header.app-header::before{display:none !important;}
   .ficha-video { display: none !important; }
   body { background: #fff !important; }
 }
+
+/* ===== Pantalla de fichaje ===== */
+.fx-wrap{max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:14px;}
+.fx-hero{position:relative;overflow:hidden;border-radius:22px;background:var(--court-dark);color:#fff;padding:22px 18px 26px;text-align:center;isolation:isolate;}
+.fx-hero svg.fx-pista{position:absolute;inset:0;width:100%;height:100%;z-index:-1;opacity:.55;}
+.fx-hola{font-size:15px;color:#C9D6E2;}
+.fx-reloj{font-family:'Barlow Condensed',-apple-system,"Segoe UI",Roboto,sans-serif;font-weight:700;font-size:92px;line-height:.95;letter-spacing:1px;font-variant-numeric:tabular-nums;margin:6px 0 2px;}
+.fx-reloj small{font-size:34px;font-weight:600;color:var(--gold);margin-left:4px;vertical-align:top;}
+.fx-fecha{font-size:14px;color:#C9D6E2;}
+.fx-estado{display:inline-block;margin-top:12px;padding:6px 12px;border-radius:999px;font-size:13px;font-weight:600;background:rgba(255,255,255,.12);color:#fff;}
+.fx-estado.dentro{background:var(--gold);color:var(--court-dark);}
+.fx-turno{margin:16px auto 0;max-width:330px;text-align:left;}
+.fx-turno-txt{display:flex;justify-content:space-between;font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:600;color:#E6EDF3;}
+.fx-barra{position:relative;height:8px;border-radius:4px;background:rgba(255,255,255,.18);margin-top:4px;}
+.fx-barra i{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:var(--gold);}
+.fx-barra b{position:absolute;top:-4px;width:16px;height:16px;margin-left:-8px;border-radius:50%;background:#fff;border:3px solid var(--gold);box-sizing:border-box;}
+.fx-turno-nota{font-size:13px;color:#C9D6E2;margin-top:14px;}
+.fx-boton{margin:22px auto 0;width:156px;height:156px;border-radius:50%;border:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-family:'Barlow Condensed',-apple-system,sans-serif;position:relative;-webkit-tap-highlight-color:transparent;transition:transform .12s ease;}
+.fx-boton:active{transform:scale(.96);}
+.fx-boton:focus-visible{outline:3px solid #fff;outline-offset:4px;}
+.fx-boton .fx-b1{font-size:34px;font-weight:700;letter-spacing:.5px;}
+.fx-boton .fx-b2{font-family:-apple-system,"Segoe UI",Roboto,sans-serif;font-size:12px;font-weight:600;opacity:.75;}
+.fx-boton.entrada{background:var(--gold);color:var(--court-dark);box-shadow:0 0 0 8px rgba(232,185,36,.22);}
+.fx-boton.salida{background:#fff;color:var(--court-dark);box-shadow:0 0 0 8px rgba(255,255,255,.18);}
+.fx-boton[disabled]{opacity:.7;cursor:default;}
+.fx-boton.entrada::after{content:"";position:absolute;inset:-8px;border-radius:50%;border:2px solid var(--gold);animation:fxPulso 2.4s ease-out infinite;}
+@keyframes fxPulso{0%{transform:scale(1);opacity:.8}100%{transform:scale(1.25);opacity:0}}
+@media (prefers-reduced-motion:reduce){.fx-boton.entrada::after{animation:none;display:none}}
+.fx-aviso{margin-top:16px;padding:10px 12px;border-radius:12px;font-size:14px;text-align:left;}
+.fx-aviso.ok{background:#E4F3E9;color:#1E5B3C;animation:fxEntra .35s ease-out;}
+.fx-aviso.mal{background:#FBE4E2;color:var(--danger);}
+@keyframes fxEntra{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.fx-card{background:#fff;border-radius:16px;box-shadow:var(--shadow);overflow:hidden;}
+.fx-card h3{margin:0;font-size:16px;}
+.fx-pad{padding:14px 16px;}
+.fx-mapa{height:210px;background:#DDE5EC;position:relative;}
+.fx-mapa-vacio{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;color:var(--muted);font-size:14px;}
+.fx-mapa-pie{display:flex;align-items:center;gap:10px;padding:10px 16px;font-size:14px;}
+.fx-punto{width:10px;height:10px;border-radius:50%;background:var(--muted);flex:none;}
+.fx-punto.ok{background:#2D9B5F;box-shadow:0 0 0 4px rgba(45,155,95,.18);}
+.fx-punto.mal{background:var(--danger);}
+.fx-yo{width:18px;height:18px;border-radius:50%;background:var(--gold);border:3px solid #fff;box-shadow:0 0 0 2px var(--court-dark),0 2px 6px rgba(0,0,0,.35);}
+.fx-semana{display:flex;align-items:baseline;justify-content:space-between;gap:10px;}
+.fx-semana .fx-num{font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:700;color:var(--court-dark);}
+.fx-semana .fx-de{color:var(--muted);font-size:14px;}
+.fx-dias{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:10px;}
+.fx-dia{text-align:center;font-size:11px;color:var(--muted);}
+.fx-dia span{display:block;height:34px;border-radius:6px;background:#EEF1F4;margin-bottom:3px;position:relative;overflow:hidden;}
+.fx-dia span i{position:absolute;left:0;right:0;bottom:0;background:var(--court);}
+.fx-dia.hoy{color:var(--court-dark);font-weight:700;}
+.fx-dia.libre span{background:repeating-linear-gradient(45deg,#F3F4F6,#F3F4F6 4px,#E9ECEF 4px,#E9ECEF 8px);}
+.fx-linea{list-style:none;margin:8px 0 0;padding:0;}
+.fx-linea li{display:flex;align-items:center;gap:12px;padding:8px 0;border-top:1px solid #EEF0F2;font-size:14px;}
+.fx-linea li:first-child{border-top:0;}
+.fx-linea .fx-ico{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex:none;}
+.fx-linea .fx-ico.entrada{background:#FBF1D2;color:#8A6400;}
+.fx-linea .fx-ico.salida{background:#E3ECF3;color:var(--court);}
+.fx-linea .fx-hora{font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:600;min-width:52px;}
+.fx-linea .fx-dia-txt{color:var(--muted);font-size:13px;margin-left:auto;text-align:right;}
+.fx-pedir summary{cursor:pointer;list-style:none;padding:14px 16px;font-weight:700;display:flex;justify-content:space-between;align-items:center;}
+.fx-pedir summary::-webkit-details-marker{display:none;}
+.fx-pedir summary::after{content:"+";font-size:22px;color:var(--court);font-weight:400;}
+.fx-pedir[open] summary::after{content:"–";}
+.fx-pedir .fx-pedir-cuerpo{padding:0 16px 14px;}
+.fx-nota{font-size:12px;color:var(--muted);text-align:center;padding:0 10px 6px;}
+/* Confirmación */
+.fx-velo{position:fixed;inset:0;background:rgba(15,46,68,.55);z-index:9999;display:flex;align-items:flex-end;justify-content:center;}
+.fx-hoja{background:#fff;width:100%;max-width:520px;border-radius:22px 22px 0 0;padding:22px 20px calc(20px + env(safe-area-inset-bottom));animation:fxSube .22s ease-out;}
+@keyframes fxSube{from{transform:translateY(100%)}to{transform:none}}
+.fx-hoja h3{margin:0 0 4px;font-size:20px;}
+.fx-hoja .fx-hoja-hora{font-family:'Barlow Condensed',sans-serif;font-size:44px;font-weight:700;color:var(--court-dark);}
+.fx-hoja .fx-alerta{background:#FFF4D6;color:#6B4E00;border-radius:12px;padding:10px 12px;margin:10px 0;font-size:15px;font-weight:600;}
+.fx-hoja .fx-acciones{display:flex;gap:10px;margin-top:16px;}
+.fx-hoja .fx-acciones button{flex:1;padding:15px;border-radius:14px;font-size:16px;font-weight:700;border:0;cursor:pointer;}
+.fx-hoja .fx-si{background:var(--court-dark);color:#fff;}
+.fx-hoja .fx-no{background:#EEF1F4;color:var(--ink);}
 
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -10038,6 +10115,7 @@ function abrirAyuda() {
 }
 function showSection(sec) {
   if (esTrabajador()) sec = 'fichar';
+  if (sec !== 'fichar' && typeof fxPararGPS === 'function') fxPararGPS();
   if (sec === 'controlhorario') { goToClubGestion('horario'); return; }
   const permitido = sec === 'fichar' ? !!(sesionActual || !accesoActivo()) : sec === 'clubgestion' ? (tienePermiso('club') || tienePermiso('jugadores') || tienePermiso('pagos')) : tienePermiso(sec);
   if (!permitido) { alert('No tienes permiso para ver esta sección.'); sec = 'home'; }
@@ -11418,116 +11496,277 @@ function chEnlaceMapa(f) {
 // ---------- Pantalla del trabajador ----------
 let chFichando = false;
 let chMensajePendiente = null;
+// ===== Pantalla de fichaje (diseño "pista") =====
+let fxWatchId = null, fxUltimaPos = null, fxGpsError = null, fxMapaApi = null;
+let fxLeafletPromesa = null;
+function fxCargarLeaflet() {
+  if (window.L) return Promise.resolve(window.L);
+  if (fxLeafletPromesa) return fxLeafletPromesa;
+  fxLeafletPromesa = new Promise((res, rej) => {
+    const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'; document.head.appendChild(css);
+    const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
+    s.onload = () => (window.L ? res(window.L) : rej(new Error('Leaflet'))); s.onerror = () => rej(new Error('Leaflet'));
+    document.head.appendChild(s); setTimeout(() => rej(new Error('timeout')), 12000);
+  });
+  fxLeafletPromesa.catch(() => { fxLeafletPromesa = null; });
+  return fxLeafletPromesa;
+}
+function fxPararGPS() { if (fxWatchId !== null && navigator.geolocation) navigator.geolocation.clearWatch(fxWatchId); fxWatchId = null; }
+function fxIniciarGPS(alCambiar) {
+  fxPararGPS();
+  if (!navigator.geolocation) { fxGpsError = 'Este móvil no da la ubicación al navegador.'; alCambiar(); return; }
+  fxWatchId = navigator.geolocation.watchPosition(p => {
+    fxUltimaPos = { lat: p.coords.latitude, lng: p.coords.longitude, precision: Math.round(p.coords.accuracy), ts: Date.now() };
+    fxGpsError = null; alCambiar();
+  }, e => {
+    fxGpsError = e.code === 1 ? 'Ubicación bloqueada. Permite el acceso a la ubicación para esta web en los ajustes del móvil y vuelve a abrir la app.' : 'Buscando señal de GPS…';
+    alCambiar();
+  }, { enableHighAccuracy: true, maximumAge: 10000, timeout: 30000 });
+}
+function fxDur(ms) { const m = Math.floor(ms / 60000); if (m < 1) return 'menos de 1 min'; if (m < 60) return m + ' min'; return Math.floor(m / 60) + ' h ' + String(m % 60).padStart(2, '0') + ' min'; }
+function fxMarcador(min) { return Math.floor(min / 60) + 'h ' + String(Math.round(min % 60)).padStart(2, '0') + '′'; }
+function fxSaludo() { const h = new Date().getHours(); return h < 14 ? 'Buenos días' : h < 21 ? 'Buenas tardes' : 'Buenas noches'; }
+function fxPistaSVG() {
+  // Pista de dobles vista desde arriba (13,40 × 6,10 m), estirada al tamaño de la tarjeta.
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('class', 'fx-pista'); svg.setAttribute('viewBox', '0 0 610 1340'); svg.setAttribute('preserveAspectRatio', 'none'); svg.setAttribute('aria-hidden', 'true');
+  const linea = (x1, y1, x2, y2, extra) => { const l = document.createElementNS(ns, 'line'); [['x1', x1], ['y1', y1], ['x2', x2], ['y2', y2], ['stroke', '#F7F5F0'], ['stroke-width', '2'], ['vector-effect', 'non-scaling-stroke']].forEach(([k, v]) => l.setAttribute(k, v)); if (extra) Object.keys(extra).forEach(k => l.setAttribute(k, extra[k])); svg.appendChild(l); };
+  const W = 610, H = 1340, si = 46, net = H / 2, cs = 198, lsd = 76;
+  linea(1, 1, W - 1, 1); linea(1, H - 1, W - 1, H - 1); linea(1, 1, 1, H - 1); linea(W - 1, 1, W - 1, H - 1);
+  linea(si, 1, si, H - 1); linea(W - si, 1, W - si, H - 1);
+  linea(1, net - cs, W - 1, net - cs); linea(1, net + cs, W - 1, net + cs);
+  linea(1, lsd, W - 1, lsd); linea(1, H - lsd, W - 1, H - lsd);
+  linea(W / 2, 1, W / 2, net - cs); linea(W / 2, net + cs, W / 2, H - 1);
+  linea(1, net, W - 1, net, { 'stroke-dasharray': '4 8', 'stroke-opacity': '.45' });
+  return svg;
+}
+function fxConfirmar({ titulo, hora, alerta, textoSi, alAceptar }) {
+  const velo = el('div', { class: 'fx-velo', role: 'dialog', 'aria-modal': 'true' });
+  const cerrar = () => velo.remove();
+  velo.addEventListener('click', e => { if (e.target === velo) cerrar(); });
+  velo.appendChild(el('div', { class: 'fx-hoja' },
+    el('h3', {}, titulo), el('div', { class: 'fx-hoja-hora' }, hora),
+    alerta ? el('div', { class: 'fx-alerta' }, alerta) : null,
+    el('div', { class: 'fx-acciones' },
+      el('button', { class: 'fx-no', onclick: cerrar }, 'Cancelar'),
+      el('button', { class: 'fx-si', onclick: () => { cerrar(); alAceptar(); } }, textoSi))));
+  document.body.appendChild(velo);
+  velo.querySelector('.fx-no').focus();
+}
+// ¿Hay que pedir confirmación? Devuelve el aviso a mostrar, o null si el fichaje es el esperado y en hora.
+function fxAvisoFichaje(tipo, ctx) {
+  const ahoraMin = new Date().getHours() * 60 + new Date().getMinutes();
+  const t = ctx.turno;
+  if (tipo === 'entrada') {
+    if (ctx.ausencia) return 'Hoy tienes ' + CH_TIPOS_AUSENCIA[ctx.ausencia.tipo].label.toLowerCase() + ' apuntado. ¿Seguro que quieres fichar la entrada?';
+    if (ctx.festivo) return 'Hoy es festivo (' + ctx.festivo.nombre + '). ¿Seguro que quieres fichar la entrada?';
+    if (!t) return 'Hoy no tienes turno. ¿Seguro que quieres fichar la entrada?';
+    if (ctx.yaCompletoHoy) return 'Hoy ya fichaste la entrada y la salida. ¿Quieres empezar otro tramo?';
+    if (ahoraMin < chMinutos(t.ini) - 30) return 'Tu turno empieza a las ' + t.ini + '. ¿Seguro que quieres fichar la entrada ya?';
+    if (ahoraMin >= chMinutos(t.fin)) return 'Tu turno terminó a las ' + t.fin + '. ¿Seguro que quieres fichar la entrada?';
+    return null;
+  }
+  if (t && ahoraMin < chMinutos(t.fin)) return 'Tu turno termina a las ' + t.fin + '. ¿Seguro que quieres salir antes?';
+  if (!t) return null;
+  return null;
+}
 function renderFichar() {
   const root = document.getElementById('ficharScreen');
   root.innerHTML = '';
   if (!sesionActual) { root.appendChild(el('div', { class: 'panel' }, 'Inicia sesión para fichar.')); return; }
-  const panel = el('div', { class: 'panel', style: 'max-width:520px;margin:0 auto;text-align:center;' },
-    el('h2', {}, '⏱️ Fichaje'),
-    el('div', { class: 'sub' }, sesionActual.nombre),
-  );
-  const reloj = el('div', { style: 'font-size:46px;font-weight:800;margin:10px 0 4px;font-variant-numeric:tabular-nums;' }, chHora(Date.now()));
-  const fechaHoy = el('div', { class: 'sub', style: 'margin-bottom:16px;' }, new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }));
-  const estado = el('div', { style: 'min-height:22px;margin:10px 0;' });
-  if (chMensajePendiente) { estado.appendChild(el('div', { class: 'msg msg-ok' }, chMensajePendiente)); chMensajePendiente = null; }
-  const zonaBoton = el('div', {}, el('div', { class: 'sub' }, 'Cargando tus fichajes…'));
-  const historial = el('div', { style: 'text-align:left;margin-top:18px;' });
-  panel.appendChild(reloj); panel.appendChild(fechaHoy); panel.appendChild(zonaBoton); panel.appendChild(estado); panel.appendChild(historial);
-  panel.appendChild(el('div', { class: 'sub', style: 'margin-top:16px;font-size:12px;' }, 'Al fichar se guarda la hora y la ubicación del móvil. Si te has equivocado, avisa al administrador para que lo corrija.'));
-  root.appendChild(panel);
-  chRenderSolicitudesTrabajador(root);
+  const wrap = el('div', { class: 'fx-wrap' });
+  root.appendChild(wrap);
 
+  // --- Pista (cabecera) ---
+  const hero = el('section', { class: 'fx-hero' });
+  hero.appendChild(fxPistaSVG());
+  const reloj = el('div', { class: 'fx-reloj', 'aria-live': 'off' });
+  const pintarReloj = () => { const d = new Date(); reloj.innerHTML = ''; reloj.appendChild(document.createTextNode(chHora(d.getTime()))); reloj.appendChild(el('small', {}, String(d.getSeconds()).padStart(2, '0'))); };
+  pintarReloj();
+  const estado = el('div', { class: 'fx-estado' }, 'Cargando…');
+  const turnoZona = el('div');
+  const zonaBoton = el('div');
+  const avisos = el('div');
+  if (chMensajePendiente) { avisos.appendChild(el('div', { class: 'fx-aviso ok', role: 'status' }, chMensajePendiente)); chMensajePendiente = null; }
+  hero.appendChild(el('div', { class: 'fx-hola' }, fxSaludo() + ', ' + (sesionActual.nombre || '').split(' ')[0]));
+  hero.appendChild(reloj);
+  const fechaTxt = new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+  hero.appendChild(el('div', { class: 'fx-fecha' }, fechaTxt.charAt(0).toUpperCase() + fechaTxt.slice(1)));
+  hero.appendChild(estado); hero.appendChild(turnoZona); hero.appendChild(zonaBoton); hero.appendChild(avisos);
+  wrap.appendChild(hero);
+
+  // --- Mapa ---
+  const mapaEl = el('div', { class: 'fx-mapa' }, el('div', { class: 'fx-mapa-vacio' }, 'Cargando el mapa…'));
+  const punto = el('span', { class: 'fx-punto' });
+  const mapaTxt = el('span', {}, 'Buscando tu ubicación…');
+  wrap.appendChild(el('section', { class: 'fx-card' }, mapaEl, el('div', { class: 'fx-mapa-pie' }, punto, mapaTxt)));
+
+  // --- Semana y últimos fichajes ---
+  const semana = el('section', { class: 'fx-card fx-pad' }, el('div', { class: 'sub' }, 'Cargando tu semana…'));
+  const linea = el('section', { class: 'fx-card fx-pad' });
+  wrap.appendChild(semana); wrap.appendChild(linea);
+  const zonaPedir = el('div'); wrap.appendChild(zonaPedir);
+  chRenderSolicitudesTrabajador(zonaPedir);
+  wrap.appendChild(el('div', { class: 'fx-nota' }, 'Al fichar se guardan la hora y el lugar. Si te equivocas, avisa al administrador para que lo corrija.'));
+
+  // Reloj y contador en vivo
+  let entradaAbierta = null;
+  const pintarEstado = () => {
+    if (entradaAbierta) { estado.className = 'fx-estado dentro'; estado.textContent = 'En turno desde las ' + chHora(entradaAbierta.ts) + ' (' + fxDur(Date.now() - entradaAbierta.ts) + ')'; }
+  };
   clearInterval(window.__chRelojTimer);
-  window.__chRelojTimer = setInterval(() => { if (document.body.contains(reloj)) reloj.textContent = chHora(Date.now()); else clearInterval(window.__chRelojTimer); }, 15000);
+  window.__chRelojTimer = setInterval(() => {
+    if (!document.body.contains(reloj)) { clearInterval(window.__chRelojTimer); fxPararGPS(); return; }
+    pintarReloj(); pintarEstado();
+  }, 1000);
 
-  if (!firebaseDisponible) { zonaBoton.innerHTML = ''; zonaBoton.appendChild(el('div', { class: 'msg msg-warn' }, 'No hay conexión con la nube. Sin conexión no se puede fichar.')); return; }
+  // GPS y mapa
+  const actualizarUbicacion = () => {
+    if (!document.body.contains(mapaEl)) { fxPararGPS(); return; }
+    if (fxUltimaPos) {
+      punto.className = 'fx-punto ' + (fxUltimaPos.precision <= 100 ? 'ok' : '');
+      mapaTxt.textContent = 'Estás aquí. Precisión de ' + fxUltimaPos.precision + ' m' + (fxUltimaPos.precision > 100 ? ': señal débil, si puedes acércate a una ventana.' : '.');
+      if (fxMapaApi) fxMapaApi.mover(fxUltimaPos);
+    } else if (fxGpsError) {
+      punto.className = 'fx-punto mal'; mapaTxt.textContent = fxGpsError;
+    }
+  };
+  fxMapaApi = null;
+  fxCargarLeaflet().then(L => {
+    if (!document.body.contains(mapaEl)) return;
+    mapaEl.innerHTML = '';
+    const mapa = L.map(mapaEl, { zoomControl: false, attributionControl: true, scrollWheelZoom: false }).setView([43.3492, -4.0479], 14);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19, subdomains: 'abcd', attribution: '© OpenStreetMap © CARTO' }).addTo(mapa);
+    const icono = L.divIcon({ className: '', html: '<div class="fx-yo"></div>', iconSize: [18, 18], iconAnchor: [9, 9] });
+    let marca = null, circulo = null, centrado = false;
+    fxMapaApi = { mover(p) {
+      const ll = [p.lat, p.lng];
+      if (!marca) { marca = L.marker(ll, { icon: icono, keyboard: false }).addTo(mapa); circulo = L.circle(ll, { radius: p.precision, color: '#1B4A6B', weight: 1, fillColor: '#E8B924', fillOpacity: .18 }).addTo(mapa); }
+      else { marca.setLatLng(ll); circulo.setLatLng(ll); circulo.setRadius(p.precision); }
+      if (!centrado) { mapa.setView(ll, 17); centrado = true; }
+    } };
+    actualizarUbicacion();
+    setTimeout(() => mapa.invalidateSize(), 200);
+  }).catch(() => {
+    mapaEl.innerHTML = '';
+    mapaEl.appendChild(el('div', { class: 'fx-mapa-vacio' }, 'No se pudo cargar el mapa. La ubicación se sigue guardando al fichar.'));
+  });
+  fxIniciarGPS(actualizarUbicacion);
+
+  if (!firebaseDisponible) { estado.textContent = 'Sin conexión'; zonaBoton.appendChild(el('div', { class: 'fx-aviso mal' }, 'Sin conexión no se puede fichar. Conéctate a internet y vuelve a abrir la app.')); return; }
 
   const mes = chMesDe(Date.now());
-  const zonaHorario = el('div', { class: 'sub', style: 'margin:-8px 0 14px;font-weight:600;' });
-  panel.insertBefore(zonaHorario, zonaBoton);
-  chCargarConfig().then(() => {
-    const hoy = chFechaDe(Date.now());
-    const fest = chFestivo(hoy);
-    const t = chTramoDelDia(chPlantillaDe(sesionActual.id), hoy);
-    const ausHoy = (chConfig.ausencias || []).find(a => a.usuarioId === sesionActual.id && a.desde <= hoy && hoy <= a.hasta);
-    zonaHorario.textContent = ausHoy ? '🏷️ Hoy: ' + CH_TIPOS_AUSENCIA[ausHoy.tipo].label : fest ? '🎉 Hoy es festivo: ' + fest.nombre : t ? '🗓️ Tu horario de hoy: ' + t.ini + ' – ' + t.fin : (chPlantillaDe(sesionActual.id) ? 'Hoy no tienes turno' : '');
-  }).catch(() => {});
-  Promise.all([chCargarMes(chMesAnterior(mes), sesionActual.id), chCargarMes(mes, sesionActual.id)]).then(([ant, act]) => {
+  Promise.all([chCargarConfig().catch(() => null), chCargarMes(chMesAnterior(mes), sesionActual.id), chCargarMes(mes, sesionActual.id)]).then(([, ant, act]) => {
     const todos = ant.concat(act).filter(f => !f.anulado).sort((a, b) => a.ts - b.ts);
-    const ultimo = todos[todos.length - 1];
     const hoy = chFechaDe(Date.now());
+    const plantilla = chConfig ? chPlantillaDe(sesionActual.id) : null;
+    const fest = chConfig ? chFestivo(hoy) : null;
+    const aus = chConfig ? (chConfig.ausencias || []).find(a => a.usuarioId === sesionActual.id && a.desde <= hoy && hoy <= a.hasta) : null;
+    const turno = !fest && !aus && plantilla && hoy >= chAlta(sesionActual.id) ? chTramoDelDia(plantilla, hoy) : null;
+    const ultimo = todos[todos.length - 1];
+    const deHoy = todos.filter(f => chFechaDe(f.ts) === hoy);
     let siguiente = 'entrada';
-    zonaBoton.innerHTML = '';
     if (ultimo && ultimo.tipo === 'entrada') {
-      if (chFechaDe(ultimo.ts) === hoy) siguiente = 'salida';
-      else zonaBoton.appendChild(el('div', { class: 'msg msg-warn', style: 'text-align:left;' }, '⚠️ El ' + fmtFechaDMYShell(chFechaDe(ultimo.ts)) + ' fichaste la entrada a las ' + chHora(ultimo.ts) + ' pero no la salida. Avisa al administrador para que lo corrija.'));
+      if (chFechaDe(ultimo.ts) === hoy) { siguiente = 'salida'; entradaAbierta = ultimo; }
+      else avisos.appendChild(el('div', { class: 'fx-aviso mal' }, 'El ' + fmtFechaDMYShell(chFechaDe(ultimo.ts)) + ' fichaste la entrada a las ' + chHora(ultimo.ts) + ' y no la salida. Avisa al administrador para que lo corrija.'));
     }
-    if (ultimo && ultimo.tipo === 'entrada' && siguiente === 'salida') {
-      zonaBoton.appendChild(el('div', { class: 'sub', style: 'margin-bottom:8px;' }, 'Dentro desde las ' + chHora(ultimo.ts) + ' (' + chDuracion(Date.now() - ultimo.ts) + ')'));
+    if (entradaAbierta) pintarEstado(); else { estado.className = 'fx-estado'; estado.textContent = 'Fuera de turno'; }
+
+    // Turno de hoy
+    if (turno) {
+      const ini = chMinutos(turno.ini), fin = chMinutos(turno.fin);
+      const barra = el('div', { class: 'fx-barra' }, el('i'), el('b'));
+      const pintarBarra = () => { const n = new Date(); const m = n.getHours() * 60 + n.getMinutes(); const p = Math.max(0, Math.min(1, (m - ini) / (fin - ini))); barra.querySelector('i').style.width = (p * 100) + '%'; barra.querySelector('b').style.left = (p * 100) + '%'; };
+      pintarBarra(); setInterval(() => { if (document.body.contains(barra)) pintarBarra(); }, 60000);
+      turnoZona.appendChild(el('div', { class: 'fx-turno', 'aria-label': 'Tu turno de hoy, de ' + turno.ini + ' a ' + turno.fin },
+        el('div', { class: 'fx-turno-txt' }, el('span', {}, turno.ini), el('span', {}, 'Tu turno de hoy'), el('span', {}, turno.fin)), barra));
+    } else {
+      turnoZona.appendChild(el('div', { class: 'fx-turno-nota' }, aus ? 'Hoy: ' + CH_TIPOS_AUSENCIA[aus.tipo].label : fest ? 'Hoy es festivo: ' + fest.nombre : plantilla ? 'Hoy no tienes turno' : ''));
     }
+
+    // Botón
     const esEntrada = siguiente === 'entrada';
-    const boton = el('button', {
-      class: 'btn ' + (esEntrada ? 'btn-primary' : 'btn-gold'),
-      style: 'width:100%;font-size:22px;padding:22px 10px;border-radius:16px;',
-      onclick: () => chFichar(siguiente, boton, estado),
-    }, esEntrada ? '▶ Fichar ENTRADA' : '■ Fichar SALIDA');
+    const ctx = { turno, festivo: fest, ausencia: aus, yaCompletoHoy: deHoy.some(f => f.tipo === 'entrada') && deHoy.some(f => f.tipo === 'salida') };
+    const boton = el('button', { class: 'fx-boton ' + siguiente, 'aria-label': esEntrada ? 'Fichar entrada' : 'Fichar salida' },
+      el('span', { class: 'fx-b1' }, esEntrada ? 'Entrada' : 'Salida'), el('span', { class: 'fx-b2' }, 'Toca para fichar'));
+    boton.onclick = () => {
+      const aviso = fxAvisoFichaje(siguiente, ctx);
+      if (!aviso) { chFichar(siguiente, boton, avisos); return; }
+      fxConfirmar({ titulo: esEntrada ? 'Fichar entrada' : 'Fichar salida', hora: chHora(Date.now()), alerta: aviso,
+        textoSi: esEntrada ? 'Fichar entrada' : 'Fichar salida', alAceptar: () => chFichar(siguiente, boton, avisos) });
+    };
     zonaBoton.appendChild(boton);
 
-    const ultimos = todos.slice(-10).reverse();
-    if (ultimos.length) {
-      historial.appendChild(el('h3', { style: 'margin:0 0 6px;' }, 'Tus últimos fichajes'));
-      const tbody = el('tbody');
-      ultimos.forEach(f => tbody.appendChild(el('tr', {},
-        el('td', {}, fmtFechaDMYShell(chFechaDe(f.ts))),
-        el('td', {}, f.tipo === 'entrada' ? '▶ Entrada' : '■ Salida'),
-        el('td', {}, chHora(f.ts) + (f.modificado || f.origen === 'manual' ? ' ✏️' : '')),
-        el('td', {}, f.lat !== undefined && f.lat !== null ? '📍' : el('span', { title: f.gpsError || '' }, '—')),
-      )));
-      historial.appendChild(el('table', { style: 'width:100%;' }, tbody));
-      if (ultimos.some(f => f.modificado || f.origen === 'manual')) historial.appendChild(el('div', { class: 'sub', style: 'font-size:12px;' }, '✏️ = corregido por el administrador.'));
+    // Semana
+    semana.innerHTML = '';
+    const lunes = new Date(); lunes.setHours(0, 0, 0, 0); lunes.setDate(lunes.getDate() - ((lunes.getDay() + 6) % 7));
+    const tramos = chEmparejar(todos);
+    let msSemana = 0, minTeoricos = 0;
+    const dias = el('div', { class: 'fx-dias' });
+    const msPorDia = {}; tramos.forEach(t => { if (t.entrada && t.salida) { const f = chFechaDe(t.entrada.ts); msPorDia[f] = (msPorDia[f] || 0) + (t.salida.ts - t.entrada.ts); } });
+    if (entradaAbierta) msPorDia[hoy] = (msPorDia[hoy] || 0) + (Date.now() - entradaAbierta.ts);
+    ['L', 'M', 'X', 'J', 'V', 'S', 'D'].forEach((letra, i) => {
+      const d = new Date(lunes); d.setDate(lunes.getDate() + i); const f = chFechaDe(d.getTime());
+      const tr = plantilla && !chFestivo(f) && f >= chAlta(sesionActual.id) && !(chConfig.ausencias || []).some(a => a.usuarioId === sesionActual.id && a.desde <= f && f <= a.hasta) ? chTramoDelDia(plantilla, f) : null;
+      const ms = msPorDia[f] || 0; msSemana += ms; if (tr) minTeoricos += tr.min;
+      const ref = Math.max(tr ? tr.min : 240, 1);
+      dias.appendChild(el('div', { class: 'fx-dia' + (f === hoy ? ' hoy' : '') + (tr ? '' : ' libre'), title: f },
+        el('span', {}, el('i', { style: 'height:' + Math.min(100, Math.round(ms / 60000 / ref * 100)) + '%' })), letra));
+    });
+    semana.appendChild(el('div', { class: 'fx-semana' }, el('h3', {}, 'Esta semana'),
+      el('div', {}, el('span', { class: 'fx-num' }, fxMarcador(msSemana / 60000)), minTeoricos ? el('span', { class: 'fx-de' }, ' de ' + fxMarcador(minTeoricos)) : null)));
+    semana.appendChild(dias);
+
+    // Últimos fichajes
+    linea.innerHTML = '';
+    linea.appendChild(el('h3', {}, 'Tus últimos fichajes'));
+    const ultimos = todos.slice(-8).reverse();
+    if (!ultimos.length) linea.appendChild(el('div', { class: 'sub', style: 'margin-top:6px;' }, 'Aún no has fichado. Tu primer fichaje aparecerá aquí.'));
+    else {
+      const ul = el('ul', { class: 'fx-linea' });
+      ultimos.forEach(f => {
+        const fecha = chFechaDe(f.ts);
+        const diaTxt = fecha === hoy ? 'Hoy' : new Date(f.ts).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
+        ul.appendChild(el('li', {},
+          el('span', { class: 'fx-ico ' + f.tipo, 'aria-hidden': 'true' }, f.tipo === 'entrada' ? '▶' : '■'),
+          el('span', { class: 'fx-hora' }, chHora(f.ts)),
+          el('span', {}, (f.tipo === 'entrada' ? 'Entrada' : 'Salida') + (f.modificado || f.origen === 'manual' ? ' (corregida)' : '')),
+          el('span', { class: 'fx-dia-txt' }, diaTxt, f.lat !== undefined && f.lat !== null ? '' : el('div', { style: 'font-size:11px;' }, 'sin ubicación'))));
+      });
+      linea.appendChild(ul);
     }
   }).catch(err => {
-    zonaBoton.innerHTML = '';
-    zonaBoton.appendChild(el('div', { class: 'msg msg-warn' }, 'No se pudieron cargar tus fichajes: ' + (err && err.message ? err.message : 'error') + '. Comprueba la conexión y vuelve a entrar.'));
+    estado.textContent = 'Sin datos';
+    zonaBoton.appendChild(el('div', { class: 'fx-aviso mal' }, 'No se pudieron cargar tus fichajes: ' + (err && err.message ? err.message : 'error') + '. Comprueba la conexión y vuelve a entrar.'));
   });
 }
-function chFichar(tipo, boton, estado) {
+function chFichar(tipo, boton, avisos) {
   if (chFichando) return;
-  if (!navigator.onLine) { estado.innerHTML = ''; estado.appendChild(el('div', { class: 'msg msg-warn' }, 'Estás sin conexión. Conéctate a internet para fichar.')); return; }
-  chFichando = true;
-  boton.disabled = true;
-  boton.textContent = '📍 Obteniendo ubicación…';
-  estado.innerHTML = '';
+  const ponTexto = (t1, t2) => { const a = boton.querySelector('.fx-b1'), b = boton.querySelector('.fx-b2'); if (a) a.textContent = t1; if (b) b.textContent = t2 || ''; };
+  const error = (txt) => { avisos.innerHTML = ''; avisos.appendChild(el('div', { class: 'fx-aviso mal', role: 'alert' }, txt)); };
+  if (!navigator.onLine) { error('Estás sin conexión. Conéctate a internet para fichar.'); return; }
+  chFichando = true; boton.disabled = true; avisos.innerHTML = '';
+  ponTexto('…', 'Buscando ubicación');
   const ahora = Date.now();
-  chObtenerGPS().then(gps => {
-    boton.textContent = '☁️ Guardando…';
-    const datos = {
-      usuarioId: sesionActual.id,
-      nombre: sesionActual.nombre,
-      tipo: tipo,
-      ts: ahora,
-      tsServidor: firebase.firestore.FieldValue.serverTimestamp(),
-      mes: chMesDe(ahora),
-      fecha: chFechaDe(ahora),
-      origen: 'movil',
-      dispositivo: (navigator.userAgent || '').slice(0, 160),
-    };
+  const gpsPromesa = fxUltimaPos && Date.now() - fxUltimaPos.ts < 30000 ? Promise.resolve({ lat: fxUltimaPos.lat, lng: fxUltimaPos.lng, precision: fxUltimaPos.precision }) : chObtenerGPS();
+  gpsPromesa.then(gps => {
+    ponTexto('…', 'Guardando');
+    const datos = { usuarioId: sesionActual.id, nombre: sesionActual.nombre, tipo, ts: ahora, tsServidor: firebase.firestore.FieldValue.serverTimestamp(),
+      mes: chMesDe(ahora), fecha: chFechaDe(ahora), origen: 'movil', dispositivo: (navigator.userAgent || '').slice(0, 160) };
     if (gps.error) datos.gpsError = gps.error; else { datos.lat = gps.lat; datos.lng = gps.lng; datos.precision = gps.precision; }
-    const guardado = coleccionFichajes().add(datos);
     const limite = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 15000));
-    return Promise.race([guardado, limite]).then(() => gps);
+    return Promise.race([coleccionFichajes().add(datos), limite]).then(() => gps);
   }).then(gps => {
     chFichando = false;
-    chMensajePendiente = '✅ ' + (tipo === 'entrada' ? 'Entrada' : 'Salida') + ' registrada a las ' + chHora(ahora) + (gps.error ? ' (sin ubicación: ' + gps.error + ')' : ' con ubicación.');
+    chMensajePendiente = (tipo === 'entrada' ? 'Entrada' : 'Salida') + ' fichada a las ' + chHora(ahora) + (gps.error ? '. No se pudo guardar la ubicación: ' + gps.error : '.');
     renderFichar();
   }).catch(err => {
-    chFichando = false;
-    boton.disabled = false;
-    boton.textContent = tipo === 'entrada' ? '▶ Fichar ENTRADA' : '■ Fichar SALIDA';
-    estado.innerHTML = '';
-    estado.appendChild(el('div', { class: 'msg msg-warn' }, err && err.message === 'timeout'
-      ? '⚠️ La nube no confirmó el fichaje (conexión lenta). No cierres la app y vuelve a entrar en un minuto para comprobar si aparece; si no, ficha de nuevo.'
-      : '⚠️ No se pudo guardar el fichaje: ' + (err && err.message ? err.message : 'error desconocido')));
+    chFichando = false; boton.disabled = false;
+    ponTexto(tipo === 'entrada' ? 'Entrada' : 'Salida', 'Toca para fichar');
+    error(err && err.message === 'timeout'
+      ? 'La nube no ha confirmado el fichaje (conexión lenta). No cierres la app: vuelve a entrar en un minuto y comprueba si aparece abajo; si no aparece, ficha otra vez.'
+      : 'No se pudo guardar el fichaje: ' + (err && err.message ? err.message : 'error desconocido'));
   });
 }
 
@@ -11961,7 +12200,8 @@ function chChipEstado(e) { const c = CH_ESTADOS_SOL[e] || CH_ESTADOS_SOL.pendien
 function chRangoTxt(a) { return fmtFechaDMYShell(a.desde) + (a.hasta && a.hasta !== a.desde ? ' – ' + fmtFechaDMYShell(a.hasta) : ''); }
 
 function chRenderSolicitudesTrabajador(root) {
-  const panel = el('div', { class: 'panel', style: 'max-width:520px;margin:14px auto 0;' }, el('h2', {}, '🏷️ Pedir vacaciones, baja o permiso'));
+  const panel = el('div', { class: 'fx-pedir-cuerpo' });
+  root.appendChild(el('details', { class: 'fx-card fx-pedir' }, el('summary', {}, 'Pedir vacaciones, baja o permiso'), panel));
   const selTipo = selectEl(Object.keys(CH_TIPOS_AUSENCIA).map(k => ({ value: k, label: CH_TIPOS_AUSENCIA[k].label })), 'vacaciones', () => {});
   const desde = el('input', { type: 'date' }); const hasta = el('input', { type: 'date' });
   const motivo = el('input', { type: 'text', placeholder: 'Motivo (opcional)' });
@@ -11981,7 +12221,6 @@ function chRenderSolicitudesTrabajador(root) {
   } }, 'Enviar solicitud');
   panel.appendChild(el('div', { class: 'toolbar' }, boton));
   panel.appendChild(lista);
-  root.appendChild(panel);
   function cargar() {
     if (!firebaseDisponible) { lista.innerHTML = ''; return; }
     coleccionSolicitudes().where('usuarioId', '==', sesionActual.id).get().then(snap => {

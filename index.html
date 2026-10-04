@@ -3,7 +3,7 @@
 <head>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&display=swap">
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261004-acc2">
+<meta name="build-id" content="v20261004-fac1">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -6741,6 +6741,7 @@ function render() {
     else if (activeTab === 'cuentas') main.appendChild(viewCuentas());
     else if (activeTab === 'catalogo') main.appendChild(viewCatalogo());
     else if (activeTab === 'historial') main.appendChild(viewHistorial());
+    else if (activeTab === 'facturas') main.appendChild(viewFacturas());
     else if (activeTab === 'contabilidad') main.appendChild(viewContabilidadTaller());
     else if (activeTab === 'config') main.appendChild(viewConfigTaller());
   } catch (err) {
@@ -6765,6 +6766,7 @@ function renderTabsNav() {
     ['cuentas', '💳', 'Cuentas'],
     ['catalogo', '🏷️', 'Artículos y cordajes'],
     ['historial', '📚', 'Historial'],
+    ['facturas', '🧾', 'Facturas'],
     ['contabilidad', '💰', 'Contabilidad'],
     ['config', '⚙️', 'Configuración'],
   ];
@@ -8425,7 +8427,7 @@ function viewHistorial() {
   }
   const lista = terminados;
   const table = el('table', {}, el('thead', {}, el('tr', {},
-    el('th', {}, 'Fecha'), el('th', {}, 'Cliente'), el('th', {}, 'Raqueta'), el('th', {}, 'Cordaje'), el('th', {}, 'Tensión'), el('th', {}, 'Duración'), el('th', {}, 'Precio'), el('th', {}, 'Pago'), el('th', {}, 'Foto'), el('th', {}, 'Entrega'), el('th', {}, ''), el('th', {}, ''))));
+    el('th', {}, 'Fecha'), el('th', {}, 'Cliente'), el('th', {}, 'Raqueta'), el('th', {}, 'Cordaje'), el('th', {}, 'Tensión'), el('th', {}, 'Duración'), el('th', {}, 'Precio'), el('th', {}, 'Pago'), el('th', {}, 'Factura'), el('th', {}, 'Foto'), el('th', {}, 'Entrega'), el('th', {}, ''), el('th', {}, ''))));
   const tbody = el('tbody');
   lista.forEach(p => {
     const cli = clienteDe(p.clienteId);
@@ -8440,6 +8442,9 @@ function viewHistorial() {
       el('td', {}, duracion),
       el('td', {}, euros(p.precio)),
       el('td', {}, el('button', { class: 'btn btn-sm ' + (p.pagado ? 'btn-gold' : 'btn-ghost'), onclick: () => { p.pagado = !p.pagado; p.fechaPago = p.pagado ? Date.now() : null; render(); } }, p.pagado ? '✓ Pagado' : 'Pendiente')),
+      el('td', {}, p.facturaId
+        ? el('button', { class: 'btn btn-ghost btn-sm', onclick: () => facAbrirPorId(p.facturaId) }, '🧾 ' + p.facturaId)
+        : p.pagado ? el('button', { class: 'btn btn-ghost btn-sm', onclick: () => facFacturarPedido(p) }, '🧾 Facturar') : el('span', { class: 'sub' }, 'Sin cobrar')),
       el('td', {}, p.fotoDespues
         ? el('img', { src: p.fotoDespues, style: 'width:44px;height:44px;object-fit:cover;border-radius:6px;cursor:pointer;', onclick: () => abrirFotoGrandePublica(p.fotoDespues) })
         : el('span', { class: 'sub' }, '—')),
@@ -8456,6 +8461,247 @@ function viewHistorial() {
   return wrap;
 }
 
+// ===== FACTURAS DEL TALLER (IDERMAY) =====
+// Los precios llevan el IVA incluido: la base y la cuota se calculan hacia atrás. El material vendido va exento.
+const FAC_TIPOS = {
+  encordado: { label: 'Encordado', iva: true },
+  clase: { label: 'Clase de bádminton', iva: true },
+  servicio: { label: 'Otro servicio (con IVA)', iva: true },
+  material: { label: 'Material (exento de IVA)', iva: false },
+};
+function facCfg() { state.config.factura = state.config.factura || {}; const f = state.config.factura; if (f.iva == null) f.iva = 21; if (!f.serie) f.serie = 'F'; return f; }
+function facR(n) { return Math.round((Number(n) || 0) * 100) / 100; }
+function facEur(n) { return typeof nomEur === 'function' ? nomEur(n) : facR(n).toFixed(2).replace('.', ',') + ' €'; }
+function facColeccion() { return docNube().collection('facturas'); }
+function facCalcular(lineas, ivaPct) {
+  const ls = lineas.filter(l => (Number(l.cantidad) || 0) && (Number(l.precio) || 0) !== 0).map(l => Object.assign({}, l, { cantidad: Number(l.cantidad), precio: facR(l.precio), total: facR(Number(l.cantidad) * Number(l.precio)), iva: FAC_TIPOS[l.tipo] ? FAC_TIPOS[l.tipo].iva : true }));
+  const conIva = facR(ls.filter(l => l.iva).reduce((s, l) => s + l.total, 0));
+  const exento = facR(ls.filter(l => !l.iva).reduce((s, l) => s + l.total, 0));
+  const base = facR(conIva / (1 + ivaPct / 100));
+  return { lineas: ls, ivaPct, totalConIva: conIva, base, cuota: facR(conIva - base), exento, total: facR(conIva + exento) };
+}
+function facFaltanDatos() {
+  const f = facCfg(); const falta = [];
+  if (!f.razonSocial) falta.push('razón social'); if (!f.nif) falta.push('NIF'); if (!f.domicilio) falta.push('domicilio');
+  return falta;
+}
+function facLineasDePedido(p) {
+  const ads = (p.articulosAdicionales || []).map(i => ({ tipo: 'material', concepto: i.nombre || 'Material', cantidad: i.cantidad || 1, precio: i.precioUnitario || 0 }));
+  const precioEnc = facR((p.precio || 0) - ads.reduce((s, l) => s + l.cantidad * l.precio, 0));
+  const lineas = [];
+  if (precioEnc > 0) lineas.push({ tipo: 'encordado', concepto: 'Encordado ' + (p.marcaModelo || 'raqueta') + (nombreCordajeDe(p) && nombreCordajeDe(p) !== '—' ? ' con ' + nombreCordajeDe(p) : '') + (fmtTension(p) && fmtTension(p) !== '—' ? ' a ' + fmtTension(p) : ''), cantidad: 1, precio: precioEnc });
+  return lineas.concat(ads);
+}
+function facSiguienteNumero(serie, año) {
+  return facColeccion().where('serie', '==', serie).where('año', '==', año).get().then(snap => {
+    let max = 0; snap.forEach(d => { max = Math.max(max, d.data().numero || 0); });
+    return max + 1;
+  });
+}
+function facIdDe(serie, año, numero) { return serie + '-' + año + '-' + String(numero).padStart(4, '0'); }
+// Emite una factura con número correlativo; comprueba que el número no exista antes de guardarlo.
+function facEmitir(datos) {
+  const año = Number(datos.fecha.slice(0, 4)); const serie = datos.serie;
+  const intentar = (n, vueltas) => {
+    const id = facIdDe(serie, año, n); const ref = facColeccion().doc(id);
+    return ref.get().then(d => {
+      if (d.exists) { if (vueltas > 20) throw new Error('No se encontró un número libre'); return intentar(n + 1, vueltas + 1); }
+      const fac = Object.assign({}, datos, { id, año, numero: n, estado: 'emitida', creadoEn: Date.now(), creadoPor: (typeof sesionActual !== 'undefined' && sesionActual) ? sesionActual.nombre : '' });
+      return ref.set(JSON.parse(JSON.stringify(fac))).then(() => fac);
+    });
+  };
+  return facSiguienteNumero(serie, año).then(n => intentar(n, 0));
+}
+function facTitulo(f) { return f.serie === 'R' ? 'Factura rectificativa' : f.tipoFactura === 'completa' ? 'Factura' : 'Factura simplificada'; }
+function facHTML(f) {
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+  const e = f.emisor || {}, c = f.cliente, k = f.calculo;
+  const logo = e.logo ? '<img src="' + esc(e.logo) + '" alt="">' : '';
+  const fila = (a, b, cls) => '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td colspan="3">' + a + '</td><td class="n">' + b + '</td></tr>';
+  return '<div class="rc">' +
+    '<div class="rc-club">' + logo + '<div class="rc-club-txt"><div class="rc-club-nom">' + esc(e.nombreComercial || e.razonSocial) + '</div><div>' + esc(e.razonSocial) + ' · NIF ' + esc(e.nif) + '</div><div>' + esc(e.domicilio) + '</div>' +
+    (e.telefono || e.email ? '<div>' + esc([e.telefono, e.email].filter(Boolean).join(' · ')) + '</div>' : '') + '</div>' +
+    '<div class="rc-club-doc">' + facTitulo(f) + '<br><span style="font-size:15px;">Nº ' + esc(f.id) + '</span><br><span style="font-weight:400;">Fecha: ' + fmtFechaDMYShell(f.fecha) + '</span></div></div>' +
+    (c ? '<table class="rc-cab"><tr><td><b>Cliente:</b> ' + esc(c.nombre) + (c.nif ? '<br><b>NIF:</b> ' + esc(c.nif) : '') + (c.direccion ? '<br><b>Domicilio:</b> ' + esc(c.direccion) : '') + '</td></tr></table>' : '') +
+    (f.rectificaA ? '<div class="rc-per" style="border-top:1px solid #000;margin-top:6px;"><b>Rectifica la factura</b> ' + esc(f.rectificaA.id) + ' de ' + fmtFechaDMYShell(f.rectificaA.fecha) + '. <b>Motivo:</b> ' + esc(f.rectificaA.motivo) + '</div>' : '') +
+    '<table class="rc-t"><tr class="h"><td>Concepto</td><td class="n">Cantidad</td><td class="n">Precio' + (k.totalConIva ? ' (IVA incl.)' : '') + '</td><td class="n">Importe</td></tr>' +
+    k.lineas.map(l => '<tr><td>' + esc(l.concepto) + (l.iva ? '' : ' <i>(exento)</i>') + '</td><td class="n">' + String(l.cantidad).replace('.', ',') + '</td><td class="n">' + facEur(l.precio) + '</td><td class="n">' + facEur(l.total) + '</td></tr>').join('') +
+    (k.totalConIva ? fila('Base imponible al ' + k.ivaPct + ' %', facEur(k.base)) + fila('Cuota de IVA (' + k.ivaPct + ' %)', facEur(k.cuota)) : '') +
+    (k.exento ? fila('Operaciones exentas de IVA', facEur(k.exento)) : '') +
+    fila('<b>TOTAL FACTURA' + (f.tipoFactura !== 'completa' && k.totalConIva ? ' (IVA incluido)' : '') + '</b>', '<b>' + facEur(k.total) + '</b>', 'l') + '</table>' +
+    (k.exento && f.textoExencion ? '<div class="rc-nota"><b>Exención de IVA:</b> ' + esc(f.textoExencion) + '</div>' : '') +
+    (f.formaPago ? '<div class="rc-nota"><b>Forma de pago:</b> ' + esc(f.formaPago) + '</div>' : '') + '</div>';
+}
+function facVer(f) { nomVerDocumento(facTitulo(f) + ' ' + f.id, facHTML(f)); }
+function facEmisor() { const f = facCfg(); return { razonSocial: f.razonSocial || '', nombreComercial: state.config.nombreTaller || '', nif: f.nif || '', domicilio: [f.domicilio, [f.cp, f.localidad, f.provincia ? '(' + f.provincia + ')' : ''].filter(Boolean).join(' ')].filter(Boolean).join(', '), telefono: f.telefono || state.config.telefonoTienda || '', email: f.email || '', logo: state.config.logoTaller || state.config.tarjetaVisitaFoto || '' }; }
+
+let facEditor = null;   // null = listado; objeto = factura en preparación
+let facTrimestre = null;
+function viewFacturas() {
+  const wrap = el('div');
+  if (facEditor) { wrap.appendChild(facViewEditor()); return wrap; }
+  const f = facCfg();
+  const falta = facFaltanDatos();
+  const panel = el('div', { class: 'panel' }, el('h2', {}, '🧾 Facturas'),
+    el('div', { class: 'sub' }, 'Facturas de encordados, clases y material. Los precios llevan el IVA incluido; la factura lo desglosa. El material va exento.'));
+  const inp = (k, ph, tipo) => { const i = el('input', { type: tipo || 'text', value: f[k] == null ? '' : f[k], placeholder: ph || '' }); i.addEventListener('change', () => { f[k] = tipo === 'number' ? (Number(i.value) || 0) : i.value.trim(); render(); }); return i; };
+  const ta = el('textarea', { rows: '2', placeholder: 'Ej.: Operación exenta en virtud del artículo … de la Ley 37/1992 del IVA' }); ta.value = f.textoExencion || '';
+  ta.addEventListener('change', () => { f.textoExencion = ta.value.trim(); render(); });
+  panel.appendChild(el('details', { open: falta.length || !f.textoExencion ? 'open' : null, style: 'margin:8px 0;' },
+    el('summary', { style: 'cursor:pointer;font-weight:700;' }, falta.length ? '⚠️ Completa los datos fiscales (salen en cada factura): falta ' + falta.join(', ') : 'Datos fiscales de la factura'),
+    el('div', { class: 'grid', style: 'margin-top:8px;' }, field('Razón social', inp('razonSocial', 'IDERMAY CANTABRIA S.L.')), field('NIF', inp('nif', 'B39000000')),
+      field('Domicilio', inp('domicilio', 'Calle y número')), field('Código postal', inp('cp', '39300')), field('Localidad', inp('localidad', 'Torrelavega')), field('Provincia', inp('provincia', 'Cantabria')),
+      field('Teléfono', inp('telefono')), field('Email', inp('email', '', 'email')), field('IVA de encordados y clases (%)', inp('iva', '21', 'number')), field('Serie de numeración', inp('serie', 'F'))),
+    field('Texto de la exención del material (obligatorio en las facturas con material)', ta),
+    el('div', { class: 'sub', style: 'font-size:12px;' }, 'Pide a la gestoría el artículo exacto de la exención. Si no la hay, el material debe llevar IVA.')));
+  panel.appendChild(el('div', { class: 'toolbar' }, el('button', { class: 'btn btn-primary', onclick: () => { facEditor = { clienteId: '', lineas: [{ tipo: 'clase', concepto: 'Clase de bádminton', cantidad: 1, precio: '' }], pedidoIds: [] }; render(); } }, '+ Nueva factura')));
+  wrap.appendChild(panel);
+
+  // Encordados cobrados sin factura
+  const sinFactura = state.pedidos.filter(p => (p.estado === 'terminado' || p.estado === 'entregado') && p.pagado && !p.facturaId).sort((a, b) => b.horaLlegada - a.horaLlegada);
+  const pend = el('div', { class: 'panel' }, el('h3', { style: 'margin:0 0 6px;' }, 'Encordados cobrados sin factura (' + sinFactura.length + ')'));
+  if (!sinFactura.length) pend.appendChild(el('div', { class: 'sub' }, 'Todos los encordados cobrados tienen factura.'));
+  sinFactura.slice(0, 30).forEach(p => {
+    const cli = clienteDe(p.clienteId);
+    pend.appendChild(el('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:6px 0;border-top:1px solid #EEF0F2;' },
+      el('div', { style: 'flex:1;min-width:160px;' }, el('b', {}, cli ? cli.nombre : 'Cliente'), el('div', { class: 'sub', style: 'font-size:12px;margin:0;' }, fmtFechaTs(p.horaLlegada) + ' · ' + (p.marcaModelo || 'Raqueta'))),
+      el('b', {}, facEur(p.precio)), el('button', { class: 'btn btn-ghost btn-sm', onclick: () => facFacturarPedido(p) }, '🧾 Facturar')));
+  });
+  wrap.appendChild(pend);
+
+  // Listado por trimestre
+  const hoy = new Date(); if (!facTrimestre) facTrimestre = hoy.getFullYear() + '-T' + (Math.floor(hoy.getMonth() / 3) + 1);
+  const lista = el('div', { class: 'panel' });
+  const opts = []; for (let a = hoy.getFullYear(); a >= hoy.getFullYear() - 2; a--) for (let t = 4; t >= 1; t--) opts.push({ value: a + '-T' + t, label: t + 'º trimestre de ' + a });
+  lista.appendChild(el('div', { style: 'display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center;' }, el('h3', { style: 'margin:0;' }, 'Facturas emitidas'), selectEl(opts, facTrimestre, v => { facTrimestre = v; render(); })));
+  const zona = el('div', {}, el('div', { class: 'sub' }, 'Cargando…'));
+  lista.appendChild(zona); wrap.appendChild(lista);
+  const [aT, tT] = facTrimestre.split('-T').map(Number);
+  const desde = aT + '-' + String((tT - 1) * 3 + 1).padStart(2, '0') + '-01', hasta = aT + '-' + String(tT * 3).padStart(2, '0') + '-31';
+  if (!firebaseDisponible) { zona.innerHTML = ''; zona.appendChild(el('div', { class: 'msg msg-warn' }, 'Sin conexión: no se pueden consultar las facturas.')); return wrap; }
+  facColeccion().where('año', '==', aT).get().then(snap => {
+    const fs = []; snap.forEach(d => fs.push(d.data()));
+    const delT = fs.filter(x => x.fecha >= desde && x.fecha <= hasta).sort((a, b) => (b.fecha + b.id).localeCompare(a.fecha + a.id));
+    zona.innerHTML = '';
+    if (!delT.length) { zona.appendChild(el('div', { class: 'empty-state' }, 'No hay facturas en este trimestre.')); return; }
+    const sum = k => facR(delT.reduce((s, x) => s + (x.calculo[k] || 0), 0));
+    zona.appendChild(el('div', { style: 'display:grid;grid-template-columns:1fr auto;gap:2px 12px;margin:8px 0;font-size:14px;' },
+      el('span', {}, 'Base imponible'), el('b', {}, facEur(sum('base'))), el('span', {}, 'IVA repercutido'), el('b', {}, facEur(sum('cuota'))),
+      el('span', {}, 'Operaciones exentas'), el('b', {}, facEur(sum('exento'))), el('span', {}, 'Total facturado'), el('b', {}, facEur(sum('total')))));
+    zona.appendChild(el('div', { class: 'toolbar' }, el('button', { class: 'btn btn-ghost btn-sm', onclick: () => facExportar(delT, facTrimestre) }, '⬇ Libro de facturas (Excel)')));
+    delT.forEach(x => zona.appendChild(el('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 0;border-top:1px solid #EEF0F2;' + (x.estado === 'rectificada' ? 'opacity:.6;' : '') },
+      el('div', { style: 'flex:1;min-width:170px;' }, el('b', {}, x.id), ' ', el('span', { class: 'sub' }, fmtFechaDMYShell(x.fecha)),
+        el('div', { class: 'sub', style: 'font-size:12px;margin:0;' }, (x.cliente ? x.cliente.nombre : 'Cliente sin identificar') + ' · ' + facTitulo(x) + (x.estado === 'rectificada' ? ' · rectificada' : ''))),
+      el('b', {}, facEur(x.calculo.total)),
+      el('button', { class: 'btn btn-ghost btn-sm', onclick: () => facVer(x) }, '🧾 Ver / PDF'),
+      x.serie !== 'R' && x.estado !== 'rectificada' ? el('button', { class: 'btn btn-ghost btn-sm', onclick: () => facRectificar(x) }, 'Rectificar') : null)));
+  }).catch(err => { zona.innerHTML = ''; zona.appendChild(el('div', { class: 'msg msg-warn' }, 'No se pudieron cargar las facturas: ' + (err && err.message ? err.message : 'error'))); });
+  return wrap;
+}
+function facFacturarPedido(p) { facEditor = { clienteId: p.clienteId || '', lineas: facLineasDePedido(p), pedidoIds: [p.id], formaPago: '' }; activeTab = 'facturas'; render(); }
+function facViewEditor() {
+  const ed = facEditor; const f = facCfg();
+  const panel = el('div', { class: 'panel' });
+  panel.appendChild(el('div', { class: 'toolbar' }, el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { facEditor = null; render(); } }, '← Volver')));
+  panel.appendChild(el('h2', {}, ed.pedidoIds && ed.pedidoIds.length ? '🧾 Facturar encordado' : '🧾 Nueva factura'));
+  // Cliente
+  const cliSel = selectEl([{ value: '', label: '— Cliente sin identificar (factura simplificada) —' }].concat(state.clientes.slice().sort((a, b) => a.nombre.localeCompare(b.nombre)).map(c => ({ value: c.id, label: c.nombre }))), ed.clienteId || '', v => { ed.clienteId = v; ed.cliente = null; render(); });
+  const cli = ed.clienteId ? clienteDe(ed.clienteId) : null;
+  if (cli && !ed.cliente) ed.cliente = { nombre: cli.nombre || '', nif: cli.dni || '', direccion: [cli.direccion, [cli.codigoPostal, cli.localidad].filter(Boolean).join(' '), cli.provincia].filter(Boolean).join(', ') };
+  panel.appendChild(field('Cliente', cliSel));
+  if (ed.cliente) {
+    const ci = (k, lbl, ph) => { const i = el('input', { type: 'text', value: ed.cliente[k] || '', placeholder: ph || '' }); i.addEventListener('input', () => { ed.cliente[k] = i.value; pintar(); }); return field(lbl, i); };
+    panel.appendChild(el('div', { class: 'grid' }, ci('nombre', 'Nombre o razón social'), ci('nif', 'NIF del cliente (para factura completa)', '12345678Z'), ci('direccion', 'Domicilio del cliente', 'Calle, CP y localidad')));
+    panel.appendChild(el('div', { class: 'sub', style: 'font-size:12px;' }, 'Con NIF y domicilio sale factura completa; sin ellos, factura simplificada. Lo que escribas aquí se guarda también en la ficha del cliente.'));
+  }
+  const fecha = el('input', { type: 'date', value: ed.fecha || chFechaDe(Date.now()) }); fecha.addEventListener('change', () => { ed.fecha = fecha.value; });
+  ed.fecha = ed.fecha || chFechaDe(Date.now());
+  const pago = selectEl([{ value: '', label: '—' }, { value: 'Efectivo', label: 'Efectivo' }, { value: 'Tarjeta', label: 'Tarjeta' }, { value: 'Bizum', label: 'Bizum' }, { value: 'Transferencia', label: 'Transferencia' }], ed.formaPago || '', v => { ed.formaPago = v; });
+  panel.appendChild(el('div', { class: 'grid' }, field('Fecha', fecha), field('Forma de pago', pago)));
+  // Líneas
+  panel.appendChild(el('h3', { style: 'margin:14px 0 4px;' }, 'Conceptos (precios con IVA incluido)'));
+  const zonaLineas = el('div'); panel.appendChild(zonaLineas);
+  const zonaTot = el('div'); 
+  const pintarLineas = () => {
+    zonaLineas.innerHTML = '';
+    ed.lineas.forEach((l, i) => {
+      const tipo = selectEl(Object.keys(FAC_TIPOS).map(k => ({ value: k, label: FAC_TIPOS[k].label })), l.tipo, v => { l.tipo = v; if (!l.concepto || Object.values(FAC_TIPOS).some(t => t.label === l.concepto)) l.concepto = FAC_TIPOS[v].label; pintarLineas(); pintar(); });
+      const con = el('input', { type: 'text', value: l.concepto || '', placeholder: 'Concepto' }); con.addEventListener('input', () => { l.concepto = con.value; });
+      const can = el('input', { type: 'number', step: '1', min: '1', value: String(l.cantidad == null ? 1 : l.cantidad) }); can.addEventListener('input', () => { l.cantidad = Number(can.value) || 0; pintar(); });
+      const pre = el('input', { type: 'number', step: '0.01', value: String(l.precio == null ? '' : l.precio), placeholder: '0,00' }); pre.addEventListener('input', () => { l.precio = Number(pre.value) || 0; pintar(); });
+      zonaLineas.appendChild(el('div', { class: 'acc-usuario' },
+        el('div', { class: 'acc-dos' }, field('Tipo', tipo), field('Concepto', con)),
+        el('div', { class: 'acc-dos', style: 'grid-template-columns:1fr 1fr auto;align-items:end;' }, field('Cantidad', can), field('Precio unidad (IVA incl.)', pre),
+          el('button', { class: 'btn btn-ghost btn-sm', style: 'margin-bottom:8px;', onclick: () => { ed.lineas.splice(i, 1); pintarLineas(); pintar(); } }, '✕'))));
+    });
+  };
+  pintarLineas();
+  panel.appendChild(el('div', { class: 'toolbar' }, el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { ed.lineas.push({ tipo: 'clase', concepto: 'Clase de bádminton', cantidad: 1, precio: '' }); pintarLineas(); pintar(); } }, '+ Añadir concepto')));
+  panel.appendChild(zonaTot);
+  const err = el('div', { style: 'color:#B3261E;font-size:13px;min-height:18px;' });
+  panel.appendChild(err);
+  const btn = el('button', { class: 'btn btn-primary', onclick: () => emitir() }, 'Emitir factura');
+  panel.appendChild(el('div', { class: 'toolbar' }, btn, el('button', { class: 'btn btn-ghost', onclick: () => facVer(borrador()) }, 'Vista previa')));
+  const completa = () => !!(ed.cliente && ed.cliente.nombre && ed.cliente.nif && ed.cliente.direccion);
+  const borrador = () => ({ id: '(sin número)', serie: f.serie, fecha: ed.fecha, tipoFactura: completa() ? 'completa' : 'simplificada', emisor: facEmisor(), cliente: ed.cliente && ed.cliente.nombre ? Object.assign({}, ed.cliente) : null,
+    calculo: facCalcular(ed.lineas, Number(f.iva) || 0), textoExencion: f.textoExencion || '', formaPago: ed.formaPago || '', pedidoIds: ed.pedidoIds || [], clienteId: ed.clienteId || '' });
+  function pintar() {
+    const b = borrador(), k = b.calculo;
+    zonaTot.innerHTML = '';
+    zonaTot.appendChild(el('div', { style: 'display:grid;grid-template-columns:1fr auto;gap:2px 12px;margin-top:10px;font-size:14px;' },
+      k.totalConIva ? el('span', {}, 'Base imponible (' + k.ivaPct + ' %)') : null, k.totalConIva ? el('span', {}, facEur(k.base)) : null,
+      k.totalConIva ? el('span', {}, 'IVA ' + k.ivaPct + ' %') : null, k.totalConIva ? el('span', {}, facEur(k.cuota)) : null,
+      k.exento ? el('span', {}, 'Exento de IVA') : null, k.exento ? el('span', {}, facEur(k.exento)) : null,
+      el('b', {}, 'Total'), el('b', { style: 'font-size:17px;' }, facEur(k.total))));
+    zonaTot.appendChild(el('div', { class: 'sub', style: 'margin-top:4px;' }, 'Se emitirá como ' + (b.tipoFactura === 'completa' ? 'factura completa.' : 'factura simplificada.')));
+  }
+  pintar();
+  function emitir() {
+    err.textContent = '';
+    const b = borrador();
+    const faltan = facFaltanDatos();
+    if (faltan.length) { err.textContent = 'Completa antes los datos fiscales: ' + faltan.join(', ') + '.'; return; }
+    if (!b.calculo.lineas.length) { err.textContent = 'Añade al menos un concepto con cantidad y precio.'; return; }
+    if (b.calculo.lineas.some(l => !String(l.concepto || '').trim())) { err.textContent = 'Todos los conceptos necesitan una descripción.'; return; }
+    if (b.calculo.exento && !b.textoExencion) { err.textContent = 'Hay material exento: escribe el texto de la exención en los datos fiscales (es obligatorio en la factura).'; return; }
+    if (b.tipoFactura === 'simplificada' && b.calculo.total > 400) { err.textContent = 'Más de 400 €: hace falta factura completa. Elige el cliente y rellena su NIF y domicilio.'; return; }
+    if (!confirm('¿Emitir la factura por ' + facEur(b.calculo.total) + '? Una vez emitida no se puede modificar; para corregirla se hace una factura rectificativa.')) return;
+    btn.disabled = true; btn.textContent = 'Emitiendo…';
+    if (ed.clienteId && ed.cliente) { const c = clienteDe(ed.clienteId); if (c) { if (ed.cliente.nif) c.dni = ed.cliente.nif; if (ed.cliente.direccion && !c.direccion) c.direccion = ed.cliente.direccion; } }
+    delete b.id;
+    facEmitir(b).then(fac => {
+      (fac.pedidoIds || []).forEach(pid => { const p = state.pedidos.find(x => x.id === pid); if (p) p.facturaId = fac.id; });
+      facEditor = null; render(); facVer(fac);
+    }).catch(e => { btn.disabled = false; btn.textContent = 'Emitir factura'; err.textContent = 'No se pudo emitir: ' + (e && e.message ? e.message : 'error'); });
+  }
+  return panel;
+}
+function facRectificar(orig) {
+  const motivo = prompt('Motivo de la rectificación de la factura ' + orig.id + ' (por ejemplo: error en el precio, devolución):');
+  if (!motivo || !motivo.trim()) return;
+  if (!confirm('Se emitirá una factura rectificativa que anula la ' + orig.id + ' (' + facEur(orig.calculo.total) + '). Después podrás hacer una factura nueva con los datos correctos. ¿Continuar?')) return;
+  const lineas = orig.calculo.lineas.map(l => ({ tipo: l.tipo, concepto: l.concepto, cantidad: -Math.abs(l.cantidad), precio: l.precio }));
+  const datos = { serie: 'R', fecha: chFechaDe(Date.now()), tipoFactura: orig.tipoFactura, emisor: facEmisor(), cliente: orig.cliente, calculo: facCalcular(lineas, orig.calculo.ivaPct),
+    textoExencion: orig.textoExencion || '', formaPago: '', pedidoIds: orig.pedidoIds || [], clienteId: orig.clienteId || '', rectificaA: { id: orig.id, fecha: orig.fecha, motivo: motivo.trim() } };
+  facEmitir(datos).then(r => {
+    return facColeccion().doc(orig.id).set(Object.assign({}, orig, { estado: 'rectificada', rectificadaPor: r.id })).then(() => {
+      (orig.pedidoIds || []).forEach(pid => { const p = state.pedidos.find(x => x.id === pid); if (p && p.facturaId === orig.id) p.facturaId = null; });
+      render(); facVer(r);
+    });
+  }).catch(e => alert('No se pudo emitir la rectificativa: ' + (e && e.message ? e.message : 'error')));
+}
+function facExportar(lista, periodo) {
+  const col = ['Número', 'Fecha', 'Tipo', 'Cliente', 'NIF cliente', 'Base imponible', '% IVA', 'Cuota IVA', 'Exento', 'Total', 'Rectifica a', 'Estado'];
+  const num = v => facR(v).toFixed(2).replace('.', ',');
+  const txt = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+  const filas = lista.slice().sort((a, b) => (a.fecha + a.id).localeCompare(b.fecha + b.id)).map(x => [txt(x.id), txt(fmtFechaDMYShell(x.fecha)), txt(facTitulo(x)), txt(x.cliente ? x.cliente.nombre : ''), txt(x.cliente ? x.cliente.nif : ''),
+    num(x.calculo.base), num(x.calculo.totalConIva ? x.calculo.ivaPct : 0), num(x.calculo.cuota), num(x.calculo.exento), num(x.calculo.total), txt(x.rectificaA ? x.rectificaA.id : ''), txt(x.estado)].join(';'));
+  const csv = '\ufeff' + col.map(txt).join(';') + '\r\n' + filas.join('\r\n') + '\r\n';
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); a.download = 'facturas_' + periodo + '.csv';
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+
+function facAbrirPorId(id) { facColeccion().doc(id).get().then(d => { if (d.exists) facVer(d.data()); else alert('No se encontró la factura ' + id); }).catch(e => alert('No se pudo abrir: ' + (e && e.message ? e.message : 'error'))); }
 function addMovimientoTaller(datos) {
   state.contabilidad.movimientos.push({ id: uid('mov'), fecha: datos.fecha || new Date().toISOString().slice(0, 10), tipo: datos.tipo || 'gasto', categoria: datos.categoria || '', concepto: datos.concepto || '', importe: datos.importe || 0 });
 }

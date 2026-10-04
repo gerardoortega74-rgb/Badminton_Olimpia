@@ -3,7 +3,7 @@
 <head>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&display=swap">
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261004-ses1">
+<meta name="build-id" content="v20261004-nom1">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -352,6 +352,36 @@ header.app-header::before{display:none !important;}
 .fx-hoja .fx-si{background:var(--court-dark);color:#fff;}
 .fx-hoja .fx-no{background:#EEF1F4;color:var(--ink);}
 
+/* ===== Recibo de nómina ===== */
+#nomReciboVelo{position:fixed;inset:0;background:#E9ECEF;z-index:10000;overflow:auto;-webkit-overflow-scrolling:touch;}
+.rc-barra{position:sticky;top:0;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 14px;padding-top:calc(10px + env(safe-area-inset-top));background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.1);}
+.rc-hoja{background:#fff;max-width:800px;margin:14px auto;padding:22px;box-shadow:0 2px 10px rgba(0,0,0,.12);}
+.rc{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#000;}
+.rc table{width:100%;border-collapse:collapse;display:table;white-space:normal;background:none;overflow:visible;font-size:inherit;max-width:none;}
+.rc td{border-bottom:none;vertical-align:top;}
+.rc-cab td{border:1px solid #000;padding:6px;vertical-align:top;width:50%;line-height:1.5;}
+.rc-per{border:1px solid #000;border-top:0;padding:5px 6px;}
+.rc-t{margin-top:8px;}
+.rc-t td{border:1px solid #999;padding:3px 6px;}
+.rc-t td.n{text-align:right;white-space:nowrap;}
+.rc-t tr.h td{background:#E6E6E6;font-weight:700;border-color:#000;}
+.rc-t tr.s td{font-weight:700;background:#F5F5F5;}
+.rc-t tr.t td{border-top:2px solid #000;}
+.rc-t tr.l td{background:#E6E6E6;font-size:13px;border:2px solid #000;}
+.rc-firmas{display:flex;justify-content:space-between;margin:14px 0 40px;font-size:11px;}
+.rc-firmas div{width:45%;border-top:1px solid #000;padding-top:4px;margin-top:40px;text-align:center;}
+.rc-b td{font-size:10px;}
+@media (max-width:600px){.rc-hoja{padding:10px;margin:8px;} .rc{font-size:9px;} .rc-cab td{display:block;width:auto;}}
+@media print{
+  @page{size:A4;margin:12mm;}
+  body *{visibility:hidden !important;}
+  #nomReciboVelo, #nomReciboVelo *{visibility:visible !important;}
+  #nomReciboVelo{position:absolute;inset:0;background:#fff;overflow:visible;}
+  .rc-barra{display:none !important;}
+  .rc-hoja{box-shadow:none;margin:0;max-width:none;padding:0;}
+  .rc{font-size:10.5px;} .rc-cab td{display:table-cell;width:50%;}
+}
+
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -420,6 +450,7 @@ if (window.pdfjsLib) { pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.c
       <div id="pagosMainArea"></div>
     </div>
     <div id="trabajadoresScreen" style="display:none;"></div>
+    <div id="nominasScreen" style="display:none;"></div>
     <div id="controlhorarioScreen" style="display:none;"></div>
     <div id="accesoScreen" style="display:none;"></div>
   </div>
@@ -10037,6 +10068,7 @@ const AYUDA_INDICE = [
   { pregunta: 'Ver el calendario anual (festivos, días trabajados, vacaciones y bajas)', ruta: 'Gestión de Club → ⏱️ Control horario → Calendario anual', palabras: 'calendario anual año festivos trabajados vacaciones baja permiso ausencia' },
   { pregunta: 'Apuntar vacaciones, bajas o permisos de un empleado', ruta: 'Gestión de Club → ⏱️ Control horario → Calendario anual (abajo)', palabras: 'vacaciones baja permiso ausencia empleado' },
   { pregunta: 'Aprobar o rechazar vacaciones y bajas que piden los empleados', ruta: 'Gestión de Club → ⏱️ Control horario → Solicitudes', palabras: 'solicitud aprobar rechazar vacaciones baja permiso empleado' },
+  { pregunta: 'Hacer las nóminas del mes', ruta: 'Gestión de Club → 💶 Nóminas', palabras: 'nomina nominas sueldo salario pagar recibo gestoria irpf seguridad social' },
   { pregunta: 'Aprobar las correcciones de fichajes olvidados que piden los trabajadores', ruta: 'Gestión de Club → ⏱️ Control horario → Solicitudes', palabras: 'olvido olvide fichar correccion solicitud trabajador' },
   { pregunta: 'Corregir un fichaje mal hecho o añadir uno olvidado', ruta: 'Gestión de Club → ⏱️ Control horario → Fichajes → botón ✏️ (o "Añadir fichaje a mano")', palabras: 'corregir fichaje error olvido salida entrada modificar anular registro' },
   { pregunta: 'Añadir días festivos', ruta: 'Gestión de Club → ⏱️ Control horario → Festivos', palabras: 'festivo fiesta vacaciones dia libre calendario laboral' },
@@ -10166,6 +10198,7 @@ function renderClubGestionTabsNav() {
     ['pagos', '💶 Pagos y Cuotas', 'pagos'],
   ].filter(([, , permiso]) => tienePermiso(permiso));
   if (esAdmin()) tabs.push(['trabajadores', '👔 Trabajadores']);
+  if (esAdmin()) tabs.push(['nominas', '💶 Nóminas']);
   if (esAdmin()) tabs.push(['horario', '⏱️ Control horario']);
   if (esAdmin()) tabs.push(['acceso', '🔐 Control de acceso']);
   tabs.forEach(([id, label]) => {
@@ -10174,9 +10207,9 @@ function renderClubGestionTabsNav() {
 }
 
 function showClubGestionTab(tab) {
-  if ((tab === 'acceso' || tab === 'horario' || tab === 'trabajadores') && !esAdmin()) tab = 'datos';
-  const permisoDeTab = { datos: 'club', jugadores: 'jugadores', general: 'jugadores', pagos: 'pagos', acceso: null, horario: null, trabajadores: null };
-  if (tab !== 'acceso' && tab !== 'horario' && tab !== 'trabajadores' && !tienePermiso(permisoDeTab[tab])) {
+  if ((tab === 'acceso' || tab === 'horario' || tab === 'trabajadores' || tab === 'nominas') && !esAdmin()) tab = 'datos';
+  const permisoDeTab = { datos: 'club', jugadores: 'jugadores', general: 'jugadores', pagos: 'pagos', acceso: null, horario: null, trabajadores: null, nominas: null };
+  if (tab !== 'acceso' && tab !== 'horario' && tab !== 'trabajadores' && tab !== 'nominas' && !tienePermiso(permisoDeTab[tab])) {
     tab = tienePermiso('club') ? 'datos' : tienePermiso('jugadores') ? 'jugadores' : tienePermiso('pagos') ? 'pagos' : 'datos';
   }
   clubGestionTab = tab;
@@ -10188,6 +10221,7 @@ function showClubGestionTab(tab) {
   document.getElementById('accesoScreen').style.display = tab === 'acceso' ? 'block' : 'none';
   document.getElementById('controlhorarioScreen').style.display = tab === 'horario' ? 'block' : 'none';
   document.getElementById('trabajadoresScreen').style.display = tab === 'trabajadores' ? 'block' : 'none';
+  document.getElementById('nominasScreen').style.display = tab === 'nominas' ? 'block' : 'none';
   if (tab === 'datos') renderClub();
   else if (tab === 'jugadores') renderJugadores();
   else if (tab === 'general') renderJugadoresGeneral();
@@ -10195,6 +10229,7 @@ function showClubGestionTab(tab) {
   else if (tab === 'acceso') renderControlAcceso();
   else if (tab === 'horario') renderControlHorario();
   else if (tab === 'trabajadores') { chEmpEditando = null; renderTrabajadores(); }
+  else if (tab === 'nominas') renderNominas();
   renderShellHeader();
 }
 function nombreCompletoShell(j) {
@@ -10258,6 +10293,7 @@ function renderShellHeader() {
     acceso: ['Control de acceso', 'Usuarios, roles y permisos'],
     horario: ['Control horario', 'Fichajes, plantillas de horario y festivos'],
     trabajadores: ['Trabajadores', 'Fichas del personal y acceso a la app'],
+    nominas: ['Nóminas', 'Cálculo, recibos y envío a la gestoría'],
   };
   const [title, sub] = currentSection === 'clubgestion' ? (clubGestionTitles[clubGestionTab] || clubGestionTitles.datos) : (titles[currentSection] || titles.home);
   document.getElementById('shellTitle').textContent = title;
@@ -10689,6 +10725,7 @@ function renderHome() {
     { icon: '🏛️', title: 'Gestión de Club', desc: 'Datos del club, jugadores, y pagos y cuotas.', sec: 'clubgestion', permiso: null },
   ];
   if (esAdmin()) gruposClub.push({ icon: '👔', title: 'Trabajadores', desc: 'Fichas del personal (datos personales y de nómina) y su acceso para fichar.', sec: 'clubgestion', tab: 'trabajadores', permiso: null });
+  if (esAdmin()) gruposClub.push({ icon: '💶', title: 'Nóminas', desc: 'Nóminas por horas trabajadas, recibos en PDF y Excel para la gestoría.', sec: 'clubgestion', tab: 'nominas', permiso: null });
   if (esAdmin()) gruposClub.push({ icon: '⏱️', title: 'Control horario', desc: 'Fichajes, solicitudes de ausencia, calendario, plantillas y festivos.' + (chPendientesSolicitudes ? ' 📨 ' + chPendientesSolicitudes + ' solicitud(es) pendiente(s).' : ''), sec: 'clubgestion', tab: 'horario', permiso: null });
   const onclickClub = (c) => {
     if (c.sec !== 'clubgestion') { showSection(c.sec); return; }
@@ -11642,6 +11679,7 @@ function renderFichar() {
   wrap.appendChild(semana); wrap.appendChild(linea);
   const zonaPedir = el('div'); wrap.appendChild(zonaPedir);
   const solicitudesApi = chRenderSolicitudesTrabajador(zonaPedir);
+  const zonaNominas = el('div'); wrap.appendChild(zonaNominas); nomMisNominas(zonaNominas);
   wrap.appendChild(el('div', { class: 'fx-nota' }, 'Al fichar se guardan la hora y el lugar. Si olvidas fichar o te equivocas, pide la corrección en el apartado de arriba.'));
 
   // Reloj y contador en vivo
@@ -11812,7 +11850,7 @@ let chConfig = null;
 function docConfigHorario() { return docNube().collection('ch_config').doc('general'); }
 function chNormalizarConfig(c) {
   c = c || {};
-  return { plantillas: Array.isArray(c.plantillas) ? c.plantillas : [], asignaciones: c.asignaciones || {}, festivos: Array.isArray(c.festivos) ? c.festivos : [], ausencias: Array.isArray(c.ausencias) ? c.ausencias : [], altas: c.altas || {} };
+  return { plantillas: Array.isArray(c.plantillas) ? c.plantillas : [], asignaciones: c.asignaciones || {}, festivos: Array.isArray(c.festivos) ? c.festivos : [], ausencias: Array.isArray(c.ausencias) ? c.ausencias : [], altas: c.altas || {}, nominasEmpresa: c.nominasEmpresa || {} };
 }
 function chCargarConfig() {
   if (!firebaseDisponible) return Promise.resolve(chConfig = chNormalizarConfig(chConfig));
@@ -12656,6 +12694,7 @@ function chRenderFichaEmpleado(root, emp) {
     field('Fecha de alta *', inp('fechaAlta', 'date')), field('Fecha de baja', inp('fechaBaja', 'date')),
     field('Jornada', sel('jornada', [{ value: 'parcial', label: 'Parcial' }, { value: 'completa', label: 'Completa' }])),
     field('Horas semanales de contrato', inp('horasSemanales', 'number', { step: '0.5', min: '0' })),
+    field('Precio por hora (€ brutos)', inp('precioHora', 'number', { step: '0.01', min: '0' })),
     field('Salario bruto anual (€)', inp('salarioBrutoAnual', 'number', { step: '0.01', min: '0' })),
     field('Número de pagas', sel('numPagas', [{ value: '14', label: '14 (con extras aparte)' }, { value: '12', label: '12 (extras prorrateadas)' }])),
     field('Retención IRPF (%)', inp('irpf', 'number', { step: '0.01', min: '0', max: '50' })),
@@ -12747,6 +12786,297 @@ function chPintarAcceso(zona, emp, u) {
   zona.appendChild(aviso);
   const vista = el('pre', { style: 'white-space:pre-wrap;font-family:inherit;font-size:12px;background:#F6F5F1;border-radius:10px;padding:10px;margin-top:6px;' }, msg);
   zona.appendChild(el('details', {}, el('summary', { style: 'cursor:pointer;font-size:13px;' }, 'Ver el mensaje que se enviará'), vista));
+}
+
+// ===== NÓMINAS: cálculo (tipos y bases 2026, Orden PJC/297/2026) =====
+const NOM_2026 = {
+  cc: { emp: 23.60, trab: 4.70 }, mei: { emp: 0.75, trab: 0.15 }, fp: { emp: 0.60, trab: 0.10 }, fogasa: { emp: 0.20 },
+  desempleoIndef: { emp: 5.50, trab: 1.55 }, desempleoTemp: { emp: 6.70, trab: 1.60 },
+  baseMinHora: { 1: 11.98, 2: 9.94, 3: 8.65 }, baseMinHoraResto: 8.58, baseMax: 5101.20,
+};
+function nomR(n) { return Math.round((Number(n) || 0) * 100) / 100; }
+function nomEur(n) { return nomR(n).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'; }
+function nomPct(n) { return (Number(n) || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' %'; }
+// Calcula una nómina mensual de un trabajador por horas.
+// e: { horas, precioHora, numPagas ('12' prorrateadas | '14' aparte), pagaExtra (importe si se paga este mes), otros:[{concepto, importe, salarial, cotiza, tributa}], irpf, grupo, contrato, atep }
+function nomCalcular(e) {
+  const horas = Number(e.horas) || 0, precio = Number(e.precioHora) || 0;
+  const avisos = [];
+  const salarioBase = nomR(horas * precio);
+  const prorrateadas = String(e.numPagas || '14') === '12';
+  const prorrata = nomR(salarioBase * 2 / 12); // 2 pagas extraordinarias al año
+  const devengos = [{ concepto: 'Salario base (' + horas.toLocaleString('es-ES') + ' h × ' + nomEur(precio) + ')', importe: salarioBase, salarial: true, cotiza: true, tributa: true }];
+  if (prorrateadas && prorrata) devengos.push({ concepto: 'Prorrata pagas extraordinarias', importe: prorrata, salarial: true, cotiza: true, tributa: true });
+  const pagaExtra = !prorrateadas ? nomR(e.pagaExtra) : 0;
+  if (pagaExtra) devengos.push({ concepto: 'Paga extraordinaria', importe: pagaExtra, salarial: true, cotiza: false, tributa: true, esPagaExtra: true });
+  (e.otros || []).forEach(o => { if (Number(o.importe)) devengos.push({ concepto: o.concepto || 'Otro concepto', importe: nomR(o.importe), salarial: o.salarial !== false, cotiza: o.cotiza !== false, tributa: o.tributa !== false }); });
+  const totalDevengado = nomR(devengos.reduce((s, d) => s + d.importe, 0));
+  // Base de contingencias comunes: lo que cotiza este mes + la prorrata de las pagas extra (si se pagan aparte, se prorratean igualmente en la base).
+  const remuneracion = nomR(devengos.filter(d => d.cotiza && !(d.concepto === 'Prorrata pagas extraordinarias')).reduce((s, d) => s + d.importe, 0));
+  let baseCC = nomR(remuneracion + prorrata);
+  const g = Number(e.grupo) || 0;
+  const minHora = NOM_2026.baseMinHora[g] || NOM_2026.baseMinHoraResto;
+  const baseMin = nomR(horas * minHora);
+  if (!g) avisos.push('Falta el grupo de cotización en la ficha: se ha usado la base mínima de los grupos 4 a 11.');
+  if (baseCC < baseMin) { avisos.push('La base calculada (' + nomEur(baseCC) + ') era inferior a la mínima por horas del grupo (' + nomEur(baseMin) + '): se cotiza por la mínima.'); baseCC = baseMin; }
+  if (baseCC > NOM_2026.baseMax) { avisos.push('La base supera el tope máximo: se cotiza por ' + nomEur(NOM_2026.baseMax) + '.'); baseCC = NOM_2026.baseMax; }
+  const temporal = ['temporal', 'formacion', 'practicas'].includes(e.contrato);
+  if (['formacion', 'practicas'].includes(e.contrato)) avisos.push('Los contratos de formación y prácticas tienen reglas de cotización especiales: revisa esta nómina con la gestoría.');
+  if (!e.contrato) avisos.push('Falta el tipo de contrato en la ficha: se ha calculado el desempleo como contrato indefinido.');
+  const des = temporal ? NOM_2026.desempleoTemp : NOM_2026.desempleoIndef;
+  const baseIRPF = nomR(devengos.filter(d => d.tributa).reduce((s, d) => s + d.importe, 0));
+  const irpfPct = Number(e.irpf) || 0;
+  if (!irpfPct) avisos.push('La retención de IRPF está a 0 %: compruébala en la ficha del trabajador.');
+  const deducciones = [
+    { concepto: 'Contingencias comunes', pct: NOM_2026.cc.trab, base: baseCC },
+    { concepto: 'MEI (equidad intergeneracional)', pct: NOM_2026.mei.trab, base: baseCC },
+    { concepto: 'Desempleo', pct: des.trab, base: baseCC },
+    { concepto: 'Formación profesional', pct: NOM_2026.fp.trab, base: baseCC },
+  ].map(d => Object.assign(d, { importe: nomR(d.base * d.pct / 100) }));
+  const totalSS = nomR(deducciones.reduce((s, d) => s + d.importe, 0));
+  const irpfImporte = nomR(baseIRPF * irpfPct / 100);
+  const totalDeducir = nomR(totalSS + irpfImporte);
+  const liquido = nomR(totalDevengado - totalDeducir);
+  const atep = Number(e.atep) || 0;
+  if (!atep) avisos.push('Falta el % de accidentes de trabajo (AT/EP) en los datos de la empresa: el coste para la empresa no lo incluye.');
+  const empresa = [
+    { concepto: 'Contingencias comunes', pct: NOM_2026.cc.emp },
+    { concepto: 'MEI (equidad intergeneracional)', pct: NOM_2026.mei.emp },
+    { concepto: 'AT y EP', pct: atep },
+    { concepto: 'Desempleo', pct: des.emp },
+    { concepto: 'Formación profesional', pct: NOM_2026.fp.emp },
+    { concepto: 'Fondo de Garantía Salarial', pct: NOM_2026.fogasa.emp },
+  ].map(d => Object.assign(d, { base: baseCC, importe: nomR(baseCC * d.pct / 100) }));
+  const totalEmpresa = nomR(empresa.reduce((s, d) => s + d.importe, 0));
+  return { horas, precioHora: precio, salarioBase, prorrata, prorrateadas, pagaExtra, devengos, totalDevengado, remuneracion, baseCC, baseMin, baseIRPF,
+    deducciones, totalSS, irpfPct, irpfImporte, totalDeducir, liquido, empresa, totalEmpresa, costeEmpresa: nomR(totalDevengado + totalEmpresa), avisos };
+}
+
+// ===== NÓMINAS: pantalla, recibo y exportación =====
+function coleccionNominas() { return docNube().collection('ch_nominas'); }
+const NOM_MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+function nomMesTxt(mes) { const [a, m] = mes.split('-').map(Number); return NOM_MESES[m - 1] + ' de ' + a; }
+function nomDiasMes(mes) { const [a, m] = mes.split('-').map(Number); return new Date(a, m, 0).getDate(); }
+function nomEmpresa() { return (chConfig && chConfig.nominasEmpresa) || {}; }
+let nomMes = null;
+function nomMesPorDefecto() { const d = new Date(); d.setDate(1); if (new Date().getDate() < 20) d.setMonth(d.getMonth() - 1); return chMesDe(d.getTime()); }
+function nomHorasFichadas(fichajes, usuarioId) {
+  return chEmparejar(fichajes.filter(f => f.usuarioId === usuarioId)).reduce((s, t) => s + (t.entrada && t.salida ? t.salida.ts - t.entrada.ts : 0), 0) / 3600000;
+}
+function renderNominas() {
+  const root = document.getElementById('nominasScreen');
+  root.innerHTML = '';
+  if (!esAdmin()) { root.appendChild(el('div', { class: 'panel' }, 'No tienes permiso para ver esta sección.')); return; }
+  if (!nomMes) nomMes = nomMesPorDefecto();
+  const cont = el('div', {}, el('div', { class: 'panel' }, el('div', { class: 'sub' }, 'Cargando…')));
+  root.appendChild(cont);
+  Promise.all([chCargarConfig(), chCargarEmpleados(), chCargarMes(nomMes, null), coleccionNominas().where('mes', '==', nomMes).get()]).then(([, empleados, fichajes, snap]) => {
+    const guardadas = {}; snap.forEach(d => { guardadas[d.data().usuarioId] = Object.assign({ id: d.id }, d.data()); });
+    cont.innerHTML = '';
+    nomPintar(cont, empleados, fichajes, guardadas);
+  }).catch(e => { cont.innerHTML = ''; cont.appendChild(el('div', { class: 'msg msg-warn' }, 'No se pudieron cargar las nóminas: ' + (e && e.message ? e.message : 'error'))); });
+}
+function nomPintar(root, empleados, fichajes, guardadas) {
+  const emp = nomEmpresa();
+  const panel = el('div', { class: 'panel' }, el('h2', {}, '💶 Nóminas'),
+    el('div', { class: 'sub' }, 'Nóminas por horas trabajadas con los tipos de cotización de 2026. Revisa las horas, guarda y genera el recibo. El primer mes, compáralas con las de tu gestoría.'));
+  const selMes = el('input', { type: 'month', value: nomMes, onchange: (e) => { if (e.target.value) { nomMes = e.target.value; renderNominas(); } } });
+  panel.appendChild(el('div', { class: 'grid' }, field('Mes de la nómina', selMes)));
+  // Datos de la empresa
+  const faltanEmpresa = !emp.razonSocial || !emp.cif || !emp.ccc || !emp.atep;
+  const estadoEmp = el('span', { class: 'sub' });
+  const inpE = (k, ph, tipo) => { const i = el('input', { type: tipo || 'text', value: emp[k] || '', placeholder: ph || '' }); i.addEventListener('change', () => { chConfig.nominasEmpresa = Object.assign({}, nomEmpresa(), { [k]: i.value.trim() }); chGuardarConfig(estadoEmp); }); return i; };
+  const detEmp = el('details', { style: 'margin:10px 0;' + (faltanEmpresa ? '' : ''), open: faltanEmpresa ? 'open' : null },
+    el('summary', { style: 'cursor:pointer;font-weight:700;' }, faltanEmpresa ? '⚠️ Completa los datos de la empresa (salen en el recibo)' : 'Datos de la empresa'),
+    el('div', { class: 'grid', style: 'margin-top:8px;' },
+      field('Razón social', inpE('razonSocial', 'Club Bádminton Olimpia Torrelavega')), field('CIF', inpE('cif', 'G00000000')),
+      field('Domicilio', inpE('domicilio', 'Calle, número, CP, localidad')), field('Código cuenta cotización (CCC)', inpE('ccc', '39 1234567 89')),
+      field('% AT y EP (te lo da la gestoría o la mutua)', inpE('atep', 'Ej.: 1,50', 'number'))), estadoEmp);
+  panel.appendChild(detEmp);
+  root.appendChild(panel);
+
+  const activos = empleados.filter(e => e.usuarioId && (!e.fechaBaja || e.fechaBaja >= nomMes + '-01') && (!e.fechaAlta || e.fechaAlta <= nomMes + '-' + nomDiasMes(nomMes)));
+  if (!activos.length) { root.appendChild(el('div', { class: 'panel' }, el('div', { class: 'empty-state' }, 'No hay trabajadores de alta en ' + nomMesTxt(nomMes) + '. Créalos en 👔 Trabajadores.'))); return; }
+  const totales = el('div', { class: 'panel' });
+  const calculos = {};
+  const pintarTotales = () => {
+    totales.innerHTML = '';
+    const g = Object.values(guardadas);
+    totales.appendChild(el('h3', { style: 'margin:0 0 6px;' }, 'Resumen de ' + nomMesTxt(nomMes)));
+    totales.appendChild(el('div', { class: 'sub' }, g.length + ' de ' + activos.length + ' nóminas guardadas.'));
+    if (g.length) {
+      const sum = k => nomR(g.reduce((s, n) => s + (n.calculo[k] || 0), 0));
+      totales.appendChild(el('div', { style: 'margin:8px 0;line-height:1.7;' },
+        el('div', {}, 'Total devengado: ', el('b', {}, nomEur(sum('totalDevengado')))),
+        el('div', {}, 'Total líquido a pagar: ', el('b', {}, nomEur(sum('liquido')))),
+        el('div', {}, 'Seguridad Social (trabajadores + empresa): ', el('b', {}, nomEur(sum('totalSS') + sum('totalEmpresa')))),
+        el('div', {}, 'Retenciones de IRPF: ', el('b', {}, nomEur(sum('irpfImporte')))),
+        el('div', {}, 'Coste total para el club: ', el('b', {}, nomEur(sum('costeEmpresa'))))));
+      totales.appendChild(el('div', { class: 'toolbar' }, el('button', { class: 'btn btn-primary', onclick: () => nomExportar(g) }, '⬇ Excel para la gestoría')));
+    }
+  };
+  activos.forEach(e => {
+    const u = accessControl.usuarios.find(x => x.id === e.usuarioId);
+    const previa = guardadas[e.usuarioId];
+    const fich = nomR(nomHorasFichadas(fichajes, e.usuarioId));
+    const ent = previa ? Object.assign({}, previa.entrada) : { horas: fich, otros: [] };
+    const card = el('div', { class: 'panel' });
+    const zonaCalc = el('div');
+    const msg = el('div', { class: 'sub', style: 'min-height:16px;' });
+    const horas = el('input', { type: 'number', step: '0.25', min: '0', value: String(ent.horas) });
+    const precio = el('input', { type: 'number', step: '0.01', min: '0', value: String(ent.precioHora != null ? ent.precioHora : (e.precioHora || '')) });
+    const irpf = el('input', { type: 'number', step: '0.01', min: '0', value: String(ent.irpf != null ? ent.irpf : (e.irpf || 0)) });
+    const esMesExtra = ['06', '12'].includes(nomMes.slice(5)) && String(e.numPagas || '14') !== '12';
+    const pagaExtra = el('input', { type: 'number', step: '0.01', min: '0', value: String(ent.pagaExtra || '') });
+    const otrosZona = el('div');
+    const otros = (ent.otros || []).map(o => Object.assign({}, o));
+    const entrada = () => ({ horas: Number(horas.value) || 0, precioHora: Number(precio.value) || 0, irpf: Number(irpf.value) || 0, pagaExtra: esMesExtra ? (Number(pagaExtra.value) || 0) : 0,
+      numPagas: String(e.numPagas || '14'), grupo: e.grupoCotizacion, contrato: e.tipoContrato, atep: Number(nomEmpresa().atep) || 0, otros: otros.filter(o => Number(o.importe)) });
+    const recalcular = () => {
+      const c = nomCalcular(entrada()); calculos[e.usuarioId] = c;
+      zonaCalc.innerHTML = '';
+      zonaCalc.appendChild(el('div', { style: 'display:grid;grid-template-columns:1fr auto;gap:4px 12px;margin-top:10px;font-size:14px;' },
+        el('span', {}, 'Total devengado'), el('b', {}, nomEur(c.totalDevengado)),
+        el('span', {}, 'Seguridad Social del trabajador'), el('span', {}, '− ' + nomEur(c.totalSS)),
+        el('span', {}, 'IRPF (' + nomPct(c.irpfPct) + ')'), el('span', {}, '− ' + nomEur(c.irpfImporte)),
+        el('span', { style: 'font-weight:700;' }, 'Líquido a percibir'), el('b', { style: 'font-size:17px;' }, nomEur(c.liquido)),
+        el('span', { class: 'sub' }, 'Coste para el club'), el('span', { class: 'sub' }, nomEur(c.costeEmpresa))));
+      c.avisos.forEach(a => zonaCalc.appendChild(el('div', { class: 'sub', style: 'color:#7A5B00;margin-top:4px;' }, '⚠️ ' + a)));
+    };
+    const pintarOtros = () => {
+      otrosZona.innerHTML = '';
+      otros.forEach((o, i) => {
+        const c = el('input', { type: 'text', value: o.concepto || '', placeholder: 'Concepto (ej.: plus transporte)' });
+        const imp = el('input', { type: 'number', step: '0.01', value: String(o.importe || '') });
+        const cot = el('input', { type: 'checkbox', style: 'width:auto;' }); cot.checked = o.cotiza !== false;
+        c.addEventListener('input', () => { o.concepto = c.value; }); imp.addEventListener('input', () => { o.importe = Number(imp.value) || 0; recalcular(); });
+        cot.addEventListener('change', () => { o.cotiza = cot.checked; o.salarial = cot.checked; recalcular(); });
+        otrosZona.appendChild(el('div', { style: 'display:grid;grid-template-columns:1fr 100px auto auto;gap:6px;align-items:center;margin-top:6px;' }, c, imp,
+          el('label', { style: 'display:flex;gap:4px;align-items:center;margin:0;font-size:12px;text-transform:none;letter-spacing:0;' }, cot, 'Cotiza'),
+          el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { otros.splice(i, 1); pintarOtros(); recalcular(); } }, '✕')));
+      });
+    };
+    [horas, precio, irpf, pagaExtra].forEach(i => i.addEventListener('input', recalcular));
+    const estadoChip = previa ? (previa.publicada ? el('span', { class: 'chip', style: 'background:#E4F3E9;color:#1E5B3C;' }, '✅ Guardada y visible para el trabajador') : el('span', { class: 'chip', style: 'background:#E7F0FA;color:#2B6CB0;' }, 'Guardada')) : el('span', { class: 'chip chip-muted' }, 'Sin guardar');
+    card.appendChild(el('div', { style: 'display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center;' }, el('h3', { style: 'margin:0;' }, chNombreCompleto(e)), estadoChip));
+    card.appendChild(el('div', { class: 'sub' }, (e.puesto || 'Sin puesto') + '. Horas fichadas en ' + NOM_MESES[Number(nomMes.slice(5)) - 1] + ': ' + fich.toLocaleString('es-ES') + ' h.' + (u ? '' : ' (sin usuario de fichaje)')));
+    if (!e.precioHora && !(previa && previa.entrada.precioHora)) card.appendChild(el('div', { class: 'sub', style: 'color:#7A5B00;' }, '⚠️ Pon su precio por hora en su ficha de 👔 Trabajadores (o aquí para este mes).'));
+    card.appendChild(el('div', { class: 'grid', style: 'margin-top:8px;' }, field('Horas a pagar', horas), field('Precio por hora (€ brutos)', precio), field('IRPF (%)', irpf),
+      esMesExtra ? field('Paga extra de ' + (nomMes.slice(5) === '06' ? 'junio' : 'diciembre') + ' (€)', pagaExtra) : null));
+    if (esMesExtra && !ent.pagaExtra) {
+      const ini = nomMes.slice(5) === '06' ? 1 : 7;
+      const meses = []; for (let m = ini; m < ini + 6; m++) meses.push(nomMes.slice(0, 4) + '-' + String(m).padStart(2, '0'));
+      coleccionNominas().where('usuarioId', '==', e.usuarioId).get().then(sn => {
+        let suma = 0; sn.forEach(d => { const n = d.data(); if (meses.includes(n.mes) && n.mes !== nomMes) suma += n.calculo.salarioBase || 0; });
+        suma += nomR((Number(horas.value) || 0) * (Number(precio.value) || 0));
+        pagaExtra.value = String(nomR(suma / 6)); recalcular();
+        pagaExtra.parentNode.appendChild(el('div', { class: 'sub', style: 'font-size:12px;' }, 'Propuesta: media del salario base del semestre. Ajústala si tu convenio dice otra cosa.'));
+      }).catch(() => {});
+    }
+    card.appendChild(el('div', { style: 'margin-top:6px;font-weight:600;font-size:14px;' }, 'Otros conceptos'));
+    card.appendChild(otrosZona);
+    card.appendChild(el('button', { class: 'btn btn-ghost btn-sm', style: 'margin-top:6px;', onclick: () => { otros.push({ concepto: '', importe: 0, cotiza: true, salarial: true }); pintarOtros(); } }, '+ Añadir concepto'));
+    card.appendChild(zonaCalc);
+    const guardar = (publicar) => {
+      const datos = { usuarioId: e.usuarioId, empleadoId: e.id, nombre: chNombreCompleto(e), mes: nomMes, entrada: entrada(), calculo: calculos[e.usuarioId],
+        trabajador: { nombre: chNombreCompleto(e), dni: e.dni || '', nss: e.nss || '', puesto: e.puesto || '', grupo: e.grupoCotizacion || '', contrato: e.tipoContrato || '', fechaAlta: e.fechaAlta || '' },
+        empresa: Object.assign({}, nomEmpresa()), publicada: publicar === undefined ? !!(previa && previa.publicada) : publicar,
+        actualizadoEn: Date.now(), creadoEn: previa ? previa.creadoEn : Date.now() };
+      msg.textContent = 'Guardando…';
+      return coleccionNominas().doc(nomMes + '_' + e.usuarioId).set(JSON.parse(JSON.stringify(datos))).then(() => { guardadas[e.usuarioId] = Object.assign({ id: nomMes + '_' + e.usuarioId }, JSON.parse(JSON.stringify(datos))); renderNominas(); return datos; })
+        .catch(err => { msg.textContent = 'No se pudo guardar: ' + (err && err.message ? err.message : 'error'); });
+    };
+    card.appendChild(msg);
+    card.appendChild(el('div', { class: 'toolbar' },
+      el('button', { class: 'btn btn-primary btn-sm', onclick: () => guardar() }, '💾 Guardar'),
+      el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { const d = { nombre: chNombreCompleto(e), mes: nomMes, calculo: calculos[e.usuarioId], trabajador: { nombre: chNombreCompleto(e), dni: e.dni || '', nss: e.nss || '', puesto: e.puesto || '', grupo: e.grupoCotizacion || '', contrato: e.tipoContrato || '', fechaAlta: e.fechaAlta || '' }, empresa: nomEmpresa() }; nomVerRecibo(d); } }, '🧾 Ver recibo / PDF'),
+      previa && previa.publicada
+        ? el('button', { class: 'btn btn-ghost btn-sm', onclick: () => guardar(false) }, 'Ocultar al trabajador')
+        : el('button', { class: 'btn btn-ghost btn-sm', onclick: () => guardar(true) }, '📲 Guardar y enviar al trabajador')));
+    pintarOtros(); recalcular();
+    root.appendChild(card);
+  });
+  root.appendChild(totales);
+  pintarTotales();
+}
+// ---- Recibo oficial (modelo de recibo individual de salarios) ----
+function nomReciboHTML(n) {
+  const c = n.calculo, t = n.trabajador || {}, e = n.empresa || {};
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+  const fila = (a, b, cls) => '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td>' + a + '</td><td class="n">' + b + '</td></tr>';
+  const contratos = { indefinido: 'Indefinido', 'fijo-discontinuo': 'Fijo discontinuo', temporal: 'Temporal', formacion: 'Formación', practicas: 'Prácticas' };
+  const [a, m] = n.mes.split('-').map(Number);
+  const sal = c.devengos.filter(d => d.salarial !== false), noSal = c.devengos.filter(d => d.salarial === false);
+  return '<div class="rc">' +
+    '<table class="rc-cab"><tr><td><b>Empresa:</b> ' + esc(e.razonSocial || '—') + '<br><b>Domicilio:</b> ' + esc(e.domicilio || '—') + '<br><b>CIF:</b> ' + esc(e.cif || '—') + ' &nbsp; <b>CCC:</b> ' + esc(e.ccc || '—') + '</td>' +
+    '<td><b>Trabajador/a:</b> ' + esc(t.nombre) + '<br><b>NIF:</b> ' + esc(t.dni || '—') + ' &nbsp; <b>Nº afiliación SS:</b> ' + esc(t.nss || '—') + '<br><b>Categoría:</b> ' + esc(t.puesto || '—') + ' &nbsp; <b>Grupo cotización:</b> ' + esc(t.grupo || '—') +
+    '<br><b>Contrato:</b> ' + esc(contratos[t.contrato] || '—') + ' &nbsp; <b>Antigüedad:</b> ' + esc(t.fechaAlta ? fmtFechaDMYShell(t.fechaAlta) : '—') + '</td></tr></table>' +
+    '<div class="rc-per"><b>Período de liquidación:</b> del 1 al ' + nomDiasMes(n.mes) + ' de ' + NOM_MESES[m - 1] + ' de ' + a + ' &nbsp; <b>Total días:</b> ' + nomDiasMes(n.mes) + '</div>' +
+    '<table class="rc-t"><tr class="h"><td>I. DEVENGOS</td><td class="n">Importe</td></tr>' +
+    '<tr class="s"><td colspan="2">1. Percepciones salariales</td></tr>' + sal.map(d => fila(esc(d.concepto), nomEur(d.importe))).join('') +
+    (noSal.length ? '<tr class="s"><td colspan="2">2. Percepciones no salariales</td></tr>' + noSal.map(d => fila(esc(d.concepto), nomEur(d.importe))).join('') : '') +
+    fila('<b>A. TOTAL DEVENGADO</b>', '<b>' + nomEur(c.totalDevengado) + '</b>', 't') +
+    '<tr class="h"><td>II. DEDUCCIONES</td><td class="n"></td></tr>' +
+    '<tr class="s"><td colspan="2">1. Aportación del trabajador a las cotizaciones de la Seguridad Social</td></tr>' +
+    c.deducciones.map(d => fila(esc(d.concepto) + ' (' + nomPct(d.pct) + ' s/ ' + nomEur(d.base) + ')', nomEur(d.importe))).join('') +
+    fila('Total aportaciones', nomEur(c.totalSS)) +
+    '<tr class="s"><td colspan="2">2. Impuesto sobre la Renta de las Personas Físicas</td></tr>' + fila('IRPF (' + nomPct(c.irpfPct) + ' s/ ' + nomEur(c.baseIRPF) + ')', nomEur(c.irpfImporte)) +
+    fila('<b>B. TOTAL A DEDUCIR</b>', '<b>' + nomEur(c.totalDeducir) + '</b>', 't') +
+    fila('<b>LÍQUIDO TOTAL A PERCIBIR (A − B)</b>', '<b>' + nomEur(c.liquido) + '</b>', 'l') + '</table>' +
+    '<div class="rc-firmas"><div>Firma y sello de la empresa</div><div>Recibí</div></div>' +
+    '<table class="rc-t rc-b"><tr class="h"><td colspan="4">DETERMINACIÓN DE LAS BASES DE COTIZACIÓN A LA SEGURIDAD SOCIAL Y CONCEPTOS DE RECAUDACIÓN CONJUNTA Y DE LA BASE SUJETA A RETENCIÓN DEL IRPF Y APORTACIÓN DE LA EMPRESA</td></tr>' +
+    '<tr><td colspan="2">1. Contingencias comunes: remuneración mensual ' + nomEur(c.remuneracion) + ' + prorrata pagas extraordinarias ' + nomEur(c.prorrata) + '</td><td>Base</td><td class="n">' + nomEur(c.baseCC) + '</td></tr>' +
+    '<tr><td colspan="2">2. Contingencias profesionales y recaudación conjunta (desempleo, formación profesional, FOGASA)</td><td>Base</td><td class="n">' + nomEur(c.baseCC) + '</td></tr>' +
+    '<tr><td colspan="2">3. Base sujeta a retención del IRPF</td><td>Base</td><td class="n">' + nomEur(c.baseIRPF) + '</td></tr>' +
+    '<tr class="s"><td>Aportación de la empresa</td><td class="n">Tipo</td><td class="n">Base</td><td class="n">Importe</td></tr>' +
+    c.empresa.map(d => '<tr><td>' + esc(d.concepto) + '</td><td class="n">' + nomPct(d.pct) + '</td><td class="n">' + nomEur(d.base) + '</td><td class="n">' + nomEur(d.importe) + '</td></tr>').join('') +
+    '<tr class="t"><td colspan="3"><b>Total aportación empresa</b></td><td class="n"><b>' + nomEur(c.totalEmpresa) + '</b></td></tr></table></div>';
+}
+function nomVerRecibo(n) {
+  document.querySelectorAll('#nomReciboVelo').forEach(x => x.remove());
+  const velo = el('div', { id: 'nomReciboVelo' });
+  const hoja = el('div', { class: 'rc-hoja' });
+  hoja.innerHTML = nomReciboHTML(n);
+  velo.appendChild(el('div', { class: 'rc-barra' },
+    el('b', {}, 'Nómina de ' + nomMesTxt(n.mes)),
+    el('div', {}, el('button', { class: 'btn btn-primary btn-sm', onclick: () => window.print() }, '🖨 Imprimir / Guardar PDF'), ' ',
+      el('button', { class: 'btn btn-ghost btn-sm', onclick: () => velo.remove() }, 'Cerrar'))));
+  velo.appendChild(hoja);
+  document.body.appendChild(velo);
+}
+function nomExportar(lista) {
+  const col = ['Mes', 'Trabajador', 'NIF', 'Nº afiliación SS', 'Grupo', 'Contrato', 'Horas', 'Precio hora', 'Salario base', 'Prorrata pagas extra', 'Paga extra', 'Otros conceptos', 'Total devengado',
+    'Base CC', 'CC trabajador', 'MEI trabajador', 'Desempleo trabajador', 'FP trabajador', 'Total SS trabajador', '% IRPF', 'Base IRPF', 'IRPF', 'Líquido', 'Total aportación empresa', 'Coste empresa'];
+  const num = v => nomR(v).toFixed(2).replace('.', ',');
+  const txt = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+  const filas = lista.sort((a, b) => a.nombre.localeCompare(b.nombre)).map(n => {
+    const c = n.calculo, t = n.trabajador || {};
+    const d = k => (c.deducciones.find(x => x.concepto.startsWith(k)) || {}).importe || 0;
+    const otros = c.devengos.filter(x => !x.concepto.startsWith('Salario base') && x.concepto !== 'Prorrata pagas extraordinarias' && !x.esPagaExtra).reduce((s, x) => s + x.importe, 0);
+    return [txt(n.mes), txt(t.nombre), txt(t.dni), txt(t.nss), txt(t.grupo), txt(t.contrato), num(c.horas), num(c.precioHora), num(c.salarioBase), num(c.prorrateadas ? c.prorrata : 0), num(c.pagaExtra), num(otros), num(c.totalDevengado),
+      num(c.baseCC), num(d('Contingencias')), num(d('MEI')), num(d('Desempleo')), num(d('Formación')), num(c.totalSS), num(c.irpfPct), num(c.baseIRPF), num(c.irpfImporte), num(c.liquido), num(c.totalEmpresa), num(c.costeEmpresa)].join(';');
+  });
+  const csv = '\ufeff' + col.map(txt).join(';') + '\r\n' + filas.join('\r\n') + '\r\n';
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'nominas_' + lista[0].mes + '.csv';
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+// ---- El trabajador ve sus nóminas ----
+function nomMisNominas(root) {
+  const zona = el('div');
+  const card = el('details', { class: 'fx-card fx-pedir' }, el('summary', {}, 'Mis nóminas'), el('div', { class: 'fx-pedir-cuerpo' }, zona));
+  root.appendChild(card);
+  zona.appendChild(el('div', { class: 'sub' }, 'Cargando…'));
+  coleccionNominas().where('usuarioId', '==', sesionActual.id).where('publicada', '==', true).get().then(snap => {
+    const arr = []; snap.forEach(d => arr.push(d.data()));
+    arr.sort((a, b) => b.mes.localeCompare(a.mes));
+    zona.innerHTML = '';
+    if (!arr.length) { zona.appendChild(el('div', { class: 'sub' }, 'Aún no tienes nóminas disponibles. Aparecerán aquí cuando el club las publique.')); return; }
+    const ul = el('ul', { class: 'fx-linea' });
+    arr.forEach(n => ul.appendChild(el('li', { style: 'cursor:pointer;', onclick: () => nomVerRecibo(n) },
+      el('span', {}, nomMesTxt(n.mes).charAt(0).toUpperCase() + nomMesTxt(n.mes).slice(1)), el('b', { style: 'margin-left:auto;' }, nomEur(n.calculo.liquido)), el('span', { class: 'sub' }, '🧾'))));
+    zona.appendChild(ul);
+  }).catch(() => { zona.innerHTML = ''; zona.appendChild(el('div', { class: 'sub' }, 'No se pudieron cargar tus nóminas.')); });
 }
 
 // ---------- Pantalla del administrador ----------

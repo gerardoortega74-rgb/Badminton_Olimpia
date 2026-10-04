@@ -3,7 +3,7 @@
 <head>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&display=swap">
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261004-fx3">
+<meta name="build-id" content="v20261004-ses1">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -9392,7 +9392,7 @@ function aplicarModoLectura() {
 function cerrarSesion() {
   sesionActual = null;
   saveSesion();
-  if (typeof modoAuth !== 'undefined' && modoAuth) { authFb().signOut().finally(() => location.reload()); return; }
+  if (typeof modoAuth !== 'undefined' && modoAuth) { if (sesionUnicaCancelar) { sesionUnicaCancelar(); sesionUnicaCancelar = null; } authFb().signOut().finally(() => location.reload()); return; }
   mostrarLogin();
 }
 function esVistaPublicaTaller() {
@@ -10014,6 +10014,7 @@ function seleccionarUsuarioLogin(id) {
 }
 function iniciarAppTrasLogin() {
   document.getElementById('loginScreen').style.display = 'none';
+  if (typeof marcarDispositivoFichaje === 'function') marcarDispositivoFichaje(esTrabajador());
   if (esTrabajador()) { showSection('fichar'); return; }
   const hadClub = !!clubGlobal.nombre;
   if (!hadClub) {
@@ -11129,6 +11130,36 @@ function limpiarDatosLocalesClub() {
   accessControl = { usuarios: [], permisos: { usuario: {}, lectura: {} } };
   jugadoresGlobal = []; jugadoresExternos = [];
 }
+// ---------- Una sola sesión por persona ----------
+// Al entrar se guarda un identificador de sesión; si la persona entra en otro dispositivo,
+// el identificador cambia y este dispositivo cierra la sesión automáticamente.
+let sesionUnicaCancelar = null;
+function activarSesionUnica(usuarioId) {
+  if (!usuarioId || !firebaseDisponible) return;
+  if (sesionUnicaCancelar) { sesionUnicaCancelar(); sesionUnicaCancelar = null; }
+  const sid = 's_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
+  const ref = coleccionEstadoCuentas().doc(usuarioId);
+  ref.set({ sesionActiva: sid, sesionDesde: Date.now(), sesionDispositivo: (navigator.userAgent || '').slice(0, 120) }, { merge: true }).then(() => {
+    sesionUnicaCancelar = ref.onSnapshot(snap => {
+      const d = snap.exists ? snap.data() : null;
+      if (d && d.sesionActiva && d.sesionActiva !== sid) expulsarPorOtraSesion();
+    }, () => {});
+  }).catch(e => console.warn('No se pudo registrar la sesión:', e));
+}
+function expulsarPorOtraSesion() {
+  if (sesionUnicaCancelar) { sesionUnicaCancelar(); sesionUnicaCancelar = null; }
+  if (typeof fxPararGPS === 'function') fxPararGPS();
+  document.querySelectorAll('.fx-velo').forEach(n => n.remove());
+  sesionActual = null; saveSesion();
+  authFb().signOut().catch(() => {});
+  const root = document.getElementById('loginScreen');
+  SCREENS.forEach(id => { const e = document.getElementById(id); if (e) e.style.display = 'none'; });
+  ['btnMenu', 'btnLogout', 'btnAcceso', 'sesionIndicador'].forEach(id => { const e = document.getElementById(id); if (e) e.style.display = 'none'; });
+  root.style.display = 'block'; root.innerHTML = '';
+  root.appendChild(el('div', { class: 'login-card' }, el('h2', {}, 'Sesión cerrada'),
+    el('div', { class: 'msg msg-warn' }, 'Tu sesión se ha abierto en otro dispositivo y aquí se ha cerrado. Solo puede haber una sesión abierta a la vez.'),
+    el('div', { class: 'toolbar' }, el('button', { class: 'btn btn-primary', onclick: () => location.reload() }, 'Entrar de nuevo'))));
+}
 function cargarClubPublico() {
   return docPublico().get().then(d => {
     if (d.exists) { const p = desenvolverArraysAnidados(d.data()); clubGlobal = Object.assign({ nombre: '', localidad: '', temporadaInicio: '', temporadaFin: '', logo: '', tecnicos: [] }, p.club || {}); }
@@ -11161,7 +11192,8 @@ function entrarConCuenta(user) {
     cargarDatosClubCompletos().then(() => {
       const a = adminEnAccessControl();
       sesionActual = { id: a ? a.id : 'admin', nombre: a ? a.nombre : 'Administrador', rol: 'admin', uid: user.uid };
-      saveSesion();
+      saveSesion(); marcarDispositivoFichaje(false);
+      activarSesionUnica(sesionActual.id);
       arrancarAppLocal();
       sincronizarCuentas();
       chCargarConfig().then(publicarHorariosTrabajadores).catch(() => {});
@@ -11172,7 +11204,8 @@ function entrarConCuenta(user) {
     if (!r.exists) { errorDeEntrada('Tu acceso no está activo. Avisa al administrador del club.'); return; }
     const d = r.data();
     sesionActual = { id: d.usuarioId, nombre: d.nombre, rol: d.rol, uid: user.uid };
-    saveSesion();
+    saveSesion(); marcarDispositivoFichaje(d.rol === 'trabajador');
+    activarSesionUnica(d.usuarioId);
     const continuar = () => {
       if (d.rol === 'trabajador') { limpiarDatosLocalesClub(); cargarClubPublico().then(() => { marcarEstadoNube(''); showSection('fichar'); }); }
       else cargarDatosClubCompletos().then(arrancarAppLocal).catch(e => errorDeEntrada('No se pudieron cargar los datos del club: ' + mensajeErrorAuth(e)));
@@ -11197,7 +11230,7 @@ function pantallaCambiarPinCuenta(d, alTerminar) {
     if (p1.value !== p2.value) { err.textContent = 'Los dos PIN no coinciden.'; return; }
     btn.disabled = true;
     authFb().currentUser.updatePassword(derivarClave(p1.value, d.usuarioId))
-      .then(() => coleccionEstadoCuentas().doc(d.usuarioId).set({ version: d.version, cambiadoEn: Date.now() }))
+      .then(() => coleccionEstadoCuentas().doc(d.usuarioId).set({ version: d.version, cambiadoEn: Date.now() }, { merge: true }))
       .then(() => { root.style.display = 'none'; alTerminar(); })
       .catch(e => { btn.disabled = false; err.textContent = mensajeErrorAuth(e); });
   } }, 'Guardar mi PIN');
@@ -12528,7 +12561,7 @@ function chValidarIBAN(v) {
 }
 function chFormatearIBAN(v) { return (v || '').toUpperCase().replace(/\s/g, '').replace(/(.{4})/g, '$1 ').trim(); }
 function chNombreCompleto(e) { return [e.nombre, e.apellido1, e.apellido2].filter(Boolean).join(' '); }
-function chUrlApp() { return location.origin + location.pathname; }
+function chUrlApp() { return location.origin + location.pathname + '?fichar=1'; }
 function chTelefonoWhatsApp(t) { let d = (t || '').replace(/\D/g, ''); if (d.length === 9) d = '34' + d; if (d.startsWith('0034')) d = d.slice(2); return d; }
 function chMensajeCredenciales(emp, usuario) {
   const club = clubGlobal.nombre || 'el club';
@@ -12881,7 +12914,20 @@ document.getElementById('btnExportMenu').addEventListener('click', () => { docum
 document.getElementById('btnImportMenu').addEventListener('click', () => { document.getElementById('menuAjustes').style.display = 'none'; document.getElementById('btnImport').click(); });
 document.getElementById('btnAyuda').addEventListener('click', () => abrirAyuda());
 
-if (!esVistaPublica()) {
+// En los móviles de fichaje (enlace con ?fichar o dispositivo donde ha entrado un trabajador) no se muestra la animación.
+function esDispositivoFichaje() {
+  try {
+    if (new URLSearchParams(location.search).has('fichar')) return true;
+    if (localStorage.getItem('badmintonEsFichaje') === '1') return true;
+    const ses = JSON.parse(localStorage.getItem('badmintonSesion') || 'null');
+    return !!(ses && ses.rol === 'trabajador');
+  } catch (e) { return false; }
+}
+function marcarDispositivoFichaje(esFichaje) { try { localStorage.setItem('badmintonEsFichaje', esFichaje ? '1' : '0'); } catch (e) {} }
+if (!esVistaPublica() && esDispositivoFichaje()) {
+  const v = document.getElementById('introVideo');
+  try { v.pause(); v.removeAttribute('src'); v.load(); } catch (e) {}
+} else if (!esVistaPublica()) {
   const introScreen = document.getElementById('introScreen');
   const introVideo = document.getElementById('introVideo');
   const btnSaltarIntro = document.getElementById('btnSaltarIntro');

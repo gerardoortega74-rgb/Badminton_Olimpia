@@ -3,7 +3,7 @@
 <head>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&display=swap">
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261004-fac2">
+<meta name="build-id" content="v20261004-nom6">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -13131,14 +13131,17 @@ function nomCalcular(e) {
   const liquido = nomR(totalDevengado - totalDeducir);
   const atep = Number(e.atep) || 0;
   if (!atep) avisos.push('Falta el % de accidentes de trabajo (AT/EP) en los datos de la empresa: el coste para la empresa no lo incluye.');
+  // Como hacen los programas de nóminas: la parte de la empresa es la cuota total del concepto menos lo que paga el trabajador.
+  const partEmp = (pctEmp, pctTrab, impTrab) => nomR(nomR(baseCC * (pctEmp + pctTrab) / 100) - impTrab);
+  const dT = k => deducciones.find(x => x.concepto.startsWith(k)).importe;
   const empresa = [
-    { concepto: 'Contingencias comunes', pct: NOM_2026.cc.emp },
-    { concepto: 'MEI (equidad intergeneracional)', pct: NOM_2026.mei.emp },
-    { concepto: 'AT y EP', pct: atep },
-    { concepto: 'Desempleo', pct: des.emp },
-    { concepto: 'Formación profesional', pct: NOM_2026.fp.emp },
-    { concepto: 'Fondo de Garantía Salarial', pct: NOM_2026.fogasa.emp },
-  ].map(d => Object.assign(d, { base: baseCC, importe: nomR(baseCC * d.pct / 100) }));
+    { concepto: 'Contingencias comunes', pct: NOM_2026.cc.emp, importe: partEmp(NOM_2026.cc.emp, NOM_2026.cc.trab, dT('Contingencias')) },
+    { concepto: 'MEI (equidad intergeneracional)', pct: NOM_2026.mei.emp, importe: partEmp(NOM_2026.mei.emp, NOM_2026.mei.trab, dT('MEI')) },
+    { concepto: 'AT y EP', pct: atep, importe: nomR(baseCC * atep / 100) },
+    { concepto: 'Desempleo', pct: des.emp, importe: partEmp(des.emp, des.trab, dT('Desempleo')) },
+    { concepto: 'Formación profesional', pct: NOM_2026.fp.emp, importe: partEmp(NOM_2026.fp.emp, NOM_2026.fp.trab, dT('Formación')) },
+    { concepto: 'Fondo de Garantía Salarial', pct: NOM_2026.fogasa.emp, importe: nomR(baseCC * NOM_2026.fogasa.emp / 100) },
+  ].map(d => Object.assign(d, { base: baseCC }));
   const totalEmpresa = nomR(empresa.reduce((s, d) => s + d.importe, 0));
   return { horas, precioHora: precio, salarioBase, prorrata, prorrateadas, pagaExtra, devengos, totalDevengado, remuneracion, baseCC, baseMin, baseIRPF,
     deducciones, totalSS, irpfPct, irpfImporte, totalDeducir, liquido, empresa, totalEmpresa, costeEmpresa: nomR(totalDevengado + totalEmpresa), avisos };

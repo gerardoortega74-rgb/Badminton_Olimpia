@@ -3,7 +3,7 @@
 <head>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&display=swap">
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261004-nom6">
+<meta name="build-id" content="v20261006-nomfijo">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -12985,7 +12985,10 @@ function chRenderFichaEmpleado(root, emp) {
     field('Fecha de alta *', inp('fechaAlta', 'date')), field('Fecha de baja', inp('fechaBaja', 'date')),
     field('Jornada', sel('jornada', [{ value: 'parcial', label: 'Parcial' }, { value: 'completa', label: 'Completa' }])),
     field('Horas semanales de contrato', inp('horasSemanales', 'number', { step: '0.5', min: '0' })),
-    field('Precio por hora (€ brutos)', inp('precioHora', 'number', { step: '0.01', min: '0' })),
+    field('Forma de pago del salario', sel('salarioModo', [{ value: 'horas', label: 'Por horas fichadas' }, { value: 'fijo', label: 'Sueldo fijo mensual' }])),
+    field('Sueldo fijo mensual (€ brutos, sin pagas extra)', inp('salarioMensual', 'number', { step: '0.01', min: '0', placeholder: 'Solo si cobra sueldo fijo' })),
+    field('Horas al mes de contrato (alta a tiempo parcial)', inp('horasMesContrato', 'number', { step: '0.01', min: '0', placeholder: 'Ej.: 59' })),
+    field('Precio por hora (€ brutos)', inp('precioHora', 'number', { step: '0.01', min: '0', placeholder: 'Solo si cobra por horas' })),
     field('Salario bruto anual (€)', inp('salarioBrutoAnual', 'number', { step: '0.01', min: '0' })),
     field('Número de pagas', sel('numPagas', [{ value: '14', label: '14 (con extras aparte)' }, { value: '12', label: '12 (extras prorrateadas)' }])),
     field('Retención IRPF (%)', inp('irpf', 'number', { step: '0.01', min: '0', max: '50' })),
@@ -13091,13 +13094,23 @@ function nomEur(n) { return nomNum(n) + ' €'; }
 function nomPct(n) { return (Number(n) || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' %'; }
 // Calcula una nómina mensual de un trabajador por horas.
 // e: { horas, precioHora, numPagas ('12' prorrateadas | '14' aparte), pagaExtra (importe si se paga este mes), otros:[{concepto, importe, salarial, cotiza, tributa}], irpf, grupo, contrato, atep }
+// Con sueldo fijo (e.modo 'fijo'): e.salarioMensual (bruto sin pagas extra), e.dias (días en alta, mes de 30), e.horasContrato (horas en alta al mes).
 function nomCalcular(e) {
-  const horas = Number(e.horas) || 0, precio = Number(e.precioHora) || 0;
+  const fijo = e.modo === 'fijo';
   const avisos = [];
-  const salarioBase = nomR(horas * precio);
+  const dias = fijo ? Math.max(0, Math.min(30, Number(e.dias) || 0)) : 30;
+  const sueldoMes = fijo ? (Number(e.salarioMensual) || 0) : 0;
+  const precioDia = fijo ? sueldoMes / 30 : 0;
+  const horasContrato = fijo ? (Number(e.horasContrato) || 0) : 0;
+  const horas = fijo ? nomR(horasContrato * dias / 30) : (Number(e.horas) || 0);
+  const precio = fijo ? 0 : (Number(e.precioHora) || 0);
+  if (fijo && !sueldoMes) avisos.push('Falta el sueldo fijo mensual en la ficha del trabajador.');
+  if (fijo && !horasContrato) avisos.push('Faltan las horas al mes de contrato en la ficha: sin ellas no se puede comprobar la base mínima de cotización.');
+  const salarioBase = fijo ? (dias >= 30 ? nomR(sueldoMes) : nomR(precioDia * dias)) : nomR(horas * precio);
   const prorrateadas = String(e.numPagas || '14') === '12';
   const prorrata = nomR(salarioBase * 2 / 12); // 2 pagas extraordinarias al año
-  const devengos = [{ concepto: 'Salario base (' + horas.toLocaleString('es-ES') + ' h × ' + nomEur(precio) + ')', importe: salarioBase, salarial: true, cotiza: true, tributa: true }];
+  const precioDiaTxt = precioDia.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 3 }) + ' €';
+  const devengos = [{ concepto: fijo ? 'Salario base (' + dias + ' días × ' + precioDiaTxt + ')' : 'Salario base (' + horas.toLocaleString('es-ES') + ' h × ' + nomEur(precio) + ')', importe: salarioBase, salarial: true, cotiza: true, tributa: true }];
   if (prorrateadas && prorrata) devengos.push({ concepto: 'Prorrata pagas extraordinarias', importe: prorrata, salarial: true, cotiza: true, tributa: true });
   const pagaExtra = !prorrateadas ? nomR(e.pagaExtra) : 0;
   if (pagaExtra) devengos.push({ concepto: 'Paga extraordinaria', importe: pagaExtra, salarial: true, cotiza: false, tributa: true, esPagaExtra: true });
@@ -13143,7 +13156,8 @@ function nomCalcular(e) {
     { concepto: 'Fondo de Garantía Salarial', pct: NOM_2026.fogasa.emp, importe: nomR(baseCC * NOM_2026.fogasa.emp / 100) },
   ].map(d => Object.assign(d, { base: baseCC }));
   const totalEmpresa = nomR(empresa.reduce((s, d) => s + d.importe, 0));
-  return { horas, precioHora: precio, salarioBase, prorrata, prorrateadas, pagaExtra, devengos, totalDevengado, remuneracion, baseCC, baseMin, baseIRPF,
+  return { modo: fijo ? 'fijo' : 'horas', dias, salarioMensual: sueldoMes, precioDia: Math.round(precioDia * 1000) / 1000, horasContrato, horasFichadas: e.horasFichadas != null ? nomR(e.horasFichadas) : null,
+    horas, precioHora: precio, salarioBase, prorrata, prorrateadas, pagaExtra, devengos, totalDevengado, remuneracion, baseCC, baseMin, baseIRPF,
     deducciones, totalSS, irpfPct, irpfImporte, totalDeducir, liquido, empresa, totalEmpresa, costeEmpresa: nomR(totalDevengado + totalEmpresa), avisos };
 }
 
@@ -13159,6 +13173,15 @@ let nomMesComprobado = false;
 function nomDetalleHoras(fichajes, usuarioId) {
   const tramos = chEmparejar(fichajes.filter(f => f.usuarioId === usuarioId));
   return { completos: tramos.filter(t => t.entrada && t.salida), abiertos: tramos.filter(t => !(t.entrada && t.salida)) };
+}
+// Días en alta del mes con la regla de 30 días: mes completo = 30; si entra o sale ese mes, los días naturales en alta.
+function nomDiasAlta(e, mes) {
+  const ini = mes + '-01', fin = mes + '-' + String(nomDiasMes(mes)).padStart(2, '0');
+  const desde = e.fechaAlta && e.fechaAlta > ini ? e.fechaAlta : ini;
+  const hasta = e.fechaBaja && e.fechaBaja < fin ? e.fechaBaja : fin;
+  if (desde === ini && hasta === fin) return 30;
+  if (hasta < desde) return 0;
+  return Math.min(30, Math.round((new Date(hasta + 'T12:00:00') - new Date(desde + 'T12:00:00')) / 86400000) + 1);
 }
 function nomHorasFichadas(fichajes, usuarioId) {
   return chEmparejar(fichajes.filter(f => f.usuarioId === usuarioId)).reduce((s, t) => s + (t.entrada && t.salida ? t.salida.ts - t.entrada.ts : 0), 0) / 3600000;
@@ -13190,7 +13213,7 @@ function renderNominas() {
 function nomPintar(root, empleados, fichajes, guardadas, auditoria) {
   const emp = nomEmpresa();
   const panel = el('div', { class: 'panel' }, el('h2', {}, '💶 Nóminas'),
-    el('div', { class: 'sub' }, 'Nóminas por horas trabajadas con los tipos de cotización de 2026. Revisa las horas, guarda y genera el recibo. El primer mes, compáralas con las de tu gestoría.'));
+    el('div', { class: 'sub' }, 'Nóminas con los tipos de cotización de 2026: por horas fichadas o con sueldo fijo mensual según contrato (se elige en la ficha de cada trabajador). Revisa, guarda y genera el recibo. El primer mes, compáralas con las de tu gestoría.'));
   const selMes = el('input', { type: 'month', value: nomMes, onchange: (e) => { if (e.target.value) { nomMes = e.target.value; renderNominas(); } } });
   panel.appendChild(el('div', { class: 'grid' }, field('Mes de la nómina', selMes)));
   // Datos de la empresa
@@ -13231,20 +13254,26 @@ function nomPintar(root, empleados, fichajes, guardadas, auditoria) {
     const previa = guardadas[e.usuarioId];
     const fich = nomR(nomHorasFichadas(fichajes, e.usuarioId));
     const ent = previa ? Object.assign({}, previa.entrada) : { horas: fich, otros: [] };
-    const horasCambiadas = previa && nomR(previa.entrada.horas) !== fich;
+    const fijo = (previa && previa.entrada.modo ? previa.entrada.modo : (e.salarioModo || 'horas')) === 'fijo';
+    const horasCambiadas = previa && !fijo && nomR(previa.entrada.horas) !== fich;
     ent.horas = fich;
+    const horasContratoMes = Number(ent.horasContrato != null ? ent.horasContrato : e.horasMesContrato) || 0;
     const det = nomDetalleHoras(fichajes, e.usuarioId);
     const card = el('div', { class: 'panel' });
     const zonaCalc = el('div');
     const msg = el('div', { class: 'sub', style: 'min-height:16px;' });
     const horas = el('input', { type: 'number', value: String(fich), readonly: 'readonly', style: 'background:#EEF1F4;font-weight:700;', title: 'Horas fichadas en el mes. Para cambiarlas, corrige los fichajes.' });
     const precio = el('input', { type: 'number', step: '0.01', min: '0', value: String(ent.precioHora != null ? ent.precioHora : (e.precioHora || '')) });
+    const sueldo = el('input', { type: 'number', step: '0.01', min: '0', value: String(ent.salarioMensual != null ? ent.salarioMensual : (e.salarioMensual || '')) });
+    const diasAlta = el('input', { type: 'number', step: '1', min: '0', max: '30', value: String(ent.dias != null ? ent.dias : nomDiasAlta(e, nomMes)) });
+    const horasCont = el('input', { type: 'number', step: '0.01', min: '0', value: String(horasContratoMes || '') });
     const irpf = el('input', { type: 'number', step: '0.01', min: '0', value: String(ent.irpf != null ? ent.irpf : (e.irpf || 0)) });
     const esMesExtra = ['06', '12'].includes(nomMes.slice(5)) && String(e.numPagas || '14') !== '12';
     const pagaExtra = el('input', { type: 'number', step: '0.01', min: '0', value: String(ent.pagaExtra || '') });
     const otrosZona = el('div');
     const otros = (ent.otros || []).map(o => Object.assign({}, o));
-    const entrada = () => ({ horas: Number(horas.value) || 0, precioHora: Number(precio.value) || 0, irpf: Number(irpf.value) || 0, pagaExtra: esMesExtra ? (Number(pagaExtra.value) || 0) : 0,
+    const entrada = () => ({ modo: fijo ? 'fijo' : 'horas', horasFichadas: fich, salarioMensual: fijo ? (Number(sueldo.value) || 0) : null, dias: fijo ? (Number(diasAlta.value) || 0) : null, horasContrato: fijo ? (Number(horasCont.value) || 0) : null,
+      horas: Number(horas.value) || 0, precioHora: fijo ? 0 : (Number(precio.value) || 0), irpf: Number(irpf.value) || 0, pagaExtra: esMesExtra ? (Number(pagaExtra.value) || 0) : 0,
       numPagas: String(e.numPagas || '14'), grupo: e.grupoCotizacion, contrato: e.tipoContrato, atep: Number(nomEmpresa().atep) || 0, otros: otros.filter(o => Number(o.importe)) });
     const recalcular = () => {
       const c = nomCalcular(entrada()); calculos[e.usuarioId] = c;
@@ -13256,6 +13285,15 @@ function nomPintar(root, empleados, fichajes, guardadas, auditoria) {
         el('span', { style: 'font-weight:700;' }, 'Líquido a percibir'), el('b', { style: 'font-size:17px;' }, nomEur(c.liquido)),
         el('span', { class: 'sub' }, 'Coste para el club'), el('span', { class: 'sub' }, nomEur(c.costeEmpresa))));
       c.avisos.forEach(a => zonaCalc.appendChild(el('div', { class: 'sub', style: 'color:#7A5B00;margin-top:4px;' }, '⚠️ ' + a)));
+      if (fijo) {
+        const hc = c.horas, dif = nomR(fich - hc);
+        let t = 'Horas fichadas: ' + fich.toLocaleString('es-ES') + ' h · Horas de contrato en el mes: ' + hc.toLocaleString('es-ES') + ' h. ';
+        if (!hc) t = 'Horas fichadas: ' + fich.toLocaleString('es-ES') + ' h.';
+        else if (dif > 0.5) t += 'Ha fichado ' + dif.toLocaleString('es-ES') + ' h más que su contrato: si son horas complementarias o extra que hay que pagar, añádelas en Otros conceptos.';
+        else if (dif < -0.5) t += 'Ha fichado ' + Math.abs(dif).toLocaleString('es-ES') + ' h menos que su contrato (revisa ausencias o fichajes olvidados). El sueldo fijo no cambia.';
+        else t += 'Cuadran.';
+        zonaCalc.appendChild(el('div', { class: 'sub', style: 'margin-top:6px;' + (Math.abs(dif) > 0.5 && hc ? 'color:#7A5B00;' : '') }, (Math.abs(dif) > 0.5 && hc ? '⚠️ ' : '✅ ') + t));
+      }
     };
     const pintarOtros = () => {
       otrosZona.innerHTML = '';
@@ -13270,24 +13308,29 @@ function nomPintar(root, empleados, fichajes, guardadas, auditoria) {
           el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { otros.splice(i, 1); pintarOtros(); recalcular(); } }, '✕')));
       });
     };
-    [horas, precio, irpf, pagaExtra].forEach(i => i.addEventListener('input', recalcular));
+    [horas, precio, irpf, pagaExtra, sueldo, diasAlta, horasCont].forEach(i => i.addEventListener('input', recalcular));
     const estadoChip = previa ? (previa.publicada ? el('span', { class: 'chip', style: 'background:#E4F3E9;color:#1E5B3C;' }, '✅ Guardada y visible para el trabajador') : el('span', { class: 'chip', style: 'background:#E7F0FA;color:#2B6CB0;' }, 'Guardada')) : el('span', { class: 'chip chip-muted' }, 'Sin guardar');
     card.appendChild(el('div', { style: 'display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center;' }, el('h3', { style: 'margin:0;' }, chNombreCompleto(e)), estadoChip));
-    card.appendChild(el('div', { class: 'sub' }, (e.puesto || 'Sin puesto') + '. Horas fichadas en ' + NOM_MESES[Number(nomMes.slice(5)) - 1] + ': ' + fich.toLocaleString('es-ES') + ' h.' + (u ? '' : ' (sin usuario de fichaje)')));
-    if (!e.precioHora && !(previa && previa.entrada.precioHora)) card.appendChild(el('div', { class: 'sub', style: 'color:#7A5B00;' }, '⚠️ Pon su precio por hora en su ficha de 👔 Trabajadores (o aquí para este mes).'));
+    card.appendChild(el('div', { class: 'sub' }, (e.puesto || 'Sin puesto') + '. ' + (fijo ? 'Sueldo fijo mensual según contrato. ' : 'Pago por horas fichadas. ') + 'Horas fichadas en ' + NOM_MESES[Number(nomMes.slice(5)) - 1] + ': ' + fich.toLocaleString('es-ES') + ' h.' + (u ? '' : ' (sin usuario de fichaje)')));
+    if (fijo && !e.salarioMensual && !(previa && previa.entrada.salarioMensual)) card.appendChild(el('div', { class: 'sub', style: 'color:#7A5B00;' }, '⚠️ Pon su sueldo fijo mensual y las horas de contrato en su ficha de 👔 Trabajadores (o aquí para este mes).'));
+    if (!fijo && !e.precioHora && !(previa && previa.entrada.precioHora)) card.appendChild(el('div', { class: 'sub', style: 'color:#7A5B00;' }, '⚠️ Pon su precio por hora en su ficha de 👔 Trabajadores (o aquí para este mes).'));
     const irAFichajes = () => { chMesVista = nomMes; chFiltroUsuario = e.usuarioId; chTab = 'fichajes'; goToClubGestion('horario'); };
     if (horasCambiadas) card.appendChild(el('div', { class: 'msg msg-warn', style: 'display:block;margin-top:8px;' }, 'Los fichajes han cambiado desde que guardaste esta nómina: se guardó con ' + nomR(previa.entrada.horas).toLocaleString('es-ES') + ' h y ahora hay ' + fich.toLocaleString('es-ES') + ' h fichadas. Vuelve a guardarla para actualizarla.'));
     if (det.abiertos.length) card.appendChild(el('div', { class: 'msg msg-warn', style: 'display:block;margin-top:8px;' },
       det.abiertos.length + ' fichaje(s) sin cerrar (' + det.abiertos.map(t => fmtFechaDMYShell(chFechaDe((t.entrada || t.salida).ts)) + (t.entrada ? ' sin salida' : ' sin entrada')).join(', ') + '). No cuentan para la nómina hasta que se corrijan. ',
       el('button', { class: 'btn btn-ghost btn-sm', onclick: irAFichajes }, 'Corregir fichajes')));
-    card.appendChild(el('div', { class: 'grid', style: 'margin-top:8px;' }, field('Horas a pagar (del fichaje)', horas), field('Precio por hora (€ brutos)', precio), field('IRPF (%)', irpf),
-      esMesExtra ? field('Paga extra de ' + (nomMes.slice(5) === '06' ? 'junio' : 'diciembre') + ' (€)', pagaExtra) : null));
-    if (esMesExtra && !ent.pagaExtra) {
+    const campoExtra = esMesExtra ? field('Paga extra de ' + (nomMes.slice(5) === '06' ? 'junio' : 'diciembre') + ' (€)', pagaExtra) : null;
+    if (fijo) card.appendChild(el('div', { class: 'grid', style: 'margin-top:8px;' }, field('Sueldo mensual (€ brutos)', sueldo), field('Días en alta (mes de 30)', diasAlta), field('Horas de contrato al mes', horasCont), field('IRPF (%)', irpf), campoExtra));
+    else card.appendChild(el('div', { class: 'grid', style: 'margin-top:8px;' }, field('Horas a pagar (del fichaje)', horas), field('Precio por hora (€ brutos)', precio), field('IRPF (%)', irpf), campoExtra));
+    if (esMesExtra && !ent.pagaExtra && fijo) {
+      pagaExtra.value = String(nomR(Number(sueldo.value) || 0));
+      pagaExtra.parentNode.appendChild(el('div', { class: 'sub', style: 'font-size:12px;' }, 'Propuesta: un sueldo mensual. Ajústala si no ha trabajado todo el semestre o si tu convenio dice otra cosa.'));
+    } else if (esMesExtra && !ent.pagaExtra) {
       const ini = nomMes.slice(5) === '06' ? 1 : 7;
       const meses = []; for (let m = ini; m < ini + 6; m++) meses.push(nomMes.slice(0, 4) + '-' + String(m).padStart(2, '0'));
       coleccionNominas().where('usuarioId', '==', e.usuarioId).get().then(sn => {
         let suma = 0; sn.forEach(d => { const n = d.data(); if (!n.archivo && meses.includes(n.mes) && n.mes !== nomMes) suma += n.calculo.salarioBase || 0; });
-        suma += nomR((Number(horas.value) || 0) * (Number(precio.value) || 0));
+        suma += nomCalcular(entrada()).salarioBase;
         pagaExtra.value = String(nomR(suma / 6)); recalcular();
         pagaExtra.parentNode.appendChild(el('div', { class: 'sub', style: 'font-size:12px;' }, 'Propuesta: media del salario base del semestre. Ajústala si tu convenio dice otra cosa.'));
       }).catch(() => {});
@@ -13420,7 +13463,7 @@ function nomPintarArchivo(root, archivo, guardadas) {
     lista.forEach((a, i) => panel.appendChild(el('div', { style: 'display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 0;border-top:1px solid #EEF0F2;' },
       el('div', { style: 'flex:1;min-width:180px;' },
         el('div', {}, 'Versión ' + (lista.length - i) + (i === 0 ? ' · vigente' : '') + (a.enviadaAlTrabajador ? ' · enviada al trabajador' : '')),
-        el('div', { class: 'sub', style: 'font-size:12px;' }, 'Generada el ' + fmtFechaDMYShell(chFechaDe(a.generadoEn)) + ' a las ' + chHora(a.generadoEn) + (a.generadoPor ? ' por ' + a.generadoPor : '') + '. Líquido ' + nomEur(a.calculo.liquido) + ', ' + a.calculo.horas.toLocaleString('es-ES') + ' h.')),
+        el('div', { class: 'sub', style: 'font-size:12px;' }, 'Generada el ' + fmtFechaDMYShell(chFechaDe(a.generadoEn)) + ' a las ' + chHora(a.generadoEn) + (a.generadoPor ? ' por ' + a.generadoPor : '') + '. Líquido ' + nomEur(a.calculo.liquido) + (a.calculo.modo === 'fijo' ? ', sueldo fijo (' + a.calculo.dias + ' días)' : ', ' + a.calculo.horas.toLocaleString('es-ES') + ' h') + '.')),
       el('button', { class: 'btn btn-ghost btn-sm', onclick: () => nomVerRecibo(a) }, '🧾 Nómina'),
       a.informe ? el('button', { class: 'btn btn-ghost btn-sm', onclick: () => nomVerInforme(a) }, '📋 Fichajes') : null)));
   });
@@ -13444,7 +13487,8 @@ function nomReciboHTML(n) {
     '<table class="rc-cab"><tr><td><b>Empresa:</b> ' + esc(e.razonSocial || '—') + '<br><b>Domicilio:</b> ' + esc(e.domicilio || '—') + '<br><b>CIF:</b> ' + esc(e.cif || '—') + ' &nbsp; <b>CCC:</b> ' + esc(e.ccc || '—') + '</td>' +
     '<td><b>Trabajador/a:</b> ' + esc(t.nombre) + '<br><b>NIF:</b> ' + esc(t.dni || '—') + ' &nbsp; <b>Nº afiliación SS:</b> ' + esc(t.nss || '—') + '<br><b>Categoría:</b> ' + esc(t.puesto || '—') + ' &nbsp; <b>Grupo cotización:</b> ' + esc(t.grupo || '—') +
     '<br><b>Contrato:</b> ' + esc(contratos[t.contrato] || '—') + ' &nbsp; <b>Antigüedad:</b> ' + esc(t.fechaAlta ? fmtFechaDMYShell(t.fechaAlta) : '—') + '</td></tr></table>' +
-    '<div class="rc-per"><b>Período de liquidación:</b> del 1 al ' + nomDiasMes(n.mes) + ' de ' + NOM_MESES[m - 1] + ' de ' + a + ' &nbsp; <b>Total días:</b> ' + nomDiasMes(n.mes) + '</div>' +
+    '<div class="rc-per"><b>Período de liquidación:</b> del 1 al ' + nomDiasMes(n.mes) + ' de ' + NOM_MESES[m - 1] + ' de ' + a + ' &nbsp; <b>Total días:</b> ' + (c.modo === 'fijo' ? c.dias : nomDiasMes(n.mes)) +
+    (c.modo === 'fijo' && c.horasContrato ? ' &nbsp; <b>Horas en alta a tiempo parcial:</b> ' + nomNum(c.horas) : '') + '</div>' +
     '<table class="rc-t"><tr class="h"><td>I. DEVENGOS</td><td class="n">Importe</td></tr>' +
     '<tr class="s"><td colspan="2">1. Percepciones salariales</td></tr>' + sal.map(d => fila(esc(d.concepto), nomEur(d.importe))).join('') +
     (noSal.length ? '<tr class="s"><td colspan="2">2. Percepciones no salariales</td></tr>' + noSal.map(d => fila(esc(d.concepto), nomEur(d.importe))).join('') : '') +
@@ -13480,7 +13524,7 @@ function nomVerReciboAntiguo(n) {
   document.body.appendChild(velo);
 }
 function nomExportar(lista) {
-  const col = ['Mes', 'Trabajador', 'NIF', 'Nº afiliación SS', 'Grupo', 'Contrato', 'Horas', 'Precio hora', 'Salario base', 'Prorrata pagas extra', 'Paga extra', 'Otros conceptos', 'Total devengado',
+  const col = ['Mes', 'Trabajador', 'NIF', 'Nº afiliación SS', 'Grupo', 'Contrato', 'Forma de pago', 'Días', 'Horas', 'Precio hora', 'Salario base', 'Prorrata pagas extra', 'Paga extra', 'Otros conceptos', 'Total devengado',
     'Base CC', 'CC trabajador', 'MEI trabajador', 'Desempleo trabajador', 'FP trabajador', 'Total SS trabajador', '% IRPF', 'Base IRPF', 'IRPF', 'Líquido', 'Total aportación empresa', 'Coste empresa'];
   const num = v => nomR(v).toFixed(2).replace('.', ',');
   const txt = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
@@ -13488,7 +13532,7 @@ function nomExportar(lista) {
     const c = n.calculo, t = n.trabajador || {};
     const d = k => (c.deducciones.find(x => x.concepto.startsWith(k)) || {}).importe || 0;
     const otros = c.devengos.filter(x => !x.concepto.startsWith('Salario base') && x.concepto !== 'Prorrata pagas extraordinarias' && !x.esPagaExtra).reduce((s, x) => s + x.importe, 0);
-    return [txt(n.mes), txt(t.nombre), txt(t.dni), txt(t.nss), txt(t.grupo), txt(t.contrato), num(c.horas), num(c.precioHora), num(c.salarioBase), num(c.prorrateadas ? c.prorrata : 0), num(c.pagaExtra), num(otros), num(c.totalDevengado),
+    return [txt(n.mes), txt(t.nombre), txt(t.dni), txt(t.nss), txt(t.grupo), txt(t.contrato), txt(c.modo === 'fijo' ? 'Sueldo fijo' : 'Por horas'), c.modo === 'fijo' ? c.dias : '', num(c.horas), num(c.precioHora), num(c.salarioBase), num(c.prorrateadas ? c.prorrata : 0), num(c.pagaExtra), num(otros), num(c.totalDevengado),
       num(c.baseCC), num(d('Contingencias')), num(d('MEI')), num(d('Desempleo')), num(d('Formación')), num(c.totalSS), num(c.irpfPct), num(c.baseIRPF), num(c.irpfImporte), num(c.liquido), num(c.totalEmpresa), num(c.costeEmpresa)].join(';');
   });
   const csv = '\ufeff' + col.map(txt).join(';') + '\r\n' + filas.join('\r\n') + '\r\n';

@@ -840,11 +840,11 @@ body.ol-club #homeScreen:has(.ol-portada){max-width:none;}
 #correoScreen{--co-tinta:#1d2b3a;--co-suave:#5b6b7c;--co-linea:#e2e7ee;--co-fondo:#ffffff;--co-acento:#0F5C46;--co-acento2:#F2C230;--co-rojo:#C8102E;}
 #correoScreen .co-idermay{--co-acento:#0B2D5B;--co-acento2:#E0162B;}
 .co-wrap{max-width:880px;margin:0 auto;display:flex;flex-direction:column;gap:14px;color:var(--co-tinta);}
-.co-cuentas{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.co-cuentas{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
 .co-cuenta{min-width:0;border:2px solid var(--co-linea);background:var(--co-fondo);border-radius:14px;padding:10px 12px;text-align:left;cursor:pointer;font:inherit;color:inherit;}
 .co-cuenta b{display:flex;align-items:center;gap:8px;font-size:15px;}
 .co-cuenta small{display:block;color:var(--co-suave);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px;}
-.co-cuenta.club.on{border-color:#0F5C46;background:#0F5C46;color:#fff;box-shadow:inset 0 -4px 0 #F2C230;}
+.co-cuenta.club.on,.co-cuenta.bot.on{border-color:#0F5C46;background:#0F5C46;color:#fff;box-shadow:inset 0 -4px 0 #F2C230;}
 .co-cuenta.idermay.on{border-color:#0B2D5B;background:#0B2D5B;color:#fff;box-shadow:inset 0 -4px 0 #E0162B;}
 .co-cuenta.on small{color:rgba(255,255,255,.78);}
 .co-burbuja{background:#E0162B;color:#fff;font-size:11px;font-weight:800;border-radius:999px;padding:1px 7px;}
@@ -11011,7 +11011,7 @@ function showSection(sec) {
   if (sec !== 'taller') document.body.classList.remove('taller-sidebar-on');
   const cuentaCorreo = sec === 'correo' && typeof CorreoApp !== 'undefined' ? CorreoApp.cuentaActiva() : null;
   document.body.classList.toggle('im-taller', sec === 'taller' || cuentaCorreo === 'idermay');
-  document.body.classList.toggle('ol-club', ['home', 'torneo', 'planificacion', 'clubgestion'].includes(sec) || cuentaCorreo === 'club');
+  document.body.classList.toggle('ol-club', ['home', 'torneo', 'planificacion', 'clubgestion'].includes(sec) || (!!cuentaCorreo && cuentaCorreo !== 'idermay'));
   if (typeof olCerrarHoja === 'function') olCerrarHoja();
   if (sec !== 'taller') { const ms = document.getElementById('imMasSheet'); if (ms) ms.classList.remove('abierto'); }
   SCREENS.forEach(id => { document.getElementById(id).style.display = 'none'; });
@@ -11212,10 +11212,20 @@ const CorreoApp = (function () {
   function cfg() {
     if (!clubGlobal.correo || typeof clubGlobal.correo !== 'object') clubGlobal.correo = {};
     const c = clubGlobal.correo;
-    if (!Array.isArray(c.cuentas) || !c.cuentas.length) c.cuentas = [
-      { id: 'club', nombre: 'Club', email: 'club.bot.89.09@gmail.com' },
-      { id: 'idermay', nombre: 'IDERMAY', email: '' },
+    const defecto = [
+      { id: 'club', nombre: 'Club', email: 'info.b.olimpia@gmail.com' },
+      { id: 'bot', nombre: 'Club bot', email: 'club.bot.89.09@gmail.com' },
+      { id: 'idermay', nombre: 'IDERMAY', email: 'idermaycantabria@gmail.com' },
     ];
+    if (!Array.isArray(c.cuentas)) c.cuentas = [];
+    // Primera versión: «club» era club.bot; ahora club = info y club.bot tiene su propia pestaña.
+    const viejoClub = c.cuentas.find(x => x.id === 'club' && x.email === 'club.bot.89.09@gmail.com');
+    if (viejoClub) viejoClub.email = 'info.b.olimpia@gmail.com';
+    defecto.forEach((dc, i) => {
+      const ex = c.cuentas.find(x => x.id === dc.id);
+      if (!ex) c.cuentas.splice(Math.min(i, c.cuentas.length), 0, Object.assign({}, dc));
+      else if (!ex.email) ex.email = dc.email;
+    });
     return c;
   }
   const clientId = () => String(cfg().clientId || CLIENT_ID_DEFECTO || '').trim();
@@ -11509,7 +11519,7 @@ const CorreoApp = (function () {
     if (!root) return;
     if (currentSection !== 'correo') return;
     root.innerHTML = '';
-    document.body.classList.toggle('ol-club', cuentaId === 'club');
+    document.body.classList.toggle('ol-club', cuentaId !== 'idermay');
     document.body.classList.toggle('im-taller', cuentaId === 'idermay');
     renderShellHeader();
     const wrap = el('div', { class: 'co-wrap co-' + cuentaId });
@@ -11827,14 +11837,22 @@ const CorreoApp = (function () {
 
   // ---------- portada ----------
   const avisosPortada = new Set();
-  function chipPortada(id, crearDato) {
-    const c = cuenta(id);
-    if (!c || (!c.email && id !== 'club')) return null;
+  const ETIQUETA = { club: 'Info', bot: 'Bot' };
+  function textoChip(id) {
     const st = d(id);
     const n = st.mensajes.filter(m => m.noLeido && m.cat !== 'publicidad').length;
     const u = st.mensajes.filter(m => m.noLeido && m.urgente).length;
-    const txt = !conectada(id) ? 'Correo' : u ? (u === 1 ? '1 correo urgente' : u + ' correos urgentes') : n ? n + ' sin leer' : 'Correo al día';
-    const chip = crearDato(txt, () => irA(id), u > 0);
+    const pref = ETIQUETA[id] ? ETIQUETA[id] + ' · ' : '';
+    if (!conectada(id)) return { u: 0, t: pref ? 'Correo ' + ETIQUETA[id].toLowerCase() : 'Correo' };
+    if (pref) return { u, t: pref + (u ? (u === 1 ? '1 urgente' : u + ' urgentes') : n ? n + ' sin leer' : 'al día') };
+    return { u, t: u ? (u === 1 ? '1 correo urgente' : u + ' correos urgentes') : n ? n + ' sin leer' : 'Correo al día' };
+  }
+  function chipPortada(id, crearDato) {
+    const c = cuentas().find(x => x.id === id);
+    if (!c || !c.email) return null;
+    const st = d(id);
+    const tc = textoChip(id);
+    const chip = crearDato(tc.t, () => irA(id), tc.u > 0);
     chip.dataset.correo = id;
     avisosPortada.add(id);
     if (conectada(id) && !st.cargado && !st.cargando) cargar(id);
@@ -11843,11 +11861,9 @@ const CorreoApp = (function () {
   function refrescarAvisoPortada() {
     if (typeof currentSection !== 'undefined' && currentSection === 'home') {
       document.querySelectorAll('[data-correo]').forEach(ch => {
-        const id = ch.dataset.correo; const st = d(id);
-        const n = st.mensajes.filter(m => m.noLeido && m.cat !== 'publicidad').length;
-        const u = st.mensajes.filter(m => m.noLeido && m.urgente).length;
-        ch.textContent = !conectada(id) ? 'Correo' : u ? (u === 1 ? '1 correo urgente' : u + ' correos urgentes') : n ? n + ' sin leer' : 'Correo al día';
-        ch.classList.toggle('aviso', u > 0);
+        const tc = textoChip(ch.dataset.correo);
+        ch.textContent = tc.t;
+        ch.classList.toggle('aviso', tc.u > 0);
       });
     }
   }
@@ -12396,8 +12412,7 @@ function renderHome() {
         const chipSol = dato(chPendientesSolicitudes ? chPendientesSolicitudes + (chPendientesSolicitudes === 1 ? ' solicitud pendiente' : ' solicitudes pendientes') : 'Control horario', () => goToClubGestion('horario'), chPendientesSolicitudes > 0);
         datosClub.appendChild(chipSol);
         if (typeof chActualizarAvisoSolicitudes === 'function') chActualizarAvisoSolicitudes().then(n => { if (n) { chipSol.textContent = n + (n === 1 ? ' solicitud pendiente' : ' solicitudes pendientes'); chipSol.classList.add('aviso'); } });
-        const chipCorreoClub = CorreoApp.chipPortada('club', dato);
-        if (chipCorreoClub) datosClub.appendChild(chipCorreoClub);
+        ['club', 'bot'].forEach(id => { const ch = CorreoApp.chipPortada(id, dato); if (ch) datosClub.appendChild(ch); });
       }
       portada.appendChild(el('section', { class: 'ol-mitad ol-mitad-club', role: 'button', tabindex: '0', 'aria-label': 'Entrar al club', onclick: () => { homeGrupoAbierto = 'club'; renderHome(); window.scrollTo(0, 0); } },
         el('div', { class: 'ol-logo' }, clubGlobal.logo ? el('img', { src: clubGlobal.logo, alt: '' }) : '🏸'),

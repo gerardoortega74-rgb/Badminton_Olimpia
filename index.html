@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&display=swap">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261006-nomfijo">
+<meta name="build-id" content="v20261008-idermay">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -399,6 +399,265 @@ header.app-header::before{display:none !important;}
 .rc-marca{position:absolute;left:50%;top:30%;width:78%;max-width:560px;transform:translate(-50%,-50%) rotate(-18deg);opacity:.07;pointer-events:none;z-index:0;}
 .rc-fac .rc-t tr.h td,.rc-fac .rc-t tr.l td{background:rgba(230,230,230,.75);}
 @media print{.rc-fac{min-height:268mm;}}
+/* ===== IDERMAY CANTABRIA: estilo propio del taller (colores del logo) ===== */
+body.im-taller{
+  --im-navy:#0B2D5B; --im-navy-deep:#061C3B; --im-red:#E0162B; --im-red-dark:#B30F20;
+  --im-bench:#EDF1F6; --im-ink:#13213A; --im-muted:#5A6A80; --im-line:#D8E0EA; --im-ok:#0E7A63; --im-wait:#9A6400;
+  --im-cond:'Barlow Condensed',-apple-system,"Segoe UI",Roboto,sans-serif;
+  background:var(--im-bench);color:var(--im-ink);
+}
+body.im-taller::before{display:none;}
+body.im-taller #marcaAguaTaller{opacity:.05 !important;}
+/* Cabecera compacta */
+body.im-taller header.app-header{background:var(--im-navy) !important;min-height:0 !important;padding:10px 16px !important;flex-wrap:nowrap;gap:10px;}
+body.im-taller header.app-header::before{display:none !important;}
+body.im-taller header.app-header::after{height:3px;background:var(--im-red);opacity:1;}
+body.im-taller .brand{width:auto;flex:1;min-width:0;gap:10px;}
+body.im-taller .brand .brand-badge{display:none !important;}
+body.im-taller #shellTitle{font-family:var(--im-cond);font-style:italic;font-weight:800;font-size:24px;letter-spacing:.2px;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+body.im-taller #shellSubtitle{font-size:12px;color:#B9C7DA;}
+body.im-taller #nubeIndicador{font-size:11px;color:#9FB2CB;}
+body.im-taller #headerActions{flex-wrap:nowrap;gap:6px;}
+body.im-taller header.app-header .btn{min-height:36px;}
+/* Botones claros sobre la cabecera oscura (en toda la app) */
+header.app-header .btn-ghost{color:#fff;border-color:rgba(255,255,255,.55);background:rgba(255,255,255,.08);}
+header.app-header .btn-ghost:hover{background:rgba(255,255,255,.18);}
+body.im-taller #btnMenu{background:#fff;color:var(--im-navy);}
+/* Superficies */
+body.im-taller main{padding-top:18px;}
+body.im-taller #tallerScreen .panel{background:#fff;border:1px solid var(--im-line);border-radius:14px;box-shadow:0 1px 2px rgba(11,45,91,.06);}
+body.im-taller #tallerScreen .panel h2{font-family:var(--im-cond);font-style:italic;font-weight:800;font-size:25px;color:var(--im-navy);letter-spacing:.2px;margin-bottom:2px;}
+body.im-taller #tallerScreen .panel .sub{color:var(--im-muted);}
+body.im-taller #tallerScreen .card{background:#fff;border:1px solid var(--im-line);border-radius:12px;}
+body.im-taller #tallerScreen label{text-transform:none;letter-spacing:0;font-size:13px;font-weight:600;color:var(--im-ink);}
+body.im-taller #tallerScreen input[type=text],body.im-taller #tallerScreen input[type=number],body.im-taller #tallerScreen input[type=date],body.im-taller #tallerScreen input[type=email],body.im-taller #tallerScreen input[type=tel],body.im-taller #tallerScreen select,body.im-taller #tallerScreen textarea{
+  background:#fff;border:1px solid #C9D3E0;border-radius:10px;font-size:15px;min-height:44px;}
+body.im-taller #tallerScreen input:focus,body.im-taller #tallerScreen select:focus,body.im-taller #tallerScreen textarea:focus{outline:2px solid var(--im-navy);outline-offset:1px;border-color:var(--im-navy);}
+body.im-taller .btn{border-radius:10px;}
+body.im-taller .btn:focus-visible{outline:3px solid var(--im-red);outline-offset:2px;}
+body.im-taller #tallerScreen .btn-gold,body.im-taller .modal .btn-gold{background:var(--im-red);color:#fff;}
+body.im-taller #tallerScreen .btn-gold:hover,body.im-taller .modal .btn-gold:hover{background:var(--im-red-dark);}
+body.im-taller #tallerScreen .btn-primary,body.im-taller .modal .btn-primary{background:var(--im-navy);color:#fff;}
+body.im-taller #tallerScreen .btn-primary:hover,body.im-taller .modal .btn-primary:hover{background:var(--im-navy-deep);}
+body.im-taller #tallerScreen .btn-ghost,body.im-taller .modal .btn-ghost{background:#fff;color:var(--im-navy);border:1px solid #C3CEDD;}
+body.im-taller #tallerScreen .btn-danger{background:#fff;color:var(--im-red-dark);border:1px solid #F1C3C8;}
+body.im-taller #tallerScreen .chip{background:#E2E9F3;color:var(--im-navy);}
+body.im-taller #tallerScreen .chip-gold{background:#E2E9F3;color:var(--im-navy);}
+body.im-taller #tallerScreen .chip-muted{background:#EEF1F5;color:var(--im-muted);}
+body.im-taller #tallerScreen .msg-info{background:#EAF0F8;border-color:#CCD9EA;color:#24446E;}
+body.im-taller #tallerScreen th{font-size:12px;color:var(--im-muted);font-weight:600;}
+body.im-taller #tallerScreen .tab-pills{display:flex;gap:4px;background:#DFE6EF;border-radius:12px;padding:4px;margin-bottom:14px;width:max-content;max-width:100%;overflow-x:auto;}
+body.im-taller #tallerScreen .tab-pills .btn{background:transparent;border:0;color:var(--im-navy);white-space:nowrap;}
+body.im-taller #tallerScreen .tab-pills .btn.on{background:#fff;box-shadow:0 1px 3px rgba(11,45,91,.15);}
+/* Plegables */
+body.im-taller #tallerScreen details.im-plegable{border:1px solid var(--im-line);border-radius:12px;background:#F7F9FC;margin:10px 0;}
+body.im-taller #tallerScreen details.im-plegable>summary{cursor:pointer;list-style:none;padding:12px 14px;font-weight:700;color:var(--im-navy);display:flex;align-items:center;gap:8px;}
+body.im-taller #tallerScreen details.im-plegable>summary::-webkit-details-marker{display:none;}
+body.im-taller #tallerScreen details.im-plegable>summary::after{content:"";margin-left:auto;width:8px;height:8px;border-right:2px solid var(--im-navy);border-bottom:2px solid var(--im-navy);transform:rotate(45deg);transition:transform .15s;}
+body.im-taller #tallerScreen details.im-plegable[open]>summary::after{transform:rotate(-135deg);}
+body.im-taller #tallerScreen details.im-plegable>.im-plegable-cuerpo{padding:0 14px 14px;}
+body.im-taller #tallerScreen details.im-plegable>summary small{font-weight:400;color:var(--im-muted);}
+
+/* ---- Navegación del taller: barra inferior en móvil ---- */
+#imMasSheet{display:none;}
+@media (max-width: 859px){
+  body.im-taller main{padding-bottom:calc(96px + env(safe-area-inset-bottom));}
+  body.im-taller #sesionIndicador,body.im-taller #shellSubtitle{display:none !important;}
+  body.im-taller #btnAyuda{display:none !important;}
+  body.im-taller #tallerScreen nav.tabs#tallerTabsNav{
+    display:flex !important;position:fixed;left:0;right:0;bottom:0;z-index:60;margin:0 !important;
+    background:#fff;border-top:1px solid var(--im-line);box-shadow:0 -4px 18px rgba(11,45,91,.10);
+    padding:4px 4px calc(4px + env(safe-area-inset-bottom));gap:0;overflow:visible;justify-content:space-around;
+  }
+  body.im-taller #tallerTabsNav #tallerSidebarBrand,body.im-taller #tallerTabsNav #tallerSidebarFooter{display:none !important;}
+  body.im-taller #tallerTabsNav button{display:none;}
+  body.im-taller #tallerTabsNav button[data-movil]{
+    display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;min-width:0;padding:7px 2px 6px;border-radius:12px;
+    background:transparent;color:var(--im-muted);font-size:11px;font-weight:600;position:relative;
+  }
+  body.im-taller #tallerTabsNav button[data-movil] .tab-icon{font-size:20px;line-height:1;filter:grayscale(1);opacity:.7;}
+  body.im-taller #tallerTabsNav button[data-movil] .tab-label{display:none;}
+  body.im-taller #tallerTabsNav button[data-movil] .tab-corto{display:block;}
+  body.im-taller #tallerTabsNav button[data-movil].active{color:var(--im-navy);background:#EEF2F8;}
+  body.im-taller #tallerTabsNav button[data-movil].active .tab-icon{filter:none;opacity:1;}
+  body.im-taller #tallerTabsNav button[data-movil].active::before{content:"";position:absolute;top:-4px;left:28%;right:28%;height:3px;border-radius:0 0 3px 3px;background:var(--im-red);}
+  body.im-taller #tallerTabsNav .tab-badge{position:absolute;top:2px;right:calc(50% - 22px);background:var(--im-red);color:#fff;font-size:10px;font-weight:800;min-width:17px;height:17px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;}
+  #imMasSheet.abierto{display:block;position:fixed;inset:0;z-index:70;background:rgba(6,28,59,.45);}
+  #imMasSheet .im-sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:18px 18px 0 0;padding:10px 14px calc(18px + env(safe-area-inset-bottom));box-shadow:0 -10px 30px rgba(0,0,0,.2);}
+  #imMasSheet .im-sheet-asa{width:40px;height:4px;border-radius:2px;background:#C9D3E0;margin:2px auto 10px;}
+  #imMasSheet .im-sheet button{display:flex;align-items:center;gap:12px;width:100%;background:none;border:0;border-bottom:1px solid #EEF1F5;padding:14px 6px;font-size:16px;font-weight:600;color:#13213A;text-align:left;cursor:pointer;}
+  #imMasSheet .im-sheet button:last-child{border-bottom:0;}
+  #imMasSheet .im-sheet button.on{color:#E0162B;}
+  #imMasSheet .im-sheet .ic{width:34px;height:34px;border-radius:10px;background:#EEF2F8;display:flex;align-items:center;justify-content:center;font-size:18px;}
+}
+#tallerTabsNav .tab-corto{display:none;}
+#tallerTabsNav .tab-badge{display:none;}
+@media (max-width: 859px){ body.im-taller #tallerTabsNav .tab-badge{display:flex;} }
+/* ---- Ordenador: barra lateral ---- */
+@media (min-width: 860px){
+  body.im-taller header.app-header,body.im-taller main{margin-left:228px !important;}
+  body.im-taller header.app-header .brand{display:flex !important;}
+  body.im-taller #tallerScreen nav.tabs#tallerTabsNav{
+    display:flex !important;flex-direction:column;position:fixed;left:0;top:0;bottom:0;width:228px;z-index:40;margin:0 !important;padding:0 0 10px;gap:2px;overflow-y:auto;
+    background:var(--im-navy-deep);box-shadow:none;
+  }
+  body.im-taller #tallerSidebarBrand{
+    display:flex !important;flex-direction:column;align-items:flex-start;gap:10px;padding:18px 16px 16px;margin-bottom:8px;
+    border-bottom:3px solid var(--im-red);
+    background-color:var(--im-navy);
+    background-image:repeating-linear-gradient(0deg,rgba(255,255,255,.07) 0 1px,transparent 1px 12px),repeating-linear-gradient(90deg,rgba(255,255,255,.07) 0 1px,transparent 1px 12px);
+  }
+  body.im-taller #tallerSidebarBrand img,body.im-taller #tallerSidebarBrand .ph{width:64px;height:64px;border-radius:14px;background:#fff;object-fit:contain;padding:4px;}
+  body.im-taller #tallerSidebarBrand b{font-family:var(--im-cond);font-style:italic;font-weight:800;font-size:22px;line-height:1.05;color:#fff;white-space:normal;}
+  body.im-taller #tallerSidebarBrand small{color:#AFC0D6;font-size:12px;}
+  body.im-taller #tallerScreen nav.tabs#tallerTabsNav button{
+    display:flex;align-items:center;gap:10px;margin:0 10px;padding:10px 12px;border-radius:10px;background:transparent;color:#C8D4E4;font-size:14px;font-weight:600;text-align:left;white-space:normal;position:relative;box-shadow:none;
+  }
+  body.im-taller #tallerScreen nav.tabs#tallerTabsNav button:hover{background:rgba(255,255,255,.07);color:#fff;}
+  body.im-taller #tallerScreen nav.tabs#tallerTabsNav button.active{background:#fff;color:var(--im-navy);font-weight:800;box-shadow:none;}
+  body.im-taller #tallerScreen nav.tabs#tallerTabsNav button.active::before{content:"";position:absolute;left:-10px;top:8px;bottom:8px;width:4px;border-radius:0 3px 3px 0;background:var(--im-red);}
+  body.im-taller #tallerScreen nav.tabs#tallerTabsNav .tab-icon{width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+  body.im-taller #tallerScreen nav.tabs#tallerTabsNav button.active .tab-icon{background:#EEF2F8;}
+  body.im-taller #tallerScreen nav.tabs#tallerTabsNav button.tab-mas{display:none;}
+  body.im-taller #tallerScreen nav.tabs#tallerTabsNav button:last-of-type{margin-top:0;padding-top:10px;border-top:0;}
+  body.im-taller #tallerSidebarFooter{display:block !important;margin-top:auto;padding:12px 16px;color:#7F93AE;font-size:11px;}
+  body.im-taller #tallerMainArea{max-width:980px;}
+}
+
+/* ---- Cola de trabajo ---- */
+body.im-taller .im-resumen{display:flex;gap:10px;flex-wrap:wrap;margin:6px 0 14px;}
+body.im-taller .im-dato{flex:1;min-width:120px;background:#F4F7FB;border:1px solid var(--im-line);border-radius:12px;padding:10px 12px;}
+body.im-taller .im-dato b{display:block;font-family:var(--im-cond);font-style:italic;font-weight:800;font-size:30px;line-height:1;color:var(--im-navy);font-variant-numeric:tabular-nums;}
+body.im-taller .im-dato span{font-size:12.5px;color:var(--im-muted);}
+body.im-taller .im-raqueta{display:grid;grid-template-columns:44px 1fr;gap:4px 12px;border:1px solid var(--im-line);border-radius:14px;padding:14px;margin-bottom:10px;background:#fff;position:relative;}
+body.im-taller .im-raqueta .im-num{grid-row:span 3;font-family:var(--im-cond);font-style:italic;font-weight:800;font-size:34px;line-height:1;color:#B7C3D3;text-align:center;padding-top:2px;}
+body.im-taller .im-raqueta .im-cli{font-weight:800;font-size:17px;color:var(--im-ink);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+body.im-taller .im-raqueta .im-det{font-size:14px;color:var(--im-muted);line-height:1.45;}
+body.im-taller .im-raqueta .im-det strong{color:var(--im-ink);font-weight:600;}
+body.im-taller .im-raqueta .im-acc{grid-column:2;display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px;}
+body.im-taller .im-raqueta .im-acc .btn{min-height:42px;}
+body.im-taller .im-raqueta .im-espera{font-size:13px;color:var(--im-wait);font-weight:600;}
+body.im-taller .im-raqueta img.im-foto{grid-column:2;max-width:140px;border-radius:10px;margin-top:6px;}
+body.im-taller .im-estado{font-size:11.5px;font-weight:800;padding:3px 9px;border-radius:20px;background:#EEF1F5;color:var(--im-muted);}
+body.im-taller .im-estado.pagada{background:#E1F2EC;color:var(--im-ok);}
+body.im-taller .im-estado.debe{background:#FBEFD9;color:var(--im-wait);}
+/* La raqueta que se está encordando: el elemento protagonista */
+body.im-taller .im-raqueta.en-curso{background-color:var(--im-navy);border-color:var(--im-navy);color:#fff;grid-template-columns:1fr;padding:18px;overflow:hidden;}
+body.im-taller .im-raqueta.en-curso::after{content:"";position:absolute;top:0;right:0;bottom:0;width:55%;pointer-events:none;
+  background-image:repeating-linear-gradient(0deg,rgba(255,255,255,.09) 0 1.5px,transparent 1.5px 15px),repeating-linear-gradient(90deg,rgba(255,255,255,.09) 0 1.5px,transparent 1.5px 15px);
+  -webkit-mask-image:linear-gradient(to left,#000 20%,transparent);mask-image:linear-gradient(to left,#000 20%,transparent);}
+body.im-taller .im-raqueta.en-curso>*{position:relative;z-index:1;}
+body.im-taller .im-raqueta.en-curso .im-num{display:none;}
+body.im-taller .im-raqueta.en-curso .im-etiqueta{font-size:12.5px;font-weight:700;color:#FF8A96;display:flex;align-items:center;gap:6px;}
+body.im-taller .im-raqueta.en-curso .im-etiqueta::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--im-red);box-shadow:0 0 0 3px rgba(224,22,43,.3);}
+body.im-taller .im-raqueta.en-curso .im-cli{color:#fff;font-size:20px;}
+body.im-taller .im-raqueta.en-curso .im-det{color:#C9D5E6;}
+body.im-taller .im-raqueta.en-curso .im-det strong{color:#fff;}
+body.im-taller .im-raqueta.en-curso .im-cifras{display:flex;gap:22px;flex-wrap:wrap;margin:10px 0 2px;}
+body.im-taller .im-raqueta.en-curso .im-cifras div{font-size:12px;color:#AFC0D6;}
+body.im-taller .im-raqueta.en-curso .im-cifras b{display:block;font-family:var(--im-cond);font-style:italic;font-weight:800;font-size:40px;line-height:1;color:#fff;font-variant-numeric:tabular-nums;}
+body.im-taller .im-raqueta.en-curso .im-acc{grid-column:1;}
+body.im-taller .im-raqueta.en-curso .btn-gold{background:var(--im-red);color:#fff;font-size:15px;padding:12px 20px;}
+body.im-taller .im-raqueta.en-curso .im-mas>summary{color:#DCE5F1;}
+body.im-taller .im-raqueta.en-curso .im-estado{background:rgba(255,255,255,.14);color:#fff;}
+body.im-taller .im-mas{position:relative;}
+body.im-taller .im-mas>summary{list-style:none;cursor:pointer;font-size:13.5px;font-weight:700;color:var(--im-navy);padding:10px 8px;}
+body.im-taller .im-mas>summary::-webkit-details-marker{display:none;}
+body.im-taller .im-mas[open]>.im-mas-menu{display:flex;}
+body.im-taller .im-mas-menu{display:none;flex-direction:column;gap:6px;margin-top:6px;}
+body.im-taller .im-mas-menu .btn{justify-content:flex-start;}
+body.im-taller .im-raqueta .im-acc .im-mas{flex-basis:100%;}
+@media (min-width:600px){ body.im-taller .im-raqueta .im-acc .im-mas{flex-basis:auto;} body.im-taller .im-mas-menu{flex-direction:row;flex-wrap:wrap;} }
+
+/* ---- Nuevo pedido por pasos ---- */
+body.im-taller .im-paso{border-top:1px solid var(--im-line);padding-top:14px;margin-top:14px;}
+body.im-taller .im-paso:first-of-type{border-top:0;margin-top:4px;padding-top:0;}
+body.im-taller .im-paso-tit{display:flex;align-items:center;gap:10px;margin-bottom:10px;font-weight:800;font-size:16px;color:var(--im-navy);}
+body.im-taller .im-paso-tit i{font-style:italic;font-family:var(--im-cond);font-weight:800;font-size:15px;width:28px;height:28px;border-radius:50%;background:var(--im-navy);color:#fff;display:flex;align-items:center;justify-content:center;}
+body.im-taller .im-dos{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+body.im-taller .im-opciones{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 4px;}
+body.im-taller .im-opciones label{display:inline-flex !important;align-items:center;gap:8px;border:1px solid #C9D3E0;border-radius:22px;padding:8px 14px;background:#fff;cursor:pointer;font-weight:600;margin:0;}
+body.im-taller .im-opciones label:has(input:checked){border-color:var(--im-navy);background:#EAF0F8;}
+body.im-taller .im-opciones input{width:18px !important;height:18px;margin:0 !important;accent-color:var(--im-navy);}
+body.im-taller .im-cliente-ok{display:inline-flex;align-items:center;gap:8px;margin-top:8px;padding:6px 12px;border-radius:20px;background:#E1F2EC;color:var(--im-ok);font-weight:700;font-size:14px;}
+body.im-taller .im-cliente-no{margin-top:8px;font-size:13px;color:var(--im-muted);}
+body.im-taller .im-resultados .chip{background:#fff;border:1px solid #C3CEDD;color:var(--im-navy);font-size:14px;padding:8px 12px;margin:4px 6px 0 0;border-radius:20px;}
+body.im-taller .im-barra-pedido{position:sticky;bottom:0;z-index:5;margin:16px -18px -18px;padding:12px 18px;background:#fff;border-top:1px solid var(--im-line);border-radius:0 0 14px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;box-shadow:0 -6px 16px rgba(11,45,91,.06);}
+body.im-taller .im-barra-pedido .im-total{flex:1;min-width:120px;font-size:12.5px;color:var(--im-muted);}
+body.im-taller .im-barra-pedido .im-total b{display:block;font-family:var(--im-cond);font-style:italic;font-weight:800;font-size:30px;line-height:1;color:var(--im-navy);}
+body.im-taller .im-barra-pedido .btn{min-height:46px;}
+@media (max-width:859px){ body.im-taller .im-barra-pedido{bottom:calc(68px + env(safe-area-inset-bottom));} }
+body.im-taller .im-barra-pedido{display:grid;grid-template-columns:1fr auto;gap:6px 12px;}
+body.im-taller .im-barra-pedido .btn-gold{padding:12px 22px;font-size:15px;}
+body.im-taller .im-barra-pedido .im-otra{grid-column:1 / -1;background:none;border:0;color:var(--im-navy);font-weight:700;font-size:13.5px;padding:6px 0;min-height:0;justify-content:flex-start;text-decoration:underline;text-underline-offset:3px;}
+@media (min-width:860px){ body.im-taller .im-barra-pedido{grid-template-columns:1fr auto auto;} body.im-taller .im-barra-pedido .im-otra{grid-column:auto;order:-1;grid-row:1;grid-column:2;} body.im-taller .im-barra-pedido .im-total{grid-column:1;grid-row:1;} }
+
+/* ---- Tabla de artículos como tarjetas en el móvil ---- */
+@media (max-width:640px){
+  body.im-taller table.im-tabla-art{display:block;background:none;white-space:normal;}
+  body.im-taller table.im-tabla-art thead{display:none;}
+  body.im-taller table.im-tabla-art tbody{display:flex;flex-direction:column;gap:8px;}
+  body.im-taller table.im-tabla-art tr{display:grid;grid-template-columns:28px 1fr 1fr 1fr;gap:6px 10px;align-items:end;border:1px solid var(--im-line);border-radius:12px;padding:12px;background:#fff;}
+  body.im-taller table.im-tabla-art td{border:0;padding:0;}
+  body.im-taller table.im-tabla-art td.c-sel{grid-row:1;grid-column:1;align-self:center;}
+  body.im-taller table.im-tabla-art td.c-nom{grid-row:1;grid-column:2 / 4;font-weight:700;font-size:15px;align-self:center;}
+  body.im-taller table.im-tabla-art td.c-ed{grid-row:1;grid-column:4;text-align:right;}
+  body.im-taller table.im-tabla-art td.c-cod{display:none;}
+  body.im-taller table.im-tabla-art td[data-et]::before{content:attr(data-et);display:block;font-size:11.5px;color:var(--im-muted);margin-bottom:3px;}
+  body.im-taller table.im-tabla-art td.c-coste{grid-column:1 / 3;}
+  body.im-taller table.im-tabla-art td input{width:100% !important;min-height:40px;}
+}
+
+body.im-taller .brand>div{min-width:0;}
+@media (min-width:860px){ body.im-taller #shellTitle,body.im-taller #shellSubtitle{display:none;} }
+@media (max-width:859px){
+  body.im-taller .im-resumen{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+  body.im-taller .im-dato{min-width:0;padding:9px 10px;}
+  body.im-taller .im-dato b{font-size:24px;}
+  body.im-taller .im-dato span{font-size:11.5px;}
+  body.im-taller .im-raqueta.en-curso .im-cifras{display:grid;grid-template-columns:repeat(3,auto);justify-content:start;gap:16px;}
+  body.im-taller .im-raqueta.en-curso .im-cifras b{font-size:28px;}
+  body.im-taller .im-raqueta.en-curso .btn-gold{flex:1;justify-content:center;}
+}
+
+@media (max-width:859px){
+  body.im-taller #shellTitle{font-size:22px;}
+  body.im-taller #btnLogout .btn-txt{display:none;}
+  body.im-taller .im-raqueta.en-curso{grid-template-columns:minmax(0,1fr);}
+  body.im-taller .im-raqueta.en-curso .im-cifras{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
+  body.im-taller .im-raqueta.en-curso .im-cifras b{font-size:clamp(20px,6.6vw,28px);white-space:nowrap;}
+  body.im-taller .im-raqueta.en-curso .im-acc{display:grid;grid-template-columns:1fr;}
+  body.im-taller .im-raqueta.en-curso .btn-gold{width:100%;}
+}
+
+@media (max-width:859px){
+  body.im-taller #btnAcceso{display:none !important;}
+  body.im-taller .im-raqueta.en-curso .im-cifras b{font-size:clamp(20px,6.4vw,27px);}
+}
+@media (max-width:640px){
+  body.im-taller table.im-tabla-art tr{grid-template-columns:28px 1fr 1fr 1fr;grid-template-areas:"sel nom nom ed" "co co ve st";}
+  body.im-taller table.im-tabla-art td.c-sel{grid-area:sel;}
+  body.im-taller table.im-tabla-art td.c-nom{grid-area:nom;}
+  body.im-taller table.im-tabla-art td.c-ed{grid-area:ed;}
+  body.im-taller table.im-tabla-art td.c-coste{grid-area:co;}
+  body.im-taller table.im-tabla-art td.c-venta{grid-area:ve;}
+  body.im-taller table.im-tabla-art td.c-stock{grid-area:st;}
+  body.im-taller table.im-tabla-art .c-unidad{display:none;}
+}
+
+@media (max-width:859px){
+  body.im-taller #shellTitle{font-size:19px;letter-spacing:0;}
+  body.im-taller .im-raqueta.en-curso .im-cifras{grid-template-columns:repeat(3,auto);justify-content:space-between;gap:12px;}
+  body.im-taller .im-raqueta.en-curso .im-cifras b{font-size:clamp(20px,6vw,26px);}
+}
+
+body.im-taller #tallerScreen .stat-card{background:#F4F7FB;border:1px solid var(--im-line);color:var(--im-ink);border-radius:12px;}
+body.im-taller #tallerScreen .stat-card .num{font-family:var(--im-cond);font-style:italic;font-weight:800;font-size:30px;color:var(--im-navy);}
+body.im-taller #tallerScreen .stat-card .lab{color:var(--im-muted);text-transform:none;font-size:12.5px;}
+
+@media (min-width:641px){ body.im-taller table.im-tabla-art{display:table;background:none;white-space:normal;} }
+body.im-taller #tallerScreen thead th,body.im-taller #tallerScreen thead tr{background:#F4F7FB;}
+body.im-taller #tallerScreen td{border-bottom-color:#E6EBF2;}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -430,7 +689,7 @@ if (window.pdfjsLib) { pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.c
     <small id="sesionIndicador" style="display:none;color:#CFE8DA;margin-right:4px;"></small>
     <button class="btn btn-ghost btn-sm" id="btnAyuda" title="¿Dónde encuentro…?">❓</button>
     <button class="btn btn-ghost btn-sm" id="btnAcceso" style="display:none;" title="Ajustes">⚙️</button>
-    <button class="btn btn-ghost btn-sm" id="btnLogout" style="display:none;">🔒 Salir</button>
+    <button class="btn btn-ghost btn-sm" id="btnLogout" style="display:none;" aria-label="Salir">🔒 <span class="btn-txt">Salir</span></button>
     <button class="btn btn-primary btn-sm" id="btnMenu" style="display:none;">🏠 Menú</button>
     <button class="btn btn-gold btn-sm" id="btnExport" style="display:none;">⬇ Exportar todo</button>
     <button class="btn btn-ghost btn-sm" id="btnImport" style="display:none;">⬆ Importar todo</button>
@@ -5213,6 +5472,7 @@ function pdfBinPlan(s) {
     else if (c === 0x20AC) out += '\x80';
     else if (c === 0x2013) out += '\x96';
     else if (c === 0x2014) out += '\x97';
+    else if (c === 0x2212) out += '-';
     else out += '?';
   }
   return out;
@@ -6283,7 +6543,7 @@ function selectEl(options, value, onChange) {
   node.addEventListener('change', (e) => onChange(e.target.value));
   return node;
 }
-function euros(n) { return (Math.round((n || 0) * 100) / 100).toFixed(2) + ' €'; }
+function euros(n) { return typeof nomEur === 'function' ? nomEur(n || 0) : (Math.round((n || 0) * 100) / 100).toFixed(2).replace('.', ',') + ' €'; }
 function fmtFechaDMY(s) {
   if (!s) return '—';
   const partes = String(s).slice(0, 10).split('-');
@@ -6630,23 +6890,23 @@ function construirPanelPorRecoger() {
   const porRecoger = state.pedidos.filter(p => p.estado === 'terminado').sort((a, b) => (a.horaFin || 0) - (b.horaFin || 0));
   if (!porRecoger.length) return null;
   const panelR = el('div', { class: 'panel', style: 'margin-top:16px;' },
-    el('h2', {}, '📦 Terminadas, pendientes de recoger'),
-    el('div', { class: 'sub' }, 'Raquetas ya reparadas que el cliente todavía no se ha llevado.'),
+    el('h2', {}, 'Listas para recoger'),
+    el('div', { class: 'sub' }, 'Terminadas que el cliente todavía no se ha llevado.'),
   );
   porRecoger.forEach(p => {
     const cli = clienteDe(p.clienteId);
     const dias = p.horaFin ? diasDesde(p.horaFin) : 0;
-    panelR.appendChild(el('div', { class: 'card' },
-      el('div', { class: 'card-head' },
-        el('span', { class: 'card-title' }, cli ? cli.nombre : '(cliente eliminado)'),
-        p.pagado ? el('span', { class: 'chip chip-gold' }, 'Pagada') : el('span', { class: 'chip chip-muted' }, 'Sin pagar'),
-      ),
-      el('div', { class: 'sub' }, `${p.marcaModelo || 'Raqueta sin especificar'} · ${euros(p.precio)} · lista desde el ${fmtFechaTs(p.horaFin)}${dias > 0 ? ' (hace ' + dias + ' día(s))' : ' (hoy)'}`),
-      el('div', { class: 'toolbar', style: 'margin-top:8px;' },
-        el('button', { class: 'btn btn-primary btn-sm', onclick: () => abrirEntregaPedido(p) }, '📦 Entregar'),
-        el('button', { class: 'btn btn-ghost btn-sm', onclick: () => abrirAvisoWhatsapp(p) }, '💬 Avisar por WhatsApp'),
-        el('button', { class: 'btn btn-ghost btn-sm', onclick: () => abrirInformeCoste(p) }, '📊 Informe de coste'),
-        el('button', { class: 'btn btn-danger btn-sm', onclick: () => { if (confirm('¿Quitar este pedido? No se puede deshacer.')) { removePedido(p.id); render(); } } }, 'Quitar'),
+    panelR.appendChild(el('div', { class: 'im-raqueta' },
+      el('div', { class: 'im-num', 'aria-hidden': 'true' }, '✓'),
+      el('div', { class: 'im-cli' }, cli ? cli.nombre : '(cliente eliminado)', chipPago(p)),
+      el('div', { class: 'im-det' }, el('strong', {}, p.marcaModelo || 'Raqueta sin especificar'), ` · ${euros(p.precio)} · lista ${dias > 0 ? 'hace ' + dias + (dias === 1 ? ' día' : ' días') : 'hoy'}`),
+      el('div', { class: 'im-acc' },
+        el('button', { class: 'btn btn-primary', onclick: () => abrirEntregaPedido(p) }, 'Entregar'),
+        el('button', { class: 'btn btn-ghost', onclick: () => abrirAvisoWhatsapp(p) }, 'Avisar por WhatsApp'),
+        menuMasOpciones([
+          el('button', { class: 'btn btn-ghost btn-sm', onclick: () => abrirInformeCoste(p) }, 'Informe de coste'),
+          el('button', { class: 'btn btn-danger btn-sm', onclick: () => { if (confirm('¿Quitar este pedido? No se puede deshacer.')) { removePedido(p.id); render(); } } }, 'Quitar'),
+        ]),
       ),
     ));
   });
@@ -6749,10 +7009,33 @@ function render() {
     else if (activeTab === 'facturas') main.appendChild(viewFacturas());
     else if (activeTab === 'contabilidad') main.appendChild(viewContabilidadTaller());
     else if (activeTab === 'config') main.appendChild(viewConfigTaller());
+    main.querySelectorAll('.panel > h2').forEach(h => { if (h.childNodes.length === 1 && h.firstChild.nodeType === 3) h.textContent = h.textContent.replace(/^[^\p{L}\p{N}]+/u, ''); });
   } catch (err) {
     main.appendChild(el('div', { class: 'msg msg-warn' }, 'Ha ocurrido un error mostrando esta pestaña: ' + err.message));
     console.error(err);
   }
+}
+const TABS_TALLER = [
+  ['cola', '🏸', 'Cola de trabajo', 'Cola', true],
+  ['nuevo', '➕', 'Nuevo pedido', 'Nuevo', true],
+  ['cuentas', '👥', 'Clientes y proveedores', 'Clientes', true],
+  ['catalogo', '🧵', 'Cordajes y artículos', 'Stock', true],
+  ['historial', '📚', 'Historial', 'Historial', false],
+  ['facturas', '🧾', 'Facturas', 'Facturas', false],
+  ['contabilidad', '💰', 'Contabilidad', 'Contabilidad', false],
+  ['config', '⚙️', 'Configuración', 'Configuración', false],
+];
+function tituloTab() { const t = TABS_TALLER.find(x => x[0] === activeTab); return t ? t[2] : 'Taller de Raquetas'; }
+function irA(id) { if (id !== 'nuevo') clientePreseleccionadoId = null; activeTab = id; cerrarMasSheet(); render(); window.scrollTo(0, 0); }
+function cerrarMasSheet() { const ms = document.getElementById('imMasSheet'); if (ms) ms.classList.remove('abierto'); }
+function abrirMasSheet() {
+  let ms = document.getElementById('imMasSheet');
+  if (!ms) { ms = el('div', { id: 'imMasSheet', onclick: (e) => { if (e.target.id === 'imMasSheet') cerrarMasSheet(); } }); document.body.appendChild(ms); }
+  ms.innerHTML = '';
+  const hoja = el('div', { class: 'im-sheet', role: 'dialog', 'aria-label': 'Más secciones del taller' }, el('div', { class: 'im-sheet-asa' }));
+  TABS_TALLER.filter(t => !t[4]).forEach(([id, icon, label]) => hoja.appendChild(el('button', { class: activeTab === id ? 'on' : '', onclick: () => irA(id) }, el('span', { class: 'ic' }, icon), label)));
+  ms.appendChild(hoja);
+  ms.classList.add('abierto');
 }
 function renderTabsNav() {
   const nav = document.getElementById('tallerTabsNav');
@@ -6761,26 +7044,21 @@ function renderTabsNav() {
   const cfgTaller = state.config || {};
   const fotoTaller = cfgTaller.logoTaller || cfgTaller.tarjetaVisitaFoto;
   nav.appendChild(el('div', { id: 'tallerSidebarBrand' },
-    fotoTaller ? el('img', { src: fotoTaller }) : el('div', { class: 'ph' }, '🏸'),
-    el('div', {}, el('b', {}, cfgTaller.nombreTaller || 'Taller de Raquetas'), el('small', {}, 'Panel de gestión')),
+    fotoTaller ? el('img', { src: fotoTaller, alt: '' }) : el('div', { class: 'ph' }, '🏸'),
+    el('div', {}, el('b', {}, cfgTaller.nombreTaller || 'Taller de Raquetas'), el('small', {}, 'Encordado y tienda')),
   ));
   const cola = pedidosEnCola().length;
-  const tabs = [
-    ['cola', '🏸', 'Cola de trabajo' + (cola ? ' (' + cola + ')' : '')],
-    ['nuevo', '➕', 'Nuevo pedido'],
-    ['cuentas', '💳', 'Cuentas'],
-    ['catalogo', '🏷️', 'Artículos y cordajes'],
-    ['historial', '📚', 'Historial'],
-    ['facturas', '🧾', 'Facturas'],
-    ['contabilidad', '💰', 'Contabilidad'],
-    ['config', '⚙️', 'Configuración'],
-  ];
-  tabs.forEach(([id, icon, label]) => {
-    nav.appendChild(el('button', { class: activeTab === id ? 'active' : '', onclick: () => { if (id !== 'nuevo') clientePreseleccionadoId = null; activeTab = id; render(); } },
-      el('span', { class: 'tab-icon' }, icon), el('span', { class: 'tab-label' }, label)));
+  TABS_TALLER.forEach(([id, icon, label, corto, movil]) => {
+    nav.appendChild(el('button', { class: activeTab === id ? 'active' : '', 'data-movil': movil ? '1' : null, 'aria-current': activeTab === id ? 'page' : null, onclick: () => irA(id) },
+      el('span', { class: 'tab-icon' }, icon), el('span', { class: 'tab-label' }, label + (id === 'cola' && cola ? ' (' + cola + ')' : '')), el('span', { class: 'tab-corto' }, corto),
+      id === 'cola' && cola ? el('span', { class: 'tab-badge' }, String(cola)) : null));
   });
-  nav.appendChild(el('div', { id: 'tallerSidebarFooter' }, '🏸 Taller de Raquetas'));
+  const enMas = TABS_TALLER.some(t => !t[4] && t[0] === activeTab);
+  nav.appendChild(el('button', { class: 'tab-mas' + (enMas ? ' active' : ''), 'data-movil': '1', onclick: () => abrirMasSheet() },
+    el('span', { class: 'tab-icon' }, '☰'), el('span', { class: 'tab-label' }, 'Más'), el('span', { class: 'tab-corto' }, enMas ? tituloTab() : 'Más')));
+  nav.appendChild(el('div', { id: 'tallerSidebarFooter' }, 'Taller de raquetas'));
   document.body.classList.add('taller-sidebar-on');
+  const st = document.getElementById('shellSubtitle'); if (st && document.body.classList.contains('im-taller')) st.textContent = tituloTab();
 }
 
 let pedidosYaAvisados5min = new Set();
@@ -6825,100 +7103,108 @@ function comprobarAvisos5min() {
 }
 if (typeof window !== 'undefined') setInterval(comprobarAvisos5min, 20000);
 
+function menuMasOpciones(botones) {
+  const lista = botones.filter(Boolean);
+  if (!lista.length) return null;
+  return el('details', { class: 'im-mas' }, el('summary', {}, 'Más opciones'), el('div', { class: 'im-mas-menu' }, lista));
+}
+function chipPago(p) {
+  if (p.pagado) return el('span', { class: 'im-estado pagada' }, 'Pagada');
+  if (p.pagoPrevisto === 'sinPagar') return el('span', { class: 'im-estado debe' }, 'Pagará más tarde');
+  return el('span', { class: 'im-estado debe' }, 'Cobrar al recoger');
+}
 function viewCola() {
   const wrap = document.createDocumentFragment();
   const cola = pedidosEnCola();
+  const enCurso = cola.find(x => x.estado === 'en_proceso');
+  const ultima = cola.length ? horaEstimadaPara(cola[cola.length - 1].id) : null;
   const panel = el('div', { class: 'panel' },
-    el('h2', {}, '🏸 Cola de trabajo'),
-    el('div', { class: 'sub' }, `Pedidos pendientes, en el orden en que llegaron. Tiempo medio actual: ${state.config.tiempoMedioMinutos} min/raqueta.`),
+    el('h2', {}, 'Cola de trabajo'),
+    el('div', { class: 'sub' }, 'Las raquetas, en el orden en que llegaron.'),
   );
-  if (avisosPersonalesPendientes.length) {
-    avisosPersonalesPendientes.forEach(a => {
-      panel.appendChild(el('div', { class: 'msg msg-warn', style: 'margin-bottom:10px;font-weight:700;' },
-        '⏰ ' + a.texto + ' ',
-        el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { avisosPersonalesPendientes = avisosPersonalesPendientes.filter(x => x.id !== a.id); render(); } }, 'Descartar'),
-      ));
-    });
-  }
-  if (!permisoNotificacionesConcedido()) {
-    panel.appendChild(el('div', { class: 'toolbar', style: 'margin-bottom:10px;' },
-      el('button', { class: 'btn btn-ghost btn-sm', onclick: () => pedirPermisoNotificaciones() }, '🔔 Activar aviso de "quedan 5 minutos" (necesita la app abierta o reciente)'),
+  panel.appendChild(el('div', { class: 'im-resumen' },
+    el('div', { class: 'im-dato' }, el('b', {}, String(cola.length)), el('span', {}, cola.length === 1 ? 'raqueta en cola' : 'raquetas en cola')),
+    el('div', { class: 'im-dato' }, el('b', {}, ultima ? fmtHora(ultima) : '—'), el('span', {}, 'todas listas hacia')),
+    el('div', { class: 'im-dato' }, el('b', {}, String(state.config.tiempoMedioMinutos)), el('span', {}, 'min por raqueta')),
+  ));
+  avisosPersonalesPendientes.forEach(a => {
+    panel.appendChild(el('div', { class: 'msg msg-warn', style: 'margin-bottom:10px;font-weight:700;' },
+      '⏰ ' + a.texto + ' ',
+      el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { avisosPersonalesPendientes = avisosPersonalesPendientes.filter(x => x.id !== a.id); render(); } }, 'Descartar'),
     ));
-  }
-  const tMedioReal = tiempoMedioReal();
-  if (tMedioReal !== null) {
-    panel.appendChild(el('div', { class: 'msg msg-info', style: 'margin-bottom:10px;' },
-      `Según tu historial, la media real está siendo de ${tMedioReal} min/raqueta. `,
-      el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { state.config.tiempoMedioMinutos = tMedioReal; render(); } }, 'Usar este valor'),
-    ));
-  }
+  });
   if (!cola.length) {
-    panel.appendChild(el('div', { class: 'empty-state' }, 'No hay ningún pedido en cola ahora mismo.'));
+    panel.appendChild(el('div', { class: 'empty-state' }, 'No hay raquetas en cola. ',
+      el('button', { class: 'btn btn-gold btn-sm', onclick: () => irA('nuevo') }, 'Nuevo pedido')));
   }
   cola.forEach((p, idx) => {
     const cli = clienteDe(p.clienteId);
-    const cor = cordajeDe(p.cordajeId);
     const estimada = horaEstimadaPara(p.id);
-    const card = el('div', { class: 'card' },
-      el('div', { class: 'card-head' },
-        el('span', { class: 'card-title' }, '#' + (idx + 1) + ' · ' + (cli ? cli.nombre : '(cliente eliminado)')),
-        p.estado === 'en_proceso' ? el('span', { class: 'chip chip-gold' }, 'En proceso') : el('span', { class: 'chip chip-muted' }, 'Pendiente'),
-        p.pagado ? el('span', { class: 'chip chip-gold' }, 'Pagada') : (p.pagoPrevisto === 'sinPagar' ? el('span', { class: 'chip chip-muted' }, 'Recoge sin pagar') : null),
-      ),
-      el('div', { class: 'sub' }, `${p.marcaModelo || 'Raqueta sin especificar'} · ${nombreCordajeDe(p)} · ${fmtTension(p)} · ${euros(p.precio)}`),
-      el('div', { class: 'sub' }, `Llegó a las ${fmtHora(p.horaLlegada)}${estimada ? ' · Estimado listo a las ' + fmtHora(estimada) : ''}`),
-    );
-    if (p.fotoAntes) card.appendChild(el('img', { src: p.fotoAntes, style: 'max-width:160px;border-radius:8px;margin-top:6px;display:block;' }));
+    const proceso = p.estado === 'en_proceso';
     const hayOtroEnProceso = cola.some(x => x.estado === 'en_proceso' && x.id !== p.id);
-    const acciones = el('div', { class: 'toolbar', style: 'margin-top:8px;' });
-    if (p.estado === 'pendiente' && hayOtroEnProceso) {
-      acciones.appendChild(el('div', { class: 'sub', style: 'font-style:italic;' }, '⏳ Termina la raqueta en proceso antes de empezar esta.'));
+    const nombre = cli ? cli.nombre : '(cliente eliminado)';
+    const card = el('div', { class: 'im-raqueta' + (proceso ? ' en-curso' : '') });
+    card.appendChild(el('div', { class: 'im-num', 'aria-hidden': 'true' }, String(idx + 1)));
+    if (proceso) card.appendChild(el('div', { class: 'im-etiqueta' }, 'Encordando ahora · desde las ' + fmtHora(p.horaInicio)));
+    card.appendChild(el('div', { class: 'im-cli' }, nombre, chipPago(p)));
+    card.appendChild(el('div', { class: 'im-det' }, el('strong', {}, p.marcaModelo || 'Raqueta sin especificar'), ' · ' + nombreCordajeDe(p) + (p.pretensado ? ' · pretensado' : '')));
+    if (proceso) {
+      card.appendChild(el('div', { class: 'im-cifras' },
+        el('div', {}, el('b', {}, fmtTension(p).replace(' (V/H)', '').replace(' kg', '')), 'tensión (kg)'),
+        el('div', {}, el('b', {}, estimada ? fmtHora(estimada) : '—'), 'lista hacia'),
+        el('div', {}, el('b', {}, euros(p.precio)), 'precio')));
+    } else {
+      card.appendChild(el('div', { class: 'im-det' }, fmtTension(p) + ' · ' + euros(p.precio) + ' · llegó a las ' + fmtHora(p.horaLlegada) + (estimada ? ' · lista hacia las ' + fmtHora(estimada) : '')));
     }
-    if (p.estado === 'pendiente' && !hayOtroEnProceso) {
-      acciones.appendChild(el('button', { class: 'btn btn-primary btn-sm', onclick: () => { empezarPedido(p); render(); abrirAvisoEmpezado(p); } }, '▶️ Empezar'));
-    }
-    if (p.estado === 'en_proceso' || (p.estado === 'pendiente' && !hayOtroEnProceso)) {
-      acciones.appendChild(el('button', { class: 'btn btn-gold btn-sm', onclick: () => { if (p.estado === 'pendiente') empezarPedido(p); abrirTerminarPedido(p); } }, '✅ Marcar terminado'));
-    }
-    if (p.estado === 'en_proceso' || p.estado === 'pendiente') {
-      acciones.appendChild(el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { if (confirm('¿El cliente no puede esperar? Se pasará a "Aplazados" y no contará para la hora estimada de los demás, hasta que la reanudes otro día.')) { aplazarPedido(p); render(); } } }, '📅 No puede esperar / aplazar'));
-      acciones.appendChild(el('button', { class: 'btn btn-ghost btn-sm', onclick: () => abrirEnviarEnlaceSeguimiento(p) }, '🔗 Enviar enlace de seguimiento'));
-    }
-    acciones.appendChild(el('button', { class: 'btn btn-danger btn-sm', onclick: () => { if (confirm('¿Quitar este pedido de la cola?')) { removePedido(p.id); render(); } } }, 'Quitar'));
-    card.appendChild(acciones);
+    if (p.notas) card.appendChild(el('div', { class: 'im-det', style: 'font-style:italic;' }, '“' + p.notas + '”'));
+    if (p.fotoAntes) card.appendChild(el('img', { class: 'im-foto', src: p.fotoAntes, alt: 'Foto de la raqueta' }));
+    const acc = el('div', { class: 'im-acc' });
+    if (proceso) acc.appendChild(el('button', { class: 'btn btn-gold', onclick: () => abrirTerminarPedido(p) }, 'Marcar terminada'));
+    else if (!hayOtroEnProceso) acc.appendChild(el('button', { class: 'btn btn-gold', onclick: () => { empezarPedido(p); render(); abrirAvisoEmpezado(p); } }, 'Empezar a encordar'));
+    else acc.appendChild(el('span', { class: 'im-espera' }, 'Después de la que está en curso'));
+    acc.appendChild(menuMasOpciones([
+      !proceso && !hayOtroEnProceso ? el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { empezarPedido(p); abrirTerminarPedido(p); } }, 'Marcar terminada directamente') : null,
+      el('button', { class: 'btn btn-ghost btn-sm', onclick: () => abrirEnviarEnlaceSeguimiento(p) }, 'Enviar enlace de seguimiento'),
+      el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { if (confirm('¿El cliente no puede esperar? Se pasará a "Aplazados" y no contará para la hora estimada de los demás, hasta que la reanudes otro día.')) { aplazarPedido(p); render(); } } }, 'Aplazar a otro día'),
+      el('button', { class: 'btn btn-danger btn-sm', onclick: () => { if (confirm('¿Quitar este pedido de la cola?')) { removePedido(p.id); render(); } } }, 'Quitar de la cola'),
+    ]));
+    card.appendChild(acc);
     panel.appendChild(card);
   });
+  // Ajustes de la cola, plegados para no estorbar
+  const tMedioReal = tiempoMedioReal();
+  const ajustes = [];
+  if (tMedioReal !== null && tMedioReal !== state.config.tiempoMedioMinutos) ajustes.push(el('div', { class: 'row', style: 'margin-bottom:8px;' },
+    el('span', {}, 'Tu media real está siendo de ' + tMedioReal + ' min por raqueta.'),
+    el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { state.config.tiempoMedioMinutos = tMedioReal; render(); } }, 'Usar ' + tMedioReal + ' min')));
+  if (!permisoNotificacionesConcedido()) ajustes.push(el('div', { class: 'row' },
+    el('span', {}, 'Aviso cuando falten 5 minutos para terminar (con la app abierta).'),
+    el('button', { class: 'btn btn-ghost btn-sm', onclick: () => pedirPermisoNotificaciones() }, 'Activar aviso')));
+  if (ajustes.length) panel.appendChild(el('details', { class: 'im-plegable' }, el('summary', {}, 'Ajustes de la cola'), el('div', { class: 'im-plegable-cuerpo' }, ajustes)));
+  wrap.appendChild(panel);
 
   const aplazados = pedidosAplazados();
   if (aplazados.length) {
     const panelAplazados = el('div', { class: 'panel', style: 'margin-top:16px;' },
-      el('h2', {}, '📅 Aplazados para otro día'),
-      el('div', { class: 'sub' }, 'No cuentan para la hora estimada de la cola de hoy. Pulsa "Reanudar hoy" cuando vayas a encordarlas.'),
+      el('h2', {}, 'Aplazadas para otro día'),
+      el('div', { class: 'sub' }, 'No cuentan para la hora estimada de hoy.'),
     );
     aplazados.forEach(p => {
       const cli = clienteDe(p.clienteId);
-      const cor = cordajeDe(p.cordajeId);
-      panelAplazados.appendChild(el('div', { class: 'card' },
-        el('div', { class: 'card-head' },
-          el('span', { class: 'card-title' }, cli ? cli.nombre : '(cliente eliminado)'),
-        ),
-        el('div', { class: 'sub' }, `${p.marcaModelo || 'Raqueta sin especificar'} · ${nombreCordajeDe(p)} · ${fmtTension(p)} · ${euros(p.precio)}`),
-        el('div', { class: 'toolbar', style: 'margin-top:8px;' },
-          el('button', { class: 'btn btn-primary btn-sm', onclick: () => { reanudarPedido(p); render(); } }, '▶️ Reanudar hoy'),
-          el('button', { class: 'btn btn-danger btn-sm', onclick: () => { if (confirm('¿Quitar este pedido?')) { removePedido(p.id); render(); } } }, 'Quitar'),
+      panelAplazados.appendChild(el('div', { class: 'im-raqueta' },
+        el('div', { class: 'im-num', 'aria-hidden': 'true' }, '·'),
+        el('div', { class: 'im-cli' }, cli ? cli.nombre : '(cliente eliminado)', chipPago(p)),
+        el('div', { class: 'im-det' }, el('strong', {}, p.marcaModelo || 'Raqueta sin especificar'), ` · ${nombreCordajeDe(p)} · ${fmtTension(p)} · ${euros(p.precio)}`),
+        el('div', { class: 'im-acc' },
+          el('button', { class: 'btn btn-primary', onclick: () => { reanudarPedido(p); render(); } }, 'Volver a la cola hoy'),
+          menuMasOpciones([el('button', { class: 'btn btn-danger btn-sm', onclick: () => { if (confirm('¿Quitar este pedido?')) { removePedido(p.id); render(); } } }, 'Quitar')]),
         ),
       ));
     });
-    wrap.appendChild(panel);
     wrap.appendChild(panelAplazados);
-    const panelRecogerA = construirPanelPorRecoger();
-    if (panelRecogerA) wrap.appendChild(panelRecogerA);
-    return wrap;
   }
-
-  wrap.appendChild(panel);
-  const panelRecogerB = construirPanelPorRecoger();
-  if (panelRecogerB) wrap.appendChild(panelRecogerB);
+  const panelRecoger = construirPanelPorRecoger();
+  if (panelRecoger) wrap.appendChild(panelRecoger);
   return wrap;
 }
 
@@ -6994,14 +7280,16 @@ let clientePreseleccionadoId = null;
 function viewNuevoPedido() {
   const wrap = document.createDocumentFragment();
   const panel = el('div', { class: 'panel' },
-    el('h2', {}, '➕ Nuevo pedido de encordado'),
-    el('div', { class: 'sub' }, 'Busca al cliente por nombre o teléfono, o crea uno nuevo si no está. Si te trae varias raquetas, puedes añadirlas una a una sin volver a buscarlo.'),
+    el('h2', {}, 'Nuevo pedido'),
+    el('div', { class: 'sub' }, 'Si el cliente trae varias raquetas, añádelas una a una sin volver a buscarlo.'),
   );
+  const paso = (n, titulo) => { const sec = el('section', { class: 'im-paso' }, el('div', { class: 'im-paso-tit' }, el('i', {}, String(n)), titulo)); panel.appendChild(sec); return sec; };
+  const pasoCliente = paso(1, 'Cliente');
 
   let clienteElegidoId = clientePreseleccionadoId;
   const clientePre = clienteElegidoId ? clienteDe(clienteElegidoId) : null;
   const buscadorInput = el('input', { type: 'text', placeholder: 'Nombre o teléfono del cliente', value: clientePre ? clientePre.nombre : '' });
-  const resultadosDiv = el('div', { style: 'margin-top:8px;' });
+  const resultadosDiv = el('div', { class: 'im-resultados' });
   function pintarBusqueda() {
     resultadosDiv.innerHTML = '';
     const q = buscadorInput.value.trim().toLowerCase();
@@ -7009,24 +7297,26 @@ function viewNuevoPedido() {
     encontrados.slice(0, 6).forEach(c => {
       resultadosDiv.appendChild(el('div', {
         class: 'chip', style: 'cursor:pointer;margin:2px;display:inline-block;',
-        onclick: () => { clienteElegidoId = c.id; buscadorInput.value = c.nombre; resultadosDiv.innerHTML = ''; clienteChipDiv.textContent = 'Cliente: ' + c.nombre; },
+        onclick: () => { clienteElegidoId = c.id; buscadorInput.value = c.nombre; resultadosDiv.innerHTML = ''; marcarCliente(c.nombre); },
       }, c.nombre + (c.telefono ? ' · ' + c.telefono : '')));
     });
   }
   buscadorInput.addEventListener('input', pintarBusqueda);
-  const clienteChipDiv = el('div', { class: 'sub', style: 'margin-top:6px;font-weight:700;' }, clientePre ? 'Cliente: ' + clientePre.nombre : 'Ningún cliente seleccionado todavía.');
-  panel.appendChild(field('Cliente', buscadorInput));
-  panel.appendChild(resultadosDiv);
-  panel.appendChild(clienteChipDiv);
-  panel.appendChild(el('div', { class: 'toolbar', style: 'margin:8px 0 16px;' },
+  const clienteChipDiv = el('div', {});
+  function marcarCliente(nombre) { clienteChipDiv.className = nombre ? 'im-cliente-ok' : 'im-cliente-no'; clienteChipDiv.textContent = nombre ? '✓ ' + nombre : 'Busca por nombre o teléfono, o créalo nuevo.'; }
+  marcarCliente(clientePre ? clientePre.nombre : '');
+  pasoCliente.appendChild(field('Buscar cliente', buscadorInput));
+  pasoCliente.appendChild(resultadosDiv);
+  pasoCliente.appendChild(clienteChipDiv);
+  pasoCliente.appendChild(el('div', { class: 'toolbar', style: 'margin:8px 0 0;' },
     el('button', { class: 'btn btn-ghost btn-sm', onclick: () => {
       const nombre = buscadorInput.value.trim();
       if (!nombre) { alert('Escribe primero el nombre del cliente nuevo.'); return; }
       const nuevo = addCliente({ nombre });
       clienteElegidoId = nuevo.id;
-      clienteChipDiv.textContent = 'Cliente: ' + nuevo.nombre + ' (nuevo)';
+      marcarCliente(nuevo.nombre + ' (nuevo)');
       resultadosDiv.innerHTML = '';
-    } }, '+ Crear como cliente nuevo'),
+    } }, '+ Crear cliente nuevo con este nombre'),
   ));
 
   const marcaTextInput = el('input', { type: 'text', placeholder: 'Ej: Yonex Astrox 99' });
@@ -7122,13 +7412,12 @@ function viewNuevoPedido() {
       avisoMolestiaDiv.appendChild(el('div', { class: 'msg msg-warn' }, '⚠️ Con molestias, prioriza un cordaje suave/con amortiguación y baja también la tensión (vertical y horizontal) respecto a lo habitual.'));
     }
   });
-  panel.appendChild(el('div', { class: 'msg msg-info' }, '🎯 Cuéntame cómo es el jugador y te marco con ⭐ los cordajes de tu stock más adecuados:'));
-  panel.appendChild(el('div', { class: 'grid' },
-    field('Nivel del jugador', nivelJugadorSelect),
-    field('Estilo de juego', estiloJuegoSelect),
-    field('Molestias o lesiones', molestiaSelect),
-  ));
-  panel.appendChild(avisoMolestiaDiv);
+  const recomendador = el('details', { class: 'im-plegable' },
+    el('summary', {}, 'Ayúdame a elegir cordaje', el('small', {}, 'según nivel, estilo y molestias')),
+    el('div', { class: 'im-plegable-cuerpo' },
+      el('div', { class: 'sub' }, 'Los cordajes de tu stock que encajan se marcan con ⭐ en la lista.'),
+      el('div', { class: 'grid' }, field('Nivel del jugador', nivelJugadorSelect), field('Estilo de juego', estiloJuegoSelect), field('Molestias o lesiones', molestiaSelect)),
+      avisoMolestiaDiv));
   const cantidadCordajeInput = el('input', { type: 'number', step: '0.5', min: '0' });
   const cantidadCordajeDiv = el('div', { style: 'display:none;' }, field('Cantidad de cordaje usada', cantidadCordajeInput));
 
@@ -7154,15 +7443,10 @@ function viewNuevoPedido() {
     if (!on) { cordajeHSelect.value = ''; cordajeHDiv.querySelector('label').textContent = 'Cordaje horizontal'; cantidadCordajeHDiv.style.display = 'none'; cordajeHSelect.dispatchEvent(new Event('change')); }
     actualizarPrecioCordajes();
   });
-  panel.appendChild(el('div', { class: 'msg msg-info', style: 'margin-bottom:8px;' },
-    el('label', { style: 'display:flex;align-items:center;text-transform:none;font-weight:400;cursor:pointer;' },
-      hibridoCheckbox, '🔀 Cordaje híbrido: uno para las verticales y otro distinto para las horizontales'),
-  ));
   const pretensadoCheckbox = el('input', { type: 'checkbox', style: 'width:auto;margin-right:6px;' });
-  panel.appendChild(el('div', { class: 'msg msg-info', style: 'margin-bottom:8px;' },
-    el('label', { style: 'display:flex;align-items:center;text-transform:none;font-weight:400;cursor:pointer;' },
-      pretensadoCheckbox, '🧵 Pretensado del cordaje'),
-  ));
+  const opcionesCordaje = el('div', { class: 'im-opciones' },
+    el('label', {}, hibridoCheckbox, 'Híbrido (otro cordaje en horizontales)'),
+    el('label', {}, pretensadoCheckbox, 'Pretensado'));
 
   function actualizarPrecioCordajes() {
     const cor = cordajeDe(cordajeSelect.value);
@@ -7197,17 +7481,17 @@ function viewNuevoPedido() {
   const fotoInput = el('input', { type: 'file', accept: 'image/*', capture: 'environment' });
   const notasInput = el('textarea', { rows: '2', placeholder: 'Notas (opcional)' });
 
-  panel.appendChild(el('div', { class: 'grid' },
-    field('Marca y modelo de la raqueta', marcaCampoDiv),
-    field(campoCordajeVerticalLabel, cordajeSelect),
-    cordajeHDiv,
-    field('Tensión vertical (kg)', tensionVInput),
-    field('Tensión horizontal (kg)', tensionHInput),
-    field('Precio (€)', precioInput),
-    field('Pago', pagoSelect),
-    field('Foto de la raqueta (opcional)', fotoInput),
-  ));
-  panel.appendChild(avisoTensionMaxDiv);
+  const pasoRaqueta = paso(2, 'Raqueta');
+  pasoRaqueta.appendChild(field('Marca y modelo', marcaCampoDiv));
+  const pasoCordaje = paso(3, 'Cordaje y tensión');
+  pasoCordaje.appendChild(field(campoCordajeVerticalLabel, cordajeSelect));
+  pasoCordaje.appendChild(opcionesCordaje);
+  pasoCordaje.appendChild(cordajeHDiv);
+  pasoCordaje.appendChild(el('div', { class: 'im-dos', style: 'margin-top:10px;' }, field('Tensión vertical (kg)', tensionVInput), field('Tensión horizontal (kg)', tensionHInput)));
+  pasoCordaje.appendChild(avisoTensionMaxDiv);
+  pasoCordaje.appendChild(recomendador);
+  const pasoCobro = paso(4, 'Precio y cobro');
+  pasoCobro.appendChild(el('div', { class: 'im-dos' }, field('Precio del encordado (€)', precioInput), field('Pago', pagoSelect)));
 
   // ---------- Otros artículos en el mismo pedido (camisetas, grips, llaveros...) ----------
   const articulosAdicionalesLista = [];
@@ -7217,10 +7501,10 @@ function viewNuevoPedido() {
       otrosArticulosDisponibles.map(a => el('option', { value: a.id }, a.nombre + ' (' + euros(a.precio) + ', stock: ' + a.stock + ' ' + (a.unidad || 'unidades') + ')'))));
   const otrosArticulosCantidad = el('input', { type: 'number', min: '1', step: '1', value: '1', style: 'max-width:90px;' });
   const otrosArticulosListaDiv = el('div', { style: 'margin-top:8px;' });
-  const totalPedidoDiv = el('div', { class: 'sub', style: 'font-weight:700;margin-top:8px;' });
+  const totalPedidoDiv = el('div', { class: 'im-total' });
   function subtotalArticulosAdicionales() { return articulosAdicionalesLista.reduce((s, i) => s + i.cantidad * i.precioUnitario, 0); }
   function actualizarTotalPedido() {
-    totalPedidoDiv.textContent = '💶 Total del pedido: ' + euros((parseFloat(precioInput.value) || 0) + subtotalArticulosAdicionales());
+    totalPedidoDiv.innerHTML = ''; totalPedidoDiv.append('Total del pedido', el('b', {}, euros((parseFloat(precioInput.value) || 0) + subtotalArticulosAdicionales())));
   }
   function repintarOtrosArticulos() {
     otrosArticulosListaDiv.innerHTML = '';
@@ -7234,10 +7518,10 @@ function viewNuevoPedido() {
   }
   precioInput.addEventListener('input', actualizarTotalPedido);
   precioInput.addEventListener('change', actualizarTotalPedido);
-  const panelOtrosArticulos = el('div', { class: 'panel' },
-    el('h2', {}, '🛍️ Otros artículos de este pedido'),
-    el('div', { class: 'sub' }, 'Si el cliente se lleva además una camiseta, un grip, un llavero... añádelo aquí y se suma al total.'),
-    el('div', { class: 'row', style: 'gap:8px;flex-wrap:wrap;margin:8px 0;' },
+  const panelOtrosArticulos = el('details', { class: 'im-plegable' },
+    el('summary', {}, 'Se lleva algo más', el('small', {}, 'grip, volantes, camiseta…')),
+    el('div', { class: 'im-plegable-cuerpo' },
+    el('div', { class: 'row', style: 'gap:8px;flex-wrap:wrap;margin:4px 0 8px;' },
       otrosArticulosSelect, otrosArticulosCantidad,
       el('button', { class: 'btn btn-gold btn-sm', onclick: () => {
         const art = otrosArticulosDisponibles.find(a => a.id === otrosArticulosSelect.value);
@@ -7251,16 +7535,17 @@ function viewNuevoPedido() {
       } }, '+ Añadir a este pedido'),
     ),
     otrosArticulosListaDiv,
-    totalPedidoDiv,
-  );
+  ));
   actualizarTotalPedido();
-  panel.appendChild(panelOtrosArticulos);
+  pasoCobro.appendChild(panelOtrosArticulos);
 
   const nuevaMarcaInput = el('input', { type: 'text', placeholder: 'Marca (ej: Yonex)' });
   const nuevoModeloInput = el('input', { type: 'text', placeholder: 'Modelo (ej: Astrox 200)' });
   const nuevaTensionMaxInput = el('input', { type: 'number', step: '0.5', min: '0', placeholder: 'Máx. kg (opcional)' });
-  panel.appendChild(el('div', { class: 'card', style: 'padding:10px 14px;margin-bottom:16px;' },
-    el('div', { class: 'sub', style: 'margin-bottom:6px;' }, '¿La raqueta no está en la lista? Añádela para que aparezca siempre en el desplegable a partir de ahora:'),
+  pasoRaqueta.appendChild(el('details', { class: 'im-plegable' },
+    el('summary', {}, 'No está en la lista'),
+    el('div', { class: 'im-plegable-cuerpo' },
+    el('div', { class: 'sub', style: 'margin-bottom:6px;' }, 'Añádela y saldrá siempre en la lista a partir de ahora.'),
     el('div', { class: 'row', style: 'gap:8px;flex-wrap:wrap;' },
       nuevaMarcaInput, nuevoModeloInput, nuevaTensionMaxInput,
       el('button', { class: 'btn btn-ghost btn-sm', onclick: () => {
@@ -7272,13 +7557,13 @@ function viewNuevoPedido() {
         comprobarTensionMax();
       } }, '+ Añadir modelo a la lista'),
     ),
-  ));
-  panel.appendChild(cantidadCordajeDiv);
-  panel.appendChild(cantidadCordajeHDiv);
-  panel.appendChild(field('Notas', notasInput));
+  )));
+  pasoRaqueta.appendChild(field('Foto de la raqueta (opcional)', fotoInput));
+  pasoCordaje.appendChild(el('div', { class: 'im-dos' }, cantidadCordajeDiv, cantidadCordajeHDiv));
+  pasoCobro.appendChild(field('Notas (opcional)', notasInput));
 
   async function guardarPedido(irACola) {
-    if (!clienteElegidoId) { alert('Elige o crea primero un cliente.'); return; }
+    if (!clienteElegidoId) { alert('Elige o crea primero un cliente.'); buscadorInput.focus(); return; }
     let fotoAntes = null;
     if (fotoInput.files[0]) {
       try { fotoAntes = await comprimirImagen(fotoInput.files[0], 1100, 0.65); } catch (e) {}
@@ -7303,9 +7588,10 @@ function viewNuevoPedido() {
     render();
   }
 
-  panel.appendChild(el('div', { class: 'toolbar', style: 'margin-top:16px;' },
-    el('button', { class: 'btn btn-gold', onclick: () => guardarPedido(false) }, '➕ Añadir y meter otra raqueta de este cliente'),
-    el('button', { class: 'btn btn-primary', onclick: () => guardarPedido(true) }, '✅ Añadir y terminar (ir a la cola)'),
+  panel.appendChild(el('div', { class: 'im-barra-pedido' },
+    totalPedidoDiv,
+    el('button', { class: 'btn btn-gold', onclick: () => guardarPedido(true) }, 'Guardar en la cola'),
+    el('button', { class: 'btn im-otra', onclick: () => guardarPedido(false) }, '+ Guardar y añadir otra raqueta de este cliente'),
   ));
   wrap.appendChild(panel);
   return wrap;
@@ -7314,8 +7600,8 @@ function viewNuevoPedido() {
 function viewClientes() {
   const wrap = document.createDocumentFragment();
   const panel = el('div', { class: 'panel' },
-    el('h2', {}, '👤 Clientes'),
-    el('div', { class: 'sub' }, 'Clientes del taller (pueden coincidir o no con jugadores del club). Pincha en uno para ver su historial.'),
+    el('h2', {}, 'Clientes'),
+    el('div', { class: 'sub' }, 'Pulsa en un cliente para ver sus datos y sus raquetas.'),
   );
   const buscador = el('input', { type: 'text', placeholder: 'Buscar por nombre o teléfono…', value: filtroClienteTexto });
   buscador.addEventListener('input', (e) => { filtroClienteTexto = e.target.value; render(); });
@@ -7329,11 +7615,12 @@ function viewClientes() {
   const cpInput = el('input', { type: 'text', placeholder: 'Código postal' });
   const localidadInput = el('input', { type: 'text', placeholder: 'Localidad' });
   const provinciaInput = el('input', { type: 'text', placeholder: 'Provincia' });
-  panel.appendChild(el('div', { class: 'grid', style: 'margin-top:10px;' },
+  const altaCliente = el('details', { class: 'im-plegable' }, el('summary', {}, '+ Nuevo cliente'), el('div', { class: 'im-plegable-cuerpo' },
+    el('div', { class: 'grid' },
     field('Nombre', nombreInput), field('Teléfono', telInput), field('Email', emailInput), field('DNI/NIF', dniInput),
     field('Dirección', direccionInput), field('Código postal', cpInput), field('Localidad', localidadInput), field('Provincia', provinciaInput),
-  ));
-  panel.appendChild(el('div', { class: 'toolbar', style: 'margin-bottom:16px;' },
+  ),
+  el('div', { class: 'toolbar', style: 'margin:12px 0 0;' },
     el('button', { class: 'btn btn-gold btn-sm', onclick: () => {
       if (!nombreInput.value.trim()) { alert('Escribe al menos el nombre.'); return; }
       addCliente({
@@ -7341,8 +7628,9 @@ function viewClientes() {
         direccion: direccionInput.value.trim(), codigoPostal: cpInput.value.trim(), localidad: localidadInput.value.trim(), provincia: provinciaInput.value.trim(),
       });
       render();
-    } }, '+ Añadir cliente'),
-  ));
+    } }, 'Guardar cliente'),
+  )));
+  panel.appendChild(altaCliente);
 
   const q = filtroClienteTexto.trim().toLowerCase();
   const lista = q ? state.clientes.filter(c => (c.nombre || '').toLowerCase().includes(q) || (c.telefono || '').includes(q) || (c.numeroCliente || '').includes(q) || (c.dni || '').toLowerCase().includes(q)) : state.clientes;
@@ -7464,7 +7752,7 @@ function construirTablaArticulos(lista) {
     else idsVisibles.forEach(id => articulosSeleccionados.delete(id));
     render();
   });
-  const table = el('table', {}, el('thead', {}, el('tr', {},
+  const table = el('table', { class: 'im-tabla-art' }, el('thead', {}, el('tr', {},
     el('th', {}, checkTodos), el('th', {}, 'Código'), el('th', {}, 'Nombre'), el('th', {}, 'Coste'), el('th', {}, 'Venta'), el('th', {}, 'Stock'), el('th', {}, ''))));
   const tbody = el('tbody');
   if (!lista.length) {
@@ -7481,13 +7769,13 @@ function construirTablaArticulos(lista) {
     const ventaCelda = el('input', { type: 'number', min: '0', step: '0.5', value: a.precio || 0, style: 'width:70px;', onchange: e => { a.precio = parseFloat(e.target.value) || 0; render(); } });
     const stockCelda = el('input', { type: 'number', min: '0', value: a.stock || 0, style: 'width:65px;', onchange: e => { a.stock = parseFloat(e.target.value) || 0; render(); } });
     tbody.appendChild(el('tr', {},
-      el('td', {}, checkFila),
-      el('td', {}, a.codigo || '—'),
-      el('td', {}, a.nombre + (a.ventaOnline ? ' 🛒' : '')),
-      el('td', {}, costeCelda),
-      el('td', {}, ventaCelda),
-      el('td', {}, el('div', { class: 'row', style: 'align-items:center;gap:4px;flex-wrap:nowrap;' }, stockCelda, el('span', { class: 'sub' }, a.unidad || 'unidades'))),
-      el('td', {}, el('button', { class: 'btn btn-sm ' + (abierto ? 'btn-primary' : 'btn-ghost'), onclick: () => { articuloAbiertoId = abierto ? null : a.id; render(); } }, abierto ? 'Cerrar' : 'Editar')),
+      el('td', { class: 'c-sel' }, checkFila),
+      el('td', { class: 'c-cod' }, a.codigo || '—'),
+      el('td', { class: 'c-nom' }, a.nombre + (a.ventaOnline ? ' 🛒' : '')),
+      el('td', { class: 'c-coste', 'data-et': 'Coste (€)' }, costeCelda),
+      el('td', { class: 'c-venta', 'data-et': 'Venta (€)' }, ventaCelda),
+      el('td', { class: 'c-stock', 'data-et': 'Stock (' + (a.unidad || 'unidades') + ')' }, el('div', { class: 'row', style: 'align-items:center;gap:4px;flex-wrap:nowrap;' }, stockCelda, el('span', { class: 'sub c-unidad' }, a.unidad || 'unidades'))),
+      el('td', { class: 'c-ed' }, el('button', { class: 'btn btn-sm ' + (abierto ? 'btn-primary' : 'btn-ghost'), onclick: () => { articuloAbiertoId = abierto ? null : a.id; render(); } }, abierto ? 'Cerrar' : 'Editar')),
     ));
   });
   table.appendChild(tbody);
@@ -7535,10 +7823,10 @@ function listaArticulosCompacta(listaCompleta) {
 }
 function viewCatalogo() {
   const wrap = document.createDocumentFragment();
-  wrap.appendChild(el('div', { class: 'row', style: 'gap:8px;margin-bottom:12px;flex-wrap:wrap;' },
-    el('button', { class: 'btn ' + (subTabCatalogo === 'cordajes' ? 'btn-primary' : 'btn-ghost'), onclick: () => { subTabCatalogo = 'cordajes'; render(); } }, '🧵 Cordajes'),
-    el('button', { class: 'btn ' + (subTabCatalogo === 'articulos' ? 'btn-primary' : 'btn-ghost'), onclick: () => { subTabCatalogo = 'articulos'; render(); } }, '🏷️ Artículos'),
-    el('button', { class: 'btn ' + (subTabCatalogo === 'pedidosProv' ? 'btn-primary' : 'btn-ghost'), onclick: () => { subTabCatalogo = 'pedidosProv'; render(); } }, '📦 Pedidos a proveedor'),
+  wrap.appendChild(el('div', { class: 'tab-pills', role: 'tablist' },
+    el('button', { class: 'btn' + (subTabCatalogo === 'cordajes' ? ' on' : ''), onclick: () => { subTabCatalogo = 'cordajes'; render(); } }, 'Cordajes'),
+    el('button', { class: 'btn' + (subTabCatalogo === 'articulos' ? ' on' : ''), onclick: () => { subTabCatalogo = 'articulos'; render(); } }, 'Artículos'),
+    el('button', { class: 'btn' + (subTabCatalogo === 'pedidosProv' ? ' on' : ''), onclick: () => { subTabCatalogo = 'pedidosProv'; render(); } }, 'Pedidos a proveedor'),
   ));
   if (subTabCatalogo === 'articulos') wrap.appendChild(viewArticulos());
   else if (subTabCatalogo === 'pedidosProv') wrap.appendChild(viewPedidosProveedor());
@@ -7548,9 +7836,9 @@ function viewCatalogo() {
 let subTabCuentas = 'clientes';
 function viewCuentas() {
   const wrap = document.createDocumentFragment();
-  wrap.appendChild(el('div', { class: 'row', style: 'gap:8px;margin-bottom:12px;flex-wrap:wrap;' },
-    el('button', { class: 'btn ' + (subTabCuentas === 'clientes' ? 'btn-primary' : 'btn-ghost'), onclick: () => { subTabCuentas = 'clientes'; render(); } }, '👤 Clientes'),
-    el('button', { class: 'btn ' + (subTabCuentas === 'proveedores' ? 'btn-primary' : 'btn-ghost'), onclick: () => { subTabCuentas = 'proveedores'; render(); } }, '🏭 Proveedores'),
+  wrap.appendChild(el('div', { class: 'tab-pills', role: 'tablist' },
+    el('button', { class: 'btn' + (subTabCuentas === 'clientes' ? ' on' : ''), onclick: () => { subTabCuentas = 'clientes'; render(); } }, 'Clientes'),
+    el('button', { class: 'btn' + (subTabCuentas === 'proveedores' ? ' on' : ''), onclick: () => { subTabCuentas = 'proveedores'; render(); } }, 'Proveedores'),
   ));
   if (subTabCuentas === 'proveedores') wrap.appendChild(viewProveedores());
   else wrap.appendChild(viewClientes());
@@ -7671,9 +7959,9 @@ function articuloCard(a) {
 
 function viewCordajes() {
   const wrap = document.createDocumentFragment();
-  const panelGuia = el('div', { class: 'panel' },
-    el('h2', {}, '📖 Guía rápida para etiquetar cordajes'),
-    el('div', { class: 'sub' },
+  const panelGuia = el('details', { class: 'im-plegable', style: 'background:#fff;' },
+    el('summary', {}, 'Guía para etiquetar cordajes'),
+    el('div', { class: 'sub im-plegable-cuerpo', style: 'line-height:1.6;' },
       '· Iniciación: cordaje grueso (más duradero), tensión baja, mayor punto dulce, más perdonavidas. ',
       '· Intermedio: equilibrio entre potencia, control y sensación. ',
       '· Avanzado: cordaje fino, tensión alta, más control y tacto, menos duración. ',
@@ -7686,7 +7974,7 @@ function viewCordajes() {
 
   const cordajes = state.articulos.filter(a => a.esCordaje);
   const panelCordajes = el('div', { class: 'panel' },
-    el('h2', {}, '🧵 Cordajes en stock'),
+    el('h2', {}, 'Cordajes en stock'),
     el('div', { class: 'sub' }, cordajes.length + ' cordaje(s). Pulsa "Editar" en el que quieras cambiar.'),
     el('div', { class: 'toolbar' }, el('button', { class: 'btn btn-gold btn-sm', onclick: () => { const nuevo = addArticulo(true); articuloAbiertoId = nuevo.id; render(); } }, '+ Añadir cordaje')),
   );
@@ -7705,7 +7993,7 @@ function viewArticulos() {
 
   const articulos = state.articulos;
   const panelArt = el('div', { class: 'panel' },
-    el('h2', {}, '🏷️ Artículos'),
+    el('h2', {}, 'Artículos'),
     el('div', { class: 'sub' }, 'Todo tu inventario: llaveros, mochilas, raquetas, grips, ropa y también los cordajes (marcados con 🧵). Pulsa "Editar" en el que quieras cambiar.'),
     el('div', { class: 'toolbar' }, el('button', { class: 'btn btn-gold btn-sm', onclick: () => { const nuevo = addArticulo(false); articuloAbiertoId = nuevo.id; render(); } }, '+ Añadir artículo')),
   );
@@ -8233,6 +8521,7 @@ function pdfBin(s) {
     else if (c === 0x2026) out += '\x85';
     else if (c === 0x2013) out += '\x96';
     else if (c === 0x2014) out += '\x97';
+    else if (c === 0x2212) out += '-';
     else out += '?';
   }
   return out;
@@ -8717,9 +9006,9 @@ let subTabContab = 'movimientos';
 function viewContabilidadTaller() {
   const wrap = document.createDocumentFragment();
   const nPend = pedidosPendientesDeCobro().length;
-  wrap.appendChild(el('div', { class: 'row', style: 'gap:8px;margin-bottom:12px;flex-wrap:wrap;' },
-    el('button', { class: 'btn ' + (subTabContab === 'movimientos' ? 'btn-primary' : 'btn-ghost'), onclick: () => { subTabContab = 'movimientos'; render(); } }, '💰 Ingresos y gastos'),
-    el('button', { class: 'btn ' + (subTabContab === 'pendientes' ? 'btn-primary' : 'btn-ghost'), onclick: () => { subTabContab = 'pendientes'; render(); } }, '💶 Pendientes de cobro (' + nPend + ')'),
+  wrap.appendChild(el('div', { class: 'tab-pills', role: 'tablist' },
+    el('button', { class: 'btn' + (subTabContab === 'movimientos' ? ' on' : ''), onclick: () => { subTabContab = 'movimientos'; render(); } }, 'Ingresos y gastos'),
+    el('button', { class: 'btn' + (subTabContab === 'pendientes' ? ' on' : ''), onclick: () => { subTabContab = 'pendientes'; render(); } }, 'Pendientes de cobro (' + nPend + ')'),
   ));
   wrap.appendChild(subTabContab === 'pendientes' ? viewPendientesCobro() : viewMovimientosTaller());
   return wrap;
@@ -8894,7 +9183,7 @@ function saveLocal() {
 }
 function mount() { tryLoadLocal(); render(); }
 function irATab(tabId) { activeTab = tabId; render(); }
-return { render, mount, getState, setState, saveLocal, irATab, pdfPendientesDeCobro };
+return { render, mount, getState, setState, saveLocal, irATab, pdfPendientesDeCobro, tituloTab };
 })();
 
 </script>
@@ -10422,6 +10711,8 @@ function showSection(sec) {
   if (!permitido) { alert('No tienes permiso para ver esta sección.'); sec = 'home'; }
   currentSection = sec;
   if (sec !== 'taller') document.body.classList.remove('taller-sidebar-on');
+  document.body.classList.toggle('im-taller', sec === 'taller');
+  if (sec !== 'taller') { const ms = document.getElementById('imMasSheet'); if (ms) ms.classList.remove('abierto'); }
   SCREENS.forEach(id => { document.getElementById(id).style.display = 'none'; });
   document.getElementById(sec === 'torneo' ? 'torneoScreen' : sec === 'planificacion' ? 'planScreen' : sec === 'clubgestion' ? 'clubGestionScreen' : sec + 'Screen').style.display = 'block';
   renderShellHeader();
@@ -10546,7 +10837,7 @@ function renderShellHeader() {
     home: ['Gestión Integral Bádminton', 'Menú principal'],
     torneo: [clubGlobal.nombre ? clubGlobal.nombre + ' · Torneo' : 'Gestor de Torneos', 'Grupos + eliminatoria'],
     planificacion: [clubGlobal.nombre ? clubGlobal.nombre + ' · Planificación' : 'Planificación Anual', 'Iniciación a tecnificación'],
-    taller: ['Taller de Raquetas', (TallerApp.getState().config && TallerApp.getState().config.nombreTaller) || 'Encordado, clientes y contabilidad'],
+    taller: [(TallerApp.getState().config && TallerApp.getState().config.nombreTaller) || 'Taller de Raquetas', TallerApp.tituloTab ? TallerApp.tituloTab() : ''],
     fichar: [clubGlobal.nombre || 'Bádminton · Club', 'Fichaje'],
   };
   const clubGestionTitles = {

@@ -3,7 +3,7 @@
 <head>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261008-idermay">
+<meta name="build-id" content="v20261008-club">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -658,6 +658,150 @@ body.im-taller #tallerScreen .stat-card .lab{color:var(--im-muted);text-transfor
 @media (min-width:641px){ body.im-taller table.im-tabla-art{display:table;background:none;white-space:normal;} }
 body.im-taller #tallerScreen thead th,body.im-taller #tallerScreen thead tr{background:#F4F7FB;}
 body.im-taller #tallerScreen td{border-bottom-color:#E6EBF2;}
+/* ===== CLUB OLIMPIA: verde de pista, amarillo de volante de nailon y líneas de pista ===== */
+body.ol-club{
+  --ol-pista:#0F5C46; --ol-pista-osc:#0A3F31; --ol-pista-2:#16775C; --ol-volante:#F2C230; --ol-volante-osc:#D9A800;
+  --ol-fondo:#EEF2EF; --ol-tinta:#15241E; --ol-gris:#5B6A63; --ol-borde:#D3DDD7; --ol-suave:#F5F8F6;
+  --ol-cond:'Barlow Condensed',-apple-system,"Segoe UI",Roboto,sans-serif;
+  /* líneas de pista: laterales, línea de servicio y red */
+  --ol-lineas:linear-gradient(90deg,transparent calc(50% - 1px),rgba(255,255,255,.16) calc(50% - 1px),rgba(255,255,255,.16) calc(50% + 1px),transparent calc(50% + 1px)),
+              linear-gradient(0deg,transparent 22%,rgba(255,255,255,.12) 22%,rgba(255,255,255,.12) calc(22% + 2px),transparent calc(22% + 2px),transparent 78%,rgba(255,255,255,.12) 78%,rgba(255,255,255,.12) calc(78% + 2px),transparent calc(78% + 2px)),
+              linear-gradient(90deg,transparent 30%,rgba(255,255,255,.12) 30%,rgba(255,255,255,.12) calc(30% + 2px),transparent calc(30% + 2px),transparent 70%,rgba(255,255,255,.12) 70%,rgba(255,255,255,.12) calc(70% + 2px),transparent calc(70% + 2px));
+  background:var(--ol-fondo);color:var(--ol-tinta);
+}
+body.ol-club::before{display:none;}
+/* Cabecera compacta sobre verde de pista */
+body.ol-club header.app-header{background-color:var(--ol-pista) !important;background-image:var(--ol-lineas) !important;background-size:auto !important;min-height:0 !important;padding:12px 20px !important;flex-wrap:nowrap;gap:12px;}
+body.ol-club header.app-header::before{display:none !important;}
+body.ol-club header.app-header::after{height:3px;background:var(--ol-volante);opacity:1;}
+body.ol-club .brand{width:auto;flex:1;min-width:0;}
+body.ol-club .brand>div{min-width:0;}
+body.ol-club .brand .brand-badge{display:none !important;}
+body.ol-club #shellTitle{font-family:var(--ol-cond);font-weight:700;font-size:28px;letter-spacing:.2px;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+body.ol-club #shellSubtitle{font-size:12.5px;color:#CDE3D9;}
+body.ol-club #nubeIndicador{font-size:11px;color:#A9C9BB;}
+body.ol-club #headerActions{flex-wrap:nowrap;gap:6px;}
+body.ol-club #btnMenu{background:var(--ol-volante);color:var(--ol-pista-osc);}
+/* Pestañas de escritorio */
+body.ol-club nav.tabs{background:#fff !important;border-bottom:1px solid var(--ol-borde);padding:0 16px;gap:2px;box-shadow:none;}
+body.ol-club nav.tabs button{color:var(--ol-gris);background:transparent;border-radius:0;padding:14px 12px 12px;font-size:13.5px;border-bottom:3px solid transparent;}
+body.ol-club nav.tabs button:hover{color:var(--ol-pista);}
+body.ol-club nav.tabs button.active{background:transparent;color:var(--ol-pista);font-weight:800;border-bottom-color:var(--ol-volante);}
+body.ol-club #pagosTabsNav{background:var(--ol-suave) !important;}
+body.ol-club nav.tabs .ol-switch{display:none;}
+/* Superficies y formularios */
+body.ol-club main{padding-top:20px;}
+body.ol-club main .panel{background:#fff !important;border:1px solid var(--ol-borde);border-radius:14px;box-shadow:0 1px 2px rgba(10,63,49,.06);}
+body.ol-club main .panel h2{font-family:var(--ol-cond);font-weight:700;font-size:25px;color:var(--ol-pista-osc);letter-spacing:.2px;}
+body.ol-club main .panel h3{color:var(--ol-pista-osc);}
+body.ol-club main .panel .sub{color:var(--ol-gris);}
+body.ol-club main .card{background:#fff;border-color:var(--ol-borde);border-radius:12px;}
+body.ol-club main label{text-transform:none;letter-spacing:0;font-size:13px;font-weight:600;color:var(--ol-tinta);}
+body.ol-club main input[type=text],body.ol-club main input[type=number],body.ol-club main input[type=date],body.ol-club main input[type=time],body.ol-club main input[type=email],body.ol-club main input[type=tel],body.ol-club main input[type=month],body.ol-club main input[type=password],body.ol-club main select,body.ol-club main textarea{
+  background:#fff;border:1px solid #C6D2CB;border-radius:10px;min-height:42px;font-size:15px;}
+body.ol-club main input:focus,body.ol-club main select:focus,body.ol-club main textarea:focus{outline:2px solid var(--ol-pista);outline-offset:1px;border-color:var(--ol-pista);}
+body.ol-club .btn{border-radius:10px;}
+body.ol-club .btn:focus-visible{outline:3px solid var(--ol-volante);outline-offset:2px;}
+body.ol-club main .btn-primary,body.ol-club .modal .btn-primary{background:var(--ol-pista);color:#fff;}
+body.ol-club main .btn-primary:hover,body.ol-club .modal .btn-primary:hover{background:var(--ol-pista-osc);}
+body.ol-club main .btn-gold,body.ol-club .modal .btn-gold{background:var(--ol-volante);color:var(--ol-pista-osc);}
+body.ol-club main .btn-gold:hover,body.ol-club .modal .btn-gold:hover{background:var(--ol-volante-osc);}
+body.ol-club main .btn-ghost,body.ol-club .modal .btn-ghost{background:#fff;color:var(--ol-pista);border:1px solid #BFCEC6;}
+body.ol-club main .btn-danger{background:#fff;}
+body.ol-club main .chip{background:var(--ol-pista);}
+body.ol-club main .chip-gold{background:#FBEFC4;color:#6B5200;}
+body.ol-club main .chip-muted{background:#E9EEEB;color:var(--ol-gris);}
+body.ol-club main .msg-info{background:#E8F2EE;border-color:#C5DDD2;color:#1E5743;}
+body.ol-club main th{font-size:12px;color:var(--ol-gris);font-weight:600;text-transform:none;}
+body.ol-club main thead th,body.ol-club main thead tr{background:var(--ol-suave);}
+body.ol-club main td{border-bottom-color:#E4EAE6;}
+body.ol-club main .stat-card{background:var(--ol-suave);border:1px solid var(--ol-borde);color:var(--ol-tinta);border-radius:12px;}
+body.ol-club main .stat-card .num{font-family:var(--ol-cond);font-weight:700;font-size:32px;color:var(--ol-pista);}
+body.ol-club main .stat-card .lab{color:var(--ol-gris);text-transform:none;font-size:12.5px;}
+body.ol-club details.ol-plegable{border:1px solid var(--ol-borde);border-radius:12px;background:var(--ol-suave);margin:10px 0 14px;}
+body.ol-club details.ol-plegable>summary{cursor:pointer;list-style:none;padding:13px 14px;font-weight:700;color:var(--ol-pista);display:flex;align-items:center;gap:8px;}
+body.ol-club details.ol-plegable>summary::-webkit-details-marker{display:none;}
+body.ol-club details.ol-plegable>summary::after{content:"";margin-left:auto;width:8px;height:8px;border-right:2px solid var(--ol-pista);border-bottom:2px solid var(--ol-pista);transform:rotate(45deg);transition:transform .15s;}
+body.ol-club details.ol-plegable[open]>summary::after{transform:rotate(-135deg);}
+body.ol-club details.ol-plegable>.ol-cuerpo{padding:0 14px 14px;}
+body.ol-club .ol-buscar{margin:4px 0 10px;}
+
+/* ---- Menú principal ---- */
+body.ol-club #homeScreen{max-width:760px;margin:0 auto;}
+body.ol-club #homeScreen .club-banner{border-radius:16px;box-shadow:none;padding:22px;min-height:120px;background:var(--ol-pista);background-image:var(--ol-lineas);}
+body.ol-club #homeScreen .club-banner::after{display:none;}
+body.ol-club #homeScreen .club-banner.home-group-big{cursor:pointer;transition:transform .12s ease;}
+body.ol-club #homeScreen .club-banner.home-group-big:active{transform:scale(.99);}
+body.ol-club #homeScreen .club-banner .info{display:flex;align-items:center;gap:16px;}
+body.ol-club #homeScreen .club-banner .info b{font-family:var(--ol-cond);font-weight:700;font-size:28px;line-height:1.05;}
+body.ol-club #homeScreen .club-banner .info div div{color:#CDE3D9;font-size:13.5px;margin-top:4px;}
+body.ol-club #homeScreen .logo-big-emoji,body.ol-club #homeScreen .logo-big{width:64px;height:64px;border-radius:14px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:30px;object-fit:contain;flex-shrink:0;}
+body.ol-club #homeScreen .club-banner.ol-taller{background:#0B2D5B;background-image:repeating-linear-gradient(0deg,rgba(255,255,255,.06) 0 1px,transparent 1px 12px),repeating-linear-gradient(90deg,rgba(255,255,255,.06) 0 1px,transparent 1px 12px);border-bottom:4px solid #E0162B;}
+body.ol-club #homeScreen .club-banner.ol-taller .info b{font-style:italic;font-weight:800;}
+body.ol-club #homeScreen .home-back-btn{margin:0 0 12px;}
+body.ol-club #homeScreen .home-grid{display:flex;flex-direction:column;gap:0;background:#fff;border:1px solid var(--ol-borde);border-radius:14px;overflow:hidden;}
+body.ol-club #homeScreen .home-card{display:grid;grid-template-columns:48px 1fr 14px;grid-template-rows:auto auto;column-gap:14px;align-items:center;background:#fff !important;border:0;border-bottom:1px solid #E6ECE8;border-radius:0;box-shadow:none;padding:14px 16px;margin:0;}
+body.ol-club #homeScreen .home-card:last-child{border-bottom:0;}
+body.ol-club #homeScreen .home-card:hover{background:var(--ol-suave) !important;}
+body.ol-club #homeScreen .home-card::after{content:"";grid-column:3;grid-row:1 / 3;width:8px;height:8px;border-right:2px solid #9DB0A6;border-top:2px solid #9DB0A6;transform:rotate(45deg);}
+body.ol-club #homeScreen .home-card .icon{grid-row:1 / 3;width:48px;height:48px;border-radius:12px;background:#E5EFEA;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0;}
+body.ol-club #homeScreen .home-card h3{margin:0;font-size:16px;color:var(--ol-tinta);}
+body.ol-club #homeScreen .home-card p{margin:2px 0 0;font-size:13px;color:var(--ol-gris);}
+body.ol-club #homeScreen .club-banner:not(.home-group-big) .btn-ghost{color:#fff;border-color:rgba(255,255,255,.55);background:rgba(255,255,255,.08);}
+body.ol-club #homeScreen .club-banner.ol-taller:not(.home-group-big) .btn-ghost{color:#fff;}
+
+/* ---- Móvil: selector de sección en lugar de pestañas que se esconden ---- */
+#olSheet{display:none;}
+@media (max-width:859px){
+  body.ol-club header.app-header{padding:10px 14px !important;}
+  body.ol-club #shellTitle{font-size:22px;}
+  body.ol-club #sesionIndicador,body.ol-club #btnAyuda{display:none !important;}
+  body.ol-club #btnLogout .btn-txt{display:none;}
+  body.ol-club nav.tabs{padding:8px 12px;position:sticky;top:0;z-index:30;}
+  body.ol-club nav.tabs button:not(.ol-switch){display:none;}
+  body.ol-club nav.tabs .ol-switch{display:flex;align-items:center;gap:10px;width:100%;background:var(--ol-suave);border:1px solid var(--ol-borde);border-radius:12px;padding:10px 14px;color:var(--ol-tinta);font-size:15px;font-weight:700;border-bottom:1px solid var(--ol-borde);text-align:left;}
+  body.ol-club nav.tabs .ol-switch small{display:block;font-size:11.5px;font-weight:600;color:var(--ol-gris);}
+  body.ol-club nav.tabs .ol-switch::after{content:"";margin-left:auto;width:8px;height:8px;border-right:2px solid var(--ol-pista);border-bottom:2px solid var(--ol-pista);transform:rotate(45deg) translateY(-2px);}
+  body.ol-club #pagosTabsNav{top:62px;}
+  body.ol-club #pagosTabsNav .ol-switch{background:#fff;font-size:14px;padding:8px 14px;}
+  #olSheet.abierto{display:block;position:fixed;inset:0;z-index:80;background:rgba(10,63,49,.45);}
+  #olSheet .ol-hoja{position:absolute;left:0;right:0;bottom:0;max-height:80vh;overflow:auto;background:#fff;border-radius:18px 18px 0 0;padding:10px 14px calc(18px + env(safe-area-inset-bottom));box-shadow:0 -10px 30px rgba(0,0,0,.2);}
+  #olSheet .ol-asa{width:40px;height:4px;border-radius:2px;background:#C9D6CF;margin:2px auto 8px;}
+  #olSheet h4{margin:4px 6px 6px;font-size:13px;color:#5B6A63;font-weight:600;}
+  #olSheet button{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;border-bottom:1px solid #EDF1EE;padding:14px 8px;font-size:16px;font-weight:600;color:#15241E;text-align:left;cursor:pointer;}
+  #olSheet button:last-child{border-bottom:0;}
+  #olSheet button.on{color:#0F5C46;font-weight:800;}
+  #olSheet button.on::after{content:"";margin-left:auto;width:12px;height:6px;border-left:2px solid #0F5C46;border-bottom:2px solid #0F5C46;transform:rotate(-45deg);}
+}
+
+body.ol-club input[type=search]{width:100%;padding:9px 12px;border:1px solid #C6D2CB;border-radius:10px;min-height:44px;font-size:15px;background:#fff;font-family:inherit;}
+@media (max-width:700px){
+  body.ol-club table.ol-tabla-jug{display:block;background:none;white-space:normal;}
+  body.ol-club table.ol-tabla-jug thead{display:none;}
+  body.ol-club table.ol-tabla-jug tbody{display:flex;flex-direction:column;gap:8px;}
+  body.ol-club table.ol-tabla-jug tr.ol-fila{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;border:1px solid var(--ol-borde);border-radius:12px;padding:12px;background:#fff;}
+  body.ol-club table.ol-tabla-jug tr.ol-fila td{border:0;padding:0;}
+  body.ol-club table.ol-tabla-jug td.c-av{order:0;}
+  body.ol-club table.ol-tabla-jug td.c-nom{order:1;font-weight:800;font-size:16px;}
+  body.ol-club table.ol-tabla-jug td.c-ape{order:2;font-weight:600;font-size:16px;flex:1;}
+  body.ol-club table.ol-tabla-jug td.c-chip{order:3;}
+  body.ol-club table.ol-tabla-jug td.c-chip .chip{margin-left:0;}
+  body.ol-club table.ol-tabla-jug td.c-chip:nth-child(4){margin-left:40px;}
+  body.ol-club table.ol-tabla-jug td.c-acc{order:4;flex-basis:100%;margin-top:6px;}
+  body.ol-club table.ol-tabla-jug tr.ol-detalle{display:block;}
+  body.ol-club table.ol-tabla-jug tr.ol-detalle td{display:block;border:0;padding:4px 0 10px;}
+}
+
+body.ol-club #homeScreen{background:none !important;border:0 !important;box-shadow:none !important;padding:0 !important;}
+body.ol-club header.app-header{background-image:linear-gradient(90deg,transparent calc(50% - 1px),rgba(255,255,255,.10) calc(50% - 1px),rgba(255,255,255,.10) calc(50% + 1px),transparent calc(50% + 1px)),linear-gradient(90deg,transparent 72%,rgba(255,255,255,.08) 72%,rgba(255,255,255,.08) calc(72% + 2px),transparent calc(72% + 2px)) !important;}
+@media (max-width:859px){
+  body.ol-club #shellTitle{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;font-size:21px;}
+  body.ol-club table.ol-tabla-jug td.c-ape{flex:1 1 calc(100% - 130px);}
+}
+
+@media (min-width:860px){ body.ol-club nav.tabs{flex-wrap:wrap;overflow:visible;} }
+@media (min-width:701px){ body.ol-club table.ol-tabla-jug{display:table;background:none;} }
+@media (max-width:859px){ body.ol-club #pagosTabsNav{top:70px;} }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -10712,6 +10856,8 @@ function showSection(sec) {
   currentSection = sec;
   if (sec !== 'taller') document.body.classList.remove('taller-sidebar-on');
   document.body.classList.toggle('im-taller', sec === 'taller');
+  document.body.classList.toggle('ol-club', ['home', 'torneo', 'planificacion', 'clubgestion'].includes(sec));
+  if (typeof olCerrarHoja === 'function') olCerrarHoja();
   if (sec !== 'taller') { const ms = document.getElementById('imMasSheet'); if (ms) ms.classList.remove('abierto'); }
   SCREENS.forEach(id => { document.getElementById(id).style.display = 'none'; });
   document.getElementById(sec === 'torneo' ? 'torneoScreen' : sec === 'planificacion' ? 'planScreen' : sec === 'clubgestion' ? 'clubGestionScreen' : sec + 'Screen').style.display = 'block';
@@ -10726,6 +10872,40 @@ function showSection(sec) {
   else if (sec === 'fichar') renderFichar();
   window.scrollTo(0, 0);
 }
+// ---- Club: en el móvil, cada barra de pestañas se convierte en un selector de sección ----
+const OL_CONTEXTO_NAV = { clubGestionTabsNav: 'Gestión del club', pagosTabsNav: 'Pagos y cuotas', torneoTabsNav: 'Torneo', planTabsNav: 'Planificación' };
+function olCerrarHoja() { const h = document.getElementById('olSheet'); if (h) h.classList.remove('abierto'); }
+function olAbrirHoja(nav) {
+  let h = document.getElementById('olSheet');
+  if (!h) { h = document.createElement('div'); h.id = 'olSheet'; h.addEventListener('click', e => { if (e.target === h) olCerrarHoja(); }); document.body.appendChild(h); }
+  h.innerHTML = '';
+  const hoja = el('div', { class: 'ol-hoja', role: 'dialog', 'aria-label': 'Elegir sección' }, el('div', { class: 'ol-asa' }), el('h4', {}, OL_CONTEXTO_NAV[nav.id] || 'Secciones'));
+  Array.from(nav.querySelectorAll('button')).filter(b => !b.classList.contains('ol-switch')).forEach(b => {
+    hoja.appendChild(el('button', { class: b.classList.contains('active') ? 'on' : '', onclick: () => { olCerrarHoja(); b.click(); window.scrollTo(0, 0); } }, b.textContent.trim()));
+  });
+  h.appendChild(hoja); h.classList.add('abierto');
+}
+function olMejorarNavs() {
+  document.querySelectorAll('#clubGestionScreen nav.tabs, #torneoScreen nav.tabs, #planScreen nav.tabs').forEach(nav => {
+    const botones = Array.from(nav.querySelectorAll('button')).filter(b => !b.classList.contains('ol-switch'));
+    if (!botones.length) return;
+    const activo = botones.find(b => b.classList.contains('active')) || botones[0];
+    const texto = activo.textContent.trim();
+    let sw = nav.querySelector('.ol-switch');
+    if (sw && sw.dataset.t === texto && nav.firstChild === sw) return;
+    if (sw) sw.remove();
+    sw = el('button', { class: 'ol-switch', type: 'button', 'aria-haspopup': 'dialog', onclick: () => olAbrirHoja(nav) }, el('span', {}, el('small', {}, OL_CONTEXTO_NAV[nav.id] || 'Sección'), texto));
+    sw.dataset.t = texto;
+    nav.insertBefore(sw, nav.firstChild);
+  });
+  if (document.body.classList.contains('ol-club')) document.querySelectorAll('#shellMain .panel > h2').forEach(h => { if (h.childNodes.length === 1 && h.firstChild.nodeType === 3 && /^[^\p{L}\p{N}]/u.test(h.textContent)) h.textContent = h.textContent.replace(/^[^\p{L}\p{N}]+/u, ''); });
+}
+(function () {
+  let pendiente = false;
+  const obs = new MutationObserver(() => { if (pendiente) return; pendiente = true; requestAnimationFrame(() => { pendiente = false; olMejorarNavs(); }); });
+  const iniciar = () => { const m = document.getElementById('shellMain'); if (m) obs.observe(m, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] }); };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
+})();
 function actualizarMarcaAguaTaller(mostrar) {
   const marca = document.getElementById('marcaAguaTaller');
   if (!marca) return;
@@ -10835,15 +11015,16 @@ function renderShellHeader() {
   const titles = {
     onboarding: ['Bádminton · Club', 'Antes de empezar'],
     home: ['Gestión Integral Bádminton', 'Menú principal'],
-    torneo: [clubGlobal.nombre ? clubGlobal.nombre + ' · Torneo' : 'Gestor de Torneos', 'Grupos + eliminatoria'],
-    planificacion: [clubGlobal.nombre ? clubGlobal.nombre + ' · Planificación' : 'Planificación Anual', 'Iniciación a tecnificación'],
+    torneo: ['Torneos', clubGlobal.nombre || 'Grupos y eliminatoria'],
+    planificacion: ['Planificación anual', clubGlobal.nombre || 'De la iniciación a la tecnificación'],
     taller: [(TallerApp.getState().config && TallerApp.getState().config.nombreTaller) || 'Taller de Raquetas', TallerApp.tituloTab ? TallerApp.tituloTab() : ''],
     fichar: [clubGlobal.nombre || 'Bádminton · Club', 'Fichaje'],
   };
   const clubGestionTitles = {
-    datos: ['Datos del club', 'Se usan en Torneos y en Planificación'],
-    jugadores: ['Jugadores', 'Lista compartida entre Torneos y Planificación'],
-    pagos: [clubGlobal.nombre ? clubGlobal.nombre + ' · Pagos' : 'Pagos y Cuotas', 'Cuotas del club y competiciones'],
+    datos: ['Datos del club', clubGlobal.nombre || 'Se usan en Torneos y en Planificación'],
+    jugadores: ['Jugadores', clubGlobal.nombre || 'Lista compartida entre Torneos y Planificación'],
+    general: ['Base general de jugadores', clubGlobal.nombre || 'Jugadores de todos los clubes'],
+    pagos: ['Pagos y cuotas', clubGlobal.nombre || 'Cuotas del club y competiciones'],
     acceso: ['Control de acceso', 'Usuarios, roles y permisos'],
     horario: ['Control horario', 'Fichajes, plantillas de horario y festivos'],
     trabajadores: ['Trabajadores', 'Fichas del personal y acceso a la app'],
@@ -11033,8 +11214,9 @@ function renderJugadores() {
   const tipoLicenciaSelect = selectEl([{ value: '', label: 'Tipo de licencia' }, { value: 'Nacional', label: 'Nacional' }, { value: 'Territorial', label: 'Territorial' }, { value: 'Escolares', label: 'Escolares' }], '', () => {});
   const notasInput = el('input', { type: 'text', placeholder: 'Notas (opcional)' });
 
-  panel.appendChild(el('div', { class: 'sub', style: 'margin-bottom:6px;' }, 'Los campos con * son obligatorios para poder crear el jugador: hacen falta para poder apuntarlo luego en las categorías de un torneo.'));
-  panel.appendChild(el('div', { class: 'grid' },
+  const altaCuerpo = el('div', { class: 'ol-cuerpo' });
+  altaCuerpo.appendChild(el('div', { class: 'sub', style: 'margin-bottom:6px;' }, 'Los campos con * son obligatorios para poder crear el jugador: hacen falta para poder apuntarlo luego en las categorías de un torneo.'));
+  altaCuerpo.appendChild(el('div', { class: 'grid' },
     field('Nombre *', nameInput),
     field('Primer apellido', apellido1Input),
     field('Segundo apellido', apellido2Input),
@@ -11044,23 +11226,23 @@ function renderJugadores() {
     field('Email', emailInput),
     field('Club o escuela', tipoSelect),
   ));
-  panel.appendChild(field('Dirección', direccionInput));
-  panel.appendChild(el('div', { class: 'grid' },
+  altaCuerpo.appendChild(field('Dirección', direccionInput));
+  altaCuerpo.appendChild(el('div', { class: 'grid' },
     field('Código postal', codigoPostalInput),
     field('Localidad', localidadInput),
     field('Provincia', provinciaInput),
     field('DNI', dniInput),
   ));
-  panel.appendChild(el('h3', { style: 'margin-top:16px;' }, 'Ficha federativa (opcional)'));
-  panel.appendChild(el('label', { style: 'display:flex;align-items:center;gap:8px;cursor:pointer;margin:0 0 10px;text-transform:none;' }, federadoCheck, '¿Está federado?'));
-  panel.appendChild(el('div', { class: 'grid' },
+  altaCuerpo.appendChild(el('h3', { style: 'margin-top:16px;' }, 'Ficha federativa (opcional)'));
+  altaCuerpo.appendChild(el('label', { style: 'display:flex;align-items:center;gap:8px;cursor:pointer;margin:0 0 10px;text-transform:none;' }, federadoCheck, '¿Está federado?'));
+  altaCuerpo.appendChild(el('div', { class: 'grid' },
     field('Nº de licencia federativa', numeroLicenciaInput),
     field('Nacionalidad', nacionalidadInput),
     field('Club federativo', clubFederativoInput),
     field('Tipo de licencia', tipoLicenciaSelect),
     field('Ranking individual (nacional)', rankingInput),
   ));
-  panel.appendChild(field('Notas', notasInput));
+  altaCuerpo.appendChild(field('Notas', notasInput));
 
   let nuevaFotoData = '';
   const fotoPreviewNuevo = el('img', { class: 'logo-preview', src: '', style: 'display:none;' });
@@ -11077,10 +11259,10 @@ function renderJugadores() {
       fotoDropNuevo.textContent = 'Cambiar foto…';
     });
   });
-  panel.appendChild(el('label', {}, 'Foto del jugador'));
-  panel.appendChild(el('div', { class: 'row', style: 'align-items:flex-start;margin-bottom:14px;' }, fotoPreviewNuevo, fotoDropNuevo, fotoFileNuevo));
+  altaCuerpo.appendChild(el('label', {}, 'Foto del jugador'));
+  altaCuerpo.appendChild(el('div', { class: 'row', style: 'align-items:flex-start;margin-bottom:14px;' }, fotoPreviewNuevo, fotoDropNuevo, fotoFileNuevo));
 
-  panel.appendChild(el('div', { class: 'toolbar' }, el('button', {
+  altaCuerpo.appendChild(el('div', { class: 'toolbar' }, el('button', {
     class: 'btn btn-primary',
     onclick: () => {
       const v = nameInput.value.trim();
@@ -11103,6 +11285,7 @@ function renderJugadores() {
     },
   }, '+ Añadir jugador')));
 
+  panel.appendChild(el('details', { class: 'ol-plegable' }, el('summary', {}, '+ Nuevo jugador'), altaCuerpo));
   if (!jugadoresGlobal.length) {
     panel.appendChild(el('div', { class: 'empty-state' }, 'Todavía no has guardado ningún jugador.'));
   } else {
@@ -11119,17 +11302,17 @@ function renderJugadores() {
     jugadoresOrdenados.forEach(j => {
       const catCalculada = calcularCategoria(j.fechaNacimiento);
       const avatar = j.foto ? el('img', { src: j.foto, style: 'width:32px;height:32px;border-radius:50%;object-fit:cover;display:block;' }) : el('span', { style: 'font-size:18px;' }, '🏸');
-      tbody.appendChild(el('tr', {},
-        el('td', {}, avatar),
-        el('td', {}, j.nombre),
-        el('td', {}, apellidosCompactoDe(j) || el('span', { class: 'chip chip-muted' }, 'sin separar')),
-        el('td', {}, catCalculada ? el('span', { class: 'chip' }, nombreCategoria(catCalculada)) : el('span', { class: 'chip chip-muted' }, 'Sin determinar')),
-        el('td', {}, j.tipo === 'club' ? el('span', { class: 'chip' }, 'Club') : j.tipo === 'escuela' ? el('span', { class: 'chip chip-gold' }, 'Escuela') : el('span', { class: 'chip chip-muted' }, '—')),
-        el('td', {}, j.tipoLicencia ? el('span', { class: 'chip' }, j.tipoLicencia) : el('span', { class: 'chip chip-muted' }, '—')),
-        el('td', {}, j.federado ? el('span', { class: 'chip chip-gold' }, 'Federado') : el('span', { class: 'chip chip-muted' }, 'No federado')),
-        el('td', {}, el('div', { class: 'row', style: 'gap:6px;flex-wrap:nowrap;' },
+      tbody.appendChild(el('tr', { class: 'ol-fila', 'data-buscar': (j.nombre + ' ' + apellidosCompactoDe(j) + ' ' + (j.numeroLicencia || '')).toLowerCase() },
+        el('td', { class: 'c-av' }, avatar),
+        el('td', { class: 'c-nom' }, j.nombre),
+        el('td', { class: 'c-ape' }, apellidosCompactoDe(j) || el('span', { class: 'chip chip-muted' }, 'sin separar')),
+        el('td', { class: 'c-chip' }, catCalculada ? el('span', { class: 'chip' }, nombreCategoria(catCalculada)) : el('span', { class: 'chip chip-muted' }, 'Sin determinar')),
+        el('td', { class: 'c-chip' }, j.tipo === 'club' ? el('span', { class: 'chip' }, 'Club') : j.tipo === 'escuela' ? el('span', { class: 'chip chip-gold' }, 'Escuela') : el('span', { class: 'chip chip-muted' }, '—')),
+        el('td', { class: 'c-chip' }, j.tipoLicencia ? el('span', { class: 'chip' }, j.tipoLicencia) : el('span', { class: 'chip chip-muted' }, '—')),
+        el('td', { class: 'c-chip' }, j.federado ? el('span', { class: 'chip chip-gold' }, 'Federado') : el('span', { class: 'chip chip-muted' }, 'No federado')),
+        el('td', { class: 'c-acc' }, el('div', { class: 'row', style: 'gap:6px;flex-wrap:nowrap;' },
           el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { jugadorDetalleId = (jugadorDetalleId === j.id ? null : j.id); renderJugadores(); } }, jugadorDetalleId === j.id ? 'Cerrar' : 'Ver ficha'),
-          el('button', { class: 'btn btn-danger btn-sm', onclick: () => { window.JugadoresGlobal.remove(j.id); renderJugadores(); } }, 'Eliminar'),
+          el('button', { class: 'btn btn-danger btn-sm', onclick: () => { if (!confirm('¿Eliminar a ' + (j.nombre + ' ' + apellidosCompactoDe(j)).trim() + '? Se borra su ficha.')) return; window.JugadoresGlobal.remove(j.id); renderJugadores(); } }, 'Eliminar'),
         )),
       ));
       if (jugadorDetalleId === j.id) {
@@ -11152,10 +11335,20 @@ function renderJugadores() {
         const panelContable = historialContablePanel(j);
         if (panelContable) detailCell.appendChild(panelContable);
         detailCell.appendChild(trayectoriaJugadorPanel(j));
-        tbody.appendChild(el('tr', {}, detailCell));
+        tbody.appendChild(el('tr', { class: 'ol-detalle' }, detailCell));
       }
     });
     table.appendChild(tbody);
+    table.classList.add('ol-tabla-jug');
+    const buscarJug = el('input', { type: 'search', placeholder: 'Buscar por nombre, apellidos o licencia…', 'aria-label': 'Buscar jugador' });
+    const contadorJug = el('div', { class: 'sub', style: 'margin:0 0 8px;' }, jugadoresGlobal.length + ' jugadores');
+    buscarJug.addEventListener('input', () => {
+      const q = buscarJug.value.trim().toLowerCase(); let n = 0;
+      tbody.querySelectorAll('tr.ol-fila').forEach(tr => { const ver = !q || tr.dataset.buscar.includes(q); tr.style.display = ver ? '' : 'none'; if (ver) n++; const sig = tr.nextElementSibling; if (sig && sig.classList.contains('ol-detalle')) sig.style.display = ver ? '' : 'none'; });
+      contadorJug.textContent = q ? n + ' de ' + jugadoresGlobal.length + ' jugadores' : jugadoresGlobal.length + ' jugadores';
+    });
+    panel.appendChild(el('div', { class: 'ol-buscar' }, buscarJug));
+    panel.appendChild(contadorJug);
     panel.appendChild(table);
     panel.appendChild(el('div', { class: 'source-note' }, `Categoría calculada para la temporada de referencia ${anoReferenciaTemporada()} (según RFESBAD: Sub9, Sub11, Sub13, Sub15, Sub17, Sub19, Absoluto). Cambia la fecha de inicio de temporada en Datos del club si necesitas recalcular para otro año.`));
   }
@@ -11332,7 +11525,7 @@ function renderHome() {
     root.appendChild(el('button', { class: 'btn btn-ghost btn-sm home-back-btn', onclick: () => { homeGrupoAbierto = null; renderHome(); } }, '← Volver'));
     root.appendChild(construirGrid(gruposClub, onclickClub));
   } else if (homeGrupoAbierto === 'taller' && hayTaller) {
-    root.appendChild(el('div', { class: 'club-banner', style: 'margin-bottom:14px;' },
+    root.appendChild(el('div', { class: 'club-banner ol-taller', style: 'margin-bottom:14px;' },
       el('div', { class: 'info' },
         fotoTaller ? el('img', { class: 'logo-big', src: fotoTaller }) : el('div', { class: 'logo-big-emoji' }, '🏸'),
         el('div', {}, el('b', {}, cfgTaller.nombreTaller || 'Taller de Raquetas'), el('div', {}, 'Encordado, almacén, cuentas y contabilidad')),
@@ -11343,7 +11536,7 @@ function renderHome() {
   } else {
     // Pantalla principal: solo los dos bloques grandes.
     if (hayClub) {
-      root.appendChild(el('div', { class: 'club-banner home-group-big', style: 'margin-bottom:16px;', onclick: () => { homeGrupoAbierto = 'club'; renderHome(); } },
+      root.appendChild(el('div', { class: 'club-banner home-group-big', style: 'margin-bottom:16px;', role: 'button', tabindex: '0', onclick: () => { homeGrupoAbierto = 'club'; renderHome(); } },
         el('div', { class: 'info' },
           clubGlobal.logo ? el('img', { class: 'logo-big', src: clubGlobal.logo }) : el('div', { class: 'logo-big-emoji' }, '🏸'),
           el('div', {}, el('b', {}, clubGlobal.nombre || 'Club'), el('div', {}, el('div', {}, clubGlobal.localidad || 'Torneos, planificación y gestión del club'))),
@@ -11351,7 +11544,7 @@ function renderHome() {
       ));
     }
     if (hayTaller) {
-      root.appendChild(el('div', { class: 'club-banner home-group-big', style: 'margin-bottom:16px;', onclick: () => { homeGrupoAbierto = 'taller'; renderHome(); } },
+      root.appendChild(el('div', { class: 'club-banner home-group-big ol-taller', style: 'margin-bottom:16px;', role: 'button', tabindex: '0', onclick: () => { homeGrupoAbierto = 'taller'; renderHome(); } },
         el('div', { class: 'info' },
           fotoTaller ? el('img', { class: 'logo-big', src: fotoTaller }) : el('div', { class: 'logo-big-emoji' }, '🏸'),
           el('div', {}, el('b', {}, cfgTaller.nombreTaller || 'Taller de Raquetas'), el('div', {}, el('div', {}, 'Encordado, almacén, cuentas y contabilidad'))),

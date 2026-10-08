@@ -1,0 +1,11 @@
+{
+  "name": "Bádminton",
+  "short_name": "Bádminton",
+  "start_url": "./",
+  "background_color": "#0B2D5B",
+  "theme_color": "#0F5C46",
+  "icons": [
+    { "src": "icono-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icono-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

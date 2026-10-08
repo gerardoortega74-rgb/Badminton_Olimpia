@@ -3,7 +3,7 @@
 <head>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
-<meta name="build-id" content="v20261008-club">
+<meta name="build-id" content="v20261008-portada">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton · Club</title>
 <style>
@@ -802,6 +802,35 @@ body.ol-club header.app-header{background-image:linear-gradient(90deg,transparen
 @media (min-width:860px){ body.ol-club nav.tabs{flex-wrap:wrap;overflow:visible;} }
 @media (min-width:701px){ body.ol-club table.ol-tabla-jug{display:table;background:none;} }
 @media (max-width:859px){ body.ol-club #pagosTabsNav{top:70px;} }
+
+/* ---- Portada: dos mitades ---- */
+body.ol-club .ol-portada{display:grid;grid-template-rows:1fr 1fr;margin:-20px -16px -60px;min-height:calc(100vh - 78px);min-height:calc(100dvh - 78px);}
+body.ol-club .ol-portada.sola{grid-template-rows:1fr;}
+body.ol-club .ol-mitad{position:relative;color:#fff;padding:22px 20px 24px;display:flex;flex-direction:column;justify-content:space-between;gap:18px;cursor:pointer;overflow:hidden;}
+body.ol-club .ol-mitad:focus-visible{outline:4px solid #F2C230;outline-offset:-6px;}
+body.ol-club .ol-mitad-club{background-color:#0F5C46;background-image:linear-gradient(90deg,transparent calc(50% - 1px),rgba(255,255,255,.14) calc(50% - 1px),rgba(255,255,255,.14) calc(50% + 1px),transparent calc(50% + 1px)),linear-gradient(0deg,transparent 16%,rgba(255,255,255,.11) 16%,rgba(255,255,255,.11) calc(16% + 2px),transparent calc(16% + 2px),transparent 84%,rgba(255,255,255,.11) 84%,rgba(255,255,255,.11) calc(84% + 2px),transparent calc(84% + 2px)),linear-gradient(90deg,transparent 7%,rgba(255,255,255,.11) 7%,rgba(255,255,255,.11) calc(7% + 2px),transparent calc(7% + 2px),transparent 93%,rgba(255,255,255,.11) 93%,rgba(255,255,255,.11) calc(93% + 2px),transparent calc(93% + 2px));}
+body.ol-club .ol-mitad-taller{background-color:#0B2D5B;background-image:repeating-linear-gradient(0deg,rgba(255,255,255,.06) 0 1px,transparent 1px 13px),repeating-linear-gradient(90deg,rgba(255,255,255,.06) 0 1px,transparent 1px 13px);border-top:4px solid #E0162B;}
+body.ol-club .ol-logo{width:72px;height:72px;border-radius:16px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:34px;overflow:hidden;flex-shrink:0;box-shadow:0 4px 14px rgba(0,0,0,.18);}
+body.ol-club .ol-logo img{width:100%;height:100%;object-fit:contain;}
+body.ol-club .ol-mitad h2{margin:0;font-family:'Barlow Condensed',-apple-system,sans-serif;font-weight:700;font-size:clamp(34px,10vw,46px);line-height:.95;letter-spacing:.2px;max-width:14ch;}
+body.ol-club .ol-mitad-taller h2{font-style:italic;font-weight:800;}
+body.ol-club .ol-mitad p{margin:8px 0 14px;font-size:14px;color:rgba(255,255,255,.82);}
+body.ol-club .ol-datos{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;}
+body.ol-club .ol-dato{border:0;background:rgba(255,255,255,.15);color:#fff;border-radius:20px;padding:7px 12px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;}
+body.ol-club .ol-dato:hover{background:rgba(255,255,255,.25);}
+body.ol-club .ol-dato.aviso{background:#fff;color:#0F5C46;}
+body.ol-club .ol-mitad-taller .ol-dato.aviso{color:#B30F20;}
+body.ol-club .ol-entrar{display:inline-flex;align-items:center;gap:8px;background:#F2C230;color:#0A3F31;font-weight:800;border-radius:12px;padding:13px 20px;font-size:15px;}
+body.ol-club .ol-mitad-taller .ol-entrar{background:#E0162B;color:#fff;}
+body.ol-club .ol-entrar::after{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-top:2px solid currentColor;transform:rotate(45deg);}
+body.ol-club #homeScreen:has(.ol-portada){max-width:none;}
+@media (min-width:860px){
+  body.ol-club .ol-portada{grid-template-rows:none;grid-template-columns:1fr 1fr;margin:0 auto;max-width:1100px;min-height:calc(100vh - 140px);border-radius:22px;overflow:hidden;}
+  body.ol-club .ol-portada.sola{grid-template-columns:1fr;}
+  body.ol-club .ol-mitad{padding:36px;}
+  body.ol-club .ol-mitad-taller{border-top:0;border-left:5px solid #E0162B;}
+  body.ol-club .ol-logo{width:96px;height:96px;font-size:44px;}
+}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -11014,7 +11043,7 @@ function renderJugadoresGeneral() {
 function renderShellHeader() {
   const titles = {
     onboarding: ['Bádminton · Club', 'Antes de empezar'],
-    home: ['Gestión Integral Bádminton', 'Menú principal'],
+    home: (() => { const n = sesionActual && sesionActual.nombre ? String(sesionActual.nombre).split(' ')[0] : ''; const f = new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }); return [n && n !== 'Administrador' ? 'Hola, ' + n : 'Gestión Integral Bádminton', f.charAt(0).toUpperCase() + f.slice(1)]; })(),
     torneo: ['Torneos', clubGlobal.nombre || 'Grupos y eliminatoria'],
     planificacion: ['Planificación anual', clubGlobal.nombre || 'De la iniciación a la tecnificación'],
     taller: [(TallerApp.getState().config && TallerApp.getState().config.nombreTaller) || 'Taller de Raquetas', TallerApp.tituloTab ? TallerApp.tituloTab() : ''],
@@ -11534,23 +11563,45 @@ function renderHome() {
     root.appendChild(el('button', { class: 'btn btn-ghost btn-sm home-back-btn', onclick: () => { homeGrupoAbierto = null; renderHome(); } }, '← Volver'));
     root.appendChild(construirGrid(gruposTaller, onclickTaller));
   } else {
-    // Pantalla principal: solo los dos bloques grandes.
+    // Pantalla principal: la pantalla partida en dos, con los datos del día de cada negocio.
+    const portada = el('div', { class: 'ol-portada' + (hayClub && hayTaller ? '' : ' sola') });
+    const dato = (texto, accion, aviso) => el('button', { class: 'ol-dato' + (aviso ? ' aviso' : ''), type: 'button', onclick: (e) => { e.stopPropagation(); accion(); } }, texto);
     if (hayClub) {
-      root.appendChild(el('div', { class: 'club-banner home-group-big', style: 'margin-bottom:16px;', role: 'button', tabindex: '0', onclick: () => { homeGrupoAbierto = 'club'; renderHome(); } },
-        el('div', { class: 'info' },
-          clubGlobal.logo ? el('img', { class: 'logo-big', src: clubGlobal.logo }) : el('div', { class: 'logo-big-emoji' }, '🏸'),
-          el('div', {}, el('b', {}, clubGlobal.nombre || 'Club'), el('div', {}, el('div', {}, clubGlobal.localidad || 'Torneos, planificación y gestión del club'))),
-        ),
-      ));
+      const datosClub = el('div', { class: 'ol-datos' });
+      const nJug = (jugadoresGlobal || []).length;
+      datosClub.appendChild(dato(nJug + (nJug === 1 ? ' jugador' : ' jugadores'), () => goToClubGestion(tienePermiso('jugadores') ? 'jugadores' : 'datos')));
+      if (esAdmin()) {
+        const chipSol = dato(chPendientesSolicitudes ? chPendientesSolicitudes + (chPendientesSolicitudes === 1 ? ' solicitud pendiente' : ' solicitudes pendientes') : 'Control horario', () => goToClubGestion('horario'), chPendientesSolicitudes > 0);
+        datosClub.appendChild(chipSol);
+        if (typeof chActualizarAvisoSolicitudes === 'function') chActualizarAvisoSolicitudes().then(n => { if (n) { chipSol.textContent = n + (n === 1 ? ' solicitud pendiente' : ' solicitudes pendientes'); chipSol.classList.add('aviso'); } });
+      }
+      portada.appendChild(el('section', { class: 'ol-mitad ol-mitad-club', role: 'button', tabindex: '0', 'aria-label': 'Entrar al club', onclick: () => { homeGrupoAbierto = 'club'; renderHome(); window.scrollTo(0, 0); } },
+        el('div', { class: 'ol-logo' }, clubGlobal.logo ? el('img', { src: clubGlobal.logo, alt: '' }) : '🏸'),
+        el('div', { class: 'ol-pie' },
+          el('h2', {}, clubGlobal.nombre || 'Club'),
+          el('p', {}, 'Torneos, escuela, jugadores, cuotas y personal'),
+          datosClub,
+          el('span', { class: 'ol-entrar' }, 'Entrar al club'))));
     }
     if (hayTaller) {
-      root.appendChild(el('div', { class: 'club-banner home-group-big ol-taller', style: 'margin-bottom:16px;', role: 'button', tabindex: '0', onclick: () => { homeGrupoAbierto = 'taller'; renderHome(); } },
-        el('div', { class: 'info' },
-          fotoTaller ? el('img', { class: 'logo-big', src: fotoTaller }) : el('div', { class: 'logo-big-emoji' }, '🏸'),
-          el('div', {}, el('b', {}, cfgTaller.nombreTaller || 'Taller de Raquetas'), el('div', {}, el('div', {}, 'Encordado, almacén, cuentas y contabilidad'))),
-        ),
-      ));
+      const ped = (TallerApp.getState().pedidos || []);
+      const enCola = ped.filter(x => !x.aplazado && (x.estado === 'pendiente' || x.estado === 'en_proceso')).length;
+      const recoger = ped.filter(x => x.estado === 'terminado').length;
+      const irTaller = (tab) => { showSection('taller'); TallerApp.irATab(tab); };
+      const datosTaller = el('div', { class: 'ol-datos' },
+        dato(enCola ? enCola + (enCola === 1 ? ' raqueta en cola' : ' raquetas en cola') : 'Cola vacía', () => irTaller('cola'), enCola > 0),
+        recoger ? dato(recoger + ' para recoger', () => irTaller('cola')) : null,
+        dato('+ Nuevo pedido', () => irTaller('nuevo')));
+      portada.appendChild(el('section', { class: 'ol-mitad ol-mitad-taller', role: 'button', tabindex: '0', 'aria-label': 'Entrar al taller', onclick: () => irTaller('cola') },
+        el('div', { class: 'ol-logo' }, fotoTaller ? el('img', { src: fotoTaller, alt: '' }) : '🏸'),
+        el('div', { class: 'ol-pie' },
+          el('h2', {}, cfgTaller.nombreTaller || 'Taller de Raquetas'),
+          el('p', {}, 'Encordado, tienda y facturas'),
+          datosTaller,
+          el('span', { class: 'ol-entrar' }, 'Entrar al taller'))));
     }
+    portada.querySelectorAll('.ol-mitad').forEach(m => m.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); m.click(); } }));
+    root.appendChild(portada);
   }
 
 }

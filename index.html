@@ -2060,24 +2060,29 @@ function setWinnerFromSets(match) {
 function podioCategoria(cat) {
   const nom = id => (id && id !== 'BYE') ? playerName(cat, id) : null;
   const res = { categoria: cat.name, primero: null, segundo: null, terceros: [] };
-  const rounds = cat.knockout && cat.knockout.rounds;
+  const rounds = cat.knockout && cat.knockout.rounds && cat.knockout.rounds.filter(r => r && r.length);
   if (rounds && rounds.length) {
     const fin = rounds[rounds.length - 1][0];
     if (fin && fin.winner) { res.primero = nom(fin.winner); res.segundo = nom(fin.winner === fin.p1 ? fin.p2 : fin.p1); }
     if (rounds.length >= 2) rounds[rounds.length - 2].forEach(m => {
       if (m.winner && m.p1 !== 'BYE' && m.p2 !== 'BYE') { const n = nom(m.winner === m.p1 ? m.p2 : m.p1); if (n) res.terceros.push(n); }
     });
-  } else if (cat.groups && cat.groups.length === 1 && (cat.matches || []).length && cat.matches.every(m => m.winner)) {
-    const filas = computeStandings(cat, 0);
+  } else if (cat.groups && cat.groups.length === 1) {
+    // Categoría de un solo grupo (liga): la clasificación del grupo es la final
+    const filas = computeStandings(cat, 0).filter(f => f.PJ > 0);
     res.primero = filas[0] ? filas[0].name : null;
     res.segundo = filas[1] ? filas[1].name : null;
     if (filas[2]) res.terceros.push(filas[2].name);
+  } else if (cat.groups && cat.groups.length > 1) {
+    // Varios grupos sin cuadro: los tres primeros de cada grupo
+    res.grupos = cat.groups.map((g, i) => ({ nombre: g.name, puestos: computeStandings(cat, i).filter(f => f.PJ > 0).slice(0, 3).map(f => f.name) }));
   }
   return res;
 }
 function podiosDeEstado(st) {
   if (!st || !st.categories) return [];
-  return st.categories.filter(c => c.enabled).map(c => podioCategoria(c)).filter(p => p.primero || p.segundo || p.terceros.length);
+  // Todas las categorías activas con participantes (masculinas, femeninas, dobles, mixtos…)
+  return st.categories.filter(c => c.enabled && (c.players || []).length).map(c => podioCategoria(c));
 }
 function computeStandings(cat, groupIndex) {
   const grp = cat.groups[groupIndex];
@@ -11402,11 +11407,22 @@ function renderVistaPublica() {
       if (!podios.length) root.appendChild(el('div', { class: 'empty-state' }, 'No hay clasificación final registrada.'));
       podios.forEach(pd => {
         const fila = (medalla, puesto, nombre) => el('div', { class: 'podio-fila' }, el('span', { class: 'podio-medalla' }, medalla), el('span', { class: 'podio-puesto' }, puesto), el('span', { class: 'podio-nombre' }, nombre || '—'));
+        if (pd.grupos) {
+          root.appendChild(el('div', { class: 'panel podio-panel' },
+            el('h3', { style: 'margin:0 0 10px;' }, pd.categoria),
+            pd.grupos.map(g => el('div', { style: 'margin-bottom:8px;' },
+              el('div', { class: 'podio-puesto', style: 'width:auto;margin:6px 0 2px;' }, g.nombre),
+              g.puestos.length ? g.puestos.map((n, i) => fila(['🥇', '🥈', '🥉'][i], (i + 1) + 'º', n)) : el('div', { class: 'sub' }, 'Sin resultados')))));
+          return;
+        }
+        const sinDatos = !pd.primero && !pd.segundo && !pd.terceros.length;
         root.appendChild(el('div', { class: 'panel podio-panel' },
           el('h3', { style: 'margin:0 0 10px;' }, pd.categoria),
-          fila('🥇', 'Campeón', pd.primero),
-          fila('🥈', 'Subcampeón', pd.segundo),
-          pd.terceros.length ? pd.terceros.map(t => fila('🥉', '3º', t)) : null,
+          ...(sinDatos ? [el('div', { class: 'sub' }, 'Sin resultados registrados.')] : [
+            fila('🥇', 'Campeón', pd.primero),
+            fila('🥈', 'Subcampeón', pd.segundo),
+            ...pd.terceros.map(t => fila('🥉', '3º', t)),
+          ]),
         ));
       });
       return;

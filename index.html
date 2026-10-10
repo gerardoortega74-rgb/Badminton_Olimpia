@@ -176,6 +176,9 @@ footer.hint{text-align:center;color:var(--muted);font-size:12px;padding:20px;}
 .sched-real label,.sched-real span{color:inherit !important;text-transform:none !important;letter-spacing:0 !important;font-size:11.5px !important;margin:0 !important;}
 .sched-real input[type=checkbox]{width:18px;height:18px;margin:0;accent-color:#2BB673;cursor:pointer;}
 .sched-hora-real{width:auto !important;min-width:0 !important;padding:2px 4px !important;font-size:12px !important;height:auto !important;min-height:0 !important;border-radius:4px;}
+.acta-check{display:inline-flex !important;align-items:center;gap:6px;cursor:pointer;white-space:nowrap;text-transform:none !important;letter-spacing:0 !important;font-size:13px !important;font-weight:600;margin:0 !important;color:inherit !important;}
+.acta-check input{width:18px;height:18px;margin:0;accent-color:#2BB673;}
+.acta-reimprimir{opacity:.7;}
 .sched-plan{font-weight:600;opacity:.8;text-decoration:line-through;}
 .sched-match.empezado{box-shadow:inset 4px 0 0 #2BB673;}
 .sched-match.terminado{opacity:.6;}
@@ -2851,7 +2854,8 @@ function todosLosPartidosDelTorneo() {
       });
     }
   });
-  lista.sort((a, b) => String(a.m.time || '99:99').localeCompare(String(b.m.time || '99:99')) || ((a.m.court || 99) - (b.m.court || 99)));
+  // Se numera por la hora prevista original, para que el nº del acta no cambie si el calendario se retrasa.
+  lista.sort((a, b) => String(a.m.horaPlan || a.m.time || '99:99').localeCompare(String(b.m.horaPlan || b.m.time || '99:99')) || ((a.m.court || 99) - (b.m.court || 99)));
   lista.forEach((item, i) => { item.numero = i + 1; });
   return lista;
 }
@@ -2908,17 +2912,24 @@ function htmlActaPartido(item) {
   </body></html>`;
 }
 function cerrarActaImpresion() {
+  const estabaAbierta = document.body.classList.contains('imprimiendo-acta');
   document.body.classList.remove('imprimiendo-acta');
   const area = document.getElementById('areaImpresionActa');
   if (area) area.innerHTML = '';
+  if (estabaAbierta && (activeTab === 'partidos' || activeTab === 'schedule')) render();
+}
+function marcarActaImpresa(m, valor) {
+  m.actaImpresa = valor ? (typeof valor === 'string' ? valor : horaAhoraHHMM()) : null;
+  saveLocal();
 }
 function imprimirActaPartido(item) {
+  if (item.m.actaImpresa && !confirm('El acta del partido nº ' + item.numero + ' ya se imprimió a las ' + item.m.actaImpresa + '.\n\n¿Quieres imprimirla otra vez?')) return;
   const p1 = playerName(item.cat, item.m.p1);
   const p2 = playerName(item.cat, item.m.p2);
   const area = document.getElementById('areaImpresionActa');
   area.innerHTML = '';
   area.appendChild(el('div', { class: 'row no-print', style: 'justify-content:flex-end;margin-bottom:14px;gap:8px;' },
-    el('button', { class: 'btn btn-gold', onclick: () => window.print() }, '🖨 Imprimir'),
+    el('button', { class: 'btn btn-gold', onclick: () => { marcarActaImpresa(item.m, true); window.print(); } }, '🖨 Imprimir'),
     el('button', { class: 'btn btn-ghost', onclick: () => cerrarActaImpresion() }, '✕ Cerrar y volver'),
   ));
   area.appendChild(el('div', { class: 'acta-hoja' },
@@ -3008,9 +3019,9 @@ function viewPartidos() {
     return wrap;
   }
   const pendientes = lista.filter(x => !x.m.winner).length;
-  panel.appendChild(el('div', { class: 'sub', style: 'margin-bottom:10px;' }, `Total: ${lista.length} partido(s) · ${lista.length - pendientes} terminado(s) · ${pendientes} pendiente(s).`));
+  panel.appendChild(el('div', { class: 'sub', style: 'margin-bottom:10px;' }, `Total: ${lista.length} partido(s) · ${lista.length - pendientes} terminado(s) · ${pendientes} pendiente(s) · 🖨 actas impresas: ${lista.filter(x => x.m.actaImpresa).length} de ${lista.length}.`));
   const table = el('table', {}, el('thead', {}, el('tr', {},
-    el('th', {}, 'Nº'), el('th', {}, 'Hora'), el('th', {}, 'Pista'), el('th', {}, 'Categoría'), el('th', {}, 'Grupo/Ronda'), el('th', {}, 'Partido'), el('th', {}, 'Estado'), el('th', {}, ''),
+    el('th', {}, 'Nº'), el('th', {}, 'Hora'), el('th', {}, 'Pista'), el('th', {}, 'Categoría'), el('th', {}, 'Grupo/Ronda'), el('th', {}, 'Partido'), el('th', {}, 'Estado'), el('th', { class: 'no-print' }, 'Acta'), el('th', {}, ''),
   )));
   const tbody = el('tbody');
   lista.forEach(item => {
@@ -3025,7 +3036,10 @@ function viewPartidos() {
       el('td', {}, item.ronda || '—'),
       el('td', {}, p1 + ' vs ' + p2),
       el('td', {}, terminado ? el('span', { class: 'chip chip-gold' }, '✅ Terminado') : el('span', { class: 'chip chip-muted' }, 'Pendiente')),
-      el('td', {}, terminado ? formatSetsActa(item.m.sets) : el('button', { class: 'btn btn-ghost btn-sm no-print', onclick: () => imprimirActaPartido(item) }, '🖨 Imprimir acta')),
+      el('td', {}, el('label', { class: 'acta-check no-print', title: 'Marca o desmarca a mano si el acta ya está impresa' },
+        el('input', { type: 'checkbox', checked: item.m.actaImpresa ? 'checked' : null, onchange: (e) => { marcarActaImpresa(item.m, e.target.checked); render(); } }),
+        item.m.actaImpresa ? '🖨 Impresa ' + (typeof item.m.actaImpresa === 'string' ? item.m.actaImpresa : '') : 'Sin imprimir')),
+      el('td', {}, terminado ? formatSetsActa(item.m.sets) : el('button', { class: 'btn btn-sm no-print ' + (item.m.actaImpresa ? 'btn-ghost acta-reimprimir' : 'btn-gold'), onclick: () => imprimirActaPartido(item) }, item.m.actaImpresa ? '↻ Reimprimir' : '🖨 Imprimir acta')),
     ));
   });
   table.appendChild(tbody);
@@ -3197,6 +3211,7 @@ function viewSchedule() {
           empezado && !terminado ? el('input', { type: 'time', value: mm.inicioReal, class: 'sched-hora-real',
             onchange: (e) => { if (e.target.value) marcarInicioReal(mm, e.target.value); } }) : null,
           !empezado && !terminado && mm.horaPlan && mm.horaPlan !== mm.time ? el('span', { class: 'sched-plan' }, 'previsto ' + mm.horaPlan) : null,
+          mm.actaImpresa ? el('span', { title: 'Acta impresa' }, '🖨 acta') : null,
         );
         cell.appendChild(el('div', { class: 'sched-match' + (mm.phase === 'ko' ? ' ko' : '') + (empezado ? ' empezado' : '') + (terminado ? ' terminado' : '') },
           el('div', { style: 'font-weight:800;' }, match.label),

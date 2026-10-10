@@ -163,6 +163,13 @@ footer.hint{text-align:center;color:var(--muted);font-size:12px;padding:20px;}
 .sched-cell{padding:8px;border-left:1px solid #ECE9DE;font-size:12px;min-height:52px;}
 .sched-match{background:var(--court);color:#fff;border-radius:6px;padding:6px 8px;font-size:11.5px;line-height:1.35;}
 .sched-match.ko{background:var(--gold);color:var(--court-dark);}
+.sched-real{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:6px;padding-top:5px;border-top:1px solid rgba(255,255,255,.25);font-size:11.5px;font-weight:700;}
+.sched-real label,.sched-real span{color:inherit !important;text-transform:none !important;letter-spacing:0 !important;font-size:11.5px !important;margin:0 !important;}
+.sched-real input[type=checkbox]{width:18px;height:18px;margin:0;accent-color:#2BB673;cursor:pointer;}
+.sched-hora-real{width:auto !important;min-width:0 !important;padding:2px 4px !important;font-size:12px !important;height:auto !important;min-height:0 !important;border-radius:4px;}
+.sched-plan{font-weight:600;opacity:.8;text-decoration:line-through;}
+.sched-match.empezado{box-shadow:inset 4px 0 0 #2BB673;}
+.sched-match.terminado{opacity:.6;}
 .bracket{display:flex;gap:40px;overflow-x:auto;padding:10px 4px 20px;position:relative;}
 .bracket-lineas{position:absolute;left:0;top:0;pointer-events:none;overflow:visible;z-index:0;}
 .bracket-lineas .l{fill:none;stroke:#9DABA3;stroke-width:1.6;stroke-linejoin:round;}
@@ -1738,9 +1745,9 @@ function buildSchedule() {
   const startMin = timeToMinutes(state.config.startTime || '09:00');
 
   enabledCategories().forEach(cat => {
-    (cat.matches || []).forEach(m => { m.court = null; m.time = null; });
+    (cat.matches || []).forEach(m => { m.court = null; m.time = null; m.inicioReal = null; m.horaPlan = null; });
     if (cat.knockout) {
-      cat.knockout.rounds.forEach(round => round.forEach(m => { m.court = null; m.time = null; }));
+      cat.knockout.rounds.forEach(round => round.forEach(m => { m.court = null; m.time = null; m.inicioReal = null; m.horaPlan = null; }));
     }
   });
 
@@ -1825,6 +1832,70 @@ function buildSchedule() {
     }
     programarLote(koQueue);
   }
+}
+
+// ===== HORA REAL DE INICIO =====
+// Al marcar un partido como empezado se guarda su hora real y se recalculan los partidos pendientes:
+// cada uno sigue en su pista y en su orden, pero se retrasa lo necesario para que la pista esté libre
+// y sus jugadores hayan descansado. Nunca se adelanta a su hora prevista original.
+function partidosProgramados() {
+  const lista = [];
+  enabledCategories().forEach(cat => {
+    (cat.matches || []).forEach(m => { if (m.time && m.court) lista.push({ cat, m }); });
+    if (cat.knockout) cat.knockout.rounds.forEach(r => r.forEach(m => { if (m.time && m.court) lista.push({ cat, m }); }));
+  });
+  return lista;
+}
+function horaAhoraHHMM() {
+  const d = new Date();
+  return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+}
+function recalcularDesdeHoraReal() {
+  const duracion = Math.max(5, state.config.matchMinutes);
+  const descansoPista = Math.max(0, state.config.bufferMinutes);
+  const descansoJugador = Math.max(0, state.config.restMinutes != null ? state.config.restMinutes : 10);
+  const lista = partidosProgramados();
+  lista.forEach(x => { if (!x.m.horaPlan) x.m.horaPlan = x.m.time; });
+  const pistaLibre = {}, jugadorLibre = {};
+  const ocupar = (x, inicio) => {
+    pistaLibre[x.m.court] = Math.max(pistaLibre[x.m.court] || 0, inicio + duracion + descansoPista);
+    [x.m.p1, x.m.p2].forEach(id => {
+      const n = normName(playerName(x.cat, id));
+      if (n) jugadorLibre[n] = Math.max(jugadorLibre[n] || 0, inicio + duracion + descansoJugador);
+    });
+  };
+  const fijos = lista.filter(x => x.m.inicioReal || x.m.winner);
+  const pendientes = lista.filter(x => !x.m.inicioReal && !x.m.winner);
+  fijos.forEach(x => {
+    if (x.m.inicioReal) x.m.time = x.m.inicioReal;
+    ocupar(x, timeToMinutes(x.m.time));
+  });
+  pendientes.sort((a, b) => timeToMinutes(a.m.horaPlan) - timeToMinutes(b.m.horaPlan) || a.m.court - b.m.court);
+  pendientes.forEach(x => {
+    const n1 = normName(playerName(x.cat, x.m.p1)), n2 = normName(playerName(x.cat, x.m.p2));
+    const inicio = Math.max(timeToMinutes(x.m.horaPlan), pistaLibre[x.m.court] || 0, jugadorLibre[n1] || 0, jugadorLibre[n2] || 0);
+    x.m.time = minutesToTime(inicio);
+    ocupar(x, inicio);
+  });
+}
+function marcarInicioReal(m, hora) {
+  if (hora) {
+    if (!m.horaPlan) m.horaPlan = m.time;
+    m.inicioReal = hora;
+  } else {
+    m.inicioReal = null;
+    if (m.horaPlan && !m.winner) m.time = m.horaPlan;
+  }
+  recalcularDesdeHoraReal();
+  render();
+}
+function retrasoActualMinutos() {
+  let max = 0;
+  partidosProgramados().forEach(x => {
+    if (x.m.winner || x.m.inicioReal || !x.m.horaPlan) return;
+    max = Math.max(max, timeToMinutes(x.m.time) - timeToMinutes(x.m.horaPlan));
+  });
+  return max;
 }
 
 function setWinnerFromSets(match) {
@@ -3075,7 +3146,12 @@ function viewSchedule() {
   }
   panel.appendChild(avisoPanel);
 
-  const times = Array.from(new Set(allMatches.map(x => x.m.time))).sort();
+  const retraso = retrasoActualMinutos();
+  panel.appendChild(el('div', { class: retraso > 0 ? 'msg msg-warn' : 'sub', style: 'margin:10px 0;' },
+    '⏱ Marca "Empezado" en cada partido cuando arranque de verdad: los partidos pendientes se recalculan solos desde esa hora (cada uno en su pista y respetando el descanso de los jugadores). ' +
+    (retraso > 0 ? 'Retraso actual: +' + retraso + ' min sobre lo previsto.' : 'Ahora mismo vais en hora.')));
+
+  const times = Array.from(new Set(allMatches.map(x => x.m.time))).sort((a, b) => timeToMinutes(a) - timeToMinutes(b));
   const numCourts = state.config.courts;
   const grid = el('div', { class: 'sched-grid', style: `--ncourts:${numCourts};` });
   const headerRow = el('div', { class: 'sched-row' }, el('div', { class: 'sched-time' }, 'Hora'));
@@ -3090,9 +3166,21 @@ function viewSchedule() {
       if (match) {
         const p1 = playerName(match.cat, match.m.p1);
         const p2 = playerName(match.cat, match.m.p2);
-        cell.appendChild(el('div', { class: 'sched-match' + (match.m.phase === 'ko' ? ' ko' : '') },
+        const mm = match.m;
+        const empezado = !!mm.inicioReal;
+        const terminado = !!mm.winner;
+        const check = el('input', { type: 'checkbox', checked: empezado ? 'checked' : null, disabled: terminado ? 'disabled' : null,
+          onchange: (e) => marcarInicioReal(mm, e.target.checked ? horaAhoraHHMM() : null) });
+        const pie = el('div', { class: 'sched-real' },
+          el('label', { style: 'display:inline-flex;align-items:center;gap:5px;cursor:pointer;' }, check, terminado ? '✔ Terminado' : (empezado ? 'Empezó a las' : 'Empezado')),
+          empezado && !terminado ? el('input', { type: 'time', value: mm.inicioReal, class: 'sched-hora-real',
+            onchange: (e) => { if (e.target.value) marcarInicioReal(mm, e.target.value); } }) : null,
+          !empezado && !terminado && mm.horaPlan && mm.horaPlan !== mm.time ? el('span', { class: 'sched-plan' }, 'previsto ' + mm.horaPlan) : null,
+        );
+        cell.appendChild(el('div', { class: 'sched-match' + (mm.phase === 'ko' ? ' ko' : '') + (empezado ? ' empezado' : '') + (terminado ? ' terminado' : '') },
           el('div', { style: 'font-weight:800;' }, match.label),
-          el('div', {}, p1 + ' vs ' + p2)));
+          el('div', {}, p1 + ' vs ' + p2),
+          pie));
       }
       row.appendChild(cell);
     }

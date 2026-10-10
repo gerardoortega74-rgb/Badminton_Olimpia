@@ -13084,6 +13084,11 @@ const DISENO_GRAFITO = (function () {
   } catch (e) { return true; }
 })();
 if (DISENO_GRAFITO) document.documentElement.classList.add('dg');
+// Desde el primer momento (cargando, entrada, menú) con la cabecera del club; el taller y la tienda ponen su propio estilo
+try {
+  const qs = new URLSearchParams(location.search);
+  if (qs.get('tallerpublico') !== '1' && qs.get('tiendaonline') !== '1' && document.body) document.body.classList.add('ol-club');
+} catch (e) { }
 function dgCambiarDiseno(grafito) {
   try { if (grafito) localStorage.removeItem('olDiseno'); else localStorage.setItem('olDiseno', 'clasico'); } catch (e) { }
   location.href = location.pathname + (grafito ? '?diseno=grafito' : '?diseno=clasico');

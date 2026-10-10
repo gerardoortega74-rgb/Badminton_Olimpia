@@ -176,6 +176,9 @@ footer.hint{text-align:center;color:var(--muted);font-size:12px;padding:20px;}
 .sched-real label,.sched-real span{color:inherit !important;text-transform:none !important;letter-spacing:0 !important;font-size:11.5px !important;margin:0 !important;}
 .sched-real input[type=checkbox]{width:18px;height:18px;margin:0;accent-color:#2BB673;cursor:pointer;}
 .sched-hora-real{width:auto !important;min-width:0 !important;padding:2px 4px !important;font-size:12px !important;height:auto !important;min-height:0 !important;border-radius:4px;}
+/* Sin flechitas en los campos numéricos (resultados, cuotas…): se escribe el número directamente */
+input[type=number]{-moz-appearance:textfield;appearance:textfield;}
+input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;appearance:none;margin:0;}
 .tabla-partidos{display:table !important;width:100% !important;max-width:100% !important;overflow:visible !important;white-space:normal !important;background:none !important;table-layout:auto;font-size:13px;}
 .tabla-partidos th,.tabla-partidos td{padding:6px 6px !important;vertical-align:middle;}
 .tabla-partidos th{white-space:nowrap;}
@@ -2969,6 +2972,7 @@ function imprimirActaPartido(item) {
   document.body.classList.add('imprimiendo-acta');
 }
 window.addEventListener('afterprint', cerrarActaImpresion);
+document.addEventListener('wheel', () => { const a = document.activeElement; if (a && a.type === 'number') a.blur(); }, { passive: true });
 // Hoja de calendario para imprimir: A4 apaisado, todas las pistas a lo ancho, texto negro y sin botones ni avisos.
 function imprimirCalendario(allMatches) {
   if (!allMatches || !allMatches.length) { alert('Todavía no hay partidos programados. Genera el calendario primero.'); return; }

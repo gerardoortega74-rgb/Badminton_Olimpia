@@ -3321,8 +3321,6 @@ let scrollCalendario = { x: 0, y: 0 };
 // Arriba, una tarjeta por pista con lo que se juega ahora. Debajo, la cola de partidos por orden:
 // al empezar uno se elige la pista libre. No deja empezar si un jugador está jugando en otra pista.
 function vistaPistasManual(allMatches) {
-  recalcularDesdeHoraReal();
-  saveLocal();
   const caja = el('div', {});
   const numCourts = Math.max(1, Number(state.config.courts) || 1);
   const ocupadas = pistasOcupadas();
@@ -3388,7 +3386,7 @@ function vistaPistasManual(allMatches) {
     const etiquetaPlan = m.horaPlan && m.horaPlan !== m.time ? el('span', { class: 'tp-grupo' }, 'previsto ' + m.horaPlan) : null;
     tb.appendChild(el('tr', { class: ocupado ? 'fila-espera' : '' },
       el('td', {}, el('b', {}, '#' + (numeros.get(m) || ''))),
-      el('td', {}, m.time || '—', etiquetaPlan, m.pistaPreasignada && m.court ? el('span', { class: 'tp-grupo' }, 'pista ' + m.court) : null),
+      el('td', {}, (() => { const hay = allMatches.some(y => y.m.inicioReal || y.m.winner); const ah = horaAhoraHHMM(); return hay && m.time && timeToMinutes(m.time) < timeToMinutes(ah) ? ah : (m.time || '—'); })(), etiquetaPlan, m.pistaPreasignada && m.court ? el('span', { class: 'tp-grupo' }, 'pista ' + m.court) : null),
       el('td', { class: 'tp-cat' }, x.cat.name, el('span', { class: 'tp-grupo' }, x.label.split(' · ').slice(1).join(' · '))),
       el('td', { class: 'tp-partido' }, playerName(x.cat, m.p1), el('span', { class: 'tp-vs' }, ' vs '), playerName(x.cat, m.p2)),
       el('td', {}, m.actaImpresa ? '🖨 ' + m.actaImpresa : el('button', { class: 'btn btn-ghost btn-sm', disabled: ocupado ? 'disabled' : null, onclick: () => imprimirActaPartido(Object.assign({}, x, { numero: numeros.get(m), ronda: x.label.split(' · ').slice(1).join(' · ') })) }, '🖨 Acta')),
@@ -3677,6 +3675,7 @@ function openResultModal(catId, matchId) {
           setWinnerFromSets(m);
           if (m.phase === 'ko') propagateKnockout(cat);
           closeModal();
+          try { programarPartidosSinHora(); recalcularDesdeHoraReal(); } catch (e) { console.warn(e); }
           render();
         } }, 'Guardar resultado'),
         el('button', { class: 'btn btn-ghost', onclick: closeModal }, 'Cancelar'),
@@ -13873,7 +13872,10 @@ function cargarDatosClubCompletos() {
   return docNube().get().then(doc => {
     if (doc.exists) aplicarDatosDeNube(doc.data());
     marcarEstadoNube('☁️ Sincronizado');
+    fijarBaseNube(doc.exists ? (doc.data()._rev || 0) : 0);
+    if (!doc.exists) baseNube = null;
     sincronizacionInicialLista = true;
+    iniciarEscuchaNube();
     if (!doc.exists && clubGlobal.nombre) programarSyncNube();
     if (doc.exists) subirCopiaPublica();
     cargarRecibosDeNube().then(() => { const s = document.getElementById('pagosScreen'); if (s && s.style.display !== 'none') PagosApp.render(); }).catch(() => {});
@@ -14115,29 +14117,153 @@ function publicarHorariosTrabajadores() {
 }
 
 let sincronizacionInicialLista = false;
+// ===== TIEMPO REAL ENTRE DISPOSITIVOS =====
+// Cada guardado lleva un nº de versión (_rev). Este dispositivo escucha la nube y aplica al momento lo que
+// cambian otros. Si dos dispositivos guardan a la vez, se fusionan los cambios (partido a partido, jugador a
+// jugador…) en lugar de pisarse: solo si los dos cambian exactamente el mismo dato gana el último.
+const DISPOSITIVO_NUBE = 'd_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+let revNube = 0;
+let baseNube = null;
+let subiendoNube = false;
+let remotoPendiente = null;
+let escuchaNubeActiva = false;
+function datosComparablesNube(d) {
+  const c = JSON.parse(JSON.stringify(d || {}));
+  delete c.actualizadoEn; delete c._rev; delete c._disp;
+  return c;
+}
+function fijarBaseNube(rev) {
+  revNube = rev || 0;
+  baseNube = datosComparablesNube(estadoCompletoParaNube());
+}
+function igualJSON(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
+// Fusión a tres bandas: b = lo último que este dispositivo vio en la nube, l = lo local, r = lo que hay ahora en la nube
+function fusionar3(b, l, r) {
+  if (igualJSON(l, b)) return r;
+  if (igualJSON(r, b)) return l;
+  if (igualJSON(l, r)) return l;
+  const esObj = v => v && typeof v === 'object' && !Array.isArray(v);
+  if (esObj(l) && esObj(r)) {
+    const bb = esObj(b) ? b : {};
+    const out = {};
+    new Set(Object.keys(l).concat(Object.keys(r))).forEach(k => {
+      const enL = k in l, enR = k in r, enB = k in bb;
+      if (enL && enR) { const v = fusionar3(bb[k], l[k], r[k]); if (v !== undefined) out[k] = v; }
+      else if (enL) { if (!enB || !igualJSON(l[k], bb[k])) out[k] = l[k]; }
+      else if (!enB || !igualJSON(r[k], bb[k])) out[k] = r[k];
+    });
+    return out;
+  }
+  const conId = a => Array.isArray(a) && a.every(x => x && typeof x === 'object' && !Array.isArray(x) && x.id != null);
+  if (conId(l) && conId(r) && (b == null || conId(b))) {
+    const mB = new Map((b || []).map(x => [x.id, x])), mL = new Map(l.map(x => [x.id, x])), mR = new Map(r.map(x => [x.id, x]));
+    const out = [], vistos = new Set();
+    const procesar = id => {
+      if (vistos.has(id)) return; vistos.add(id);
+      const enL = mL.has(id), enR = mR.has(id), enB = mB.has(id);
+      if (enL && enR) out.push(fusionar3(mB.get(id), mL.get(id), mR.get(id)));
+      else if (enL) { if (!enB || !igualJSON(mL.get(id), mB.get(id))) out.push(mL.get(id)); }
+      else if (!enB || !igualJSON(mR.get(id), mB.get(id))) out.push(mR.get(id));
+    };
+    l.forEach(x => procesar(x.id)); r.forEach(x => procesar(x.id));
+    return out;
+  }
+  return l;
+}
 function programarSyncNube() {
   if (!firebaseDisponible) return;
   if (esVistaPublica()) return;
   if (typeof esTrabajador === 'function' && esTrabajador()) return;
   if (!sincronizacionInicialLista) return;
-  marcarEstadoNube('☁️ Guardando en la nube…');
   clearTimeout(nubeSyncTimer);
-  nubeSyncTimer = setTimeout(() => {
-    const payloadLimpio = envolverArraysAnidados(JSON.parse(JSON.stringify(estadoCompletoParaNube())));
-    const tamanoAprox = JSON.stringify(payloadLimpio).length;
-    if (tamanoAprox > 900000) {
-      marcarEstadoNube('⚠️ Nube: los datos pesan demasiado (' + Math.round(tamanoAprox / 1024) + ' KB, máximo ~900 KB). Revisa si algún jugador tiene una foto muy pesada.');
-      return;
-    }
-    docNube().set(payloadLimpio).then(() => {
-      marcarEstadoNube('☁️ Sincronizado');
-      subirCopiaPublica();
-    }).catch(err => {
-      console.warn('Error subiendo a la nube:', err);
-      marcarEstadoNube('⚠️ Nube: ' + (err && err.code ? err.code : (err && err.message) || 'error desconocido') + (err && err.message ? ' - ' + err.message : ''));
-    });
-  }, 900);
+  nubeSyncTimer = setTimeout(subirNube, 700);
 }
+function subirNube() {
+  nubeSyncTimer = null;
+  if (subiendoNube) { nubeSyncTimer = setTimeout(subirNube, 400); return; }
+  const local = datosComparablesNube(estadoCompletoParaNube());
+  if (baseNube && igualJSON(local, baseNube)) { aplicarRemotoPendiente(); return; }
+  const tamanoAprox = JSON.stringify(local).length;
+  if (tamanoAprox > 900000) {
+    marcarEstadoNube('⚠️ Nube: los datos pesan demasiado (' + Math.round(tamanoAprox / 1024) + ' KB, máximo ~900 KB). Revisa si algún jugador tiene una foto muy pesada.');
+    return;
+  }
+  marcarEstadoNube('☁️ Guardando en la nube…');
+  subiendoNube = true;
+  const ref = docNube();
+  firebaseDb.runTransaction(t => t.get(ref).then(doc => {
+    const remotoRaw = doc.exists ? doc.data() : null;
+    const remRev = (remotoRaw && remotoRaw._rev) || 0;
+    let datos = local, fusionado = false;
+    if (remotoRaw && remRev !== revNube && baseNube) {
+      datos = fusionar3(baseNube, local, datosComparablesNube(desenvolverArraysAnidados(remotoRaw)));
+      fusionado = true;
+    }
+    const payload = envolverArraysAnidados(JSON.parse(JSON.stringify(Object.assign({}, datos, { actualizadoEn: Date.now(), _rev: remRev + 1, _disp: DISPOSITIVO_NUBE }))));
+    t.set(ref, payload);
+    return { rev: remRev + 1, datos, fusionado };
+  })).then(({ rev, datos, fusionado }) => {
+    subiendoNube = false;
+    revNube = rev;
+    baseNube = datos;
+    if (fusionado) { aplicarDatosDeNube(datos); refrescarPantallaActual(); }
+    marcarEstadoNube('☁️ Sincronizado');
+    subirCopiaPublica();
+    // Por si hubo cambios mientras se subía
+    if (!nubeSyncTimer) nubeSyncTimer = setTimeout(subirNube, 300);
+  }).catch(err => {
+    subiendoNube = false;
+    console.warn('Error subiendo a la nube:', err);
+    marcarEstadoNube('⚠️ Nube: ' + (err && err.code ? err.code : (err && err.message) || 'error desconocido') + (err && err.message ? ' - ' + err.message : ''));
+    nubeSyncTimer = setTimeout(subirNube, 5000);
+  });
+}
+// No refrescar mientras la persona está escribiendo, eligiendo o con una ventana abierta
+function usuarioOcupadoEnPantalla() {
+  const a = document.activeElement;
+  if (a && (a.tagName === 'TEXTAREA' || a.tagName === 'SELECT' || (a.tagName === 'INPUT' && !['checkbox', 'radio', 'button', 'submit'].includes(a.type)))) return true;
+  if (document.querySelector('.modal-backdrop, .modal-overlay, .modal')) return true;
+  if (document.body.classList.contains('imprimiendo-acta')) return true;
+  return false;
+}
+function refrescarPantallaActual() {
+  const y = window.scrollY;
+  try {
+    if (currentSection === 'home') renderHome();
+    else if (currentSection === 'clubgestion') showClubGestionTab(clubGestionTab);
+    else if (currentSection === 'torneo') TorneoApp.render();
+    else if (currentSection === 'planificacion') PlanApp.render();
+    else if (currentSection === 'taller') TallerApp.render();
+    renderShellHeader();
+  } catch (e) { console.warn('No se pudo refrescar la pantalla:', e); }
+  requestAnimationFrame(() => window.scrollTo(0, y));
+}
+function aplicarRemotoPendiente() {
+  if (!remotoPendiente) return;
+  if (subiendoNube || nubeSyncTimer) return; // nuestra subida ya fusionará lo remoto
+  if (usuarioOcupadoEnPantalla()) { setTimeout(aplicarRemotoPendiente, 1500); return; }
+  const raw = remotoPendiente; remotoPendiente = null;
+  if ((raw._rev || 0) <= revNube) return;
+  aplicarDatosDeNube(raw);
+  fijarBaseNube(raw._rev || 0);
+  refrescarPantallaActual();
+  marcarEstadoNube('☁️ Sincronizado · actualizado desde otro dispositivo');
+}
+function iniciarEscuchaNube() {
+  if (escuchaNubeActiva || !firebaseDisponible || esVistaPublica()) return;
+  if (typeof esTrabajador === 'function' && esTrabajador()) return;
+  escuchaNubeActiva = true;
+  docNube().onSnapshot(snap => {
+    if (!snap.exists || snap.metadata.hasPendingWrites) return;
+    const raw = snap.data();
+    if ((raw._rev || 0) <= revNube || raw._disp === DISPOSITIVO_NUBE) return;
+    remotoPendiente = raw;
+    aplicarRemotoPendiente();
+  }, err => { console.warn('Escucha en tiempo real detenida:', err); escuchaNubeActiva = false; });
+}
+window.addEventListener('beforeunload', (e) => {
+  if (subiendoNube || nubeSyncTimer) { e.preventDefault(); e.returnValue = 'Se están guardando cambios en la nube.'; return e.returnValue; }
+});
 function aplicarDatosDeNube(dataOriginal) {
   const data = desenvolverArraysAnidados(dataOriginal);
   if (!data) return;
@@ -16164,7 +16290,12 @@ function arranqueLegado() {
     } else {
       marcarEstadoNube('☁️ Sincronizado');
     }
+    if (!esVistaPublica()) {
+      fijarBaseNube(doc.exists ? (doc.data()._rev || 0) : 0);
+      if (!doc.exists) baseNube = null;
+    }
     sincronizacionInicialLista = true;
+    if (!esVistaPublica()) iniciarEscuchaNube();
     if (!doc.exists && clubGlobal.nombre) programarSyncNube();
     if (!esVistaPublica() && doc.exists) subirCopiaPublica();
     (esVistaPublica() ? Promise.resolve() : chCargarPins()).then(arrancarAppLocal, arrancarAppLocal);

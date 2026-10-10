@@ -207,6 +207,15 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 .proximo-fila{display:flex;gap:10px;align-items:center;padding:8px 10px;border:1px solid #E6E7E8;border-radius:10px;background:#fff;}
 .proximo-hora{font-weight:800;font-size:13px;white-space:nowrap;min-width:52px;}
 .proximo-jug{font-weight:700;font-size:13.5px;line-height:1.3;}
+.insc-card{border:1px solid #E4E1D6;border-radius:12px;padding:10px 12px;margin-bottom:8px;background:#fff;}
+.insc-card.insc-pendiente{border-left:4px solid #3DD6C4;}
+.insc-card.insc-rechazada{opacity:.55;}
+.insc-top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;}
+.insc-form .field{margin-bottom:12px;}
+.insc-form label.check{display:flex !important;gap:10px;align-items:flex-start;text-transform:none !important;letter-spacing:0 !important;font-size:14px !important;font-weight:500;cursor:pointer;margin:8px 0 !important;}
+.insc-form label.check input{width:20px;height:20px;flex:none;margin-top:1px;}
+.insc-bizum{background:#F0FBF9;border:1px solid #A9E9E0;border-radius:12px;padding:12px;margin:10px 0;}
+.insc-hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;}
 .tabla-partidos{display:table !important;width:100% !important;max-width:100% !important;overflow:visible !important;white-space:normal !important;background:none !important;table-layout:auto;font-size:13px;}
 .tabla-partidos th,.tabla-partidos td{padding:6px 6px !important;vertical-align:middle;}
 .tabla-partidos th{white-space:nowrap;}
@@ -2341,6 +2350,7 @@ function render() {
     else if (activeTab === 'results') main.appendChild(viewResults());
     else if (activeTab === 'knockout') main.appendChild(viewKnockout());
     else if (activeTab === 'partidos') main.appendChild(viewPartidos());
+    else if (activeTab === 'inscripciones') main.appendChild(viewInscripciones());
     else if (activeTab === 'stats') main.appendChild(viewStats());
     else if (activeTab === 'historial') main.appendChild(viewHistorial());
   } catch (err) {
@@ -2365,6 +2375,7 @@ function renderTabsNav() {
   nav.innerHTML = '';
   const tabs = [
     ['config', '⚙ Configuración'],
+    ['inscripciones', '📝 Inscripciones' + (inscripcionesPendientes() ? ' (' + inscripcionesPendientes() + ')' : '')],
     ['participants', '👤 Participantes'],
     ['draw', '🎲 Sorteo'],
     ['schedule', '🗓 Calendario'],
@@ -3294,6 +3305,123 @@ function imprimirCalendario(allMatches) {
   window.scrollTo(0, 0);
   setTimeout(() => window.print(), 300);
 }
+
+// ===================== INSCRIPCIÓN ONLINE =====================
+// Los jugadores se apuntan desde un enlace público; las solicitudes llegan a la colección «inscripciones»
+// de la nube (solo los administradores pueden leerlas) y aquí se aceptan o rechazan.
+let inscripcionesCache = [];
+let inscripcionesTorneoEscuchado = null;
+let inscripcionesCancelar = null;
+let inscripcionesError = '';
+function configInscripcion() {
+  if (!state.inscripcion) state.inscripcion = { abierta: false, hasta: '', precio: '', bizum: '', categorias: null, nota: '' };
+  return state.inscripcion;
+}
+function enlaceInscripcion() { return location.origin + location.pathname + '?publico=1&torneo=' + torneoActivoId + '&inscribir=1'; }
+function inscripcionesPendientes() { return inscripcionesCache.filter(i => i.estado === 'pendiente').length; }
+function escucharInscripciones() {
+  if (typeof firebaseDb === 'undefined' || !firebaseDb || typeof firebaseDisponible === 'undefined' || !firebaseDisponible) { inscripcionesError = 'Sin conexión con la nube.'; return; }
+  if (inscripcionesTorneoEscuchado === torneoActivoId && inscripcionesCancelar) return;
+  if (inscripcionesCancelar) { inscripcionesCancelar(); inscripcionesCancelar = null; }
+  inscripcionesTorneoEscuchado = torneoActivoId;
+  inscripcionesCache = [];
+  inscripcionesCancelar = firebaseDb.collection('inscripciones').where('torneoId', '==', torneoActivoId).onSnapshot(snap => {
+    inscripcionesError = '';
+    inscripcionesCache = snap.docs.map(d => Object.assign({ _id: d.id }, d.data())).sort((a, b) => (b.creadoEn || 0) - (a.creadoEn || 0));
+    // Fuera del render en curso (nunca se repinta a mitad de dibujar la pantalla)
+    setTimeout(() => {
+      const a = document.activeElement;
+      const ocupado = a && (a.tagName === 'TEXTAREA' || a.tagName === 'SELECT' || (a.tagName === 'INPUT' && a.type !== 'checkbox'));
+      if (!ocupado) { renderTabsNav(); if (activeTab === 'inscripciones') render(); }
+    }, 0);
+  }, err => {
+    inscripcionesError = (err && err.code === 'permission-denied')
+      ? 'La base de datos aún no permite las inscripciones: falta pegar las reglas nuevas en Firebase (te las pasé en el chat).'
+      : 'No se pudieron leer las inscripciones: ' + (err && err.message ? err.message : 'error');
+    inscripcionesCancelar = null;
+    setTimeout(() => { if (activeTab === 'inscripciones') render(); }, 0);
+  });
+}
+function actualizarInscripcion(ins, cambios) {
+  return firebaseDb.collection('inscripciones').doc(ins._id).update(cambios).catch(e => alert('No se pudo guardar: ' + (e && e.message ? e.message : e)));
+}
+function aceptarInscripcion(ins) {
+  const cat = getCategory(ins.categoriaId);
+  if (!cat) { alert('La categoría de esta inscripción ya no existe en el torneo.'); return; }
+  const nombre = cat.kind === 'double' && ins.pareja ? ins.nombre + ' / ' + ins.pareja : ins.nombre;
+  if (cat.players.some(p => normName(p.name) === normName(nombre))) {
+    if (!confirm('Ya hay un participante llamado «' + nombre + '» en ' + cat.name + '. ¿Añadirlo igualmente?')) return;
+  }
+  if (cat.groups && !confirm('El sorteo de ' + cat.name + ' ya está hecho. El jugador se añade a Participantes, pero no entra en los grupos hasta que vuelvas a sortear. ¿Continuar?')) return;
+  cat.enabled = true;
+  cat.players.push({ id: uid('pl'), name: nombre, club: ins.club || '', telefono: ins.telefono || '', email: ins.email || '', inscripcionId: ins._id });
+  render();
+  actualizarInscripcion(ins, { estado: 'aceptada' });
+}
+function viewInscripciones() {
+  const wrap = document.createDocumentFragment();
+  const cfg = configInscripcion();
+  escucharInscripciones();
+  const cats = enabledCategories();
+  const panelCfg = el('div', { class: 'panel', style: 'border:2px solid var(--gold);' },
+    el('h2', {}, '📝 Inscripción online'),
+    el('div', { class: 'sub' }, 'Abre la inscripción y manda el enlace por WhatsApp. Las solicitudes llegan abajo y tú las aceptas: las aceptadas pasan solas a Participantes.'));
+  const fechaHasta = el('input', { type: 'date', value: cfg.hasta || '', onchange: e => { cfg.hasta = e.target.value; render(); } });
+  panelCfg.appendChild(el('div', { class: 'grid' },
+    field('Estado', el('select', { onchange: e => { cfg.abierta = e.target.value === '1'; render(); } },
+      el('option', { value: '1', selected: cfg.abierta ? 'selected' : null }, '🟢 Abierta'),
+      el('option', { value: '0', selected: !cfg.abierta ? 'selected' : null }, '🔴 Cerrada'))),
+    field('Fecha límite (incluida, opcional)', fechaHasta),
+    field('Precio por inscripción (€)', el('input', { type: 'text', inputmode: 'decimal', value: cfg.precio || '', placeholder: 'p. ej. 5', onchange: e => { cfg.precio = e.target.value.trim(); render(); } })),
+    field('Teléfono para el Bizum', el('input', { type: 'tel', value: cfg.bizum || '', placeholder: '600 000 000', onchange: e => { cfg.bizum = e.target.value.trim(); render(); } })),
+  ));
+  panelCfg.appendChild(field('Nota para los jugadores (opcional)', el('input', { type: 'text', value: cfg.nota || '', placeholder: 'p. ej. Traer volantes. Sorteo el viernes a las 20:00.', onchange: e => { cfg.nota = e.target.value; render(); } })));
+  if (!cats.length) panelCfg.appendChild(el('div', { class: 'msg msg-warn' }, 'Activa antes las categorías del torneo en Configuración: el formulario solo ofrece las categorías activas.'));
+  else {
+    const elegidas = cfg.categorias || cats.map(c => c.id);
+    panelCfg.appendChild(el('div', { class: 'sub', style: 'margin:8px 0 4px;font-weight:700;' }, 'Categorías en las que se puede inscribir:'));
+    panelCfg.appendChild(el('div', { class: 'row', style: 'gap:6px;flex-wrap:wrap;' }, cats.map(c => el('label', { class: 'chip', style: 'cursor:pointer;gap:6px;display:inline-flex;align-items:center;' },
+      el('input', { type: 'checkbox', checked: elegidas.includes(c.id) ? 'checked' : null, style: 'width:auto;margin:0;', onchange: e => {
+        const lista = new Set(cfg.categorias || cats.map(x => x.id));
+        if (e.target.checked) lista.add(c.id); else lista.delete(c.id);
+        cfg.categorias = Array.from(lista); render();
+      } }), c.name))));
+  }
+  const enlace = enlaceInscripcion();
+  const mensaje = '🏸 Inscripción abierta: ' + (state.meta.title || 'torneo') + (cfg.hasta ? ' (hasta el ' + cfg.hasta.split('-').reverse().join('/') + ')' : '') + '. Apúntate aquí: ' + enlace;
+  panelCfg.appendChild(el('div', { class: 'row', style: 'gap:8px;margin-top:12px;flex-wrap:wrap;' },
+    el('input', { type: 'text', value: enlace, readonly: true, style: 'flex:1;min-width:220px;' }),
+    el('button', { class: 'btn btn-ghost', onclick: () => { navigator.clipboard && navigator.clipboard.writeText(enlace).then(() => alert('Enlace copiado.')).catch(() => alert(enlace)); } }, '📋 Copiar'),
+    el('a', { class: 'btn', href: 'https://wa.me/?text=' + encodeURIComponent(mensaje), target: '_blank', rel: 'noopener', style: 'text-decoration:none;background:#25D366;border-color:#25D366;color:#fff;' }, '💬 Enviar por WhatsApp')));
+  if (!cfg.abierta) panelCfg.appendChild(el('div', { class: 'msg msg-warn', style: 'margin-top:10px;' }, 'La inscripción está cerrada: quien abra el enlace verá "Inscripción cerrada". Ponla en 🟢 Abierta para recibir inscripciones.'));
+  wrap.appendChild(panelCfg);
+
+  const panel = el('div', { class: 'panel' }, el('h2', {}, 'Solicitudes recibidas'));
+  if (inscripcionesError) panel.appendChild(el('div', { class: 'msg msg-warn' }, inscripcionesError));
+  const pend = inscripcionesCache.filter(i => i.estado === 'pendiente');
+  const resto = inscripcionesCache.filter(i => i.estado !== 'pendiente');
+  panel.appendChild(el('div', { class: 'sub', style: 'margin-bottom:8px;' }, `Pendientes: ${pend.length} · Aceptadas: ${resto.filter(i => i.estado === 'aceptada').length} · Rechazadas: ${resto.filter(i => i.estado === 'rechazada').length} · Pagadas: ${inscripcionesCache.filter(i => i.pagado).length}`));
+  if (!inscripcionesCache.length && !inscripcionesError) panel.appendChild(el('div', { class: 'empty-state' }, 'Todavía no ha llegado ninguna inscripción.'));
+  const tarjeta = (ins) => el('div', { class: 'insc-card insc-' + ins.estado },
+    el('div', { class: 'insc-top' },
+      el('b', {}, ins.nombre + (ins.pareja ? ' / ' + ins.pareja : '')),
+      el('span', { class: 'chip ' + (ins.estado === 'pendiente' ? '' : 'chip-muted') }, ins.estado === 'pendiente' ? '⏳ Pendiente' : ins.estado === 'aceptada' ? '✅ Aceptada' : '✕ Rechazada')),
+    el('div', { class: 'sub' }, [ins.categoriaNombre, ins.club, ins.anioNacimiento ? 'nacido/a en ' + ins.anioNacimiento : '', ins.esMenor ? 'menor · tutor/a: ' + (ins.tutor || '—') : ''].filter(Boolean).join(' · ')),
+    el('div', { class: 'sub' }, '📞 ' + (ins.telefono || '—') + (ins.email ? ' · ✉️ ' + ins.email : '') + ' · ' + (ins.creadoEn ? new Date(ins.creadoEn).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '')),
+    el('div', { class: 'row', style: 'gap:6px;margin-top:8px;flex-wrap:wrap;align-items:center;' },
+      el('label', { class: 'acta-check', title: 'Marca cuando compruebes el Bizum en tu cuenta' },
+        el('input', { type: 'checkbox', checked: ins.pagado ? 'checked' : null, onchange: e => actualizarInscripcion(ins, { pagado: e.target.checked }) }),
+        ins.pagado ? '💶 Pagado' : (ins.bizumHecho ? 'Dice que ha hecho el Bizum' : 'Sin pagar')),
+      ins.estado === 'pendiente' ? el('button', { class: 'btn btn-primary btn-sm', onclick: () => aceptarInscripcion(ins) }, '✔ Aceptar') : null,
+      ins.estado === 'pendiente' ? el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { if (confirm('¿Rechazar la inscripción de ' + ins.nombre + '?')) actualizarInscripcion(ins, { estado: 'rechazada' }); } }, '✕ Rechazar') : null,
+      ins.estado === 'rechazada' ? el('button', { class: 'btn btn-ghost btn-sm', onclick: () => actualizarInscripcion(ins, { estado: 'pendiente' }) }, '↩ Volver a pendiente') : null,
+      el('button', { class: 'btn btn-ghost btn-sm', title: 'Borrar la solicitud y sus datos', onclick: () => { if (confirm('¿Borrar la solicitud de ' + ins.nombre + ' y sus datos de contacto? (Si ya está aceptada, sigue en Participantes)')) firebaseDb.collection('inscripciones').doc(ins._id).delete().catch(e => alert(e.message)); } }, '🗑'),
+    ));
+  pend.concat(resto).forEach(ins => panel.appendChild(tarjeta(ins)));
+  wrap.appendChild(panel);
+  return wrap;
+}
+
 function viewPartidos() {
   const wrap = document.createDocumentFragment();
   const lista = todosLosPartidosDelTorneo();
@@ -11442,6 +11570,105 @@ function panelPistasEnDirectoPublico(st) {
   }
   return panel;
 }
+
+// ===== Formulario público de inscripción (?publico=1&torneo=ID&inscribir=1) =====
+// Lo escrito se guarda en inscForm, así no se pierde si la página se refresca con datos nuevos de la nube.
+const inscForm = { categoriaId: '', nombre: '', pareja: '', club: '', anio: '', esMenor: false, tutor: '', telefono: '', email: '', bizumHecho: false, consentimiento: false, web: '' };
+let inscEnviando = false;
+let inscExito = null;
+function renderFormularioInscripcion(root, vista) {
+  const sub = document.getElementById('shellSubtitle');
+  if (sub) sub.textContent = 'Inscripción online';
+  if (inscExito) {
+    root.appendChild(el('div', { class: 'panel', style: 'text-align:center;padding:28px 16px;' },
+      el('h2', {}, '✅ Inscripción enviada'),
+      el('div', { class: 'sub', style: 'margin-bottom:14px;' }, inscExito + '. El club revisará la inscripción y la confirmará.'),
+      el('button', { class: 'btn btn-ghost', onclick: () => { inscExito = null; renderVistaPublica(); } }, 'Inscribir a otra persona')));
+    return;
+  }
+  const aviso = (titulo, texto) => root.appendChild(el('div', { class: 'panel', style: 'text-align:center;padding:28px 16px;' }, el('h2', {}, titulo), el('div', { class: 'sub' }, texto)));
+  if (vista.cerrado === 'cargando') { aviso('⏳ Cargando…', 'Un momento.'); return; }
+  if (vista.cerrado) { aviso('🔒 Inscripción cerrada', 'Este torneo ya no admite inscripciones.'); return; }
+  const st = vista.st;
+  const cfg = st.inscripcion || {};
+  const hoy = new Date(); const hoyISO = hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0') + '-' + String(hoy.getDate()).padStart(2, '0');
+  root.appendChild(el('div', { class: 'panel' }, el('h2', {}, '📝 ' + (st.meta.title || 'Torneo')),
+    st.meta.date ? el('div', { class: 'sub' }, 'Fecha del torneo: ' + st.meta.date.split('-').reverse().join('/')) : null,
+    cfg.nota ? el('div', { class: 'msg msg-info', style: 'margin-top:8px;' }, cfg.nota) : null));
+  if (!cfg.abierta || (cfg.hasta && hoyISO > cfg.hasta)) { aviso('🔒 Inscripción cerrada', 'La inscripción de este torneo no está abierta ahora mismo. Consulta con el club.'); return; }
+  let enviadas = [];
+  try { enviadas = JSON.parse(localStorage.getItem('inscEnviadas_' + vista.entrada.id) || '[]'); } catch (e) { }
+  const cats = (st.categories || []).filter(c => c.enabled && (!cfg.categorias || cfg.categorias.includes(c.id)));
+  if (!cats.length) { aviso('🔒 Sin categorías abiertas', 'Ahora mismo no hay categorías abiertas para inscribirse.'); return; }
+  if (!inscForm.categoriaId || !cats.some(c => c.id === inscForm.categoriaId)) inscForm.categoriaId = cats[0].id;
+  const cat = cats.find(c => c.id === inscForm.categoriaId);
+  const esDobles = cat.kind === 'double';
+  const inp = (key, attrs) => el('input', Object.assign({ value: inscForm[key] || '', oninput: e => { inscForm[key] = e.target.value; } }, attrs || {}));
+  const chk = (key, texto, onchg) => el('label', { class: 'check' }, el('input', { type: 'checkbox', checked: inscForm[key] ? 'checked' : null, onchange: e => { inscForm[key] = e.target.checked; if (onchg) onchg(); } }), el('span', {}, texto));
+  const campo = (texto, nodo) => el('div', { class: 'field' }, el('label', {}, texto), nodo);
+  const form = el('div', { class: 'panel insc-form' }, el('h3', { style: 'margin-top:0;' }, 'Datos de la inscripción'));
+  if (enviadas.length) form.appendChild(el('div', { class: 'msg msg-info', style: 'margin-bottom:10px;' }, '✅ Desde este móvil ya se ha enviado: ' + enviadas.join(', ') + '. Si quieres inscribir a otra persona, rellena de nuevo.'));
+  form.appendChild(campo('Categoría', el('select', { onchange: e => { inscForm.categoriaId = e.target.value; renderVistaPublica(); } }, cats.map(c => el('option', { value: c.id, selected: c.id === inscForm.categoriaId ? 'selected' : null }, c.name)))));
+  form.appendChild(campo(esDobles ? 'Nombre y apellidos (jugador/a 1)' : 'Nombre y apellidos del jugador/a', inp('nombre', { type: 'text', autocomplete: 'name', maxlength: 100 })));
+  if (esDobles) form.appendChild(campo('Nombre y apellidos de la pareja', inp('pareja', { type: 'text', maxlength: 100 })));
+  form.appendChild(campo('Año de nacimiento' + (esDobles ? ' (jugador/a 1)' : ''), inp('anio', { type: 'text', inputmode: 'numeric', maxlength: 4, placeholder: 'p. ej. 2012' })));
+  form.appendChild(campo('Club (opcional)', inp('club', { type: 'text', maxlength: 80 })));
+  form.appendChild(chk('esMenor', 'El jugador/a es menor de 18 años', () => renderVistaPublica()));
+  if (inscForm.esMenor) form.appendChild(campo('Nombre del padre, madre o tutor/a legal', inp('tutor', { type: 'text', maxlength: 100 })));
+  form.appendChild(campo('Teléfono de contacto', inp('telefono', { type: 'tel', autocomplete: 'tel', maxlength: 20 })));
+  form.appendChild(campo('Email (opcional)', inp('email', { type: 'email', autocomplete: 'email', maxlength: 100 })));
+  form.appendChild(el('div', { class: 'insc-hp', 'aria-hidden': 'true' }, inp('web', { type: 'text', tabindex: '-1', autocomplete: 'off' })));
+  if (cfg.precio || cfg.bizum) {
+    const concepto = (inscForm.nombre || 'Nombre') + ' - ' + (st.meta.title || 'Torneo');
+    form.appendChild(el('div', { class: 'insc-bizum' },
+      el('div', { style: 'font-weight:800;margin-bottom:4px;' }, '💶 Pago por Bizum' + (cfg.precio ? ': ' + cfg.precio + ' €' + (esDobles ? ' por jugador/a' : '') : '')),
+      cfg.bizum ? el('div', {}, 'Envía el Bizum al ', el('b', {}, cfg.bizum), ' con el concepto: ', el('b', {}, concepto)) : null,
+      chk('bizumHecho', 'Ya he hecho el Bizum')));
+  }
+  form.appendChild(chk('consentimiento', (inscForm.esMenor ? 'Soy el padre, madre o tutor/a legal y autorizo la inscripción. ' : '') +
+    'Acepto que ' + ((typeof clubGlobal !== 'undefined' && clubGlobal.nombre) || 'el club') + ' use estos datos solo para organizar este torneo y contactar conmigo sobre él. No se publican teléfonos ni emails; el nombre aparece en el calendario y resultados del torneo.'));
+  const msg = el('div', {});
+  form.appendChild(msg);
+  form.appendChild(el('button', { class: 'btn btn-primary', style: 'width:100%;padding:14px;font-size:16px;margin-top:6px;', disabled: inscEnviando ? 'disabled' : null, onclick: () => enviarInscripcion(vista, cat, msg) }, inscEnviando ? 'Enviando…' : '📨 Enviar inscripción'));
+  root.appendChild(form);
+}
+function enviarInscripcion(vista, cat, msg) {
+  const f = inscForm;
+  const limpiar = v => String(v || '').replace(/\s+/g, ' ').trim();
+  const error = t => { msg.innerHTML = ''; msg.appendChild(el('div', { class: 'msg msg-warn' }, t)); };
+  if (f.web) return; // relleno automático de robots
+  const nombre = limpiar(f.nombre), pareja = limpiar(f.pareja), tel = limpiar(f.telefono), anio = limpiar(f.anio);
+  if (nombre.length < 3) return error('Escribe el nombre y apellidos del jugador/a.');
+  if (cat.kind === 'double' && pareja.length < 3) return error('Escribe el nombre y apellidos de la pareja.');
+  if (!/^(19|20)\d\d$/.test(anio)) return error('Escribe el año de nacimiento con 4 cifras (p. ej. 2012).');
+  if (tel.replace(/\D/g, '').length < 9) return error('Escribe un teléfono de contacto válido.');
+  if (f.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(limpiar(f.email))) return error('El email no parece correcto.');
+  if (f.esMenor && limpiar(f.tutor).length < 3) return error('Escribe el nombre del padre, madre o tutor/a.');
+  if (!f.consentimiento) return error('Para enviar la inscripción tienes que marcar la casilla de aceptación.');
+  if (typeof firebaseDb === 'undefined' || !firebaseDb) return error('No hay conexión. Inténtalo de nuevo en un momento.');
+  inscEnviando = true; renderVistaPublica();
+  const datos = {
+    torneoId: vista.entrada.id, categoriaId: cat.id, categoriaNombre: cat.name, nombre: nombre.slice(0, 100), pareja: cat.kind === 'double' ? pareja.slice(0, 100) : '',
+    club: limpiar(f.club).slice(0, 80), anioNacimiento: anio, esMenor: !!f.esMenor, tutor: f.esMenor ? limpiar(f.tutor).slice(0, 100) : '',
+    telefono: tel.slice(0, 20), email: limpiar(f.email).slice(0, 100), bizumHecho: !!f.bizumHecho, consentimiento: true, estado: 'pendiente', creadoEn: Date.now(),
+  };
+  firebaseDb.collection('inscripciones').add(datos).then(() => {
+    inscEnviando = false;
+    try {
+      const k = 'inscEnviadas_' + vista.entrada.id;
+      const l = JSON.parse(localStorage.getItem(k) || '[]'); l.push(datos.nombre + (datos.pareja ? ' / ' + datos.pareja : '') + ' (' + cat.name + ')'); localStorage.setItem(k, JSON.stringify(l));
+    } catch (e) { }
+    Object.assign(inscForm, { nombre: '', pareja: '', anio: '', tutor: '', bizumHecho: false, consentimiento: false });
+    inscExito = datos.nombre + (datos.pareja ? ' / ' + datos.pareja : '') + ' · ' + cat.name;
+    renderVistaPublica();
+    window.scrollTo(0, 0);
+  }).catch(e => {
+    inscEnviando = false; renderVistaPublica();
+    const m = document.querySelector('.insc-form');
+    if (m) m.appendChild(el('div', { class: 'msg msg-warn' }, 'No se pudo enviar la inscripción (' + (e && e.code ? e.code : 'error') + '). Inténtalo de nuevo o avisa al club.'));
+  });
+}
+
 function timeToMinutesPublico(t) { const p = String(t || '99:99').split(':'); return (parseInt(p[0], 10) || 0) * 60 + (parseInt(p[1], 10) || 0); }
 function renderVistaPublica() {
   const scrollGuardado = window.scrollY;
@@ -11475,6 +11702,7 @@ function renderVistaPublica() {
   document.body.classList.remove('im-taller', 'dg-panel');
 
   const vista = obtenerEstadoParaVistaPublica();
+  if (new URLSearchParams(location.search).get('inscribir') === '1') { renderFormularioInscripcion(root, vista); return; }
   if (vista.cerrado) {
     const textos = {
       finalizado: ['🏁 Este torneo ha finalizado', 'El enlace en directo ya no está disponible. Gracias por participar.'],

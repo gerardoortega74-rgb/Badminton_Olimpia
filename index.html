@@ -159,6 +159,15 @@ footer.hint{text-align:center;color:var(--muted);font-size:12px;padding:20px;}
 .sched-grid{display:grid;border:1px solid #E4E1D6;border-radius:var(--radius);overflow-x:auto;-webkit-overflow-scrolling:touch;background:linear-gradient(to left, rgba(0,0,0,0.16), rgba(0,0,0,0) 26px) right center no-repeat;background-size:32px 100%;}
 .sched-row{display:grid;grid-template-columns:70px repeat(var(--ncourts,1),minmax(120px,1fr));border-bottom:1px solid #ECE9DE;width:max-content;min-width:100%;}
 .sched-row:last-child{border-bottom:none;}
+/* Calendario con su propio scroll: la barra lateral queda siempre a la vista y la fila de pistas y la columna de horas se quedan fijas */
+.sched-grid.sched-scroll{display:block;max-height:calc(100vh - 150px);max-height:calc(100dvh - 150px);overflow:auto;overscroll-behavior:contain;background:#fff;}
+.sched-grid.sched-scroll > .sched-row{grid-template-columns:70px repeat(var(--ncourts,1),minmax(0,1fr));width:max(100%, calc(70px + var(--ncourts,1) * 230px));}
+.sched-grid.sched-scroll .sched-cell{min-width:0;overflow-wrap:anywhere;}
+.sched-grid.sched-scroll > .sched-row:first-child{position:sticky;top:0;z-index:3;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.08);}
+.sched-grid.sched-scroll > .sched-row:first-child .sched-cell{background:#fff;min-height:0;}
+.sched-grid.sched-scroll > .sched-row:first-child .sched-time{z-index:4;}
+.sched-grid.sched-scroll .sched-time{z-index:2;}
+.sched-nav{display:flex;align-items:center;gap:6px;justify-content:flex-end;margin:0 0 6px;font-size:12px;color:var(--muted);}
 .sched-time{background:#F5F3EB;padding:8px;font-size:12px;font-weight:700;color:var(--court-dark);display:flex;align-items:center;position:sticky;left:0;z-index:1;}
 .sched-cell{padding:8px;border-left:1px solid #ECE9DE;font-size:12px;min-height:52px;}
 .sched-match{background:var(--court);color:#fff;border-radius:6px;padding:6px 8px;font-size:11.5px;line-height:1.35;}
@@ -3070,6 +3079,7 @@ function mensajeWhatsappTorneo(enlace) {
 function enlacePublicoDelTorneo() {
   return location.origin + location.pathname + '?publico=1&torneo=' + torneoActivoId;
 }
+let scrollCalendario = { x: 0, y: 0 };
 function viewSchedule() {
   const wrap = document.createDocumentFragment();
   const pending = enabledCategories().filter(c => !c.groups);
@@ -3153,7 +3163,18 @@ function viewSchedule() {
 
   const times = Array.from(new Set(allMatches.map(x => x.m.time))).sort((a, b) => timeToMinutes(a) - timeToMinutes(b));
   const numCourts = state.config.courts;
-  const grid = el('div', { class: 'sched-grid', style: `--ncourts:${numCourts};` });
+  const grid = el('div', { class: 'sched-grid sched-scroll', style: `--ncourts:${numCourts};` });
+  grid.addEventListener('scroll', () => { scrollCalendario = { x: grid.scrollLeft, y: grid.scrollTop }; });
+  requestAnimationFrame(() => { grid.scrollLeft = scrollCalendario.x; grid.scrollTop = scrollCalendario.y; });
+  const desplazar = (dir) => {
+    const col = grid.querySelector('.sched-row .sched-cell');
+    grid.scrollBy({ left: dir * (col ? col.offsetWidth : 200), behavior: 'smooth' });
+  };
+  panel.appendChild(el('div', { class: 'sched-nav no-print' },
+    'Pistas',
+    el('button', { class: 'btn btn-ghost btn-sm', onclick: () => desplazar(-1) }, '◀'),
+    el('button', { class: 'btn btn-ghost btn-sm', onclick: () => desplazar(1) }, '▶'),
+  ));
   const headerRow = el('div', { class: 'sched-row' }, el('div', { class: 'sched-time' }, 'Hora'));
   for (let c = 1; c <= numCourts; c++) headerRow.appendChild(el('div', { class: 'sched-cell', style: 'font-weight:700;color:var(--court-dark);' }, 'Pista ' + c));
   grid.appendChild(headerRow);

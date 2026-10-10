@@ -210,6 +210,24 @@ footer.hint{text-align:center;color:var(--muted);font-size:12px;padding:20px;}
 #areaImpresionActa{display:none;}
 body.imprimiendo-acta > *:not(#areaImpresionActa){display:none !important;}
 body.imprimiendo-acta #areaImpresionActa{display:block !important;position:static;background:#fff;padding:24px;}
+@page calApaisado{size:A4 landscape;margin:8mm;}
+.cal-hoja{page:calApaisado;color:#000;background:#fff;font-family:inherit;padding-top:4mm;}
+.cal-cab{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;border-bottom:2px solid #000;padding-bottom:6px;margin-bottom:8px;}
+.cal-club{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;}
+.cal-titulo{font-size:18px;font-weight:800;}
+.cal-datos{font-size:11px;text-align:right;}
+.cal-tabla{display:table !important;width:100% !important;max-width:none !important;overflow:visible !important;white-space:normal !important;background:none !important;border-collapse:collapse;table-layout:fixed;font-size:10px;color:#000;}
+.cal-tabla th,.cal-tabla td{border:1px solid #777;padding:4px 5px;vertical-align:top;text-align:left;background:#fff;color:#000;}
+.cal-tabla thead th{background:#E6E6E6;font-size:11px;font-weight:800;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.cal-tabla thead{display:table-header-group;}
+.cal-tabla tr{page-break-inside:avoid;break-inside:avoid;}
+.cal-tabla .cal-hora{width:14mm;font-weight:800;font-size:12px;text-align:center;vertical-align:middle;}
+.cal-cat{font-size:8.5px;color:#333;margin-bottom:2px;line-height:1.2;}
+.cal-jug{font-size:10.5px;font-weight:700;line-height:1.25;word-break:break-word;}
+.cal-vs{font-size:8px;color:#555;line-height:1.1;}
+.cal-tabla td.cal-ko{background:#F2F2F2;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.cal-tabla td.cal-vacia{background:#fff;}
+@media print{body.imprimiendo-acta #areaImpresionActa{padding:0;}}
 .acta-hoja{max-width:640px;margin:0 auto;font-family:inherit;color:#000;}
 .acta-hoja h2{margin:0 0 4px;}
 .acta-hoja .acta-linea{display:flex;justify-content:space-between;border-bottom:1px solid #999;padding:6px 0;margin-bottom:6px;font-size:14px;}
@@ -2850,6 +2868,53 @@ function imprimirActaPartido(item) {
   document.body.classList.add('imprimiendo-acta');
 }
 window.addEventListener('afterprint', cerrarActaImpresion);
+// Hoja de calendario para imprimir: A4 apaisado, todas las pistas a lo ancho, texto negro y sin botones ni avisos.
+function imprimirCalendario(allMatches) {
+  if (!allMatches || !allMatches.length) { alert('Todavía no hay partidos programados. Genera el calendario primero.'); return; }
+  const numCourts = Math.max(1, Number(state.config.courts) || 1);
+  const times = Array.from(new Set(allMatches.map(x => x.m.time))).sort();
+  const area = document.getElementById('areaImpresionActa');
+  area.innerHTML = '';
+  area.appendChild(el('div', { class: 'row no-print', style: 'justify-content:flex-end;margin-bottom:14px;gap:8px;' },
+    el('button', { class: 'btn btn-gold', onclick: () => window.print() }, '🖨 Imprimir'),
+    el('button', { class: 'btn btn-ghost', onclick: () => cerrarActaImpresion() }, '✕ Cerrar y volver'),
+  ));
+  const thead = el('thead', {}, el('tr', {},
+    el('th', { class: 'cal-hora' }, 'Hora'),
+    Array.from({ length: numCourts }, (_, i) => el('th', {}, 'Pista ' + (i + 1))),
+  ));
+  const tbody = el('tbody');
+  times.forEach(t => {
+    const tr = el('tr', {}, el('td', { class: 'cal-hora' }, t));
+    for (let c = 1; c <= numCourts; c++) {
+      const match = allMatches.find(x => x.m.time === t && x.m.court === c);
+      if (!match) { tr.appendChild(el('td', { class: 'cal-vacia' })); continue; }
+      tr.appendChild(el('td', { class: match.m.phase === 'ko' ? 'cal-ko' : '' },
+        el('div', { class: 'cal-cat' }, match.label),
+        el('div', { class: 'cal-jug' }, playerName(match.cat, match.m.p1)),
+        el('div', { class: 'cal-vs' }, 'vs'),
+        el('div', { class: 'cal-jug' }, playerName(match.cat, match.m.p2)),
+      ));
+    }
+    tbody.appendChild(tr);
+  });
+  area.appendChild(el('div', { class: 'cal-hoja' },
+    el('div', { class: 'cal-cab' },
+      el('div', {},
+        el('div', { class: 'cal-club' }, clubGlobal.nombre || ''),
+        el('div', { class: 'cal-titulo' }, (state.meta.title || 'Torneo') + ' · Calendario de partidos'),
+      ),
+      el('div', { class: 'cal-datos' },
+        state.meta.date ? el('div', {}, 'Fecha: ' + String(state.meta.date).split('-').reverse().join('/')) : null,
+        el('div', {}, numCourts + ' pista(s) · ' + allMatches.length + ' partidos · inicio ' + (state.config.startTime || '')),
+      ),
+    ),
+    el('table', { class: 'cal-tabla', style: '--ncal:' + numCourts }, thead, tbody),
+  ));
+  document.body.classList.add('imprimiendo-acta');
+  window.scrollTo(0, 0);
+  setTimeout(() => window.print(), 300);
+}
 function viewPartidos() {
   const wrap = document.createDocumentFragment();
   const lista = todosLosPartidosDelTorneo();
@@ -2951,7 +3016,7 @@ function viewSchedule() {
       disabled: !enabledCategories().some(c => c.groups) ? 'disabled' : null,
       onclick: () => { buildSchedule(); render(); },
     }, '🗓 Generar / actualizar calendario'),
-    el('button', { class: 'btn btn-ghost no-print', onclick: () => window.print() }, '🖨 Imprimir calendario'),
+    el('button', { class: 'btn btn-ghost no-print', disabled: !enabledCategories().some(c => c.groups) ? 'disabled' : null, onclick: () => imprimirCalendario(allMatches) }, '🖨 Imprimir calendario'),
   ));
 
   const allMatches = [];

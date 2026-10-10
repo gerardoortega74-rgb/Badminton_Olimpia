@@ -11388,6 +11388,9 @@ function renderVistaPublica() {
   root.innerHTML = '';
   document.getElementById('shellTitle').textContent = clubGlobal.nombre || 'Torneo en directo';
   document.body.classList.remove('solo-lectura');
+  // Mismo diseño que la app del club (grafito y turquesa, o el clásico si este dispositivo lo tiene elegido)
+  document.body.classList.add('ol-club');
+  document.body.classList.remove('im-taller', 'dg-panel');
 
   const vista = obtenerEstadoParaVistaPublica();
   if (vista.cerrado) {

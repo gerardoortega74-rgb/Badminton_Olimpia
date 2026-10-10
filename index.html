@@ -2170,6 +2170,16 @@ function viewConfig() {
           navigator.clipboard && navigator.clipboard.writeText(enlacePublico).then(() => alert('Enlace copiado.')).catch(() => {});
         },
       }, '📋 Copiar enlace'),
+      el('a', {
+        class: 'btn btn-gold',
+        href: 'https://wa.me/?text=' + encodeURIComponent(mensajeWhatsappTorneo(enlacePublico)),
+        target: '_blank', rel: 'noopener',
+        style: 'text-decoration:none;background:#25D366;border-color:#25D366;color:#fff;',
+      }, '💬 Enviar por WhatsApp'),
+      (navigator.share ? el('button', {
+        class: 'btn btn-ghost',
+        onclick: () => { navigator.share({ title: state.meta.title || 'Torneo', text: mensajeWhatsappTorneo(''), url: enlacePublico }).catch(() => {}); },
+      }, '📤 Compartir…') : null),
     ),
   ));
 
@@ -2910,6 +2920,10 @@ function telefonoParaWhatsapp(tel) {
   if (digitos.length === 9) digitos = '34' + digitos;
   return digitos;
 }
+function mensajeWhatsappTorneo(enlace) {
+  const titulo = state.meta.title || 'el torneo';
+  return '🏸 ' + titulo + ': consulta tus partidos, los horarios y el cuadro en directo aquí' + (enlace ? ': ' + enlace : '');
+}
 function enlacePublicoDelTorneo() {
   return location.origin + location.pathname + '?publico=1&torneo=' + torneoActivoId;
 }
@@ -2968,6 +2982,12 @@ function viewSchedule() {
       class: 'btn btn-ghost',
       onclick: () => { navigator.clipboard && navigator.clipboard.writeText(cuerpoMensaje).then(() => alert('Mensaje copiado. Pégalo en tu grupo de WhatsApp del torneo.')).catch(() => alert(cuerpoMensaje)); },
     }, '📋 Copiar mensaje para WhatsApp'),
+    el('a', {
+      class: 'btn btn-gold',
+      href: 'https://wa.me/?text=' + encodeURIComponent(cuerpoMensaje),
+      target: '_blank', rel: 'noopener',
+      style: 'text-decoration:none;background:#25D366;border-color:#25D366;color:#fff;',
+    }, '💬 Enviar por WhatsApp (elige grupo)'),
   ));
   if (conTelefono.length) {
     avisoPanel.appendChild(el('div', { class: 'sub', style: 'margin-bottom:6px;' }, 'O toca uno a uno para abrir su chat de WhatsApp ya escrito (WhatsApp no deja enviar a varios de golpe desde una web):'));
@@ -3300,6 +3320,8 @@ function viewHistorial() {
           const enlace = location.origin + location.pathname + '?publico=1&torneo=' + t.id;
           navigator.clipboard && navigator.clipboard.writeText(enlace).then(() => alert('Enlace de este torneo copiado:\n' + enlace)).catch(() => alert(enlace));
         } }, '🔗 Enlace'),
+        el('a', { class: 'btn btn-ghost btn-sm', target: '_blank', rel: 'noopener', style: 'text-decoration:none;',
+          href: 'https://wa.me/?text=' + encodeURIComponent('🏸 ' + (t.nombre || t.title || 'Torneo') + ': horarios y cuadro en directo aquí: ' + location.origin + location.pathname + '?publico=1&torneo=' + t.id) }, '💬 WhatsApp'),
         el('button', { class: 'btn btn-ghost btn-sm', onclick: () => alternarFinalizado(t.id) }, t.estado === 'finalizado' ? 'Reabrir' : 'Marcar finalizado'),
         el('button', { class: 'btn btn-danger btn-sm', onclick: () => eliminarTorneoDeLista(t.id) }, 'Eliminar'),
       )),

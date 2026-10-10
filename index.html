@@ -2157,8 +2157,15 @@ function viewConfig() {
   const wrap = document.createDocumentFragment();
 
   const enlacePublico = location.origin + location.pathname + '?publico=1&torneo=' + torneoActivoId;
+  const entradaActivaCfg = torneosHistorial.find(t => t.id === torneoActivoId);
+  if (entradaActivaCfg && entradaActivaCfg.estado === 'finalizado') {
+    wrap.appendChild(el('div', { class: 'panel', style: 'border:2px solid var(--gold);' },
+      el('h2', {}, '📱 Enlace en directo para los jugadores'),
+      el('div', { class: 'msg msg-warn' }, '🏁 Este torneo está finalizado: su enlace ya no funciona para los jugadores. Si lo reabres desde el Historial, el mismo enlace vuelve a funcionar.'),
+    ));
+  }
   const enlaceInput = el('input', { type: 'text', value: enlacePublico, readonly: true, style: 'flex:1;min-width:220px;' });
-  wrap.appendChild(el('div', { class: 'panel', style: 'border:2px solid var(--gold);' },
+  if (!(entradaActivaCfg && entradaActivaCfg.estado === 'finalizado')) wrap.appendChild(el('div', { class: 'panel', style: 'border:2px solid var(--gold);' },
     el('h2', {}, '📱 Enlace en directo para los jugadores'),
     el('div', { class: 'sub' }, 'Comparte este enlace con los jugadores: podrán ver el calendario, los horarios y cómo va el cuadro en directo desde su propio móvil, sin necesidad de usuario ni PIN, y sin poder tocar nada.'),
     el('div', { class: 'row', style: 'gap:8px;' },
@@ -3316,11 +3323,11 @@ function viewHistorial() {
       el('td', {}, String(numCats)),
       el('td', {}, el('div', { class: 'row', style: 'gap:6px;flex-wrap:nowrap;' },
         esActivo ? el('span', { class: 'chip chip-muted' }, 'Editando ahora') : el('button', { class: 'btn btn-primary btn-sm', onclick: () => cambiarATorneo(t.id) }, 'Editar este'),
-        el('button', { class: 'btn btn-ghost btn-sm', onclick: () => {
+        t.estado === 'finalizado' ? el('span', { class: 'chip chip-muted', title: 'El enlace de un torneo finalizado ya no funciona' }, '🔒 Enlace cerrado') : el('button', { class: 'btn btn-ghost btn-sm', onclick: () => {
           const enlace = location.origin + location.pathname + '?publico=1&torneo=' + t.id;
           navigator.clipboard && navigator.clipboard.writeText(enlace).then(() => alert('Enlace de este torneo copiado:\n' + enlace)).catch(() => alert(enlace));
         } }, '🔗 Enlace'),
-        el('a', { class: 'btn btn-ghost btn-sm', target: '_blank', rel: 'noopener', style: 'text-decoration:none;',
+        t.estado === 'finalizado' ? null : el('a', { class: 'btn btn-ghost btn-sm', target: '_blank', rel: 'noopener', style: 'text-decoration:none;',
           href: 'https://wa.me/?text=' + encodeURIComponent('🏸 ' + (t.nombre || t.title || 'Torneo') + ': horarios y cuadro en directo aquí: ' + location.origin + location.pathname + '?publico=1&torneo=' + t.id) }, '💬 WhatsApp'),
         el('button', { class: 'btn btn-ghost btn-sm', onclick: () => alternarFinalizado(t.id) }, t.estado === 'finalizado' ? 'Reabrir' : 'Marcar finalizado'),
         el('button', { class: 'btn btn-danger btn-sm', onclick: () => eliminarTorneoDeLista(t.id) }, 'Eliminar'),
@@ -10765,16 +10772,15 @@ function obtenerEstadoParaVistaPublica() {
   const params = new URLSearchParams(location.search);
   const torneoId = params.get('torneo');
   const historial = TorneoApp.getHistorial();
-  if (torneoId) {
-    const entrada = historial.find(t => t.id === torneoId);
-    if (entrada && entrada.snapshot) {
-      const esElActivo = torneoId === TorneoApp.getTorneoActivoId();
-      return { st: esElActivo ? TorneoApp.getState() : entrada.snapshot, entrada };
-    }
-  }
-  const idActivo = TorneoApp.getTorneoActivoId();
-  const entradaActiva = historial.find(t => t.id === idActivo);
-  return { st: TorneoApp.getState(), entrada: entradaActiva };
+  // Cada torneo tiene su propio enlace: sin id, con un id que no existe o con el torneo finalizado, el enlace no funciona.
+  if (!torneoId) return { cerrado: 'invalido' };
+  const entrada = historial.find(t => t.id === torneoId);
+  if (!entrada) return { cerrado: historial.length ? 'invalido' : 'cargando' };
+  if (entrada.estado === 'finalizado') return { cerrado: 'finalizado', entrada };
+  const esElActivo = torneoId === TorneoApp.getTorneoActivoId();
+  const st = esElActivo ? TorneoApp.getState() : entrada.snapshot;
+  if (!st) return { cerrado: 'cargando' };
+  return { st, entrada };
 }
 function todosLosTorneosParaBusqueda() {
   const historial = TorneoApp.getHistorial();
@@ -10782,7 +10788,7 @@ function todosLosTorneosParaBusqueda() {
   return historial.map(t => ({
     id: t.id, nombre: t.nombre, fechaInicio: t.fechaInicio, estado: t.estado,
     st: t.id === idActivo ? TorneoApp.getState() : t.snapshot,
-  })).filter(t => t.st);
+  })).filter(t => t.st && t.estado !== 'finalizado');
 }
 function historialDeJugadorGlobal(nombreJugador) {
   const torneos = todosLosTorneosParaBusqueda();
@@ -10849,8 +10855,22 @@ function renderVistaPublica() {
   document.getElementById('shellTitle').textContent = clubGlobal.nombre || 'Torneo en directo';
   document.body.classList.remove('solo-lectura');
 
-  const { st, entrada } = obtenerEstadoParaVistaPublica();
-  const finalizado = entrada && entrada.estado === 'finalizado';
+  const vista = obtenerEstadoParaVistaPublica();
+  if (vista.cerrado) {
+    const textos = {
+      finalizado: ['🏁 Este torneo ha finalizado', 'El enlace en directo ya no está disponible. Gracias por participar.'],
+      invalido: ['🔒 Enlace no válido', 'Este enlace no corresponde a ningún torneo en curso. Pide al club el enlace del torneo actual.'],
+      cargando: ['⏳ Cargando torneo…', 'Un momento, se están cargando los datos.'],
+    }[vista.cerrado];
+    document.getElementById('shellSubtitle').textContent = vista.cerrado === 'cargando' ? '' : 'Enlace no disponible';
+    root.appendChild(el('div', { class: 'panel', style: 'text-align:center;padding:32px 16px;' },
+      el('h2', {}, textos[0]),
+      el('div', { class: 'sub' }, textos[1]),
+    ));
+    return;
+  }
+  const { st, entrada } = vista;
+  const finalizado = false;
   document.getElementById('shellSubtitle').textContent = finalizado ? '📁 Torneo finalizado · consulta de resultados' : 'Sigue el campeonato en directo · se actualiza solo';
   root.appendChild(el('div', { class: 'panel' },
     el('h2', {}, st.meta.title || 'Torneo'),
@@ -13227,10 +13247,14 @@ function estadoPublicoParaNube() {
     }),
   };
   // El taller ya va filtrado campo a campo arriba; a los torneos se les quitan los datos personales de los participantes.
+  // Los torneos finalizados no se publican: su enlace en directo deja de funcionar.
+  const activoFinalizado = TorneoApp.getHistorial().some(h => h.id === TorneoApp.getTorneoActivoId() && h.estado === 'finalizado');
   return {
     club: { nombre: clubGlobal.nombre || '', localidad: clubGlobal.localidad || '', logo: clubGlobal.logo || '', temporadaInicio: clubGlobal.temporadaInicio || '', temporadaFin: clubGlobal.temporadaFin || '' },
-    torneo: sanearPublico(TorneoApp.getState()),
-    torneosHistorial: sanearPublico(TorneoApp.getHistorial()),
+    torneo: activoFinalizado ? null : sanearPublico(TorneoApp.getState()),
+    torneosHistorial: sanearPublico(TorneoApp.getHistorial().map(h => h.estado === 'finalizado'
+      ? { id: h.id, nombre: h.nombre, fechaInicio: h.fechaInicio, fechaFin: h.fechaFin, estado: 'finalizado', snapshot: null }
+      : h)),
     torneoActivoId: TorneoApp.getTorneoActivoId(),
     taller,
     actualizadoEn: Date.now(),

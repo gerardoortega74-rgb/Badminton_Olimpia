@@ -183,6 +183,19 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 .btn-editar-nombre{background:none;border:none;cursor:pointer;font-size:14px;padding:2px 6px;margin-left:6px;opacity:.55;vertical-align:middle;}
 .btn-editar-nombre:hover{opacity:1;}
 .nombre-editable .input-nombre{min-width:220px;flex:1;padding:6px 8px;}
+.pistas-ahora{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;margin:6px 0 4px;}
+.pista-card{border-radius:12px;padding:10px 12px;border:2px solid #E4E1D6;background:#fff;}
+.pista-card.libre{border-style:dashed;background:#F3FBF6;border-color:#9AD9B5;}
+.pista-card.ocupada{background:var(--court);color:#fff;border-color:var(--court);}
+.pista-num{font-weight:800;font-size:16px;display:flex;justify-content:space-between;align-items:baseline;gap:6px;}
+.pista-desde{font-size:12px;font-weight:600;opacity:.8;}
+.pista-estado{margin-top:6px;font-weight:700;color:#1E7A4A;}
+.pista-cat{font-size:11.5px;opacity:.85;margin:4px 0;}
+.pista-jug{font-weight:700;font-size:13.5px;line-height:1.25;}
+.pista-vs{font-size:11px;opacity:.7;}
+.pista-card.ocupada .btn-ghost{color:#fff;border-color:rgba(255,255,255,.55);background:rgba(255,255,255,.08);}
+.tabla-cola .sel-pista{width:auto;min-width:90px;padding:4px 6px;}
+.tabla-cola tr.fila-espera td{opacity:.6;}
 .tabla-partidos{display:table !important;width:100% !important;max-width:100% !important;overflow:visible !important;white-space:normal !important;background:none !important;table-layout:auto;font-size:13px;}
 .tabla-partidos th,.tabla-partidos td{padding:6px 6px !important;vertical-align:middle;}
 .tabla-partidos th{white-space:nowrap;}
@@ -1774,9 +1787,9 @@ function buildSchedule() {
   const startMin = timeToMinutes(state.config.startTime || '09:00');
 
   enabledCategories().forEach(cat => {
-    (cat.matches || []).forEach(m => { m.court = null; m.time = null; m.inicioReal = null; m.horaPlan = null; });
+    (cat.matches || []).forEach(m => { m.court = null; m.time = null; m.inicioReal = null; m.horaPlan = null; m.finReal = null; m.pistaPreasignada = false; });
     if (cat.knockout) {
-      cat.knockout.rounds.forEach(round => round.forEach(m => { m.court = null; m.time = null; m.inicioReal = null; m.horaPlan = null; }));
+      cat.knockout.rounds.forEach(round => round.forEach(m => { m.court = null; m.time = null; m.inicioReal = null; m.horaPlan = null; m.finReal = null; m.pistaPreasignada = false; }));
     }
   });
 
@@ -1861,6 +1874,13 @@ function buildSchedule() {
     }
     programarLote(koQueue);
   }
+  // Pistas a mano: solo los primeros partidos (uno por pista, a la hora de inicio) llevan pista; el resto se asigna al empezar.
+  if (pistasManuales()) {
+    partidosProgramados().forEach(x => {
+      if (x.m.time === minutesToTime(startMin) && x.m.court) x.m.pistaPreasignada = true;
+      else { x.m.court = null; x.m.pistaPreasignada = false; }
+    });
+  }
 }
 
 // ===== HORA REAL DE INICIO =====
@@ -1870,10 +1890,43 @@ function buildSchedule() {
 function partidosProgramados() {
   const lista = [];
   enabledCategories().forEach(cat => {
-    (cat.matches || []).forEach(m => { if (m.time && m.court) lista.push({ cat, m }); });
-    if (cat.knockout) cat.knockout.rounds.forEach(r => r.forEach(m => { if (m.time && m.court) lista.push({ cat, m }); }));
+    (cat.matches || []).forEach(m => { if (m.time) lista.push({ cat, m, label: etiquetaPartido(cat, m) }); });
+    if (cat.knockout) cat.knockout.rounds.forEach(r => r.forEach(m => { if (m.time && m.p1 && m.p2 && m.p1 !== 'BYE' && m.p2 !== 'BYE') lista.push({ cat, m, label: etiquetaPartido(cat, m) }); }));
   });
   return lista;
+}
+function etiquetaPartido(cat, m) {
+  if (m.phase === 'ko' || m.round) return cat.name + (m.round ? ' · ' + m.round : '');
+  const g = cat.groups && cat.groups[m.groupIndex];
+  return cat.name + (g ? ' · Grupo ' + String(g.name).split(' ').slice(1).join(' ') : '');
+}
+function pistasManuales() { return state.config.pistasManual !== false; }
+function partidoEnJuego(m) { return !!(m.inicioReal && !m.winner && !m.finReal); }
+// Pista -> partido que se está jugando ahora en ella
+function pistasOcupadas() {
+  const ocupadas = {};
+  partidosProgramados().forEach(x => { if (partidoEnJuego(x.m) && x.m.court) ocupadas[x.m.court] = x; });
+  return ocupadas;
+}
+// Nombre del jugador -> partido que está jugando ahora
+function jugadoresJugando() {
+  const mapa = {};
+  partidosProgramados().forEach(x => {
+    if (!partidoEnJuego(x.m)) return;
+    [x.m.p1, x.m.p2].forEach(id => { playerName(x.cat, id).split(' / ').forEach(n => { if (normName(n)) mapa[normName(n)] = x; }); });
+  });
+  return mapa;
+}
+// Si alguno de los jugadores de este partido está jugando otro ahora, devuelve { nombre, x }
+function jugadorOcupadoEn(cat, m) {
+  const mapa = jugadoresJugando();
+  for (const id of [m.p1, m.p2]) {
+    for (const n of playerName(cat, id).split(' / ')) {
+      const x = mapa[normName(n)];
+      if (x && x.m !== m) return { nombre: n, x };
+    }
+  }
+  return null;
 }
 function horaAhoraHHMM() {
   const d = new Date();
@@ -1893,28 +1946,66 @@ function recalcularDesdeHoraReal() {
       if (n) jugadorLibre[n] = Math.max(jugadorLibre[n] || 0, inicio + duracion + descansoJugador);
     });
   };
+  const manual = pistasManuales();
+  const ahora = timeToMinutes(horaAhoraHHMM());
+  const numCourts = Math.max(1, Number(state.config.courts) || 1);
   const fijos = lista.filter(x => x.m.inicioReal || x.m.winner);
   const pendientes = lista.filter(x => !x.m.inicioReal && !x.m.winner);
   fijos.forEach(x => {
     if (x.m.inicioReal) x.m.time = x.m.inicioReal;
-    ocupar(x, timeToMinutes(x.m.time));
+    const ini = timeToMinutes(x.m.time);
+    if (x.m.finReal && x.m.court) {
+      // Pista liberada a mano: queda libre desde esa hora
+      pistaLibre[x.m.court] = Math.max(pistaLibre[x.m.court] || 0, timeToMinutes(x.m.finReal) + descansoPista);
+      [x.m.p1, x.m.p2].forEach(id => { const n = normName(playerName(x.cat, id)); if (n) jugadorLibre[n] = Math.max(jugadorLibre[n] || 0, timeToMinutes(x.m.finReal) + descansoJugador); });
+    } else ocupar(x, ini);
   });
-  pendientes.sort((a, b) => timeToMinutes(a.m.horaPlan) - timeToMinutes(b.m.horaPlan) || a.m.court - b.m.court);
+  if (manual) {
+    // Los partidos sin empezar no tienen pista (salvo los primeros, ya asignados)
+    pendientes.forEach(x => { if (!x.m.pistaPreasignada) x.m.court = null; });
+    // Una pista ocupada por un partido en juego no queda libre antes de "ahora"
+    lista.forEach(x => { if (partidoEnJuego(x.m) && x.m.court) pistaLibre[x.m.court] = Math.max(pistaLibre[x.m.court] || 0, ahora); });
+  }
+  pendientes.sort((a, b) => timeToMinutes(a.m.horaPlan) - timeToMinutes(b.m.horaPlan) || (a.m.court || 99) - (b.m.court || 99));
   pendientes.forEach(x => {
     const n1 = normName(playerName(x.cat, x.m.p1)), n2 = normName(playerName(x.cat, x.m.p2));
-    const inicio = Math.max(timeToMinutes(x.m.horaPlan), pistaLibre[x.m.court] || 0, jugadorLibre[n1] || 0, jugadorLibre[n2] || 0);
+    let pista = x.m.court;
+    if (!pista) {
+      // Hora estimada: la primera pista que quede libre
+      pista = 1;
+      for (let c = 2; c <= numCourts; c++) if ((pistaLibre[c] || 0) < (pistaLibre[pista] || 0)) pista = c;
+    }
+    // Con pistas a mano, lo que aún no ha empezado no puede empezar antes de ahora (si el torneo ya está en marcha)
+    const enMarcha = manual && lista.some(y => y.m.inicioReal || y.m.winner);
+    const inicio = Math.max(timeToMinutes(x.m.horaPlan), pistaLibre[pista] || 0, jugadorLibre[n1] || 0, jugadorLibre[n2] || 0, enMarcha ? ahora : 0);
     x.m.time = minutesToTime(inicio);
-    ocupar(x, inicio);
+    const guardada = x.m.court;
+    x.m.court = pista; ocupar(x, inicio); x.m.court = guardada;
   });
 }
-function marcarInicioReal(m, hora) {
+function marcarInicioReal(m, hora, pista) {
   if (hora) {
     if (!m.horaPlan) m.horaPlan = m.time;
     m.inicioReal = hora;
+    m.finReal = null;
+    if (pista) {
+      m.court = Number(pista);
+      // Si esa pista estaba reservada para otro de los primeros partidos, ese pasa a la cola sin pista
+      partidosProgramados().forEach(x => {
+        if (x.m !== m && x.m.pistaPreasignada && x.m.court === m.court && !x.m.inicioReal && !x.m.winner) { x.m.pistaPreasignada = false; x.m.court = null; }
+      });
+    }
   } else {
     m.inicioReal = null;
+    m.finReal = null;
+    if (pistasManuales() && !m.pistaPreasignada && !m.winner) m.court = null;
     if (m.horaPlan && !m.winner) m.time = m.horaPlan;
   }
+  recalcularDesdeHoraReal();
+  render();
+}
+function liberarPista(m) {
+  m.finReal = horaAhoraHHMM();
   recalcularDesdeHoraReal();
   render();
 }
@@ -2315,6 +2406,9 @@ function viewConfig() {
       field('Nombre del torneo', inputText(state.meta.title, v => { state.meta.title = v; render(); })),
       field('Fecha', inputEl('date', state.meta.date, v => { state.meta.date = v; })),
       field('Nº de pistas disponibles', inputEl('number', state.config.courts, v => { state.config.courts = Math.max(1, parseInt(v) || 1); }, { min: 1 })),
+      field('Asignación de pistas', el('select', { onchange: (e) => { state.config.pistasManual = e.target.value === 'manual'; recalcularDesdeHoraReal(); render(); } },
+        el('option', { value: 'manual', selected: pistasManuales() ? 'selected' : null }, 'Las asigno yo al empezar cada partido'),
+        el('option', { value: 'auto', selected: !pistasManuales() ? 'selected' : null }, 'Automática (cada partido con su pista)'))),
       field('Hora de inicio', inputEl('time', state.config.startTime, v => { state.config.startTime = v; })),
       field('Duración media por partido (min)', inputEl('number', state.config.matchMinutes, v => { state.config.matchMinutes = Math.max(5, parseInt(v) || 5); }, { min: 5 })),
       field('Descanso entre partidos por pista (min)', inputEl('number', state.config.bufferMinutes, v => { state.config.bufferMinutes = Math.max(0, parseInt(v) || 0); }, { min: 0 })),
@@ -2951,7 +3045,7 @@ function htmlActaPartido(item) {
     <h2 style="font-size:20px;">Acta del partido nº ${item.numero}</h2>
     <div class="acta-linea"><span>Categoría</span><b>${esc(item.cat.name)}</b></div>
     <div class="acta-linea"><span>Grupo / Ronda</span><b>${esc(item.ronda || '—')}</b></div>
-    <div class="acta-linea"><span>Pista</span><b>${item.m.court ? esc(item.m.court) : '—'}</b></div>
+    <div class="acta-linea"><span>Pista</span>${item.m.court ? '<b>' + esc(item.m.court) + '</b>' : '<span class="hueco"></span>'}</div>
     <div class="acta-linea"><span>Hora</span><b>${esc(item.m.time || '—')}</b></div>
     <div class="acta-linea" style="font-size:18px;margin-top:14px;"><span>${esc(p1)}</span></div>
     <div class="acta-linea" style="font-size:18px;"><span>${esc(p2)}</span></div>
@@ -2976,6 +3070,11 @@ function marcarActaImpresa(m, valor) {
   saveLocal();
 }
 function imprimirActaPartido(item) {
+  const ocupadoActa = jugadorOcupadoEn(item.cat, item.m);
+  if (ocupadoActa) {
+    alert('No se imprime el acta del partido nº ' + item.numero + ': ' + ocupadoActa.nombre + ' está jugando ahora en la pista ' + (ocupadoActa.x.m.court || '?') + '.\n\nImprímela cuando termine ese partido.');
+    return;
+  }
   if (item.m.actaImpresa && !confirm('El acta del partido nº ' + item.numero + ' ya se imprimió a las ' + item.m.actaImpresa + '.\n\n¿Quieres imprimirla otra vez?')) return;
   const p1 = playerName(item.cat, item.m.p1);
   const p2 = playerName(item.cat, item.m.p2);
@@ -2991,7 +3090,7 @@ function imprimirActaPartido(item) {
     el('h2', { style: 'font-size:20px;' }, 'Acta del partido nº ' + item.numero),
     el('div', { class: 'acta-linea' }, el('span', {}, 'Categoría'), el('b', {}, item.cat.name)),
     el('div', { class: 'acta-linea' }, el('span', {}, 'Grupo / Ronda'), el('b', {}, item.ronda || '—')),
-    el('div', { class: 'acta-linea' }, el('span', {}, 'Pista'), el('b', {}, item.m.court ? String(item.m.court) : '—')),
+    el('div', { class: 'acta-linea' }, el('span', {}, 'Pista'), item.m.court ? el('b', {}, String(item.m.court)) : el('span', { class: 'hueco' })),
     el('div', { class: 'acta-linea' }, el('span', {}, 'Hora'), el('b', {}, item.m.time || '—')),
     el('div', { class: 'acta-linea', style: 'font-size:18px;margin-top:14px;' }, el('span', {}, p1)),
     el('div', { class: 'acta-linea', style: 'font-size:18px;' }, el('span', {}, p2)),
@@ -3024,6 +3123,30 @@ function imprimirCalendario(allMatches) {
     el('button', { class: 'btn btn-gold', onclick: () => window.print() }, '🖨 Imprimir'),
     el('button', { class: 'btn btn-ghost', onclick: () => cerrarActaImpresion() }, '✕ Cerrar y volver'),
   ));
+  if (pistasManuales()) {
+    const numeros = new Map(todosLosPartidosDelTorneo().map(x => [x.m, x.numero]));
+    const orden = allMatches.slice().sort((a, b) => timeToMinutes(a.m.time) - timeToMinutes(b.m.time) || (numeros.get(a.m) || 0) - (numeros.get(b.m) || 0));
+    const tb = el('tbody');
+    orden.forEach(x => tb.appendChild(el('tr', { class: x.m.phase === 'ko' ? 'cal-ko' : '' },
+      el('td', { class: 'cal-hora' }, '#' + (numeros.get(x.m) || '')),
+      el('td', { class: 'cal-hora' }, x.m.time || ''),
+      el('td', { class: 'cal-hora' }, x.m.court ? String(x.m.court) : ''),
+      el('td', {}, el('div', { class: 'cal-cat' }, x.label)),
+      el('td', {}, el('span', { class: 'cal-jug' }, playerName(x.cat, x.m.p1)), el('span', { class: 'cal-vs' }, '  vs  '), el('span', { class: 'cal-jug' }, playerName(x.cat, x.m.p2))),
+    )));
+    area.appendChild(el('div', { class: 'cal-hoja' },
+      el('div', { class: 'cal-cab' },
+        el('div', {}, el('div', { class: 'cal-club' }, clubGlobal.nombre || ''), el('div', { class: 'cal-titulo' }, (state.meta.title || 'Torneo') + ' · Orden de partidos')),
+        el('div', { class: 'cal-datos' }, el('div', {}, numCourts + ' pista(s) · ' + allMatches.length + ' partidos'), el('div', {}, 'Horas estimadas · la pista se asigna al empezar'))),
+      el('table', { class: 'cal-tabla' },
+        el('thead', {}, el('tr', {}, el('th', { class: 'cal-hora' }, 'Nº'), el('th', { class: 'cal-hora' }, 'Hora'), el('th', { class: 'cal-hora' }, 'Pista'), el('th', { style: 'width:32%;' }, 'Categoría / Grupo'), el('th', {}, 'Partido'))),
+        tb),
+    ));
+    document.body.classList.add('imprimiendo-acta');
+    window.scrollTo(0, 0);
+    setTimeout(() => window.print(), 300);
+    return;
+  }
   const thead = el('thead', {}, el('tr', {},
     el('th', { class: 'cal-hora' }, 'Hora'),
     Array.from({ length: numCourts }, (_, i) => el('th', {}, 'Pista ' + (i + 1))),
@@ -3088,11 +3211,15 @@ function viewPartidos() {
       el('td', {}, item.m.court ? String(item.m.court) : '—'),
       el('td', { class: 'tp-cat' }, item.cat.name, el('span', { class: 'tp-grupo' }, item.ronda || '—')),
       el('td', { class: 'tp-partido' }, p1, el('span', { class: 'tp-vs' }, ' vs '), p2),
-      el('td', {}, terminado ? el('span', { class: 'chip chip-gold' }, '✅ Terminado') : el('span', { class: 'chip chip-muted' }, 'Pendiente')),
+      el('td', {}, terminado ? el('span', { class: 'chip chip-gold' }, '✅ Terminado') : (partidoEnJuego(item.m) ? el('span', { class: 'chip', style: 'background:#2BB673;color:#fff;' }, '▶ En juego') : el('span', { class: 'chip chip-muted' }, 'Pendiente'))),
       el('td', { class: 'no-print' }, el('label', { class: 'acta-check', title: 'Marca o desmarca a mano si el acta ya está impresa' },
         el('input', { type: 'checkbox', checked: item.m.actaImpresa ? 'checked' : null, onchange: (e) => { marcarActaImpresa(item.m, e.target.checked); render(); } }),
         item.m.actaImpresa ? '🖨 ' + (typeof item.m.actaImpresa === 'string' ? item.m.actaImpresa : 'Impresa') : 'No')),
-      el('td', {}, terminado ? formatSetsActa(item.m.sets) : el('button', { class: 'btn btn-sm no-print ' + (item.m.actaImpresa ? 'btn-ghost acta-reimprimir' : 'btn-gold'), onclick: () => imprimirActaPartido(item) }, item.m.actaImpresa ? '↻ Reimprimir' : '🖨 Imprimir acta')),
+      el('td', {}, terminado ? formatSetsActa(item.m.sets) : (() => {
+        const ocupado = !partidoEnJuego(item.m) && jugadorOcupadoEn(item.cat, item.m);
+        if (ocupado) return el('span', { class: 'chip chip-muted', title: 'No se puede imprimir mientras juega' }, '🏸 ' + ocupado.nombre + ' jugando');
+        return el('button', { class: 'btn btn-sm no-print ' + (item.m.actaImpresa ? 'btn-ghost acta-reimprimir' : 'btn-gold'), onclick: () => imprimirActaPartido(item) }, item.m.actaImpresa ? '↻ Reimprimir' : '🖨 Imprimir acta');
+      })()),
     ));
   });
   table.appendChild(tbody);
@@ -3147,6 +3274,88 @@ function enlacePublicoDelTorneo() {
   return location.origin + location.pathname + '?publico=1&torneo=' + torneoActivoId;
 }
 let scrollCalendario = { x: 0, y: 0 };
+// ===== PISTAS A MANO =====
+// Arriba, una tarjeta por pista con lo que se juega ahora. Debajo, la cola de partidos por orden:
+// al empezar uno se elige la pista libre. No deja empezar si un jugador está jugando en otra pista.
+function vistaPistasManual(allMatches) {
+  recalcularDesdeHoraReal();
+  saveLocal();
+  const caja = el('div', {});
+  const numCourts = Math.max(1, Number(state.config.courts) || 1);
+  const ocupadas = pistasOcupadas();
+  const numeros = new Map(todosLosPartidosDelTorneo().map(x => [x.m, x.numero]));
+  const libres = [];
+  for (let c = 1; c <= numCourts; c++) if (!ocupadas[c]) libres.push(c);
+  const retraso = retrasoActualMinutos();
+  caja.appendChild(el('div', { class: retraso > 0 ? 'msg msg-warn' : 'sub', style: 'margin:10px 0;' },
+    '🏸 Pistas a mano: cuando empiece un partido, elige su pista y pulsa ▶ Empezar. Al anotar el resultado (o pulsar "Pista libre") la pista queda libre para el siguiente. Las horas de la cola son estimadas. ' +
+    (retraso > 0 ? 'Retraso actual: +' + retraso + ' min sobre lo previsto.' : '')));
+
+  // Pistas
+  const gridPistas = el('div', { class: 'pistas-ahora' });
+  for (let c = 1; c <= numCourts; c++) {
+    const x = ocupadas[c];
+    if (!x) {
+      gridPistas.appendChild(el('div', { class: 'pista-card libre' }, el('div', { class: 'pista-num' }, 'Pista ' + c), el('div', { class: 'pista-estado' }, '✅ Libre')));
+      continue;
+    }
+    gridPistas.appendChild(el('div', { class: 'pista-card ocupada' },
+      el('div', { class: 'pista-num' }, 'Pista ' + c, el('span', { class: 'pista-desde' }, 'desde ' + x.m.inicioReal)),
+      el('div', { class: 'pista-cat' }, '#' + (numeros.get(x.m) || '') + ' · ' + x.label),
+      el('div', { class: 'pista-jug' }, playerName(x.cat, x.m.p1)),
+      el('div', { class: 'pista-vs' }, 'vs'),
+      el('div', { class: 'pista-jug' }, playerName(x.cat, x.m.p2)),
+      el('div', { class: 'row', style: 'gap:6px;margin-top:8px;flex-wrap:wrap;' },
+        el('button', { class: 'btn btn-sm btn-gold', onclick: () => openResultModal(x.cat.id, x.m.id) }, '📝 Resultado'),
+        el('button', { class: 'btn btn-sm btn-ghost', title: 'El partido ha terminado pero aún no tienes el resultado', onclick: () => liberarPista(x.m) }, '✔ Pista libre'),
+        el('button', { class: 'btn btn-sm btn-ghost', title: 'Deshacer: el partido no ha empezado', onclick: () => { if (confirm('¿Quitar este partido de la pista ' + c + '? Vuelve a la cola.')) marcarInicioReal(x.m, null); } }, '↩'),
+      ),
+    ));
+  }
+  caja.appendChild(gridPistas);
+
+  // Cola
+  const pendientes = allMatches.filter(x => !x.m.winner && !x.m.inicioReal)
+    .sort((a, b) => timeToMinutes(a.m.time) - timeToMinutes(b.m.time) || (numeros.get(a.m) || 0) - (numeros.get(b.m) || 0));
+  const jugados = allMatches.filter(x => x.m.winner || x.m.finReal).length;
+  caja.appendChild(el('h3', { style: 'margin:18px 0 6px;' }, '⏭ Próximos partidos (' + pendientes.length + ')' ));
+  caja.appendChild(el('div', { class: 'sub', style: 'margin-bottom:8px;' }, 'Terminados: ' + jugados + ' · En juego: ' + Object.keys(ocupadas).length + ' · Pistas libres: ' + (libres.length ? libres.join(', ') : 'ninguna')));
+  if (!pendientes.length) {
+    caja.appendChild(el('div', { class: 'empty-state' }, 'No quedan partidos por empezar.'));
+    return caja;
+  }
+  const tabla = el('table', { class: 'tabla-partidos tabla-cola' }, el('thead', {}, el('tr', {},
+    el('th', {}, 'Nº'), el('th', {}, 'Hora est.'), el('th', {}, 'Categoría / Grupo'), el('th', {}, 'Partido'), el('th', {}, 'Acta'), el('th', {}, 'Empezar en pista'))));
+  const tb = el('tbody');
+  pendientes.forEach(x => {
+    const m = x.m;
+    const ocupado = jugadorOcupadoEn(x.cat, m);
+    const opciones = libres.slice();
+    if (m.pistaPreasignada && m.court && !opciones.includes(m.court)) opciones.unshift(m.court);
+    let accion;
+    if (ocupado) {
+      accion = el('span', { class: 'chip chip-muted', title: 'Espera a que termine su partido' }, '🏸 ' + ocupado.nombre + ' juega en pista ' + ocupado.x.m.court);
+    } else if (!libres.length) {
+      accion = el('span', { class: 'chip chip-muted' }, 'Sin pista libre');
+    } else {
+      const sel = el('select', { class: 'sel-pista' }, libres.map(c => el('option', { value: c, selected: (m.pistaPreasignada && m.court === c) ? 'selected' : null }, 'Pista ' + c)));
+      accion = el('div', { class: 'row', style: 'gap:6px;flex-wrap:nowrap;align-items:center;' }, sel,
+        el('button', { class: 'btn btn-primary btn-sm', onclick: () => marcarInicioReal(m, horaAhoraHHMM(), sel.value) }, '▶ Empezar'));
+    }
+    const etiquetaPlan = m.horaPlan && m.horaPlan !== m.time ? el('span', { class: 'tp-grupo' }, 'previsto ' + m.horaPlan) : null;
+    tb.appendChild(el('tr', { class: ocupado ? 'fila-espera' : '' },
+      el('td', {}, el('b', {}, '#' + (numeros.get(m) || ''))),
+      el('td', {}, m.time || '—', etiquetaPlan, m.pistaPreasignada && m.court ? el('span', { class: 'tp-grupo' }, 'pista ' + m.court) : null),
+      el('td', { class: 'tp-cat' }, x.cat.name, el('span', { class: 'tp-grupo' }, x.label.split(' · ').slice(1).join(' · '))),
+      el('td', { class: 'tp-partido' }, playerName(x.cat, m.p1), el('span', { class: 'tp-vs' }, ' vs '), playerName(x.cat, m.p2)),
+      el('td', {}, m.actaImpresa ? '🖨 ' + m.actaImpresa : el('button', { class: 'btn btn-ghost btn-sm', disabled: ocupado ? 'disabled' : null, onclick: () => imprimirActaPartido(Object.assign({}, x, { numero: numeros.get(m), ronda: x.label.split(' · ').slice(1).join(' · ') })) }, '🖨 Acta')),
+      el('td', {}, accion),
+    ));
+  });
+  tabla.appendChild(tb);
+  caja.appendChild(tabla);
+  return caja;
+}
 function viewSchedule() {
   const wrap = document.createDocumentFragment();
   const pending = enabledCategories().filter(c => !c.groups);
@@ -3223,6 +3432,11 @@ function viewSchedule() {
   }
   panel.appendChild(avisoPanel);
 
+  if (pistasManuales()) {
+    panel.appendChild(vistaPistasManual(allMatches));
+    wrap.appendChild(panel);
+    return wrap;
+  }
   const retraso = retrasoActualMinutos();
   panel.appendChild(el('div', { class: retraso > 0 ? 'msg msg-warn' : 'sub', style: 'margin:10px 0;' },
     '⏱ Marca "Empezado" en cada partido cuando arranque de verdad: los partidos pendientes se recalculan solos desde esa hora (cada uno en su pista y respetando el descanso de los jugadores). ' +
@@ -3346,7 +3560,7 @@ function matchCard(cat, m) {
   const scoreTxt = m.sets.length ? m.sets.map(s => s[0] + '-' + s[1]).join(', ') : 'Sin jugar';
   return el('div', { class: 'match-card' + (m.winner ? ' done' : ''), onclick: () => openResultModal(cat.id, m.id) },
     el('div', { class: 'match-top' },
-      el('span', {}, m.court ? ('Pista ' + m.court + ' · ' + m.time) : 'Sin horario'),
+      el('span', {}, m.court ? ('Pista ' + m.court + ' · ' + m.time) : (m.time ? ('Pista por asignar · ' + m.time) : 'Sin horario')),
       el('span', {}, m.winner ? '✔ Jugado' : 'Pendiente')),
     el('div', { class: 'match-players' },
       el('span', { style: m.winner === m.p1 ? 'color:var(--ok);font-weight:800;' : '' }, p1),
@@ -3410,7 +3624,7 @@ function openResultModal(catId, matchId) {
     });
     const modal = el('div', { class: 'modal' },
       el('h3', {}, playerName(cat, m.p1) + ' vs ' + playerName(cat, m.p2)),
-      el('div', { class: 'sub' }, cat.name + (m.phase === 'ko' ? (' · ' + m.round) : '') + (m.court ? (' · Pista ' + m.court + ' · ' + m.time) : '')),
+      el('div', { class: 'sub' }, cat.name + (m.phase === 'ko' ? (' · ' + m.round) : '') + (m.court ? (' · Pista ' + m.court + ' · ' + m.time) : (m.time ? ' · ' + m.time : ''))),
       setsWrap,
       el('div', { class: 'row', style: 'margin-bottom:14px;' },
         el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { sets.push([0, 0]); draw(); } }, '+ Añadir set')),
@@ -3519,7 +3733,7 @@ function viewKnockout() {
           const box = el('div', { class: 'bracket-match', 'data-mid': m.id, 'data-f1': m.fromMatch1 || null, 'data-f2': m.fromMatch2 || null, 'data-ganado': m.winner ? '1' : null, onclick: () => { if (m.p1 && m.p2 && m.p1 !== 'BYE' && m.p2 !== 'BYE') openResultModal(cat.id, m.id); } });
           box.appendChild(el('div', { class: 'p' + (m.winner && m.winner === m.p1 ? ' winner' : '') }, el('span', {}, playerName(cat, m.p1))));
           box.appendChild(el('div', { class: 'p' + (m.winner && m.winner === m.p2 ? ' winner' : '') }, el('span', {}, playerName(cat, m.p2))));
-          if (m.court) box.appendChild(el('div', { style: 'padding:4px 8px;font-size:10.5px;color:var(--muted);' }, 'Pista ' + m.court + ' · ' + m.time));
+          if (m.time) box.appendChild(el('div', { style: 'padding:4px 8px;font-size:10.5px;color:var(--muted);' }, (m.court ? 'Pista ' + m.court : 'Pista por asignar') + ' · ' + m.time));
           col.appendChild(box);
         });
         bracket.appendChild(col);

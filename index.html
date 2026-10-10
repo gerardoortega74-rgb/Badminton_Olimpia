@@ -1593,9 +1593,36 @@ function asegurarTorneoActivo() {
   saveHistorial();
   saveTorneoActivoId();
 }
+// Al terminar un torneo, el gestor queda listo para uno nuevo (con la misma configuración de pistas y tiempos).
+// Un torneo finalizado solo se vuelve a abrir si se elige a propósito desde el Historial.
+let verFinalizadoId = null;
+function salirDeTorneoFinalizado() {
+  if (typeof esVistaPublica === 'function' && esVistaPublica()) return false;
+  const act = torneosHistorial.find(t => t.id === torneoActivoId);
+  if (!act || act.estado !== 'finalizado' || verFinalizadoId === act.id) return false;
+  guardarEstadoActivoEnLista();
+  const cfgAnterior = JSON.parse(JSON.stringify((act.snapshot && act.snapshot.config) || state.config || {}));
+  // Id fijo a partir del terminado: si dos ordenadores lo hacen a la vez, crean el mismo torneo nuevo y no dos
+  const nuevoId = 'th_tras_' + act.id;
+  let entrada = torneosHistorial.find(t => t.id === nuevoId);
+  if (!entrada) {
+    const nuevo = loadState();
+    nuevo.config = Object.assign({}, nuevo.config, cfgAnterior);
+    entrada = { id: nuevoId, nombre: 'Torneo nuevo', fechaInicio: '', fechaFin: '', estado: 'en_curso', snapshot: JSON.parse(JSON.stringify(nuevo)) };
+    torneosHistorial.push(entrada);
+  }
+  state = normalizarCategorias(JSON.parse(JSON.stringify(entrada.snapshot)));
+  torneoActivoId = nuevoId;
+  saveHistorial();
+  saveTorneoActivoId();
+  try { localStorage.setItem('badmintonTorneoState', JSON.stringify(state)); } catch (e) { }
+  activeTab = 'config';
+  return true;
+}
 function cambiarATorneo(id) {
   const entrada = torneosHistorial.find(t => t.id === id);
   if (!entrada || id === torneoActivoId) return;
+  verFinalizadoId = entrada.estado === 'finalizado' ? id : null;
   guardarEstadoActivoEnLista();
   state = normalizarCategorias(JSON.parse(JSON.stringify(entrada.snapshot)));
   torneoActivoId = id;
@@ -2295,6 +2322,7 @@ function firstEnabledId() {
 
 function render() {
   try {
+    try { salirDeTorneoFinalizado(); } catch (e) { console.warn(e); }
     try { programarPartidosSinHora(); } catch (e) { console.warn(e); }
     saveLocal();
     renderTabsNav();

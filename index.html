@@ -179,6 +179,10 @@ footer.hint{text-align:center;color:var(--muted);font-size:12px;padding:20px;}
 /* Sin flechitas en los campos numéricos (resultados, cuotas…): se escribe el número directamente */
 input[type=number]{-moz-appearance:textfield;appearance:textfield;}
 input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;appearance:none;margin:0;}
+.nombre-editable span{vertical-align:middle;}
+.btn-editar-nombre{background:none;border:none;cursor:pointer;font-size:14px;padding:2px 6px;margin-left:6px;opacity:.55;vertical-align:middle;}
+.btn-editar-nombre:hover{opacity:1;}
+.nombre-editable .input-nombre{min-width:220px;flex:1;padding:6px 8px;}
 .tabla-partidos{display:table !important;width:100% !important;max-width:100% !important;overflow:visible !important;white-space:normal !important;background:none !important;table-layout:auto;font-size:13px;}
 .tabla-partidos th,.tabla-partidos td{padding:6px 6px !important;vertical-align:middle;}
 .tabla-partidos th{white-space:nowrap;}
@@ -2456,6 +2460,42 @@ function catSelector(tabKey, onPick) {
   return row;
 }
 
+// Nombre del participante editable: ✏️ abre la casilla, Enter o ✓ guarda, Esc o ✕ cancela.
+// Los partidos guardan el id del jugador, así que el nombre nuevo aparece en calendario, resultados y enlace en directo.
+function celdaNombreEditable(cat, p) {
+  const td = el('td', { class: 'nombre-editable' });
+  const mostrar = () => {
+    td.innerHTML = '';
+    td.appendChild(el('span', {}, p.name));
+    td.appendChild(el('button', { class: 'btn-editar-nombre no-print', title: 'Editar nombre', onclick: editar }, '✏️'));
+  };
+  const editar = () => {
+    td.innerHTML = '';
+    const input = el('input', { type: 'text', value: p.name, class: 'input-nombre' });
+    const guardar = () => {
+      const nuevo = input.value.replace(/\s+/g, ' ').trim();
+      if (!nuevo) { alert('El nombre no puede quedar vacío.'); input.focus(); return; }
+      if (nuevo !== p.name && cat.players.some(x => x.id !== p.id && normName(x.name) === normName(nuevo))) {
+        alert('Ya hay otro participante con el nombre «' + nuevo + '» en esta categoría.'); input.focus(); return;
+      }
+      p.name = nuevo;
+      render();
+    };
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); guardar(); }
+      if (e.key === 'Escape') { e.preventDefault(); mostrar(); }
+    });
+    td.appendChild(el('div', { class: 'row', style: 'gap:6px;flex-wrap:nowrap;align-items:center;' },
+      input,
+      el('button', { class: 'btn btn-primary btn-sm', title: 'Guardar', onclick: guardar }, '✓'),
+      el('button', { class: 'btn btn-ghost btn-sm', title: 'Cancelar', onclick: mostrar }, '✕'),
+    ));
+    input.focus();
+    input.select();
+  };
+  mostrar();
+  return td;
+}
 function viewParticipants() {
   const wrap = document.createDocumentFragment();
   const externosInput = el('input', { type: 'file', accept: '.xlsx,.xls', style: 'display:none' });
@@ -2683,7 +2723,7 @@ function viewParticipants() {
       cat.players.forEach((p, i) => {
         tbody.appendChild(el('tr', { class: p.seed ? 'seed' : '' },
           el('td', {}, String(i + 1)),
-          el('td', {}, p.name),
+          celdaNombreEditable(cat, p),
           el('td', {}, p.club ? el('span', { class: 'chip chip-muted' }, p.club) : ''),
           hayContacto ? el('td', {}, [p.telefono, p.email].filter(Boolean).join(' · ')) : null,
           el('td', {}, el('input', {

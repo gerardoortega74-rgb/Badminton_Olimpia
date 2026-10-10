@@ -1712,43 +1712,8 @@ function sortearEliminatoriaDirecta(catId) {
   if (!cat) return;
   const seeds = cat.players.filter(p => p.seed);
   const rest = shuffle(cat.players.filter(p => !p.seed));
-  const qualifiers = seeds.map(p => p.id).concat(rest.map(p => p.id));
-
-  const size = nextPow2(qualifiers.length);
-  const withByes = qualifiers.slice();
-  while (withByes.length < size) withByes.push('BYE');
-
-  const round1 = [];
-  for (let i = 0; i < size / 2; i++) {
-    round1.push({
-      id: uid('ko'), categoryId: cat.id, phase: 'ko', round: roundName(size),
-      p1: withByes[i], p2: withByes[size - 1 - i], sets: [], winner: null, court: null, time: null,
-    });
-  }
-  round1.forEach(m => {
-    if (m.p1 === 'BYE' && m.p2 !== 'BYE') m.winner = m.p2;
-    else if (m.p2 === 'BYE' && m.p1 !== 'BYE') m.winner = m.p1;
-  });
-
-  const rounds = [round1];
-  let currentSize = size / 2;
-  while (currentSize > 1) {
-    const nextRound = [];
-    for (let i = 0; i < currentSize / 2; i++) {
-      nextRound.push({
-        id: uid('ko'), categoryId: cat.id, phase: 'ko', round: roundName(currentSize / 2 === 0 ? 2 : currentSize),
-        p1: null, p2: null, sets: [], winner: null, court: null, time: null,
-        fromMatch1: rounds[rounds.length - 1][i * 2].id,
-        fromMatch2: rounds[rounds.length - 1][i * 2 + 1].id,
-      });
-    }
-    rounds.push(nextRound);
-    currentSize = currentSize / 2;
-  }
-  rounds.forEach((round, idx) => {
-    const roundSize = size / Math.pow(2, idx);
-    round.forEach(m => { m.round = roundName(roundSize); });
-  });
+  // Cabezas de serie en las plazas de semilla (1 y 2 en mitades opuestas…) y el resto sorteado
+  const rounds = crearRondasCuadro(cat, plazasCuadro(seeds.map(p => p.id).concat(rest.map(p => p.id))));
 
   cat.groups = null;
   cat.matches = [];
@@ -2077,83 +2042,104 @@ function roundName(size) {
 }
 function nextPow2(n) { let p = 1; while (p < n) p *= 2; return p; }
 
+// ===== CUADRO CON CABEZAS DE SERIE =====
+// Orden estándar de un cuadro: el 1 y el 2 en mitades opuestas, el 3 y el 4 en cuartos distintos, etc.
+// Con 8 plazas: [1,8,4,5,2,7,3,6] → 1ª ronda 1-8, 4-5, 2-7, 3-6. Los BYE (huecos) caen a los mejores.
+function ordenSemillasCuadro(size) {
+  let orden = [1];
+  while (orden.length < size) {
+    const n = orden.length * 2;
+    const nuevo = [];
+    orden.forEach(x => { nuevo.push(x, n + 1 - x); });
+    orden = nuevo;
+  }
+  return orden;
+}
+// Ronda en la que se cruzarían dos plazas del cuadro (1 = primera ronda)
+function rondaDeCruce(a, b) { let x = a ^ b, r = 0; while (x) { r++; x >>= 1; } return r; }
+// ranking: ids del mejor al peor (BYE se añaden solos). Devuelve las plazas del cuadro ya ordenadas.
+function plazasCuadro(ranking) {
+  const size = nextPow2(Math.max(2, ranking.length));
+  const orden = ordenSemillasCuadro(size);
+  return orden.map(semilla => ranking[semilla - 1] || 'BYE');
+}
+function crearRondasCuadro(cat, plazas) {
+  const size = plazas.length;
+  const round1 = [];
+  for (let i = 0; i < size / 2; i++) {
+    round1.push({ id: uid('ko'), categoryId: cat.id, phase: 'ko', round: roundName(size),
+      p1: plazas[2 * i], p2: plazas[2 * i + 1], sets: [], winner: null, court: null, time: null });
+  }
+  round1.forEach(m => {
+    if (m.p1 === 'BYE' && m.p2 !== 'BYE') m.winner = m.p2;
+    else if (m.p2 === 'BYE' && m.p1 !== 'BYE') m.winner = m.p1;
+  });
+  const rounds = [round1];
+  let currentSize = size / 2;
+  while (currentSize > 1) {
+    const nextRound = [];
+    for (let i = 0; i < currentSize / 2; i++) {
+      nextRound.push({ id: uid('ko'), categoryId: cat.id, phase: 'ko', round: roundName(currentSize),
+        p1: null, p2: null, sets: [], winner: null, court: null, time: null,
+        fromMatch1: rounds[rounds.length - 1][i * 2].id, fromMatch2: rounds[rounds.length - 1][i * 2 + 1].id });
+    }
+    rounds.push(nextRound);
+    currentSize = currentSize / 2;
+  }
+  rounds.forEach((round, idx) => { const rs = size / Math.pow(2, idx); round.forEach(m => { m.round = roundName(rs); }); });
+  return rounds;
+}
+
 function buildKnockout(catId) {
   const cat = getCategory(catId);
   if (!cat || !cat.groups) return;
 
   const q = Math.max(1, cat.qualifiersPerGroup);
   const standingsByGroup = cat.groups.map((g, i) => computeStandings(cat, i));
+  const esCabeza = id => { const pl = cat.players.find(x => x.id === id); return !!(pl && pl.seed); };
+  const ordenCabezas = id => cat.players.findIndex(x => x.id === id);
 
-  let qualifiers = [];
-  if (q === 1) {
-    qualifiers = standingsByGroup.map(s => s[0] && s[0].id).filter(Boolean);
-  } else {
-    for (let pos = 0; pos < q; pos++) {
-      const ranked = standingsByGroup.map(s => s[pos] && s[pos].id).filter(Boolean);
-      ranked.forEach(function(x){ qualifiers.push(x); });
-    }
-    const byPos = [];
-    for (let pos = 0; pos < q; pos++) {
-      const block = standingsByGroup.map(s => s[pos] && s[pos].id).filter(Boolean);
-      if (pos % 2 === 1) block.reverse();
-      byPos.push(block);
-    }
-    qualifiers = [];
-    const numGroups = cat.groups.length;
-    for (let i = 0; i < numGroups; i++) {
-      for (let pos = 0; pos < q; pos++) {
-        if (byPos[pos][i]) qualifiers.push(byPos[pos][i]);
-      }
-    }
-  }
-
-  const size = nextPow2(qualifiers.length);
-  const withByes = qualifiers.slice();
-  while (withByes.length < size) withByes.push('BYE');
-
-  const round1 = [];
-  for (let i = 0; i < size / 2; i++) {
-    round1.push({
-      id: uid('ko'),
-      categoryId: cat.id,
-      phase: 'ko',
-      round: roundName(size),
-      p1: withByes[i],
-      p2: withByes[size - 1 - i],
-      sets: [],
-      winner: null,
-      court: null,
-      time: null,
+  // Clasificados con su grupo, puesto y rendimiento (comparables entre grupos de distinto tamaño)
+  const clasificados = [];
+  standingsByGroup.forEach((filas, g) => {
+    filas.slice(0, q).forEach((f, pos) => {
+      const pj = Math.max(1, f.PJ || 0);
+      clasificados.push({ id: f.id, grupo: g, pos, cabeza: esCabeza(f.id),
+        rend: [(f.PG || 0) / pj, (f.diffSets || 0) / pj, (f.diffGames || 0) / pj] });
     });
-  }
-  round1.forEach(m => {
-    if (m.p1 === 'BYE' && m.p2 !== 'BYE') m.winner = m.p2;
-    else if (m.p2 === 'BYE' && m.p1 !== 'BYE') m.winner = m.p1;
   });
+  // Ranking: 1º los cabezas de serie clasificados (por su orden en Participantes), luego por puesto en el grupo y rendimiento
+  const porRend = (a, b) => (b.rend[0] - a.rend[0]) || (b.rend[1] - a.rend[1]) || (b.rend[2] - a.rend[2]);
+  clasificados.sort((a, b) => {
+    if (a.cabeza !== b.cabeza) return a.cabeza ? -1 : 1;
+    if (a.cabeza && b.cabeza) return ordenCabezas(a.id) - ordenCabezas(b.id);
+    return (a.pos - b.pos) || porRend(a, b);
+  });
+  const plazas = plazasCuadro(clasificados.map(c => c.id));
 
-  const rounds = [round1];
-  let currentSize = size / 2;
-  while (currentSize > 1) {
-    const nextRound = [];
-    for (let i = 0; i < currentSize / 2; i++) {
-      nextRound.push({
-        id: uid('ko'),
-        categoryId: cat.id,
-        phase: 'ko',
-        round: roundName(currentSize / 2 === 0 ? 2 : currentSize),
-        p1: null, p2: null, sets: [], winner: null, court: null, time: null,
-        fromMatch1: rounds[rounds.length - 1][i * 2].id,
-        fromMatch2: rounds[rounds.length - 1][i * 2 + 1].id,
-      });
+  // Evitar que dos del mismo grupo se crucen pronto: se intercambian jugadores del mismo puesto (nunca cabezas de serie)
+  const info = new Map(clasificados.map(c => [c.id, c]));
+  const R = Math.log2(plazas.length);
+  const coste = () => {
+    let c = 0;
+    for (let i = 0; i < plazas.length; i++) for (let j = i + 1; j < plazas.length; j++) {
+      const a = info.get(plazas[i]), b = info.get(plazas[j]);
+      if (a && b && a.grupo === b.grupo) c += Math.pow(4, R - rondaDeCruce(i, j));
     }
-    rounds.push(nextRound);
-    currentSize = currentSize / 2;
+    return c;
+  };
+  let mejor = coste(), mejora = true, vueltas = 0;
+  while (mejora && vueltas < 50) {
+    mejora = false; vueltas++;
+    for (let i = 0; i < plazas.length; i++) for (let j = i + 1; j < plazas.length; j++) {
+      const a = info.get(plazas[i]), b = info.get(plazas[j]);
+      if (!a || !b || a.cabeza || b.cabeza || a.pos !== b.pos || a.grupo === b.grupo) continue;
+      [plazas[i], plazas[j]] = [plazas[j], plazas[i]];
+      const c = coste();
+      if (c < mejor) { mejor = c; mejora = true; } else { [plazas[i], plazas[j]] = [plazas[j], plazas[i]]; }
+    }
   }
-  rounds.forEach((round, idx) => {
-    const roundSize = size / Math.pow(2, idx);
-    round.forEach(m => { m.round = roundName(roundSize); });
-  });
-
+  const rounds = crearRondasCuadro(cat, plazas);
   cat.knockout = { rounds };
   propagateKnockout(cat);
 }

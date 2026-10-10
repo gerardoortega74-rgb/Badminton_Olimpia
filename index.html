@@ -196,6 +196,12 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 .pista-card.ocupada .btn-ghost{color:#fff;border-color:rgba(255,255,255,.55);background:rgba(255,255,255,.08);}
 .tabla-cola .sel-pista{width:auto;min-width:90px;padding:4px 6px;}
 .tabla-cola tr.fila-espera td{opacity:.6;}
+.podio-panel{padding:14px 16px;}
+.podio-fila{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #EEE;}
+.podio-fila:last-child{border-bottom:none;}
+.podio-medalla{font-size:24px;width:30px;text-align:center;}
+.podio-puesto{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;width:86px;}
+.podio-nombre{font-weight:800;font-size:15px;flex:1;}
 .tabla-partidos{display:table !important;width:100% !important;max-width:100% !important;overflow:visible !important;white-space:normal !important;background:none !important;table-layout:auto;font-size:13px;}
 .tabla-partidos th,.tabla-partidos td{padding:6px 6px !important;vertical-align:middle;}
 .tabla-partidos th{white-space:nowrap;}
@@ -2049,6 +2055,30 @@ function setWinnerFromSets(match) {
   match.winner = w1 > w2 ? match.p1 : match.p2;
 }
 
+// Podio de una categoría: campeón, subcampeón y terceros (los que pierden en semifinales).
+// Sin cuadro, sale de la clasificación del grupo (con un solo grupo).
+function podioCategoria(cat) {
+  const nom = id => (id && id !== 'BYE') ? playerName(cat, id) : null;
+  const res = { categoria: cat.name, primero: null, segundo: null, terceros: [] };
+  const rounds = cat.knockout && cat.knockout.rounds;
+  if (rounds && rounds.length) {
+    const fin = rounds[rounds.length - 1][0];
+    if (fin && fin.winner) { res.primero = nom(fin.winner); res.segundo = nom(fin.winner === fin.p1 ? fin.p2 : fin.p1); }
+    if (rounds.length >= 2) rounds[rounds.length - 2].forEach(m => {
+      if (m.winner && m.p1 !== 'BYE' && m.p2 !== 'BYE') { const n = nom(m.winner === m.p1 ? m.p2 : m.p1); if (n) res.terceros.push(n); }
+    });
+  } else if (cat.groups && cat.groups.length === 1 && (cat.matches || []).length && cat.matches.every(m => m.winner)) {
+    const filas = computeStandings(cat, 0);
+    res.primero = filas[0] ? filas[0].name : null;
+    res.segundo = filas[1] ? filas[1].name : null;
+    if (filas[2]) res.terceros.push(filas[2].name);
+  }
+  return res;
+}
+function podiosDeEstado(st) {
+  if (!st || !st.categories) return [];
+  return st.categories.filter(c => c.enabled).map(c => podioCategoria(c)).filter(p => p.primero || p.segundo || p.terceros.length);
+}
 function computeStandings(cat, groupIndex) {
   const grp = cat.groups[groupIndex];
   const table = {};
@@ -3971,7 +4001,7 @@ function mount() {
   asegurarTorneoActivo();
   render();
 }
-return { render, mount, getState, setState, getHistorial, setHistorial, trayectoriaDeJugador, computeStandings, getTorneoActivoId: () => torneoActivoId, setTorneoActivoId: (id) => { torneoActivoId = id; } };
+return { podiosDeEstado, render, mount, getState, setState, getHistorial, setHistorial, trayectoriaDeJugador, computeStandings, getTorneoActivoId: () => torneoActivoId, setTorneoActivoId: (id) => { torneoActivoId = id; } };
 })();
 </script>
 <script>
@@ -11361,6 +11391,26 @@ function renderVistaPublica() {
       invalido: ['🔒 Enlace no válido', 'Este enlace no corresponde a ningún torneo en curso. Pide al club el enlace del torneo actual.'],
       cargando: ['⏳ Cargando torneo…', 'Un momento, se están cargando los datos.'],
     }[vista.cerrado];
+    if (vista.cerrado === 'finalizado' && vista.entrada) {
+      const ent = vista.entrada;
+      const podios = (ent.podios && ent.podios.length) ? ent.podios
+        : TorneoApp.podiosDeEstado(ent.id === TorneoApp.getTorneoActivoId() ? TorneoApp.getState() : ent.snapshot);
+      document.getElementById('shellSubtitle').textContent = '🏁 Torneo finalizado · clasificación final';
+      root.appendChild(el('div', { class: 'panel', style: 'text-align:center;padding:22px 16px;' },
+        el('h2', {}, '🏆 ' + (ent.nombre || 'Torneo')),
+        el('div', { class: 'sub' }, 'Torneo finalizado. ¡Enhorabuena a los ganadores y gracias a todos por participar!')));
+      if (!podios.length) root.appendChild(el('div', { class: 'empty-state' }, 'No hay clasificación final registrada.'));
+      podios.forEach(pd => {
+        const fila = (medalla, puesto, nombre) => el('div', { class: 'podio-fila' }, el('span', { class: 'podio-medalla' }, medalla), el('span', { class: 'podio-puesto' }, puesto), el('span', { class: 'podio-nombre' }, nombre || '—'));
+        root.appendChild(el('div', { class: 'panel podio-panel' },
+          el('h3', { style: 'margin:0 0 10px;' }, pd.categoria),
+          fila('🥇', 'Campeón', pd.primero),
+          fila('🥈', 'Subcampeón', pd.segundo),
+          pd.terceros.length ? pd.terceros.map(t => fila('🥉', '3º', t)) : null,
+        ));
+      });
+      return;
+    }
     document.getElementById('shellSubtitle').textContent = vista.cerrado === 'cargando' ? '' : 'Enlace no disponible';
     root.appendChild(el('div', { class: 'panel', style: 'text-align:center;padding:32px 16px;' },
       el('h2', {}, textos[0]),
@@ -13752,7 +13802,8 @@ function estadoPublicoParaNube() {
     club: { nombre: clubGlobal.nombre || '', localidad: clubGlobal.localidad || '', logo: clubGlobal.logo || '', temporadaInicio: clubGlobal.temporadaInicio || '', temporadaFin: clubGlobal.temporadaFin || '' },
     torneo: activoFinalizado ? null : sanearPublico(TorneoApp.getState()),
     torneosHistorial: sanearPublico(TorneoApp.getHistorial().map(h => h.estado === 'finalizado'
-      ? { id: h.id, nombre: h.nombre, fechaInicio: h.fechaInicio, fechaFin: h.fechaFin, estado: 'finalizado', snapshot: null }
+      ? { id: h.id, nombre: h.nombre, fechaInicio: h.fechaInicio, fechaFin: h.fechaFin, estado: 'finalizado', snapshot: null,
+          podios: TorneoApp.podiosDeEstado(h.id === TorneoApp.getTorneoActivoId() ? TorneoApp.getState() : h.snapshot) }
       : h)),
     torneoActivoId: TorneoApp.getTorneoActivoId(),
     taller,

@@ -176,6 +176,16 @@ footer.hint{text-align:center;color:var(--muted);font-size:12px;padding:20px;}
 .sched-real label,.sched-real span{color:inherit !important;text-transform:none !important;letter-spacing:0 !important;font-size:11.5px !important;margin:0 !important;}
 .sched-real input[type=checkbox]{width:18px;height:18px;margin:0;accent-color:#2BB673;cursor:pointer;}
 .sched-hora-real{width:auto !important;min-width:0 !important;padding:2px 4px !important;font-size:12px !important;height:auto !important;min-height:0 !important;border-radius:4px;}
+.tabla-partidos{display:table !important;width:100% !important;max-width:100% !important;overflow:visible !important;white-space:normal !important;background:none !important;table-layout:auto;font-size:13px;}
+.tabla-partidos th,.tabla-partidos td{padding:6px 6px !important;vertical-align:middle;}
+.tabla-partidos th{white-space:nowrap;}
+.tabla-partidos td:nth-child(-n+3){white-space:nowrap;}
+.tabla-partidos .tp-cat{font-size:12px;line-height:1.25;min-width:130px;}
+.tabla-partidos .tp-grupo{display:block;color:var(--muted);font-size:11.5px;}
+.tabla-partidos .tp-partido{font-weight:600;line-height:1.3;min-width:180px;}
+.tabla-partidos .tp-vs{font-weight:400;color:var(--muted);}
+.tabla-partidos .chip{white-space:nowrap;}
+.tabla-partidos .btn{white-space:nowrap;}
 .acta-check{display:inline-flex !important;align-items:center;gap:6px;cursor:pointer;white-space:nowrap;text-transform:none !important;letter-spacing:0 !important;font-size:13px !important;font-weight:600;margin:0 !important;color:inherit !important;}
 .acta-check input{width:18px;height:18px;margin:0;accent-color:#2BB673;}
 .acta-reimprimir{opacity:.7;}
@@ -3020,8 +3030,8 @@ function viewPartidos() {
   }
   const pendientes = lista.filter(x => !x.m.winner).length;
   panel.appendChild(el('div', { class: 'sub', style: 'margin-bottom:10px;' }, `Total: ${lista.length} partido(s) · ${lista.length - pendientes} terminado(s) · ${pendientes} pendiente(s) · 🖨 actas impresas: ${lista.filter(x => x.m.actaImpresa).length} de ${lista.length}.`));
-  const table = el('table', {}, el('thead', {}, el('tr', {},
-    el('th', {}, 'Nº'), el('th', {}, 'Hora'), el('th', {}, 'Pista'), el('th', {}, 'Categoría'), el('th', {}, 'Grupo/Ronda'), el('th', {}, 'Partido'), el('th', {}, 'Estado'), el('th', { class: 'no-print' }, 'Acta'), el('th', {}, ''),
+  const table = el('table', { class: 'tabla-partidos' }, el('thead', {}, el('tr', {},
+    el('th', {}, 'Nº'), el('th', {}, 'Hora'), el('th', {}, 'Pista'), el('th', {}, 'Categoría / Grupo'), el('th', {}, 'Partido'), el('th', {}, 'Estado'), el('th', { class: 'no-print' }, 'Acta'), el('th', {}, ''),
   )));
   const tbody = el('tbody');
   lista.forEach(item => {
@@ -3032,13 +3042,12 @@ function viewPartidos() {
       el('td', {}, el('b', {}, '#' + item.numero)),
       el('td', {}, item.m.time || '—'),
       el('td', {}, item.m.court ? String(item.m.court) : '—'),
-      el('td', {}, item.cat.name),
-      el('td', {}, item.ronda || '—'),
-      el('td', {}, p1 + ' vs ' + p2),
+      el('td', { class: 'tp-cat' }, item.cat.name, el('span', { class: 'tp-grupo' }, item.ronda || '—')),
+      el('td', { class: 'tp-partido' }, p1, el('span', { class: 'tp-vs' }, ' vs '), p2),
       el('td', {}, terminado ? el('span', { class: 'chip chip-gold' }, '✅ Terminado') : el('span', { class: 'chip chip-muted' }, 'Pendiente')),
-      el('td', {}, el('label', { class: 'acta-check no-print', title: 'Marca o desmarca a mano si el acta ya está impresa' },
+      el('td', { class: 'no-print' }, el('label', { class: 'acta-check', title: 'Marca o desmarca a mano si el acta ya está impresa' },
         el('input', { type: 'checkbox', checked: item.m.actaImpresa ? 'checked' : null, onchange: (e) => { marcarActaImpresa(item.m, e.target.checked); render(); } }),
-        item.m.actaImpresa ? '🖨 Impresa ' + (typeof item.m.actaImpresa === 'string' ? item.m.actaImpresa : '') : 'Sin imprimir')),
+        item.m.actaImpresa ? '🖨 ' + (typeof item.m.actaImpresa === 'string' ? item.m.actaImpresa : 'Impresa') : 'No')),
       el('td', {}, terminado ? formatSetsActa(item.m.sets) : el('button', { class: 'btn btn-sm no-print ' + (item.m.actaImpresa ? 'btn-ghost acta-reimprimir' : 'btn-gold'), onclick: () => imprimirActaPartido(item) }, item.m.actaImpresa ? '↻ Reimprimir' : '🖨 Imprimir acta')),
     ));
   });

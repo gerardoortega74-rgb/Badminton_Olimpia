@@ -1751,17 +1751,19 @@ function buildSchedule() {
   const descansoJugador = Math.max(0, state.config.restMinutes != null ? state.config.restMinutes : 10);
   const startMin = timeToMinutes(state.config.startTime || '09:00');
 
+  // Los partidos ya jugados o empezados NO se tocan (hora, pista, hora real, acta). Solo se reprograman los pendientes.
+  const yaJugado = m => !!(m.winner || m.inicioReal);
+  const limpiar = m => { if (yaJugado(m)) return; m.court = null; m.time = null; m.inicioReal = null; m.horaPlan = null; m.finReal = null; m.pistaPreasignada = false; };
   enabledCategories().forEach(cat => {
-    (cat.matches || []).forEach(m => { m.court = null; m.time = null; m.inicioReal = null; m.horaPlan = null; m.finReal = null; m.pistaPreasignada = false; });
-    if (cat.knockout) {
-      cat.knockout.rounds.forEach(round => round.forEach(m => { m.court = null; m.time = null; m.inicioReal = null; m.horaPlan = null; m.finReal = null; m.pistaPreasignada = false; }));
-    }
+    (cat.matches || []).forEach(limpiar);
+    if (cat.knockout) cat.knockout.rounds.forEach(round => round.forEach(limpiar));
   });
+  const torneoEnMarcha = enabledCategories().some(cat => (cat.matches || []).concat(cat.knockout ? cat.knockout.rounds.flat() : []).some(yaJugado));
 
   const streams = [];
   enabledCategories().forEach(cat => {
     const porGrupo = {};
-    (cat.matches || []).forEach(m => {
+    (cat.matches || []).filter(m => !yaJugado(m)).forEach(m => {
       const g = m.groupIndex != null ? m.groupIndex : 0;
       if (!porGrupo[g]) porGrupo[g] = [];
       porGrupo[g].push(m);
@@ -1783,7 +1785,7 @@ function buildSchedule() {
     if (cat.knockout) {
       cat.knockout.rounds.forEach(round => {
         shuffle(round).forEach(m => {
-          if (m.p1 && m.p2 && m.p1 !== 'BYE' && m.p2 !== 'BYE') koQueue.push({ cat, match: m });
+          if (m.p1 && m.p2 && m.p1 !== 'BYE' && m.p2 !== 'BYE' && !yaJugado(m)) koQueue.push({ cat, match: m });
         });
       });
     }
@@ -1791,6 +1793,19 @@ function buildSchedule() {
 
   const pistaLibreEn = new Array(numCourts).fill(0);
   const jugadorLibreEn = {};
+  if (torneoEnMarcha) {
+    // Lo pendiente se programa desde ahora, respetando pistas ocupadas y jugadores que están jugando
+    const desde = Math.max(0, timeToMinutes(horaAhoraHHMM()) - startMin);
+    for (let c = 0; c < numCourts; c++) pistaLibreEn[c] = desde;
+    enabledCategories().forEach(cat => {
+      (cat.matches || []).concat(cat.knockout ? cat.knockout.rounds.flat() : []).forEach(m => {
+        if (!m.inicioReal || m.winner || m.finReal) return;
+        const fin = timeToMinutes(m.inicioReal) - startMin + duracionPartido;
+        if (m.court && m.court <= numCourts) pistaLibreEn[m.court - 1] = Math.max(pistaLibreEn[m.court - 1], fin + descansoPista);
+        [m.p1, m.p2].forEach(id => { const n = normName(playerName(cat, id)); if (n) jugadorLibreEn[n] = Math.max(jugadorLibreEn[n] || 0, fin + descansoJugador); });
+      });
+    });
+  }
 
   function inicioPosible(item) {
     const n1 = normName(playerName(item.cat, item.match.p1));
@@ -1842,10 +1857,51 @@ function buildSchedule() {
   // Pistas a mano: solo los primeros partidos (uno por pista, a la hora de inicio) llevan pista; el resto se asigna al empezar.
   if (pistasManuales()) {
     partidosProgramados().forEach(x => {
-      if (x.m.time === minutesToTime(startMin) && x.m.court) x.m.pistaPreasignada = true;
+      if (yaJugado(x.m)) return;
+      if (!torneoEnMarcha && x.m.time === minutesToTime(startMin) && x.m.court) x.m.pistaPreasignada = true;
       else { x.m.court = null; x.m.pistaPreasignada = false; }
     });
   }
+}
+// Partidos con jugadores ya conocidos pero sin hora (p. ej. la siguiente ronda del cuadro): se les da una hora
+// estimada automáticamente, sin regenerar el calendario ni tocar lo ya jugado.
+function programarPartidosSinHora() {
+  const duracion = Math.max(5, state.config.matchMinutes);
+  const descansoJugador = Math.max(0, state.config.restMinutes != null ? state.config.restMinutes : 10);
+  const numCourts = Math.max(1, Number(state.config.courts) || 1);
+  const nuevos = [];
+  enabledCategories().forEach(cat => {
+    if (!cat.knockout) return;
+    // Solo cuando la fase de grupos de la categoría tiene horario (ya se generó el calendario)
+    if ((cat.matches || []).length && !(cat.matches || []).some(m => m.time)) return;
+    cat.knockout.rounds.forEach(r => r.forEach(m => {
+      if (m.time || m.winner || !m.p1 || !m.p2 || m.p1 === 'BYE' || m.p2 === 'BYE') return;
+      nuevos.push({ cat, m });
+    }));
+  });
+  if (!nuevos.length) return false;
+  const lista = partidosProgramados();
+  const finJugador = {};
+  lista.forEach(x => {
+    const fin = timeToMinutes(x.m.inicioReal || x.m.time) + duracion + descansoJugador;
+    [x.m.p1, x.m.p2].forEach(id => { const n = normName(playerName(x.cat, id)); if (n) finJugador[n] = Math.max(finJugador[n] || 0, fin); });
+  });
+  const ahora = timeToMinutes(horaAhoraHHMM());
+  const cargaPista = {};
+  lista.forEach(x => { if (x.m.court) cargaPista[x.m.court] = Math.max(cargaPista[x.m.court] || 0, timeToMinutes(x.m.time) + duracion); });
+  nuevos.forEach(x => {
+    const n1 = normName(playerName(x.cat, x.m.p1)), n2 = normName(playerName(x.cat, x.m.p2));
+    const inicio = Math.max(ahora, finJugador[n1] || 0, finJugador[n2] || 0);
+    x.m.time = minutesToTime(inicio);
+    x.m.horaPlan = x.m.time;
+    if (!pistasManuales()) {
+      let pista = 1;
+      for (let c = 2; c <= numCourts; c++) if ((cargaPista[c] || 0) < (cargaPista[pista] || 0)) pista = c;
+      x.m.court = pista;
+      cargaPista[pista] = Math.max(cargaPista[pista] || 0, inicio) + duracion;
+    }
+  });
+  return true;
 }
 
 // ===== HORA REAL DE INICIO =====
@@ -2204,6 +2260,7 @@ function firstEnabledId() {
 
 function render() {
   try {
+    try { programarPartidosSinHora(); } catch (e) { console.warn(e); }
     saveLocal();
     renderTabsNav();
     const main = document.getElementById('torneoMainArea');
@@ -3546,7 +3603,7 @@ function matchCard(cat, m) {
   const scoreTxt = m.sets.length ? m.sets.map(s => s[0] + '-' + s[1]).join(', ') : 'Sin jugar';
   return el('div', { class: 'match-card' + (m.winner ? ' done' : ''), onclick: () => openResultModal(cat.id, m.id) },
     el('div', { class: 'match-top' },
-      el('span', {}, m.court ? ('Pista ' + m.court + ' · ' + m.time) : (m.time ? ('Pista por asignar · ' + m.time) : 'Sin horario')),
+      el('span', {}, m.winner ? ('✔ Jugado' + (m.court ? ' · Pista ' + m.court : '')) : (m.court ? ('Pista ' + m.court + ' · ' + m.time) : (m.time ? ('Pista por asignar · ' + m.time) : 'Sin horario'))),
       el('span', {}, m.winner ? '✔ Jugado' : 'Pendiente')),
     el('div', { class: 'match-players' },
       el('span', { style: m.winner === m.p1 ? 'color:var(--ok);font-weight:800;' : '' }, p1),
@@ -3719,7 +3776,8 @@ function viewKnockout() {
           const box = el('div', { class: 'bracket-match', 'data-mid': m.id, 'data-f1': m.fromMatch1 || null, 'data-f2': m.fromMatch2 || null, 'data-ganado': m.winner ? '1' : null, onclick: () => { if (m.p1 && m.p2 && m.p1 !== 'BYE' && m.p2 !== 'BYE') openResultModal(cat.id, m.id); } });
           box.appendChild(el('div', { class: 'p' + (m.winner && m.winner === m.p1 ? ' winner' : '') }, el('span', {}, playerName(cat, m.p1))));
           box.appendChild(el('div', { class: 'p' + (m.winner && m.winner === m.p2 ? ' winner' : '') }, el('span', {}, playerName(cat, m.p2))));
-          if (m.time) box.appendChild(el('div', { style: 'padding:4px 8px;font-size:10.5px;color:var(--muted);' }, (m.court ? 'Pista ' + m.court : 'Pista por asignar') + ' · ' + m.time));
+          if (m.winner && m.p1 !== 'BYE' && m.p2 !== 'BYE') box.appendChild(el('div', { style: 'padding:4px 8px;font-size:10.5px;color:var(--ok);font-weight:700;' }, '✔ Jugado' + (m.sets && m.sets.length ? ' · ' + m.sets.filter(st => st[0] || st[1]).map(st => st[0] + '-' + st[1]).join(', ') : '')));
+          else if (!m.winner && m.time) box.appendChild(el('div', { style: 'padding:4px 8px;font-size:10.5px;color:var(--muted);' }, (partidoEnJuego(m) ? '▶ En juego · Pista ' + m.court : (m.court ? 'Pista ' + m.court : 'Pista por asignar') + ' · ' + m.time)));
           col.appendChild(box);
         });
         bracket.appendChild(col);

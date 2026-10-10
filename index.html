@@ -383,8 +383,8 @@ header.app-header::before{display:none !important;}
 @media (max-width:600px){.rc-hoja{padding:10px;margin:8px;} .rc{font-size:9px;} .rc-cab td{display:block;width:auto;}}
 @media print{
   @page{size:A4;margin:12mm;}
-  body *{visibility:hidden !important;}
-  #nomReciboVelo, #nomReciboVelo *{visibility:visible !important;}
+  body:has(#nomReciboVelo) *{visibility:hidden !important;}
+  body:has(#nomReciboVelo) #nomReciboVelo, body:has(#nomReciboVelo) #nomReciboVelo *{visibility:visible !important;}
   #nomReciboVelo{position:absolute;inset:0;background:#fff;overflow:visible;}
   .rc-barra{display:none !important;}
   .rc-hoja{box-shadow:none;margin:0;max-width:none;padding:0;}

@@ -2135,8 +2135,8 @@ function computeStandings(cat, groupIndex) {
     r1.SF += s1; r1.SC += s2;
     r2.SF += s2; r2.SC += s1;
     if (m.winner === m.p1) { r1.PG++; r2.PP++; } else { r2.PG++; r1.PP++; }
-    r1.Pts = r1.PG * 2 + r1.PP * 0;
-    r2.Pts = r2.PG * 2 + r2.PP * 0;
+    r1.Pts = r1.PG; // 1 punto por partido ganado
+    r2.Pts = r2.PG;
   });
 
   const rows = Object.values(table).map(r => {

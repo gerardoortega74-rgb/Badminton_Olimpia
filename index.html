@@ -202,6 +202,11 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 .podio-medalla{font-size:24px;width:30px;text-align:center;}
 .podio-puesto{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;width:86px;}
 .podio-nombre{font-weight:800;font-size:15px;flex:1;}
+.pista-card.pista-mia,.proximo-fila.pista-mia{box-shadow:0 0 0 3px #3DD6C4;}
+.proximos-lista{display:flex;flex-direction:column;gap:6px;}
+.proximo-fila{display:flex;gap:10px;align-items:center;padding:8px 10px;border:1px solid #E6E7E8;border-radius:10px;background:#fff;}
+.proximo-hora{font-weight:800;font-size:13px;white-space:nowrap;min-width:52px;}
+.proximo-jug{font-weight:700;font-size:13.5px;line-height:1.3;}
 .tabla-partidos{display:table !important;width:100% !important;max-width:100% !important;overflow:visible !important;white-space:normal !important;background:none !important;table-layout:auto;font-size:13px;}
 .tabla-partidos th,.tabla-partidos td{padding:6px 6px !important;vertical-align:middle;}
 .tabla-partidos th{white-space:nowrap;}
@@ -11389,6 +11394,55 @@ function calcularEstadisticasGlobales(historialJugador) {
   });
   return { jugados, ganados, perdidos, pendientes, setsGanados, setsPerdidos };
 }
+// Enlace de los jugadores: qué se juega ahora en cada pista y los próximos partidos (se actualiza solo con la nube)
+function panelPistasEnDirectoPublico(st) {
+  const nnPub = n => String(n || '').trim().toLowerCase();
+  const cats = (st.categories || []).filter(c => c.enabled);
+  const nombre = (cat, id) => { if (!id) return '—'; if (id === 'BYE') return 'Exento'; const p = (cat.players || []).find(x => x.id === id); return p ? p.name : '—'; };
+  const etiqueta = (cat, m) => {
+    if (m.phase === 'ko' || m.round) return cat.name + (m.round ? ' · ' + m.round : '');
+    const g = cat.groups && cat.groups[m.groupIndex];
+    return cat.name + (g ? ' · ' + g.name : '');
+  };
+  const todos = [];
+  cats.forEach(cat => {
+    (cat.matches || []).forEach(m => todos.push({ cat, m }));
+    if (cat.knockout && cat.knockout.rounds) cat.knockout.rounds.forEach(r => (r || []).forEach(m => { if (m.p1 && m.p2 && m.p1 !== 'BYE' && m.p2 !== 'BYE') todos.push({ cat, m }); }));
+  });
+  if (!todos.some(x => x.m.time || x.m.inicioReal)) return null;
+  const enJuego = todos.filter(x => x.m.inicioReal && !x.m.winner && !x.m.finReal);
+  const numPistas = Math.max(1, Number(st.config && st.config.courts) || 1, ...enJuego.map(x => Number(x.m.court) || 0));
+  const yo = nnPub(jugadorSeleccionadoPublico || '');
+  const esMio = (x) => yo && [x.m.p1, x.m.p2].some(id => nombre(x.cat, id).split(' / ').some(n => nnPub(n) === yo) || nnPub(nombre(x.cat, id)) === yo);
+  const panel = el('div', { class: 'panel' },
+    el('h2', {}, '🏸 Pistas en directo'),
+    el('div', { class: 'sub' }, 'Lo que se está jugando ahora mismo. Se actualiza solo.'));
+  const grid = el('div', { class: 'pistas-ahora' });
+  for (let c = 1; c <= numPistas; c++) {
+    const x = enJuego.find(y => Number(y.m.court) === c);
+    if (!x) { grid.appendChild(el('div', { class: 'pista-card libre' }, el('div', { class: 'pista-num' }, 'Pista ' + c), el('div', { class: 'pista-estado' }, 'Libre'))); continue; }
+    grid.appendChild(el('div', { class: 'pista-card ocupada' + (esMio(x) ? ' pista-mia' : '') },
+      el('div', { class: 'pista-num' }, 'Pista ' + c, el('span', { class: 'pista-desde' }, 'desde ' + x.m.inicioReal)),
+      el('div', { class: 'pista-cat' }, etiqueta(x.cat, x.m)),
+      el('div', { class: 'pista-jug' }, nombre(x.cat, x.m.p1)),
+      el('div', { class: 'pista-vs' }, 'vs'),
+      el('div', { class: 'pista-jug' }, nombre(x.cat, x.m.p2))));
+  }
+  panel.appendChild(grid);
+  const proximos = todos.filter(x => !x.m.winner && !x.m.inicioReal && x.m.time)
+    .sort((a, b) => timeToMinutesPublico(a.m.time) - timeToMinutesPublico(b.m.time)).slice(0, 6);
+  if (proximos.length) {
+    panel.appendChild(el('h3', { style: 'margin:16px 0 6px;' }, '⏭ Próximos partidos'));
+    panel.appendChild(el('div', { class: 'proximos-lista' }, proximos.map(x => el('div', { class: 'proximo-fila' + (esMio(x) ? ' pista-mia' : '') },
+      el('span', { class: 'proximo-hora' }, '≈ ' + x.m.time),
+      el('div', { style: 'min-width:0;' },
+        el('div', { class: 'proximo-jug' }, nombre(x.cat, x.m.p1) + ' vs ' + nombre(x.cat, x.m.p2)),
+        el('div', { class: 'pista-cat', style: 'margin:0;' }, etiqueta(x.cat, x.m) + (x.m.court && x.m.pistaPreasignada ? ' · Pista ' + x.m.court : '')))))));
+    panel.appendChild(el('div', { class: 'sub', style: 'margin-top:6px;font-size:12px;' }, 'Horas aproximadas: la pista se asigna cuando empieza el partido.'));
+  }
+  return panel;
+}
+function timeToMinutesPublico(t) { const p = String(t || '99:99').split(':'); return (parseInt(p[0], 10) || 0) * 60 + (parseInt(p[1], 10) || 0); }
 function renderVistaPublica() {
   const scrollGuardado = window.scrollY;
   const raizAnterior = document.getElementById('publicoScreen');
@@ -11473,6 +11527,8 @@ function renderVistaPublica() {
     st.meta.date ? el('div', { class: 'sub' }, 'Fecha: ' + st.meta.date) : null,
     finalizado ? el('div', { class: 'chip chip-muted', style: 'margin-top:6px;' }, '📁 Este torneo ya ha finalizado') : null,
   ));
+  const panelPistas = panelPistasEnDirectoPublico(st);
+  if (panelPistas) root.appendChild(panelPistas);
 
   const cats = (st.categories || []).filter(c => c.enabled);
   if (!cats.length) {

@@ -216,42 +216,78 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 .insc-form label.check input{width:20px;height:20px;flex:none;margin-top:1px;}
 .insc-bizum{background:#F0FBF9;border:1px solid #A9E9E0;border-radius:12px;padding:12px;margin:10px 0;}
 .insc-hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;}
-/* ===== Presentación animada del torneo ===== */
-#presTorneo{position:fixed;inset:0;z-index:10050;background:#14191C;color:#F2F3F1;overflow:hidden;font-family:inherit;}
-#presTorneo .pt-pista{position:absolute;inset:0;width:100%;height:100%;opacity:.45;}
-#presTorneo .pt-escena::before{content:'';position:absolute;inset:18% 6%;background:radial-gradient(ellipse at center,rgba(20,25,28,.85) 30%,transparent 72%);z-index:-1;}
-#presTorneo .pt-pista line,#presTorneo .pt-pista rect{fill:none;stroke:#3A464D;stroke-width:3;stroke-dasharray:4000;stroke-dashoffset:4000;animation:ptDibujar 1.6s ease-out forwards;}
-#presTorneo .pt-pista .pt-red{stroke:#3DD6C4;stroke-width:4;opacity:.7;animation-delay:.5s;}
-#presTorneo .pt-luz{position:absolute;inset:-20%;background:radial-gradient(circle at 50% 45%,rgba(61,214,196,.18),transparent 55%);opacity:0;animation:ptAparece 1.2s ease-out .8s forwards;}
-#presTorneo .pt-volante{position:absolute;left:-8%;top:62%;width:54px;height:54px;font-size:46px;line-height:54px;text-align:center;filter:drop-shadow(0 6px 10px rgba(0,0,0,.5));animation:ptVuelo 2.1s cubic-bezier(.3,.1,.3,1) .4s forwards;opacity:0;}
-#presTorneo .pt-escena{position:absolute;inset:0;z-index:1;isolation:isolate;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;}
-#presTorneo .pt-club{opacity:0;animation:ptEntraSale 3.6s ease-in-out 1.8s forwards;}
-#presTorneo .pt-logo{width:min(34vw,24vh,170px);height:min(34vw,24vh,170px);border-radius:28px;object-fit:contain;background:#fff;padding:10px;box-shadow:0 0 0 4px #3DD6C4,0 20px 60px rgba(0,0,0,.5);margin:0 auto 22px;display:block;}
-#presTorneo .pt-logo.sin{display:flex;align-items:center;justify-content:center;font-size:min(20vw,96px);background:#222A2F;}
-#presTorneo .pt-club-nombre{font-family:'Barlow Condensed',-apple-system,"Segoe UI",Roboto,sans-serif;font-weight:800;font-size:clamp(26px,min(6.5vw,9vh),72px);letter-spacing:.06em;text-transform:uppercase;line-height:1;}
-#presTorneo .pt-club-loc{margin-top:10px;font-size:clamp(13px,2.2vw,20px);letter-spacing:.35em;text-transform:uppercase;color:#9BA5AC;}
-#presTorneo .pt-presenta{margin-top:26px;font-size:clamp(14px,2.4vw,22px);letter-spacing:.5em;text-transform:uppercase;color:#3DD6C4;}
-#presTorneo .pt-torneo{opacity:0;animation:ptFinal 1.1s cubic-bezier(.2,.8,.2,1) 5.6s forwards;}
-#presTorneo .pt-mini{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:18px;font-size:clamp(12px,2vw,18px);letter-spacing:.3em;text-transform:uppercase;color:#9BA5AC;}
+/* ===== Presentación animada del torneo (v2) ===== */
+#presTorneo{position:fixed;inset:0;z-index:10050;background:#05080A;color:#F2F3F1;overflow:hidden;font-family:inherit;perspective:1200px;}
+#presTorneo canvas{position:absolute;inset:0;width:100%;height:100%;display:block;}
+#presTorneo .pt-cam{position:absolute;inset:0;}
+#presTorneo.pt-shake .pt-cam{animation:ptShake .55s cubic-bezier(.36,.07,.19,.97);}
+#presTorneo .pt-suelo{position:absolute;left:50%;top:58%;width:150vmax;height:70vmax;transform:translate(-50%,-30%) rotateX(68deg);transform-style:preserve-3d;opacity:0;animation:ptSuelo 2.4s ease-out .1s forwards, ptDeriva 18s linear 2.5s infinite alternate;}
+#presTorneo .pt-suelo svg{width:100%;height:100%;overflow:visible;}
+#presTorneo .pt-suelo line,#presTorneo .pt-suelo rect{fill:none;stroke:#3DD6C4;stroke-width:4;stroke-dasharray:5000;stroke-dashoffset:5000;filter:drop-shadow(0 0 6px rgba(61,214,196,.9));animation:ptDibujar 2.2s cubic-bezier(.6,0,.2,1) .2s forwards;opacity:.55;}
+#presTorneo .pt-suelo .pt-red{stroke:#fff;stroke-width:7;opacity:.9;animation-delay:.9s;}
+#presTorneo .pt-foco{position:absolute;inset:0;background:radial-gradient(ellipse 55% 60% at 50% 45%,rgba(61,214,196,.16),rgba(5,8,10,0) 60%),radial-gradient(ellipse at 50% 120%,rgba(61,214,196,.12),transparent 60%);opacity:0;animation:ptAparece 2s ease-out .3s forwards;}
+#presTorneo .pt-vigneta{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 45%,rgba(0,0,0,.85) 100%);pointer-events:none;}
+#presTorneo .pt-flash{position:absolute;inset:0;background:radial-gradient(circle at 50% 46%,#fff,rgba(61,214,196,.6) 30%,transparent 65%);opacity:0;pointer-events:none;}
+#presTorneo .pt-flash.on{animation:ptFlash .9s ease-out forwards;}
+#presTorneo .pt-escena{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;pointer-events:none;}
+#presTorneo .pt-escena{isolation:isolate;}
+#presTorneo .pt-escena::before{content:'';position:absolute;inset:15% 4%;background:radial-gradient(ellipse at center,rgba(5,8,10,.82) 25%,rgba(5,8,10,0) 70%);z-index:-1;}
+#presTorneo .pt-club{opacity:0;}
+#presTorneo .pt-club.on{opacity:1;}
+#presTorneo .pt-club.off{transition:opacity .6s ease, transform .8s ease, filter .8s ease;opacity:0;transform:scale(1.25);filter:blur(10px);}
+#presTorneo .pt-logo-wrap{position:relative;margin:0 auto 26px;}
+#presTorneo .pt-logo{width:min(30vw,26vh,190px);height:min(30vw,26vh,190px);border-radius:30px;object-fit:contain;background:#fff;padding:12px;box-shadow:0 0 0 4px #3DD6C4,0 0 60px rgba(61,214,196,.55),0 30px 80px rgba(0,0,0,.7);display:block;transform:scale(3.2);filter:blur(16px);opacity:0;}
+#presTorneo .pt-logo.sin{display:flex;align-items:center;justify-content:center;font-size:min(18vw,15vh,110px);background:#11181C;}
+#presTorneo .pt-club.on .pt-logo{animation:ptGolpe .7s cubic-bezier(.2,1.4,.4,1) forwards;}
+#presTorneo .pt-anillo{position:absolute;left:50%;top:50%;width:100%;height:100%;border:3px solid #3DD6C4;border-radius:36px;transform:translate(-50%,-50%) scale(1);opacity:0;}
+#presTorneo .pt-club.on .pt-anillo{animation:ptAnillo 1.1s ease-out .35s forwards;}
+#presTorneo .pt-club.on .pt-anillo.b{animation-delay:.55s;}
+#presTorneo .pt-club-nombre{font-family:'Barlow Condensed',-apple-system,"Segoe UI",Roboto,sans-serif;font-weight:800;font-size:clamp(26px,min(6.6vw,9vh),78px);letter-spacing:.05em;text-transform:uppercase;line-height:1.02;max-width:1100px;}
+#presTorneo .pt-ch{display:inline-block;opacity:0;transform:translateY(.6em) rotateX(-70deg);filter:blur(8px);}
+#presTorneo .on .pt-ch{animation:ptLetra .55s cubic-bezier(.2,.9,.3,1.2) forwards;}
+#presTorneo .pt-palabra{display:inline-block;white-space:nowrap;}
+#presTorneo .pt-presenta{margin-top:24px;font-size:clamp(14px,2.4vw,22px);letter-spacing:.2em;text-transform:uppercase;color:#3DD6C4;opacity:0;text-shadow:0 0 18px rgba(61,214,196,.8);}
+#presTorneo .on .pt-presenta{animation:ptPresenta 1.4s ease-out 1.3s forwards;}
+#presTorneo .pt-barrido{position:absolute;top:0;bottom:0;width:22vw;left:-30vw;background:linear-gradient(90deg,transparent,rgba(61,214,196,.0) 10%,rgba(61,214,196,.85) 48%,#fff 50%,rgba(61,214,196,.85) 52%,transparent 90%);filter:blur(6px);opacity:0;mix-blend-mode:screen;pointer-events:none;}
+#presTorneo .pt-barrido.on{animation:ptBarrido .9s cubic-bezier(.7,0,.3,1) forwards;}
+#presTorneo .pt-torneo{opacity:0;}
+#presTorneo .pt-torneo.on{opacity:1;}
+#presTorneo .pt-mini{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:22px;font-size:clamp(12px,1.9vw,17px);letter-spacing:.35em;text-transform:uppercase;color:#9BA5AC;opacity:0;}
+#presTorneo .pt-torneo.on .pt-mini{animation:ptBaja .8s ease-out forwards;}
 #presTorneo .pt-mini img{height:clamp(30px,5vw,46px);width:auto;border-radius:8px;background:#fff;padding:3px;}
-#presTorneo .pt-titulo{font-family:'Barlow Condensed',-apple-system,"Segoe UI",Roboto,sans-serif;font-weight:800;font-size:clamp(34px,min(9vw,11vh),120px);line-height:.95;letter-spacing:.01em;text-transform:uppercase;max-width:1100px;text-wrap:balance;}
-#presTorneo .pt-raya{height:6px;width:0;background:#3DD6C4;border-radius:3px;margin:22px auto 20px;animation:ptRaya .9s ease-out 6.4s forwards;}
-#presTorneo .pt-datos{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;opacity:0;animation:ptAparece .8s ease-out 6.9s forwards;}
-#presTorneo .pt-dato{border:1px solid #3A464D;background:rgba(255,255,255,.04);border-radius:999px;padding:8px 16px;font-size:clamp(13px,2vw,19px);font-weight:700;}
-#presTorneo .pt-dato b{color:#3DD6C4;}
-#presTorneo .pt-botones{position:absolute;top:14px;right:14px;display:flex;gap:8px;z-index:2;}
-#presTorneo .pt-botones button{background:rgba(0,0,0,.45);color:#fff;border:1px solid rgba(255,255,255,.45);border-radius:20px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;}
+#presTorneo .pt-titulo{font-family:'Barlow Condensed',-apple-system,"Segoe UI",Roboto,sans-serif;font-weight:800;font-size:clamp(34px,min(9.5vw,12vh),132px);line-height:.95;letter-spacing:.01em;text-transform:uppercase;max-width:1200px;margin:0;}
+#presTorneo .pt-titulo .pt-ch{background:linear-gradient(180deg,#FFFFFF 0%,#E9F1F2 45%,#9FB6BB 100%);-webkit-background-clip:text;background-clip:text;color:transparent;transform:translateY(1.1em) rotateX(-85deg) scale(1.4);transform-origin:50% 100%;}
+#presTorneo .pt-torneo.on .pt-titulo .pt-ch{animation:ptLetraTitulo .75s cubic-bezier(.15,1.2,.35,1) forwards;}
+#presTorneo .pt-brillo{position:relative;display:inline-block;}
+#presTorneo .pt-brillo::after{content:'';position:absolute;inset:-10% -5%;background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,.75) 50%,transparent 60%);background-size:250% 100%;background-position:150% 0;mix-blend-mode:overlay;pointer-events:none;}
+#presTorneo .pt-torneo.on .pt-brillo::after{animation:ptBrillo 3.2s ease-in-out 2.2s infinite;}
+#presTorneo .pt-raya{height:6px;width:0;background:linear-gradient(90deg,transparent,#3DD6C4 20%,#fff 50%,#3DD6C4 80%,transparent);border-radius:3px;margin:26px auto 22px;box-shadow:0 0 24px rgba(61,214,196,.9);}
+#presTorneo .pt-torneo.on .pt-raya{animation:ptRaya 1s cubic-bezier(.7,0,.2,1) 1.2s forwards;}
+#presTorneo .pt-datos{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;}
+#presTorneo .pt-dato{border:1px solid rgba(61,214,196,.45);background:rgba(10,20,24,.65);backdrop-filter:blur(6px);border-radius:14px;padding:10px 18px;font-size:clamp(13px,2vw,19px);font-weight:700;opacity:0;transform:translateY(20px) scale(.9);box-shadow:0 0 30px rgba(61,214,196,.15);}
+#presTorneo .pt-dato b{color:#3DD6C4;font-size:1.25em;font-variant-numeric:tabular-nums;}
+#presTorneo .pt-torneo.on .pt-dato{animation:ptDato .6s cubic-bezier(.2,1.3,.4,1) forwards;}
+#presTorneo .pt-botones{position:absolute;top:14px;right:14px;display:flex;gap:8px;z-index:5;opacity:.35;transition:opacity .3s;}
+#presTorneo .pt-botones:hover,#presTorneo .pt-botones:focus-within{opacity:1;}
+#presTorneo .pt-botones button{background:rgba(0,0,0,.55);color:#fff;border:1px solid rgba(255,255,255,.45);border-radius:20px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;}
 #presTorneo .pt-botones button:focus-visible{outline:3px solid #3DD6C4;outline-offset:2px;}
 @keyframes ptDibujar{to{stroke-dashoffset:0}}
 @keyframes ptAparece{to{opacity:1}}
-@keyframes ptVuelo{0%{opacity:1;transform:translate(0,0) rotate(-30deg)}45%{transform:translate(55vw,-48vh) rotate(60deg)}100%{opacity:1;transform:translate(118vw,-8vh) rotate(160deg)}}
-@keyframes ptEntraSale{0%{opacity:0;transform:scale(.92)}18%{opacity:1;transform:scale(1)}82%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.06)}}
-@keyframes ptFinal{0%{opacity:0;transform:translateY(30px) scale(.96);letter-spacing:.2em}100%{opacity:1;transform:none}}
-@keyframes ptRaya{to{width:min(60vw,420px)}}
-@media (prefers-reduced-motion:reduce){
-  #presTorneo *{animation-duration:.01s!important;animation-delay:0s!important}
-  #presTorneo .pt-club,#presTorneo .pt-volante{display:none}
-}
+@keyframes ptSuelo{0%{opacity:0;transform:translate(-50%,-10%) rotateX(80deg) scale(1.6)}100%{opacity:1;transform:translate(-50%,-30%) rotateX(68deg) scale(1)}}
+@keyframes ptDeriva{from{transform:translate(-50%,-30%) rotateX(68deg) rotateZ(-3deg)}to{transform:translate(-50%,-30%) rotateX(66deg) rotateZ(3deg)}}
+@keyframes ptFlash{0%{opacity:1}100%{opacity:0}}
+@keyframes ptShake{10%,90%{transform:translate(-2px,1px)}20%,80%{transform:translate(4px,-3px)}30%,50%,70%{transform:translate(-7px,4px)}40%,60%{transform:translate(7px,-4px)}}
+@keyframes ptGolpe{0%{opacity:0;transform:scale(3.2);filter:blur(16px)}60%{opacity:1;transform:scale(.92);filter:blur(0)}100%{opacity:1;transform:scale(1);filter:blur(0)}}
+@keyframes ptAnillo{0%{opacity:.9;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(2.6)}}
+@keyframes ptLetra{to{opacity:1;transform:none;filter:blur(0)}}
+@keyframes ptLetraTitulo{0%{opacity:0;filter:blur(10px)}60%{opacity:1;filter:blur(0)}100%{opacity:1;transform:none;filter:drop-shadow(0 6px 24px rgba(61,214,196,.35))}}
+@keyframes ptPresenta{0%{opacity:0;letter-spacing:.2em}100%{opacity:1;letter-spacing:.7em}}
+@keyframes ptBarrido{0%{left:-30vw;opacity:1}100%{left:110vw;opacity:1}}
+@keyframes ptBaja{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:none}}
+@keyframes ptBrillo{0%{background-position:150% 0}55%,100%{background-position:-60% 0}}
+@keyframes ptRaya{to{width:min(70vw,520px)}}
+@keyframes ptDato{to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){#presTorneo *{animation-duration:.01s!important;animation-delay:0s!important;transition:none!important}}
 .tabla-partidos{display:table !important;width:100% !important;max-width:100% !important;overflow:visible !important;white-space:normal !important;background:none !important;table-layout:auto;font-size:13px;}
 .tabla-partidos th,.tabla-partidos td{padding:6px 6px !important;vertical-align:middle;}
 .tabla-partidos th{white-space:nowrap;}
@@ -11711,9 +11747,10 @@ function enviarInscripcion(vista, cat, msg) {
 }
 
 
-// ===== PRESENTACIÓN ANIMADA DEL TORNEO =====
-// Primero el club (logo, nombre, localidad, "presenta") y después el nombre del torneo con sus datos.
-// Sirve para proyectarla en la pista antes de empezar. Esc o ✕ para cerrar.
+// ===== PRESENTACIÓN ANIMADA DEL TORNEO (v2) =====
+// Secuencia: pista en 3D que se dibuja con luz → volante que viene hacia la cámara y estalla en un remate →
+// logo del club con onda expansiva y nombre letra a letra → barrido de luz → nombre del torneo y datos.
+// Partículas y estela en un canvas; sonido sintetizado (sin archivos) que se puede silenciar.
 function mostrarPresentacionTorneo(st) {
   st = st || {};
   const meta = st.meta || {};
@@ -11722,45 +11759,158 @@ function mostrarPresentacionTorneo(st) {
   const club = (typeof clubGlobal !== 'undefined' && clubGlobal) || {};
   const nombreClub = club.nombre || 'Club de Bádminton';
   const fecha = meta.date ? new Date(meta.date + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '';
-  const viejo = document.getElementById('presTorneo');
-  if (viejo) viejo.remove();
+  const reducido = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const viejo = document.getElementById('presTorneo'); if (viejo && viejo.__cerrar) viejo.__cerrar();
+  let sonido = true; try { sonido = localStorage.getItem('ptSonido') !== '0'; } catch (e) { }
+
+  // Texto partido en letras (agrupadas por palabras para que se corte bien)
+  const letras = (texto, retardoBase, paso) => {
+    let i = 0;
+    return String(texto).split(' ').map((pal, k, arr) => el('span', { class: 'pt-palabra' },
+      Array.from(pal).map(ch => el('span', { class: 'pt-ch', style: 'animation-delay:' + (retardoBase + (i++) * paso).toFixed(3) + 's' }, ch)),
+      k < arr.length - 1 ? el('span', { class: 'pt-ch', style: 'animation-delay:0s' }, ' ') : null));
+  };
   const NS = 'http://www.w3.org/2000/svg';
-  const svg = document.createElementNS(NS, 'svg');
-  svg.setAttribute('class', 'pt-pista'); svg.setAttribute('viewBox', '0 0 1340 610'); svg.setAttribute('preserveAspectRatio', 'xMidYMid slice'); svg.setAttribute('aria-hidden', 'true');
+  const svg = document.createElementNS(NS, 'svg'); svg.setAttribute('viewBox', '0 0 1340 610'); svg.setAttribute('preserveAspectRatio', 'none');
   [['rect', { x: 20, y: 20, width: 1300, height: 570 }], ['line', { x1: 20, y1: 66, x2: 1320, y2: 66 }], ['line', { x1: 20, y1: 544, x2: 1320, y2: 544 }],
    ['line', { x1: 466, y1: 20, x2: 466, y2: 590 }], ['line', { x1: 874, y1: 20, x2: 874, y2: 590 }], ['line', { x1: 96, y1: 20, x2: 96, y2: 590 }], ['line', { x1: 1244, y1: 20, x2: 1244, y2: 590 }],
-   ['line', { x1: 20, y1: 305, x2: 466, y2: 305 }], ['line', { x1: 874, y1: 305, x2: 1320, y2: 305 }], ['line', { x1: 670, y1: 10, x2: 670, y2: 600, class: 'pt-red' }]]
+   ['line', { x1: 20, y1: 305, x2: 466, y2: 305 }], ['line', { x1: 874, y1: 305, x2: 1320, y2: 305 }], ['line', { x1: 670, y1: 0, x2: 670, y2: 610, class: 'pt-red' }]]
     .forEach(([tag, at]) => { const n = document.createElementNS(NS, tag); Object.keys(at).forEach(k => n.setAttribute(k, at[k])); svg.appendChild(n); });
+
+  const canvas = el('canvas', { 'aria-hidden': 'true' });
   const logo = club.logo ? el('img', { class: 'pt-logo', src: club.logo, alt: '' }) : el('div', { class: 'pt-logo sin', 'aria-hidden': 'true' }, '🏸');
+  const escenaClub = el('div', { class: 'pt-escena pt-club' },
+    el('div', { class: 'pt-logo-wrap' }, logo, el('div', { class: 'pt-anillo' }), el('div', { class: 'pt-anillo b' })),
+    el('div', { class: 'pt-club-nombre' }, letras(nombreClub, 0.45, 0.035)),
+    club.localidad && !nombreClub.toLowerCase().includes(String(club.localidad).toLowerCase()) ? el('div', { class: 'pt-presenta', style: 'margin-top:10px;letter-spacing:.4em;color:#9BA5AC;text-shadow:none;' }, club.localidad) : null,
+    el('div', { class: 'pt-presenta' }, 'presenta'));
   const datos = [];
-  if (fecha) datos.push(el('span', { class: 'pt-dato' }, '📅 ', fecha.charAt(0).toUpperCase() + fecha.slice(1)));
-  if (cats.length) datos.push(el('span', { class: 'pt-dato' }, el('b', {}, String(cats.length)), cats.length === 1 ? ' categoría' : ' categorías'));
-  if (participantes) datos.push(el('span', { class: 'pt-dato' }, el('b', {}, String(participantes)), ' participantes'));
-  if (st.config && st.config.courts) datos.push(el('span', { class: 'pt-dato' }, el('b', {}, String(st.config.courts)), ' pistas'));
-  const cerrar = () => {
-    document.removeEventListener('keydown', teclas);
-    try { if (document.fullscreenElement) document.exitFullscreen(); } catch (e) { }
-    caja.remove();
-  };
-  const teclas = (e) => { if (e.key === 'Escape') cerrar(); };
-  const caja = el('div', { id: 'presTorneo', role: 'dialog', 'aria-label': 'Presentación del torneo' },
-    svg, el('div', { class: 'pt-luz' }), el('div', { class: 'pt-volante', 'aria-hidden': 'true' }, '🏸'),
-    el('div', { class: 'pt-escena pt-club' }, logo,
-      el('div', { class: 'pt-club-nombre' }, nombreClub),
-      club.localidad && !nombreClub.toLowerCase().includes(String(club.localidad).toLowerCase()) ? el('div', { class: 'pt-club-loc' }, club.localidad) : null,
-      el('div', { class: 'pt-presenta' }, 'presenta')),
-    el('div', { class: 'pt-escena pt-torneo' },
-      el('div', { class: 'pt-mini' }, club.logo ? el('img', { src: club.logo, alt: '' }) : null, nombreClub),
-      el('h1', { class: 'pt-titulo' }, meta.title || 'Torneo'),
-      el('div', { class: 'pt-raya' }),
-      datos.length ? el('div', { class: 'pt-datos' }, datos) : null),
+  const contadores = [];
+  const dato = (num, txt) => { const b = el('b', {}, '0'); contadores.push([b, num]); return el('span', { class: 'pt-dato' }, b, ' ' + txt); };
+  if (fecha) datos.push(el('span', { class: 'pt-dato' }, '📅 ' + fecha.charAt(0).toUpperCase() + fecha.slice(1)));
+  if (cats.length) datos.push(dato(cats.length, cats.length === 1 ? 'categoría' : 'categorías'));
+  if (participantes) datos.push(dato(participantes, 'participantes'));
+  if (st.config && st.config.courts) datos.push(dato(st.config.courts, 'pistas'));
+  datos.forEach((d, i) => { d.style.animationDelay = (1.9 + i * 0.15).toFixed(2) + 's'; });
+  const titulo = meta.title || 'Torneo';
+  const escenaTorneo = el('div', { class: 'pt-escena pt-torneo' },
+    el('div', { class: 'pt-mini' }, club.logo ? el('img', { src: club.logo, alt: '' }) : null, nombreClub),
+    el('h1', { class: 'pt-titulo' }, el('span', { class: 'pt-brillo' }, letras(titulo, 0.15, Math.min(0.045, 0.9 / Math.max(1, titulo.length))))),
+    el('div', { class: 'pt-raya' }),
+    datos.length ? el('div', { class: 'pt-datos' }, datos) : null);
+  const flash = el('div', { class: 'pt-flash' });
+  const barrido = el('div', { class: 'pt-barrido' });
+  const btnSonido = el('button', { type: 'button', onclick: () => { sonido = !sonido; try { localStorage.setItem('ptSonido', sonido ? '1' : '0'); } catch (e) { } btnSonido.textContent = sonido ? '🔊' : '🔇'; if (!sonido && audio) audio.suspend(); else if (audio) audio.resume(); } }, sonido ? '🔊' : '🔇');
+  btnSonido.setAttribute('aria-label', 'Sonido');
+  const caja = el('div', { id: 'presTorneo', role: 'dialog', 'aria-label': 'Presentación del torneo: ' + titulo },
+    el('div', { class: 'pt-cam' },
+      el('div', { class: 'pt-foco' }),
+      el('div', { class: 'pt-suelo', 'aria-hidden': 'true' }, svg),
+      canvas, flash, escenaClub, barrido, escenaTorneo,
+      el('div', { class: 'pt-vigneta' })),
     el('div', { class: 'pt-botones' },
+      btnSonido,
       el('button', { type: 'button', onclick: () => { cerrar(); mostrarPresentacionTorneo(st); } }, '↻ Repetir'),
       document.documentElement.requestFullscreen ? el('button', { type: 'button', onclick: () => { try { if (document.fullscreenElement) document.exitFullscreen(); else caja.requestFullscreen(); } catch (e) { } } }, '⛶ Pantalla completa') : null,
-      el('button', { type: 'button', onclick: cerrar }, '✕ Cerrar')));
+      el('button', { type: 'button', onclick: () => cerrar() }, '✕ Cerrar')));
   document.body.appendChild(caja);
+
+  // ---- Sonido sintetizado ----
+  let audio = null;
+  try { const AC = window.AudioContext || window.webkitAudioContext; if (AC) { audio = new AC(); if (!sonido) audio.suspend(); } } catch (e) { audio = null; }
+  const ruido = (dur) => { const b = audio.createBuffer(1, Math.floor(audio.sampleRate * dur), audio.sampleRate); const d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; const s = audio.createBufferSource(); s.buffer = b; return s; };
+  const sfx = {
+    zumbido(t) { if (!audio) return; const s = ruido(1.6), f = audio.createBiquadFilter(), g = audio.createGain(); f.type = 'bandpass'; f.Q.value = 2.5; f.frequency.setValueAtTime(300, t); f.frequency.exponentialRampToValueAtTime(4200, t + 1.25); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.5, t + 1.15); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.4); s.connect(f).connect(g).connect(audio.destination); s.start(t); s.stop(t + 1.6); },
+    impacto(t) { if (!audio) return; const o = audio.createOscillator(), g = audio.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(160, t); o.frequency.exponentialRampToValueAtTime(38, t + 0.9); g.gain.setValueAtTime(0.9, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.1); o.connect(g).connect(audio.destination); o.start(t); o.stop(t + 1.2);
+      const s = ruido(0.5), f = audio.createBiquadFilter(), g2 = audio.createGain(); f.type = 'highpass'; f.frequency.value = 900; g2.gain.setValueAtTime(0.55, t); g2.gain.exponentialRampToValueAtTime(0.0001, t + 0.35); s.connect(f).connect(g2).connect(audio.destination); s.start(t); s.stop(t + 0.5); },
+    brillo(t) { if (!audio) return; [523.25, 659.25, 783.99, 1046.5].forEach((fr, i) => { const o = audio.createOscillator(), g = audio.createGain(); o.type = 'triangle'; o.frequency.value = fr; const t0 = t + i * 0.07; g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.12, t0 + 0.05); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.8); o.connect(g).connect(audio.destination); o.start(t0); o.stop(t0 + 1.9); }); },
+    barrido(t) { if (!audio) return; const s = ruido(0.9), f = audio.createBiquadFilter(), g = audio.createGain(); f.type = 'lowpass'; f.frequency.setValueAtTime(400, t); f.frequency.exponentialRampToValueAtTime(6000, t + 0.6); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.35, t + 0.45); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.85); s.connect(f).connect(g).connect(audio.destination); s.start(t); s.stop(t + 0.9); },
+  };
+  const ahoraAudio = () => (audio ? audio.currentTime : 0);
+
+  // ---- Canvas: polvo en la luz, volante con estela y explosión de partículas ----
+  const ctx = canvas.getContext('2d');
+  let W = 0, H = 0, dpr = Math.min(2, window.devicePixelRatio || 1);
+  const ajustar = () => { W = caja.clientWidth; H = caja.clientHeight; canvas.width = W * dpr; canvas.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); };
+  ajustar(); window.addEventListener('resize', ajustar);
+  const polvo = Array.from({ length: 90 }, () => ({ x: Math.random(), y: Math.random(), r: Math.random() * 1.8 + 0.4, v: Math.random() * 0.00025 + 0.00005, a: Math.random() * 0.5 + 0.15, f: Math.random() * 6.28 }));
+  const chispas = [];
+  const estela = [];
+  const T0 = performance.now();
+  const T_IMPACTO = 2350, T_CLUB = 2350, T_BARRIDO = 6300, T_TORNEO = 6750;
+  let impactoHecho = false, barridoHecho = false, torneoHecho = false, raf = 0, vivo = true;
+  const explotar = (cx, cy) => {
+    for (let i = 0; i < 160; i++) { const ang = Math.random() * Math.PI * 2, vel = Math.random() * 13 + 3; chispas.push({ x: cx, y: cy, vx: Math.cos(ang) * vel, vy: Math.sin(ang) * vel, vida: 1, dec: Math.random() * 0.012 + 0.008, r: Math.random() * 2.6 + 0.8, col: Math.random() < 0.65 ? '61,214,196' : '255,255,255', pluma: false }); }
+    for (let i = 0; i < 16; i++) { const ang = Math.random() * Math.PI * 2, vel = Math.random() * 6 + 2; chispas.push({ x: cx, y: cy, vx: Math.cos(ang) * vel, vy: Math.sin(ang) * vel - 2, vida: 1, dec: 0.005, r: Math.random() * 10 + 10, rot: Math.random() * 6.28, vr: (Math.random() - 0.5) * 0.2, col: '255,255,255', pluma: true }); }
+  };
+  const dibujarVolante = (x, y, esc, ang) => {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(ang); ctx.scale(esc, esc);
+    // falda de plumas (hacia atrás)
+    const g = ctx.createLinearGradient(-70, 0, 0, 0); g.addColorStop(0, 'rgba(255,255,255,.15)'); g.addColorStop(1, 'rgba(255,255,255,.95)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(-6, -11); ctx.lineTo(-72, -34); ctx.quadraticCurveTo(-78, 0, -72, 34); ctx.lineTo(-6, 11); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(160,190,195,.8)'; ctx.lineWidth = 1.2;
+    for (let k = -3; k <= 3; k++) { ctx.beginPath(); ctx.moveTo(-6, k * 3); ctx.lineTo(-72, k * 10.5); ctx.stroke(); }
+    ctx.strokeStyle = 'rgba(61,214,196,.9)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-24, -17); ctx.quadraticCurveTo(-27, 0, -24, 17); ctx.stroke();
+    // corcho
+    const c = ctx.createRadialGradient(4, -4, 2, 0, 0, 14); c.addColorStop(0, '#FFF8E8'); c.addColorStop(1, '#C9B79A');
+    ctx.fillStyle = c; ctx.beginPath(); ctx.arc(0, 0, 13, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  };
+  const bucle = (ahora) => {
+    if (!vivo) return;
+    const t = ahora - T0;
+    ctx.clearRect(0, 0, W, H);
+    // polvo flotando en el foco
+    polvo.forEach(p => { p.y -= p.v * 16; p.x += Math.sin((t / 1000) + p.f) * 0.0002; if (p.y < -0.02) { p.y = 1.02; p.x = Math.random(); }
+      ctx.fillStyle = 'rgba(180,240,235,' + (p.a * (0.6 + 0.4 * Math.sin(t / 600 + p.f))) + ')'; ctx.beginPath(); ctx.arc(p.x * W, p.y * H, p.r, 0, 6.283); ctx.fill(); });
+    // volante: viene desde el fondo (arriba a la derecha) hacia la cámara, en curva, y remata en el centro
+    const ini = 700, fin = T_IMPACTO;
+    if (t > ini && t < fin + 60) {
+      const k = Math.min(1, (t - ini) / (fin - ini)), e = k * k * k;
+      const x = W * (0.82 - 0.32 * e) + Math.sin(k * 3.1) * W * 0.08 * (1 - k);
+      const y = H * (0.12 + 0.34 * e) - Math.sin(k * Math.PI) * H * 0.1;
+      const esc = (0.12 + 3.2 * e) * Math.min(W, H) / 700;
+      estela.push({ x, y, w: 26 * esc }); if (estela.length > 26) estela.shift();
+      for (let i = 1; i < estela.length; i++) { const a = i / estela.length; ctx.strokeStyle = 'rgba(61,214,196,' + (a * 0.55) + ')'; ctx.lineWidth = estela[i].w * a; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(estela[i - 1].x, estela[i - 1].y); ctx.lineTo(estela[i].x, estela[i].y); ctx.stroke(); }
+      const prev = estela[estela.length - 2] || { x: x + 1, y };
+      dibujarVolante(x, y, esc, Math.atan2(y - prev.y, x - prev.x));
+    } else if (t >= fin + 60 && estela.length) estela.length = 0;
+    if (!impactoHecho && t >= T_IMPACTO) {
+      impactoHecho = true; explotar(W * 0.5, H * 0.46);
+      flash.classList.add('on'); caja.classList.add('pt-shake'); escenaClub.classList.add('on');
+      if (sonido) sfx.impacto(ahoraAudio());
+    }
+    if (!barridoHecho && t >= T_BARRIDO) { barridoHecho = true; barrido.classList.add('on'); escenaClub.classList.add('off'); if (sonido) sfx.barrido(ahoraAudio()); }
+    if (!torneoHecho && t >= T_TORNEO) {
+      torneoHecho = true; escenaTorneo.classList.add('on'); if (sonido) sfx.brillo(ahoraAudio() + 0.2);
+      setTimeout(() => contadores.forEach(([b, n]) => { const t1 = performance.now(); const paso = () => { const k = Math.min(1, (performance.now() - t1) / 1100); b.textContent = String(Math.round(n * (1 - Math.pow(1 - k, 3)))); if (k < 1 && vivo) requestAnimationFrame(paso); }; paso(); }), 1900);
+      setTimeout(() => { if (vivo) explotar(W * 0.5, H * 0.5); }, 350);
+    }
+    // chispas y plumas
+    for (let i = chispas.length - 1; i >= 0; i--) {
+      const c = chispas[i]; c.x += c.vx; c.y += c.vy; c.vx *= c.pluma ? 0.97 : 0.955; c.vy = c.vy * (c.pluma ? 0.97 : 0.955) + (c.pluma ? 0.06 : 0.12); c.vida -= c.dec;
+      if (c.vida <= 0) { chispas.splice(i, 1); continue; }
+      if (c.pluma) { c.rot += c.vr; ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(c.rot); ctx.fillStyle = 'rgba(255,255,255,' + (c.vida * 0.8) + ')'; ctx.beginPath(); ctx.ellipse(0, 0, c.r, c.r * 0.28, 0, 0, 6.283); ctx.fill(); ctx.strokeStyle = 'rgba(61,214,196,' + c.vida + ')'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-c.r, 0); ctx.lineTo(c.r, 0); ctx.stroke(); ctx.restore(); }
+      else { ctx.fillStyle = 'rgba(' + c.col + ',' + c.vida + ')'; ctx.shadowColor = 'rgba(61,214,196,.9)'; ctx.shadowBlur = 10; ctx.beginPath(); ctx.arc(c.x, c.y, c.r * c.vida, 0, 6.283); ctx.fill(); ctx.shadowBlur = 0; }
+    }
+    raf = requestAnimationFrame(bucle);
+  };
+  if (reducido) {
+    escenaTorneo.classList.add('on'); impactoHecho = barridoHecho = torneoHecho = true; contadores.forEach(([b, n]) => { b.textContent = String(n); });
+  }
+  raf = requestAnimationFrame(bucle);
+  if (sonido && audio && !reducido) { try { audio.resume(); } catch (e) { } sfx.zumbido(ahoraAudio() + 0.75); }
+
+  function cerrar() {
+    vivo = false; cancelAnimationFrame(raf); window.removeEventListener('resize', ajustar); document.removeEventListener('keydown', teclas);
+    try { if (audio) audio.close(); } catch (e) { }
+    try { if (document.fullscreenElement) document.exitFullscreen(); } catch (e) { }
+    caja.remove();
+  }
+  const teclas = (e) => { if (e.key === 'Escape') cerrar(); };
+  caja.__cerrar = cerrar;
   document.addEventListener('keydown', teclas);
-  const b = caja.querySelector('.pt-botones button:last-child'); if (b) b.focus();
+  const b = caja.querySelector('.pt-botones button:last-child'); if (b) b.focus({ preventScroll: true });
 }
 window.mostrarPresentacionTorneo = mostrarPresentacionTorneo;
 

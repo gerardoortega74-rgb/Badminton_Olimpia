@@ -216,6 +216,42 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 .insc-form label.check input{width:20px;height:20px;flex:none;margin-top:1px;}
 .insc-bizum{background:#F0FBF9;border:1px solid #A9E9E0;border-radius:12px;padding:12px;margin:10px 0;}
 .insc-hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;}
+/* ===== Presentación animada del torneo ===== */
+#presTorneo{position:fixed;inset:0;z-index:10050;background:#14191C;color:#F2F3F1;overflow:hidden;font-family:inherit;}
+#presTorneo .pt-pista{position:absolute;inset:0;width:100%;height:100%;opacity:.45;}
+#presTorneo .pt-escena::before{content:'';position:absolute;inset:18% 6%;background:radial-gradient(ellipse at center,rgba(20,25,28,.85) 30%,transparent 72%);z-index:-1;}
+#presTorneo .pt-pista line,#presTorneo .pt-pista rect{fill:none;stroke:#3A464D;stroke-width:3;stroke-dasharray:4000;stroke-dashoffset:4000;animation:ptDibujar 1.6s ease-out forwards;}
+#presTorneo .pt-pista .pt-red{stroke:#3DD6C4;stroke-width:4;opacity:.7;animation-delay:.5s;}
+#presTorneo .pt-luz{position:absolute;inset:-20%;background:radial-gradient(circle at 50% 45%,rgba(61,214,196,.18),transparent 55%);opacity:0;animation:ptAparece 1.2s ease-out .8s forwards;}
+#presTorneo .pt-volante{position:absolute;left:-8%;top:62%;width:54px;height:54px;font-size:46px;line-height:54px;text-align:center;filter:drop-shadow(0 6px 10px rgba(0,0,0,.5));animation:ptVuelo 2.1s cubic-bezier(.3,.1,.3,1) .4s forwards;opacity:0;}
+#presTorneo .pt-escena{position:absolute;inset:0;z-index:1;isolation:isolate;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;}
+#presTorneo .pt-club{opacity:0;animation:ptEntraSale 3.6s ease-in-out 1.8s forwards;}
+#presTorneo .pt-logo{width:min(34vw,24vh,170px);height:min(34vw,24vh,170px);border-radius:28px;object-fit:contain;background:#fff;padding:10px;box-shadow:0 0 0 4px #3DD6C4,0 20px 60px rgba(0,0,0,.5);margin:0 auto 22px;display:block;}
+#presTorneo .pt-logo.sin{display:flex;align-items:center;justify-content:center;font-size:min(20vw,96px);background:#222A2F;}
+#presTorneo .pt-club-nombre{font-family:'Barlow Condensed',-apple-system,"Segoe UI",Roboto,sans-serif;font-weight:800;font-size:clamp(26px,min(6.5vw,9vh),72px);letter-spacing:.06em;text-transform:uppercase;line-height:1;}
+#presTorneo .pt-club-loc{margin-top:10px;font-size:clamp(13px,2.2vw,20px);letter-spacing:.35em;text-transform:uppercase;color:#9BA5AC;}
+#presTorneo .pt-presenta{margin-top:26px;font-size:clamp(14px,2.4vw,22px);letter-spacing:.5em;text-transform:uppercase;color:#3DD6C4;}
+#presTorneo .pt-torneo{opacity:0;animation:ptFinal 1.1s cubic-bezier(.2,.8,.2,1) 5.6s forwards;}
+#presTorneo .pt-mini{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:18px;font-size:clamp(12px,2vw,18px);letter-spacing:.3em;text-transform:uppercase;color:#9BA5AC;}
+#presTorneo .pt-mini img{height:clamp(30px,5vw,46px);width:auto;border-radius:8px;background:#fff;padding:3px;}
+#presTorneo .pt-titulo{font-family:'Barlow Condensed',-apple-system,"Segoe UI",Roboto,sans-serif;font-weight:800;font-size:clamp(34px,min(9vw,11vh),120px);line-height:.95;letter-spacing:.01em;text-transform:uppercase;max-width:1100px;text-wrap:balance;}
+#presTorneo .pt-raya{height:6px;width:0;background:#3DD6C4;border-radius:3px;margin:22px auto 20px;animation:ptRaya .9s ease-out 6.4s forwards;}
+#presTorneo .pt-datos{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;opacity:0;animation:ptAparece .8s ease-out 6.9s forwards;}
+#presTorneo .pt-dato{border:1px solid #3A464D;background:rgba(255,255,255,.04);border-radius:999px;padding:8px 16px;font-size:clamp(13px,2vw,19px);font-weight:700;}
+#presTorneo .pt-dato b{color:#3DD6C4;}
+#presTorneo .pt-botones{position:absolute;top:14px;right:14px;display:flex;gap:8px;z-index:2;}
+#presTorneo .pt-botones button{background:rgba(0,0,0,.45);color:#fff;border:1px solid rgba(255,255,255,.45);border-radius:20px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;}
+#presTorneo .pt-botones button:focus-visible{outline:3px solid #3DD6C4;outline-offset:2px;}
+@keyframes ptDibujar{to{stroke-dashoffset:0}}
+@keyframes ptAparece{to{opacity:1}}
+@keyframes ptVuelo{0%{opacity:1;transform:translate(0,0) rotate(-30deg)}45%{transform:translate(55vw,-48vh) rotate(60deg)}100%{opacity:1;transform:translate(118vw,-8vh) rotate(160deg)}}
+@keyframes ptEntraSale{0%{opacity:0;transform:scale(.92)}18%{opacity:1;transform:scale(1)}82%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.06)}}
+@keyframes ptFinal{0%{opacity:0;transform:translateY(30px) scale(.96);letter-spacing:.2em}100%{opacity:1;transform:none}}
+@keyframes ptRaya{to{width:min(60vw,420px)}}
+@media (prefers-reduced-motion:reduce){
+  #presTorneo *{animation-duration:.01s!important;animation-delay:0s!important}
+  #presTorneo .pt-club,#presTorneo .pt-volante{display:none}
+}
 .tabla-partidos{display:table !important;width:100% !important;max-width:100% !important;overflow:visible !important;white-space:normal !important;background:none !important;table-layout:auto;font-size:13px;}
 .tabla-partidos th,.tabla-partidos td{padding:6px 6px !important;vertical-align:middle;}
 .tabla-partidos th{white-space:nowrap;}
@@ -2520,6 +2556,11 @@ function viewConfig() {
       }, '📤 Compartir…') : null),
     ),
   ));
+
+  wrap.appendChild(el('div', { class: 'panel', style: 'display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;' },
+    el('div', {}, el('h2', { style: 'margin:0;' }, '🎬 Presentación del torneo'),
+      el('div', { class: 'sub', style: 'margin:4px 0 0;' }, 'Animación con el club y después el nombre del torneo. Ideal para proyectarla en la pista antes de empezar.')),
+    el('button', { class: 'btn btn-gold', onclick: () => { if (window.mostrarPresentacionTorneo) window.mostrarPresentacionTorneo(state); } }, '▶ Ver presentación')));
 
   const general = el('div', { class: 'panel' },
     el('h2', {}, 'Datos generales'),
@@ -11669,6 +11710,60 @@ function enviarInscripcion(vista, cat, msg) {
   });
 }
 
+
+// ===== PRESENTACIÓN ANIMADA DEL TORNEO =====
+// Primero el club (logo, nombre, localidad, "presenta") y después el nombre del torneo con sus datos.
+// Sirve para proyectarla en la pista antes de empezar. Esc o ✕ para cerrar.
+function mostrarPresentacionTorneo(st) {
+  st = st || {};
+  const meta = st.meta || {};
+  const cats = (st.categories || []).filter(c => c.enabled);
+  const participantes = cats.reduce((n, c) => n + ((c.players || []).length), 0);
+  const club = (typeof clubGlobal !== 'undefined' && clubGlobal) || {};
+  const nombreClub = club.nombre || 'Club de Bádminton';
+  const fecha = meta.date ? new Date(meta.date + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '';
+  const viejo = document.getElementById('presTorneo');
+  if (viejo) viejo.remove();
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('class', 'pt-pista'); svg.setAttribute('viewBox', '0 0 1340 610'); svg.setAttribute('preserveAspectRatio', 'xMidYMid slice'); svg.setAttribute('aria-hidden', 'true');
+  [['rect', { x: 20, y: 20, width: 1300, height: 570 }], ['line', { x1: 20, y1: 66, x2: 1320, y2: 66 }], ['line', { x1: 20, y1: 544, x2: 1320, y2: 544 }],
+   ['line', { x1: 466, y1: 20, x2: 466, y2: 590 }], ['line', { x1: 874, y1: 20, x2: 874, y2: 590 }], ['line', { x1: 96, y1: 20, x2: 96, y2: 590 }], ['line', { x1: 1244, y1: 20, x2: 1244, y2: 590 }],
+   ['line', { x1: 20, y1: 305, x2: 466, y2: 305 }], ['line', { x1: 874, y1: 305, x2: 1320, y2: 305 }], ['line', { x1: 670, y1: 10, x2: 670, y2: 600, class: 'pt-red' }]]
+    .forEach(([tag, at]) => { const n = document.createElementNS(NS, tag); Object.keys(at).forEach(k => n.setAttribute(k, at[k])); svg.appendChild(n); });
+  const logo = club.logo ? el('img', { class: 'pt-logo', src: club.logo, alt: '' }) : el('div', { class: 'pt-logo sin', 'aria-hidden': 'true' }, '🏸');
+  const datos = [];
+  if (fecha) datos.push(el('span', { class: 'pt-dato' }, '📅 ', fecha.charAt(0).toUpperCase() + fecha.slice(1)));
+  if (cats.length) datos.push(el('span', { class: 'pt-dato' }, el('b', {}, String(cats.length)), cats.length === 1 ? ' categoría' : ' categorías'));
+  if (participantes) datos.push(el('span', { class: 'pt-dato' }, el('b', {}, String(participantes)), ' participantes'));
+  if (st.config && st.config.courts) datos.push(el('span', { class: 'pt-dato' }, el('b', {}, String(st.config.courts)), ' pistas'));
+  const cerrar = () => {
+    document.removeEventListener('keydown', teclas);
+    try { if (document.fullscreenElement) document.exitFullscreen(); } catch (e) { }
+    caja.remove();
+  };
+  const teclas = (e) => { if (e.key === 'Escape') cerrar(); };
+  const caja = el('div', { id: 'presTorneo', role: 'dialog', 'aria-label': 'Presentación del torneo' },
+    svg, el('div', { class: 'pt-luz' }), el('div', { class: 'pt-volante', 'aria-hidden': 'true' }, '🏸'),
+    el('div', { class: 'pt-escena pt-club' }, logo,
+      el('div', { class: 'pt-club-nombre' }, nombreClub),
+      club.localidad && !nombreClub.toLowerCase().includes(String(club.localidad).toLowerCase()) ? el('div', { class: 'pt-club-loc' }, club.localidad) : null,
+      el('div', { class: 'pt-presenta' }, 'presenta')),
+    el('div', { class: 'pt-escena pt-torneo' },
+      el('div', { class: 'pt-mini' }, club.logo ? el('img', { src: club.logo, alt: '' }) : null, nombreClub),
+      el('h1', { class: 'pt-titulo' }, meta.title || 'Torneo'),
+      el('div', { class: 'pt-raya' }),
+      datos.length ? el('div', { class: 'pt-datos' }, datos) : null),
+    el('div', { class: 'pt-botones' },
+      el('button', { type: 'button', onclick: () => { cerrar(); mostrarPresentacionTorneo(st); } }, '↻ Repetir'),
+      document.documentElement.requestFullscreen ? el('button', { type: 'button', onclick: () => { try { if (document.fullscreenElement) document.exitFullscreen(); else caja.requestFullscreen(); } catch (e) { } } }, '⛶ Pantalla completa') : null,
+      el('button', { type: 'button', onclick: cerrar }, '✕ Cerrar')));
+  document.body.appendChild(caja);
+  document.addEventListener('keydown', teclas);
+  const b = caja.querySelector('.pt-botones button:last-child'); if (b) b.focus();
+}
+window.mostrarPresentacionTorneo = mostrarPresentacionTorneo;
+
 function timeToMinutesPublico(t) { const p = String(t || '99:99').split(':'); return (parseInt(p[0], 10) || 0) * 60 + (parseInt(p[1], 10) || 0); }
 function renderVistaPublica() {
   const scrollGuardado = window.scrollY;
@@ -11755,6 +11850,9 @@ function renderVistaPublica() {
     st.meta.date ? el('div', { class: 'sub' }, 'Fecha: ' + st.meta.date) : null,
     finalizado ? el('div', { class: 'chip chip-muted', style: 'margin-top:6px;' }, '📁 Este torneo ya ha finalizado') : null,
   ));
+  root.lastChild.appendChild(el('button', { class: 'btn btn-ghost btn-sm', style: 'margin-top:8px;', onclick: () => mostrarPresentacionTorneo(st) }, '🎬 Ver presentación'));
+  // ?presentacion=1 la lanza sola al abrir (para una pantalla o proyector), solo la primera vez
+  if (!window.__presLanzada && new URLSearchParams(location.search).get('presentacion') === '1') { window.__presLanzada = true; setTimeout(() => mostrarPresentacionTorneo(st), 300); }
   const panelPistas = panelPistasEnDirectoPublico(st);
   if (panelPistas) root.appendChild(panelPistas);
 

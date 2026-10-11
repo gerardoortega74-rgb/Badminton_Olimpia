@@ -246,6 +246,15 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 #presTorneo .pt-anillo{position:absolute;left:50%;top:50%;width:100%;height:100%;border:3px solid #3DD6C4;border-radius:36px;transform:translate(-50%,-50%) scale(1);opacity:0;}
 #presTorneo .pt-logo-wrap.golpe .pt-anillo,#presTorneo .pt-logo-wrap.revela .pt-anillo{animation:ptAnillo 1.1s ease-out .35s forwards;}
 #presTorneo .pt-logo-wrap.golpe .pt-anillo.b,#presTorneo .pt-logo-wrap.revela .pt-anillo.b{animation-delay:.55s;}
+#presTorneo .pt-logo.pt-logo-svg{width:min(50vw,40vh,420px);height:auto;background:none;padding:0;box-shadow:none;border-radius:0;}
+#presTorneo .pt-logo.pt-logo-svg svg{width:100%;height:auto;display:block;}
+#presTorneo .pt-logo-wrap.es-svg.revela{filter:drop-shadow(0 0 22px rgba(61,214,196,.45)) drop-shadow(0 18px 40px rgba(0,0,0,.6));}
+#presTorneo .pt-traza{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;opacity:0;transition:opacity .6s ease;}
+#presTorneo .pt-traza path{fill:none;stroke:#3DD6C4;stroke-width:3.5;stroke-linejoin:round;}
+#presTorneo .pt-logo-wrap.trazando .pt-traza{opacity:1;filter:drop-shadow(0 0 5px rgba(61,214,196,.95));}
+#presTorneo .pt-logo-wrap.revela .pt-traza{opacity:0;}
+#presTorneo .pt-logo-wrap.es-svg .pt-anillo{border-radius:50%;width:118%;height:140%;}
+#presTorneo .pt-mini svg{height:clamp(34px,6vw,58px);width:auto;}
 @keyframes ptRevela{0%{clip-path:inset(0 0 100% 0 round 30px);filter:brightness(2.2)}100%{clip-path:inset(0 0 0 0 round 30px);filter:brightness(1)}}
 @keyframes ptEscaneo{0%{top:0;opacity:1}90%{top:100%;opacity:1}100%{top:100%;opacity:0}}
 #presTorneo .pt-club-nombre{font-family:'Barlow Condensed',-apple-system,"Segoe UI",Roboto,sans-serif;font-weight:800;font-size:clamp(26px,min(6.6vw,9vh),78px);letter-spacing:.05em;text-transform:uppercase;line-height:1.02;max-width:1100px;}
@@ -11786,9 +11795,18 @@ function mostrarPresentacionTorneo(st) {
     .forEach(([tag, at]) => { const n = document.createElementNS(NS, tag); Object.keys(at).forEach(k => n.setAttribute(k, at[k])); svg.appendChild(n); });
 
   const canvas = el('canvas', { 'aria-hidden': 'true' });
-  const logo = club.logo ? el('img', { class: 'pt-logo', src: club.logo, alt: '' }) : el('div', { class: 'pt-logo sin', 'aria-hidden': 'true' }, '🏸');
+  // Logo del club: el escudo vectorial del club (blanco) si está; si no, la imagen subida en Datos del club; si no, un volante
+  const svgClub = (typeof OL_LOGO_CLUB_BLANCO !== 'undefined' && OL_LOGO_CLUB_BLANCO) ? OL_LOGO_CLUB_BLANCO : '';
+  const logo = svgClub ? el('div', { class: 'pt-logo pt-logo-svg', html: svgClub })
+    : club.logo ? el('img', { class: 'pt-logo', src: club.logo, alt: '' }) : el('div', { class: 'pt-logo sin', 'aria-hidden': 'true' }, '🏸');
+  let traza = null;
+  if (svgClub) {
+    const d = (svgClub.match(/\sd="([^"]+)"/) || [])[1];
+    const vb = (svgClub.match(/viewBox="([^"]+)"/) || [])[1];
+    if (d && vb) { traza = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); traza.setAttribute('class', 'pt-traza'); traza.setAttribute('viewBox', vb); const pa = document.createElementNS('http://www.w3.org/2000/svg', 'path'); pa.setAttribute('d', d); traza.appendChild(pa); }
+  }
   const escenaClub = el('div', { class: 'pt-escena pt-club' },
-    el('div', { class: 'pt-logo-wrap' }, logo, el('div', { class: 'pt-anillo' }), el('div', { class: 'pt-anillo b' })),
+    el('div', { class: 'pt-logo-wrap' + (svgClub ? ' es-svg' : '') }, logo, traza, el('div', { class: 'pt-anillo' }), el('div', { class: 'pt-anillo b' })),
     el('div', { class: 'pt-club-nombre' }, letras(nombreClub, RETARDO_NOMBRE, 0.035)),
     club.localidad && !nombreClub.toLowerCase().includes(String(club.localidad).toLowerCase()) ? el('div', { class: 'pt-presenta', style: 'margin-top:10px;letter-spacing:.4em;color:#9BA5AC;text-shadow:none;' }, club.localidad) : null,
     el('div', { class: 'pt-presenta', style: 'animation-delay:' + (RETARDO_NOMBRE + 0.85).toFixed(2) + 's' }, 'presenta'));
@@ -11802,7 +11820,7 @@ function mostrarPresentacionTorneo(st) {
   datos.forEach((d, i) => { d.style.animationDelay = (1.9 + i * 0.15).toFixed(2) + 's'; });
   const titulo = meta.title || 'Torneo';
   const escenaTorneo = el('div', { class: 'pt-escena pt-torneo' },
-    el('div', { class: 'pt-mini' }, club.logo ? el('img', { src: club.logo, alt: '' }) : null, nombreClub),
+    el('div', { class: 'pt-mini' }, svgClub ? el('span', { html: svgClub }) : club.logo ? el('img', { src: club.logo, alt: '' }) : null, nombreClub),
     el('h1', { class: 'pt-titulo' }, el('span', { class: 'pt-brillo' }, letras(titulo, 0.15, Math.min(0.045, 0.9 / Math.max(1, titulo.length))))),
     el('div', { class: 'pt-raya' }),
     datos.length ? el('div', { class: 'pt-datos' }, datos) : null);
@@ -11857,18 +11875,25 @@ function mostrarPresentacionTorneo(st) {
       const c2 = off.getContext('2d');
       const rad = lado * 0.16;
       const tarjeta = (fondo) => { c2.fillStyle = fondo; c2.beginPath(); if (c2.roundRect) c2.roundRect(0, 0, lado, lado, rad); else c2.rect(0, 0, lado, lado); c2.fill(); };
-      const terminar = () => {
-        let datos; try { datos = c2.getImageData(0, 0, lado, lado).data; } catch (e) { return res(null); }
-        const paso = Math.max(3, Math.round(lado / 62));
+      const terminar = (blanco) => {
+        const alto = off.height;
+        let datos; try { datos = c2.getImageData(0, 0, lado, alto).data; } catch (e) { return res(null); }
+        const paso = Math.max(3, Math.round(lado / (blanco ? 95 : 62)));
         const pts = [];
-        for (let y = 0; y < lado; y += paso) for (let x = 0; x < lado; x += paso) {
+        for (let y = 0; y < alto; y += paso) for (let x = 0; x < lado; x += paso) {
           const i = (y * lado + x) * 4; if (datos[i + 3] < 120) continue;
-          pts.push({ tx: r.left - cr.left + x, ty: r.top - cr.top + y, col: 'rgb(' + datos[i] + ',' + datos[i + 1] + ',' + datos[i + 2] + ')',
+          pts.push({ tx: r.left - cr.left + x, ty: r.top - cr.top + y, col: blanco ? (Math.random() < 0.18 ? '#3DD6C4' : '#FFFFFF') : 'rgb(' + datos[i] + ',' + datos[i + 1] + ',' + datos[i + 2] + ')',
             ang: Math.random() * 6.283, dist: (Math.random() * 0.6 + 0.4) * Math.max(W, H) * 0.55, giro: (Math.random() - 0.5) * 3, ret: Math.random() * 0.45, tam: paso * (0.75 + Math.random() * 0.35) });
         }
         res(pts.length ? { pts, paso } : null);
       };
-      if (club.logo) {
+      if (svgClub) {
+        const img = new Image();
+        img.onload = () => { const s = Math.min(lado / img.width, (r.height || lado) / img.height); const w = img.width * s, h = img.height * s; off.height = Math.round(r.height || lado); c2.drawImage(img, (lado - w) / 2, (off.height - h) / 2, w, h); terminar(true); };
+        img.onerror = () => res(null);
+        const vb = ((svgClub.match(/viewBox="([^"]+)"/) || [])[1] || '0 0 100 100').split(/\s+/).map(Number);
+        img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgClub.replace('<svg ', '<svg width="' + vb[2] + '" height="' + vb[3] + '" '));
+      } else if (club.logo) {
         const img = new Image();
         img.onload = () => { tarjeta('#ffffff'); const m = lado * 0.07, s = Math.min((lado - 2 * m) / img.width, (lado - 2 * m) / img.height); const w = img.width * s, h = img.height * s; c2.drawImage(img, (lado - w) / 2, (lado - h) / 2, w, h); terminar(); };
         img.onerror = () => res(null);
@@ -11944,7 +11969,13 @@ function mostrarPresentacionTorneo(st) {
       impactoHecho = true; explotar(W * 0.5, H * 0.46);
       flash.classList.add('on'); caja.classList.add('pt-shake'); escenaClub.classList.add('on');
       if (sonido) sfx.impacto(ahoraAudio());
+      if (traza) {
+        // el contorno del escudo se dibuja con luz mientras llegan las partículas
+        try { const pa = traza.querySelector('path'); const L = pa.getTotalLength(); pa.style.strokeDasharray = L + ' ' + L; pa.style.strokeDashoffset = L;
+          logoWrap.classList.add('trazando'); pa.animate([{ strokeDashoffset: L }, { strokeDashoffset: 0 }], { duration: 1500, easing: 'cubic-bezier(.5,0,.2,1)', fill: 'forwards' }); } catch (e) { }
+      }
       if (puntosLogo) { logoT0 = t; if (sonido) { sfx.barrido(ahoraAudio() + 0.25); sfx.brillo(ahoraAudio() + 1.45); } }
+      else if (traza) { setTimeout(() => mostrarLogoReal('revela'), 1500); if (sonido) sfx.brillo(ahoraAudio() + 1.45); }
       else mostrarLogoReal('golpe');
     }
     if (!barridoHecho && t >= T_BARRIDO) { barridoHecho = true; barrido.classList.add('on'); escenaClub.classList.add('off'); if (sonido) sfx.barrido(ahoraAudio()); }

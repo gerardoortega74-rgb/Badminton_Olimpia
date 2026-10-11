@@ -11766,8 +11766,9 @@ function enviarInscripcion(vista, cat, msg) {
 // Secuencia: pista en 3D que se dibuja con luz → volante que viene hacia la cámara y estalla en un remate →
 // logo del club con onda expansiva y nombre letra a letra → barrido de luz → nombre del torneo y datos.
 // Partículas y estela en un canvas; sonido sintetizado (sin archivos) que se puede silenciar.
-function mostrarPresentacionTorneo(st) {
+function mostrarPresentacionTorneo(st, opciones) {
   st = st || {};
+  opciones = opciones || {};
   const meta = st.meta || {};
   const cats = (st.categories || []).filter(c => c.enabled);
   const participantes = cats.reduce((n, c) => n + ((c.players || []).length), 0);
@@ -11838,12 +11839,16 @@ function mostrarPresentacionTorneo(st) {
       btnSonido,
       el('button', { type: 'button', onclick: () => { cerrar(); mostrarPresentacionTorneo(st); } }, '↻ Repetir'),
       document.documentElement.requestFullscreen ? el('button', { type: 'button', onclick: () => { try { if (document.fullscreenElement) document.exitFullscreen(); else caja.requestFullscreen(); } catch (e) { } } }, '⛶ Pantalla completa') : null,
-      el('button', { type: 'button', onclick: () => cerrar() }, '✕ Cerrar')));
+      el('button', { type: 'button', onclick: () => cerrar() }, opciones.auto ? 'Saltar ⏭' : '✕ Cerrar')));
   document.body.appendChild(caja);
+  // Lanzada sola al entrar en el enlace: se cierra sola al terminar (salvo en modo proyector)
+  if (opciones.cerrarSola) setTimeout(() => { if (document.body.contains(caja)) { caja.style.transition = 'opacity .8s ease'; caja.style.opacity = '0'; setTimeout(() => { if (caja.__cerrar) caja.__cerrar(); }, 800); } }, reducido ? 2500 : 13500);
 
   // ---- Sonido sintetizado ----
   let audio = null;
   try { const AC = window.AudioContext || window.webkitAudioContext; if (AC) { audio = new AC(); if (!sonido) audio.suspend(); } } catch (e) { audio = null; }
+  // Al abrir el enlace, el navegador no deja sonar nada hasta que la persona toca la pantalla: esa vez va en silencio
+  if (audio && audio.state !== 'running' && opciones.auto) { sonido = false; btnSonido.textContent = '🔇'; }
   const ruido = (dur) => { const b = audio.createBuffer(1, Math.floor(audio.sampleRate * dur), audio.sampleRate); const d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; const s = audio.createBufferSource(); s.buffer = b; return s; };
   const sfx = {
     zumbido(t) { if (!audio) return; const s = ruido(1.6), f = audio.createBiquadFilter(), g = audio.createGain(); f.type = 'bandpass'; f.Q.value = 2.5; f.frequency.setValueAtTime(300, t); f.frequency.exponentialRampToValueAtTime(4200, t + 1.25); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.5, t + 1.15); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.4); s.connect(f).connect(g).connect(audio.destination); s.start(t); s.stop(t + 1.6); },
@@ -12014,6 +12019,13 @@ function mostrarPresentacionTorneo(st) {
 }
 window.mostrarPresentacionTorneo = mostrarPresentacionTorneo;
 
+// Al entrar en el enlace del torneo se lanza la presentación una vez. Con ?presentacion=1 (proyector) se queda en la pantalla final.
+function lanzarPresentacionAlEntrar(st) {
+  if (window.__presLanzada) return;
+  window.__presLanzada = true;
+  const proyector = new URLSearchParams(location.search).get('presentacion') === '1';
+  setTimeout(() => mostrarPresentacionTorneo(st, { auto: true, cerrarSola: !proyector }), 250);
+}
 function timeToMinutesPublico(t) { const p = String(t || '99:99').split(':'); return (parseInt(p[0], 10) || 0) * 60 + (parseInt(p[1], 10) || 0); }
 function renderVistaPublica() {
   const scrollGuardado = window.scrollY;
@@ -12059,6 +12071,7 @@ function renderVistaPublica() {
       const podios = (ent.podios && ent.podios.length) ? ent.podios
         : TorneoApp.podiosDeEstado(ent.id === TorneoApp.getTorneoActivoId() ? TorneoApp.getState() : ent.snapshot);
       document.getElementById('shellSubtitle').textContent = '🏁 Torneo finalizado · clasificación final';
+      lanzarPresentacionAlEntrar(ent.snapshot || { meta: { title: ent.nombre || 'Torneo', date: ent.fechaInicio || '' }, categories: [], config: {} });
       root.appendChild(el('div', { class: 'panel', style: 'text-align:center;padding:22px 16px;' },
         el('h2', {}, '🏆 ' + (ent.nombre || 'Torneo')),
         el('div', { class: 'sub' }, 'Torneo finalizado. ¡Enhorabuena a los ganadores y gracias a todos por participar!')));
@@ -12101,8 +12114,7 @@ function renderVistaPublica() {
     finalizado ? el('div', { class: 'chip chip-muted', style: 'margin-top:6px;' }, '📁 Este torneo ya ha finalizado') : null,
   ));
   root.lastChild.appendChild(el('button', { class: 'btn btn-ghost btn-sm', style: 'margin-top:8px;', onclick: () => mostrarPresentacionTorneo(st) }, '🎬 Ver presentación'));
-  // ?presentacion=1 la lanza sola al abrir (para una pantalla o proyector), solo la primera vez
-  if (!window.__presLanzada && new URLSearchParams(location.search).get('presentacion') === '1') { window.__presLanzada = true; setTimeout(() => mostrarPresentacionTorneo(st), 300); }
+  lanzarPresentacionAlEntrar(st);
   const panelPistas = panelPistasEnDirectoPublico(st);
   if (panelPistas) root.appendChild(panelPistas);
 

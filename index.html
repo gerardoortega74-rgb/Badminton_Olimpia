@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261013-tienda6">
+<meta name="build-id" content="v20261013-tienda7">
 <script>try{if(new URLSearchParams(location.search).get('tiendaonline')==='1')document.documentElement.classList.add('tienda-pre');}catch(e){}</script>
 <style>html.tienda-pre,html.tienda-pre body{background:#061C3B !important;}html.tienda-pre header.app-header,html.tienda-pre footer.hint,html.tienda-pre #introScreen,html.tienda-pre #shellMain>*:not(#tiendaOnlineScreen){display:none !important;}</style>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -1289,6 +1289,10 @@ body.tienda-on header.app-header,body.tienda-on footer.hint,body.tienda-on #marc
 body.tienda-on main#shellMain{max-width:none !important;margin:0 !important;padding:0 !important;}
 #tiendaOnlineScreen{--tn:#0B2D5B;--tn2:#061C3B;--tr:#E0162B;--trd:#B30F20;color:#14213A;font-family:inherit;}
 #tiendaOnlineScreen *{box-sizing:border-box;}
+.tdo-volver-barra{background:#030F22;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;position:sticky;top:0;z-index:60;}
+.tdo-volver{display:inline-flex;align-items:center;min-height:40px;padding:0 16px;border-radius:999px;background:#E0162B;color:#fff !important;font-weight:800;font-size:14px;text-decoration:none;}
+.tdo-volver:hover{background:#B30F20;}
+.tdo-volver-barra span{color:#9CC2F2;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;}
 .tdo-ico{display:inline-flex;width:20px;height:20px;flex-shrink:0;}
 .tdo-ico svg{width:100%;height:100%;}
 .tdo-hero{position:relative;overflow:hidden;color:#fff;background:radial-gradient(120% 90% at 85% 0%,#1B4C8C 0%,rgba(27,76,140,0) 60%),linear-gradient(160deg,var(--tn) 0%,var(--tn2) 100%);padding:clamp(28px,6vw,64px) 20px clamp(64px,9vw,96px);}
@@ -9357,7 +9361,7 @@ function viewVentaOnline() {
     el('div', { class: agotados ? 'aviso' : '' }, el('b', {}, String(agotados)), el('span', {}, agotados === 1 ? 'agotado' : 'agotados')),
     el('div', { class: sinFoto ? 'aviso' : '' }, el('b', {}, String(sinFoto)), el('span', {}, 'sin foto'))));
   panel.appendChild(el('div', { class: 'toolbar', style: 'margin:10px 0;flex-wrap:wrap;gap:8px;' },
-    el('a', { class: 'btn btn-gold btn-sm', href: enlace, target: '_blank', rel: 'noopener' }, 'Ver la tienda'),
+    el('a', { class: 'btn btn-gold btn-sm', href: enlace + '&desde=app' }, 'Ver la tienda'),
     el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { (navigator.clipboard ? navigator.clipboard.writeText(enlace) : Promise.reject()).then(() => alert('Enlace de la tienda copiado.')).catch(() => alert(enlace)); } }, 'Copiar enlace de la tienda')));
   if (!enVenta.length) {
     panel.appendChild(el('div', { class: 'empty-state' }, 'Todavía no hay ningún artículo a la venta online. Añádelo con el desplegable de abajo.'));
@@ -11895,6 +11899,19 @@ function renderTiendaOnline() {
     else d.textContent = nombreTienda;
     return d;
   };
+
+  // Volver al programa: solo cuando se entra desde la app o en un dispositivo con sesión del programa (no lo ve el cliente)
+  let vieneDeApp = false;
+  try { vieneDeApp = new URLSearchParams(location.search).get('desde') === 'app' || !!localStorage.getItem('badmintonSesion'); } catch (e) {}
+  if (vieneDeApp) {
+    root.appendChild(el('div', { class: 'tdo-volver-barra' },
+      el('a', { class: 'tdo-volver', href: location.pathname, onclick: (e) => {
+        e.preventDefault();
+        let mismaApp = false; try { mismaApp = document.referrer && new URL(document.referrer).origin === location.origin && !new URL(document.referrer).search.includes('tiendaonline'); } catch (er) {}
+        if (mismaApp && history.length > 1) history.back(); else location.href = location.pathname;
+      } }, '← Volver al programa'),
+      el('span', {}, 'Vista de cliente')));
+  }
 
   // Portada
   const hero = el('section', { class: 'tdo-hero' },

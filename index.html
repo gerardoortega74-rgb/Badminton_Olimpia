@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261013-tienda7">
+<meta name="build-id" content="v20261015-permisos">
 <script>try{if(new URLSearchParams(location.search).get('tiendaonline')==='1')document.documentElement.classList.add('tienda-pre');}catch(e){}</script>
 <style>html.tienda-pre,html.tienda-pre body{background:#061C3B !important;}html.tienda-pre header.app-header,html.tienda-pre footer.hint,html.tienda-pre #introScreen,html.tienda-pre #shellMain>*:not(#tiendaOnlineScreen){display:none !important;}</style>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12984,6 +12984,19 @@ const AYUDA_INDICE = [
   { pregunta: 'Ver la contabilidad del taller y lo pendiente de cobro', ruta: 'Menú → bloque del Taller de Raquetas → Contabilidad', palabras: 'contabilidad taller ingreso gasto pendiente cobro pdf' },
   { pregunta: 'Cambiar precios, tiempos, nombre del taller, logo o tarjeta de visita', ruta: 'Menú → bloque del Taller de Raquetas → Configuración', palabras: 'configuracion taller precio tiempo nombre logo tarjeta visita publicidad' },
 ];
+// En la ayuda solo sale lo que el usuario puede usar (según la ruta de cada entrada).
+function ayudaPermitida(item) {
+  if (esAdmin()) return true;
+  const r = String(item.ruta || '') + ' ' + String(item.pregunta || '');
+  if (/Control horario|Trabajadores|N[oó]minas|Control de acceso|Correo|⚙️/i.test(r)) return false;
+  if (/Taller|Almac[eé]n|encordad|IDERMAY/i.test(r)) return tienePermiso('taller');
+  if (/Pagos|Cuota|Contabilidad|Recibo|Tarifa/i.test(r)) return tienePermiso('pagos');
+  if (/Datos del club/i.test(r)) return tienePermiso('club');
+  if (/Jugadores|Base general/i.test(r)) return tienePermiso('jugadores');
+  if (/Torneo/i.test(r)) return tienePermiso('torneo');
+  if (/Planificaci[oó]n/i.test(r)) return tienePermiso('planificacion');
+  return true;
+}
 function abrirAyuda() {
   const root = document.getElementById('torneoModalRoot');
   if (!root) return;
@@ -12994,7 +13007,8 @@ function abrirAyuda() {
     if (!cont) return;
     cont.innerHTML = '';
     const f = normalizar(filtro).trim();
-    const resultados = f ? AYUDA_INDICE.filter(item => normalizar(item.pregunta + ' ' + item.palabras).includes(f)) : AYUDA_INDICE;
+    const visibles = AYUDA_INDICE.filter(ayudaPermitida);
+    const resultados = f ? visibles.filter(item => normalizar(item.pregunta + ' ' + item.palabras).includes(f)) : visibles;
     if (!resultados.length) {
       cont.appendChild(el('div', { class: 'empty-state' }, 'No he encontrado nada con esas palabras. Prueba con otro término.'));
       return;
@@ -13026,7 +13040,7 @@ function showSection(sec) {
   if (sec !== 'fichar' && typeof fxPararGPS === 'function') fxPararGPS();
   if (sec === 'controlhorario') { goToClubGestion('horario'); return; }
   const permitido = sec === 'correo' ? esAdmin() : sec === 'fichar' ? !!(sesionActual || !accesoActivo()) : sec === 'clubgestion' ? (tienePermiso('club') || tienePermiso('jugadores') || tienePermiso('pagos')) : tienePermiso(sec);
-  if (!permitido) { alert('No tienes permiso para ver esta sección.'); sec = 'home'; }
+  if (!permitido) sec = 'home';
   currentSection = sec;
   if (sec !== 'taller') document.body.classList.remove('taller-sidebar-on');
   const cuentaCorreo = sec === 'correo' && typeof CorreoApp !== 'undefined' ? CorreoApp.cuentaActiva() : null;
@@ -14050,8 +14064,11 @@ function renderPanelClub(root, gruposClub, onclickClub) {
   const ir = (fn) => () => { document.body.classList.remove('dg-panel'); fn(); };
 
   // Cuotas
-  const rc = (typeof PagosApp !== 'undefined' && PagosApp.resumenCuotas) ? PagosApp.resumenCuotas() : null;
-  if (rc && !rc.sinDatos) {
+  const verCuotas = tienePermiso('pagos');
+  const rc = (verCuotas && typeof PagosApp !== 'undefined' && PagosApp.resumenCuotas) ? PagosApp.resumenCuotas() : null;
+  if (!verCuotas) {
+    // sin permiso de pagos: no se enseña nada de cuotas
+  } else if (rc && !rc.sinDatos) {
     const pct = rc.socios ? Math.round(rc.pagados / rc.socios * 100) : 0;
     const L = 314.16, off = L * (1 - pct / 100);
     const mesTxt = new Date().toLocaleDateString('es-ES', { month: 'long' });
@@ -14069,10 +14086,12 @@ function renderPanelClub(root, gruposClub, onclickClub) {
       `<div><div class="dg-et">${dgI('cuotas')}Cuotas</div><h3>Sin cuotas configuradas</h3><div class="dg-sub">Crea las tarifas y marca a los jugadores como «Club» para ver aquí lo cobrado.</div></div>`));
   }
   // Jugadores
-  const js = (typeof jugadoresGlobal !== 'undefined' ? jugadoresGlobal : []);
-  const fed = js.filter(j => j.federado).length;
-  bento.appendChild(dgPieza('', ir(() => goToClubGestion('jugadores')),
-    `<span class="dg-fl">${dgI('flecha')}</span><div class="dg-et">${dgI('jugadores')}Jugadores</div><div class="dg-num">${js.length}</div><div class="dg-sub"><b>${fed}</b> federado${fed === 1 ? '' : 's'}</div>`));
+  if (tienePermiso('jugadores')) {
+    const js = (typeof jugadoresGlobal !== 'undefined' ? jugadoresGlobal : []);
+    const fed = js.filter(j => j.federado).length;
+    bento.appendChild(dgPieza('', ir(() => goToClubGestion('jugadores')),
+      `<span class="dg-fl">${dgI('flecha')}</span><div class="dg-et">${dgI('jugadores')}Jugadores</div><div class="dg-num">${js.length}</div><div class="dg-sub"><b>${fed}</b> federado${fed === 1 ? '' : 's'}</div>`));
+  }
   // Personal
   if (esAdmin()) {
     const nTrab = (accessControl.usuarios || []).filter(u => u.rol === 'trabajador').length;
@@ -14096,8 +14115,10 @@ function renderPanelClub(root, gruposClub, onclickClub) {
     if (chPendientesSolicitudes) pendientes.push(chPendientesSolicitudes + (chPendientesSolicitudes === 1 ? ' solicitud' : ' solicitudes'));
   }
   // Torneo
-  const tr = dgResumenTorneo();
-  if (tr) {
+  const tr = tienePermiso('torneo') ? dgResumenTorneo() : null;
+  if (!tienePermiso('torneo')) {
+    // sin permiso de torneos
+  } else if (tr) {
     let mini = '';
     if (tr.rondas) {
       mini = `<div class="dg-cuadro">${tr.rondas.map(r => `<div class="dg-ronda">${r.map(m => `<i class="${m.hecho ? 'g' : m.listo ? 'y' : ''}"></i>`).join('')}</div>`).join('')}</div><div class="dg-fase">${tr.nombres.map(n => `<span>${dgEsc(n)}</span>`).join('')}</div>`;
@@ -14124,21 +14145,21 @@ function renderPanelClub(root, gruposClub, onclickClub) {
     bento.appendChild(dgPieza('', ir(() => CorreoApp.irA('todo')), `<span class="dg-fl">${dgI('flecha')}</span><div class="dg-et">${dgI('correo')}Correo</div>${cuerpo}<div class="dg-sub">info + bot, juntos</div>`));
   }
   // Planificación
-  const pl = dgResumenPlan();
-  bento.appendChild(dgPieza('', ir(() => showSection('planificacion')), pl
+  const pl = tienePermiso('planificacion') ? dgResumenPlan() : null;
+  if (tienePermiso('planificacion')) bento.appendChild(dgPieza('', ir(() => showSection('planificacion')), pl
     ? `<span class="dg-fl">${dgI('flecha')}</span><div class="dg-et">${dgI('calendario')}Temporada</div><div class="dg-num">${pl.semana}<small>/ ${pl.total}</small></div><div class="dg-sub">semana${pl.fase ? ' · <b>' + dgEsc(pl.fase) + '</b>' : ''}</div><div class="dg-prog"><i style="width:${Math.round(pl.semana / pl.total * 100)}%"></i></div>`
     : `<span class="dg-fl">${dgI('flecha')}</span><div class="dg-et">${dgI('calendario')}Temporada</div><div class="dg-sub" style="margin-top:auto">Pon las fechas de la temporada para ver en qué semana estáis.</div>`));
   // Accesos rápidos
   const acc = el('section', { class: 'dg-p dg-w2 dg-acc' });
   const accion = (icono, texto, fn) => { const a = el('button', { type: 'button', html: dgI(icono) + '<span>' + texto + '</span>' }); a.addEventListener('click', ir(fn)); acc.appendChild(a); };
-  accion('altaJugador', 'Nuevo jugador', () => { goToClubGestion('jugadores'); setTimeout(() => { const d = Array.from(document.querySelectorAll('#clubGestionScreen details')).find(x => /Nuevo jugador/.test(x.textContent)); if (d) { d.open = true; d.scrollIntoView({ block: 'start' }); const i = d.querySelector('input'); if (i) i.focus(); } }, 60); });
-  accion('gasto', 'Apuntar gasto', () => { goToClubGestion('pagos'); if (PagosApp.irATab) PagosApp.irATab('contabilidad'); });
-  accion('copa', 'Torneos', () => showSection('torneo'));
-  bento.appendChild(acc);
+  if (tienePermiso('jugadores') && !esSoloLectura()) accion('altaJugador', 'Nuevo jugador', () => { goToClubGestion('jugadores'); setTimeout(() => { const d = Array.from(document.querySelectorAll('#clubGestionScreen details')).find(x => /Nuevo jugador/.test(x.textContent)); if (d) { d.open = true; d.scrollIntoView({ block: 'start' }); const i = d.querySelector('input'); if (i) i.focus(); } }, 60); });
+  if (tienePermiso('pagos') && !esSoloLectura()) accion('gasto', 'Apuntar gasto', () => { goToClubGestion('pagos'); if (PagosApp.irATab) PagosApp.irATab('contabilidad'); });
+  if (tienePermiso('torneo')) accion('copa', 'Torneos', () => showSection('torneo'));
+  if (acc.children.length) bento.appendChild(acc);
   // Todas las secciones (lo que había antes, para no perder nada)
   const iconoDe = (t) => /Torneo/i.test(t) ? 'copa' : /Planific/i.test(t) ? 'calendario' : /Gesti/i.test(t) ? 'edificio' : /Trabajador/i.test(t) ? 'maletin' : /N[oó]mina/i.test(t) ? 'documento' : /horario/i.test(t) ? 'reloj' : 'mas';
   const lista = el('nav', { class: 'dg-lista', 'aria-label': 'Todas las secciones del club' }, el('div', { class: 'dg-et' }, 'Todas las secciones'));
-  gruposClub.filter(c => !c.permiso || tienePermiso(c.permiso)).forEach(c => {
+  gruposClub.filter(c => c.permiso ? tienePermiso(c.permiso) : (c.tab ? esAdmin() : (tienePermiso('club') || tienePermiso('jugadores') || tienePermiso('pagos')))).forEach(c => {
     const b = el('button', { type: 'button', html: dgI(iconoDe(c.title), 'ic') + '<span><b>' + dgEsc(c.title) + '</b><small>' + dgEsc(String(c.desc || '').replace(/[\u{1F300}-\u{1FAFF}☀-➿]️?/gu, '')) + '</small></span>' + dgI('mas', 'ch') });
     b.addEventListener('click', ir(() => onclickClub(c))); lista.appendChild(b);
   });
@@ -14632,7 +14653,7 @@ function renderHome() {
   const gruposClub = [
     { icon: '🏆', title: 'Gestor de Torneos', desc: 'Grupos, sorteo, calendario, resultados y eliminatoria.', sec: 'torneo', permiso: 'torneo' },
     { icon: '📅', title: 'Planificación Anual', desc: 'De la iniciación a la tecnificación: macrociclo, microciclo y evaluación.', sec: 'planificacion', permiso: 'planificacion' },
-    { icon: '🏛️', title: 'Gestión de Club', desc: 'Datos del club, jugadores, y pagos y cuotas.', sec: 'clubgestion', permiso: null },
+    { icon: '🏛️', title: 'Gestión de Club', desc: esAdmin() ? 'Datos del club, jugadores, y pagos y cuotas.' : ([tienePermiso('club') ? 'datos del club' : '', tienePermiso('jugadores') ? 'jugadores' : '', tienePermiso('pagos') ? 'pagos y cuotas' : ''].filter(Boolean).join(', ').replace(/^./, c => c.toUpperCase()) + '.'), sec: 'clubgestion', permiso: null },
   ];
   if (esAdmin()) gruposClub.push({ icon: '👔', title: 'Trabajadores', desc: 'Fichas del personal (datos personales y de nómina) y su acceso para fichar.', sec: 'clubgestion', tab: 'trabajadores', permiso: null });
   if (esAdmin()) gruposClub.push({ icon: '💶', title: 'Nóminas', desc: 'Nóminas por horas trabajadas, recibos en PDF y Excel para la gestoría.', sec: 'clubgestion', tab: 'nominas', permiso: null });
@@ -14687,7 +14708,7 @@ function renderHome() {
     if (hayClub) {
       const datosClub = el('div', { class: 'ol-datos' });
       const nJug = (jugadoresGlobal || []).length;
-      datosClub.appendChild(dato(nJug + (nJug === 1 ? ' jugador' : ' jugadores'), () => goToClubGestion(tienePermiso('jugadores') ? 'jugadores' : 'datos')));
+      if (tienePermiso('jugadores')) datosClub.appendChild(dato(nJug + (nJug === 1 ? ' jugador' : ' jugadores'), () => goToClubGestion('jugadores')));
       if (esAdmin()) {
         const chipSol = dato(chPendientesSolicitudes ? chPendientesSolicitudes + (chPendientesSolicitudes === 1 ? ' solicitud pendiente' : ' solicitudes pendientes') : 'Control horario', () => goToClubGestion('horario'), chPendientesSolicitudes > 0);
         datosClub.appendChild(chipSol);
@@ -14698,7 +14719,7 @@ function renderHome() {
         el('div', { class: 'ol-logo ol-logo-blanco', html: OL_LOGO_CLUB_BLANCO }),
         el('div', { class: 'ol-pie' },
           el('h2', {}, clubGlobal.nombre || 'Club'),
-          el('p', {}, 'Torneos, escuela, jugadores, cuotas y personal'),
+          el('p', {}, esAdmin() ? 'Torneos, escuela, jugadores, cuotas y personal' : [tienePermiso('torneo') ? 'Torneos' : '', tienePermiso('planificacion') ? 'escuela' : '', tienePermiso('jugadores') ? 'jugadores' : '', tienePermiso('pagos') ? 'cuotas' : ''].filter(Boolean).join(', ').replace(/^./, c => c.toUpperCase())),
           datosClub,
           el('span', { class: 'ol-entrar' }, 'Entrar al club'))));
     }

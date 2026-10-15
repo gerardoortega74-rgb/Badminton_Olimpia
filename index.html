@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261015-grafito">
+<meta name="build-id" content="v20261015-marcaclub">
 <script>try{if(new URLSearchParams(location.search).get('tiendaonline')==='1')document.documentElement.classList.add('tienda-pre');}catch(e){}</script>
 <style>html.tienda-pre,html.tienda-pre body{background:#061C3B !important;}html.tienda-pre header.app-header,html.tienda-pre footer.hint,html.tienda-pre #introScreen,html.tienda-pre #shellMain>*:not(#tiendaOnlineScreen){display:none !important;}</style>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -1170,9 +1170,15 @@ html.dg .co-cuenta:focus-visible,html.dg .co-item:focus-visible,html.dg .co-filt
 /* ===== Diseño grafito: panel del club ===== */
 html.dg{--dg-fondo:#121518;--dg-pieza:#1C2125;--dg-pieza2:#232A2F;--dg-linea:rgba(255,255,255,.08);--dg-texto:#F2F3F1;--dg-suave:#9BA5AC;--dg-amarillo:#3DD6C4;--dg-sobre:#062320;--dg-vacio:#38424A;--dg-ok:#62D39B;--dg-aviso:#FF7A6B;}
 body.dg-panel{background:var(--dg-fondo)!important;}
+#dgMarcaClub{display:none;position:fixed;inset:0;z-index:0;pointer-events:none;background-repeat:no-repeat;background-position:center 55%;background-size:min(94vw,820px) auto;opacity:.16;filter:blur(1.2px);}
+body.dg-panel #dgMarcaClub{display:block;}
+#dgMarcaClub::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at center 55%,transparent 50%,var(--dg-fondo) 100%);}
+@media (min-width:900px){#dgMarcaClub{background-size:min(62vw,900px) auto;}}
+body.dg-panel .dg-p{background:rgba(28,33,37,.72);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);}
+body.dg-panel .dg-lista button{background:rgba(28,33,37,.72);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);}
 body.dg-panel #homeScreen{max-width:none!important;}
 @media (min-width:900px) and (max-width:1100px){.dg-bento{grid-template-columns:repeat(2,minmax(0,1fr))!important}.dg-cuotas{grid-row:auto!important}}
-body.dg-panel #shellMain,body.dg-panel #homeScreen{background:var(--dg-fondo)!important;background-image:none!important;}
+body.dg-panel #shellMain,body.dg-panel #homeScreen{background:transparent!important;background-image:none!important;}
 div.dg{color:var(--dg-texto);font-family:Inter,system-ui,sans-serif;max-width:1200px;margin:-6px auto 0;}
 .dg-cab{display:flex;align-items:center;gap:12px;padding:4px 2px 6px;}
 .dg-volver{all:unset;display:inline-flex;align-items:center;gap:4px;height:44px;padding:0 14px 0 8px;border-radius:14px;background:var(--dg-pieza);border:1px solid var(--dg-linea);color:var(--dg-texto);font-weight:600;font-size:14px;cursor:pointer;flex:none;}
@@ -14043,6 +14049,11 @@ function dgResumenPlan() {
 }
 function renderPanelClub(root, gruposClub, onclickClub) {
   document.body.classList.add('dg-panel');
+  if (!document.getElementById('dgMarcaClub') && typeof OL_LOGO_CLUB_BLANCO !== 'undefined') {
+    const m = document.createElement('div'); m.id = 'dgMarcaClub'; m.setAttribute('aria-hidden', 'true');
+    m.style.backgroundImage = 'url("data:image/svg+xml;utf8,' + encodeURIComponent(OL_LOGO_CLUB_BLANCO) + '")';
+    document.body.insertBefore(m, document.body.firstChild);
+  }
   const wrap = el('div', { class: 'dg' });
   const fecha = new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
   wrap.appendChild(el('div', { class: 'dg-cab' },

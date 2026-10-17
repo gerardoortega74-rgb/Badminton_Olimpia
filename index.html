@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261017-seguimiento">
+<meta name="build-id" content="v20261017-tiendafisica">
 <script>try{var q=new URLSearchParams(location.search);if(q.get('tiendaonline')==='1')document.documentElement.classList.add('tienda-pre');if(q.get('tallerpublico')==='1')document.documentElement.classList.add('tpub-pre');}catch(e){}</script>
 <style>html.tienda-pre,html.tienda-pre body{background:#061C3B !important;}html.tienda-pre header.app-header,html.tienda-pre footer.hint,html.tienda-pre #introScreen,html.tienda-pre #shellMain>*:not(#tiendaOnlineScreen){display:none !important;}
 body.im-taller .im-raqueta .im-izq{grid-row:span 4;display:flex;flex-direction:column;align-items:center;gap:6px;}
@@ -89,6 +89,85 @@ body.tpub-on main#shellMain{max-width:none !important;margin:0 !important;paddin
 .tpb-pie b{display:block;color:#fff;}
 .tpb-pie span{font-size:13px;}
 @media (max-width:380px){.tpb-pasos b{font-size:11px;}.tpb-cifra b{font-size:22px;}}
+/* ===== Tienda física (caja) ===== */
+body.im-taller .tpv{display:grid;grid-template-columns:1fr;gap:14px;align-items:start;}
+@media (min-width:1000px){body.im-taller .tpv{grid-template-columns:minmax(0,1fr) 340px;}body.im-taller .tpv-der{position:sticky;top:12px;}body.im-taller .tpv-barra{display:none !important;}}
+@media (max-width:999px){body.im-taller .tpv-der{display:none;}body.im-taller .tpv-ventas{margin-bottom:70px;}}
+body.im-taller .tpv-cab{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
+body.im-taller .tpv-cab h2{margin:0;}
+body.im-taller .tpv-buscar input{width:100%;min-height:46px;font-size:16px;border-radius:12px;}
+body.im-taller .tpv-chips{display:flex;gap:8px;overflow-x:auto;padding:10px 0 4px;scrollbar-width:none;}
+body.im-taller .tpv-chips button{white-space:nowrap;border:1px solid var(--im-line);background:#fff;color:var(--im-navy);border-radius:999px;padding:8px 14px;font-weight:700;font-size:13.5px;min-height:38px;cursor:pointer;}
+body.im-taller .tpv-chips button.on{background:var(--im-navy);border-color:var(--im-navy);color:#fff;}
+body.im-taller .tpv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:10px;margin-top:10px;}
+@media (max-width:420px){body.im-taller .tpv-grid{grid-template-columns:repeat(3,1fr);gap:8px;}}
+body.im-taller .tpv-art{all:unset;box-sizing:border-box;display:flex;flex-direction:column;background:#fff;border:1px solid var(--im-line);border-radius:14px;overflow:hidden;cursor:pointer;transition:transform .12s ease,box-shadow .12s ease,border-color .12s;}
+body.im-taller .tpv-art:hover{box-shadow:0 8px 20px rgba(11,45,91,.12);}
+body.im-taller .tpv-art:active{transform:scale(.96);}
+body.im-taller .tpv-art:focus-visible{outline:3px solid var(--im-red);outline-offset:2px;}
+body.im-taller .tpv-art.en-ticket{border:2px solid var(--im-red);}
+body.im-taller .tpv-art.agotado{opacity:.5;cursor:not-allowed;}
+body.im-taller .tpv-foto{position:relative;aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;background:#F4F6FA;}
+body.im-taller .tpv-foto img{width:100%;height:100%;object-fit:cover;display:block;}
+body.im-taller .tpv-foto.sin{background:linear-gradient(150deg,#EAF0F9,#D3E0F2);}
+body.im-taller .tpv-foto.sin span{font-size:38px;}
+body.im-taller .tpv-badge{position:absolute;top:6px;left:6px;font-style:normal;font-size:10.5px;font-weight:800;padding:3px 7px;border-radius:6px;background:var(--im-wait,#B7791F);color:#fff;}
+body.im-taller .tpv-badge.ag{background:#14213A;}
+body.im-taller .tpv-cant{position:absolute;top:6px;right:6px;font-style:normal;min-width:26px;height:26px;border-radius:13px;background:var(--im-red);color:#fff;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center;padding:0 6px;box-shadow:0 2px 6px rgba(0,0,0,.25);}
+body.im-taller .tpv-nom{padding:7px 8px 0;font-size:13px;font-weight:700;color:var(--im-ink);line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:33px;}
+body.im-taller .tpv-pre{padding:2px 8px 8px;font-weight:800;color:var(--im-navy);font-size:15px;}
+body.im-taller .tpv-sin{text-align:center;padding:24px 10px;}
+body.im-taller .tpv-sin b{display:block;font-size:18px;color:var(--im-navy);margin:6px 0;}
+body.im-taller .tpv-sin p{color:var(--im-muted);max-width:420px;margin:0 auto 14px;}
+body.im-taller .tpv-vacio{color:var(--im-muted);text-align:center;padding:16px 8px;font-size:14px;}
+body.im-taller .tpv-ticket{background:#fff;border:1px solid var(--im-line);border-radius:16px;padding:14px;}
+body.im-taller .tpv-ticket.en-ventana{border:0;padding:0;}
+body.im-taller .tpv-tk-cab{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+body.im-taller .tpv-tk-cab h3{margin:0;color:var(--im-navy);}
+body.im-taller .tpv-vaciar{background:none;border:0;color:var(--im-muted);text-decoration:underline;cursor:pointer;font-size:13px;padding:8px;}
+body.im-taller .tpv-linea{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px dashed #DCE3EE;}
+body.im-taller .tpv-l-nom b{display:block;font-size:14px;color:var(--im-ink);}
+body.im-taller .tpv-l-nom small{color:var(--im-muted);font-size:12px;}
+body.im-taller .tpv-paso{display:inline-flex;align-items:center;background:#EEF2F8;border-radius:10px;}
+body.im-taller .tpv-paso button{border:0;background:transparent;color:var(--im-navy);font-size:18px;font-weight:800;width:36px;height:38px;cursor:pointer;}
+body.im-taller .tpv-paso b{min-width:20px;text-align:center;color:var(--im-navy);}
+body.im-taller .tpv-l-imp{font-weight:800;color:var(--im-ink);min-width:62px;text-align:right;}
+body.im-taller .tpv-cli{margin-top:10px;position:relative;}
+body.im-taller .tpv-cli input{width:100%;min-height:42px;}
+body.im-taller .tpv-cli-res{display:flex;flex-direction:column;}
+body.im-taller .tpv-cli-res button{text-align:left;background:#F4F6FA;border:0;border-bottom:1px solid #fff;padding:10px;cursor:pointer;font-size:14px;}
+body.im-taller .tpv-cli-ok{display:flex;justify-content:space-between;align-items:center;background:#E1F2EC;color:#145C40;border-radius:10px;padding:8px 10px;font-weight:700;}
+body.im-taller .tpv-cli-ok button{border:0;background:none;font-size:16px;cursor:pointer;color:#145C40;}
+body.im-taller .tpv-pagos{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px;}
+body.im-taller .tpv-pagos button{border:1px solid var(--im-line);background:#fff;border-radius:10px;min-height:44px;font-weight:700;font-size:13.5px;cursor:pointer;color:var(--im-navy);}
+body.im-taller .tpv-pagos button.on{background:var(--im-navy);border-color:var(--im-navy);color:#fff;}
+body.im-taller .tpv-entrega{margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+body.im-taller .tpv-entrega input{flex:1;min-width:150px;min-height:42px;}
+body.im-taller .tpv-cambio{font-weight:800;color:#137A3D;}
+body.im-taller .tpv-total{display:flex;justify-content:space-between;align-items:baseline;margin-top:12px;padding-top:10px;border-top:2px solid var(--im-navy);}
+body.im-taller .tpv-total span{font-weight:700;color:var(--im-muted);}
+body.im-taller .tpv-total b{font-family:var(--im-cond);font-style:italic;font-size:34px;color:var(--im-navy);}
+body.im-taller .tpv-cobrar{width:100%;margin-top:10px;min-height:54px;border:0;border-radius:14px;background:var(--im-red);color:#fff;font-size:18px;font-weight:800;cursor:pointer;box-shadow:0 6px 16px rgba(224,22,43,.3);}
+body.im-taller .tpv-cobrar:active{transform:scale(.98);}
+body.im-taller .tpv-barra{position:fixed;left:10px;right:10px;bottom:calc(74px + env(safe-area-inset-bottom));z-index:55;display:flex;align-items:center;gap:10px;border:0;border-radius:14px;background:var(--im-navy);color:#fff;padding:12px 14px;font-size:15px;box-shadow:0 10px 26px rgba(6,28,59,.4);cursor:pointer;}
+body.im-taller .tpv-barra b{margin-left:auto;font-size:18px;}
+body.im-taller .tpv-barra-ir{background:var(--im-red);border-radius:10px;padding:8px 12px;font-weight:800;}
+body.im-taller .tpv-resumen{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:6px 0 10px;}
+@media (max-width:520px){body.im-taller .tpv-resumen{grid-template-columns:repeat(2,1fr);}}
+body.im-taller .tpv-resumen div{background:#F4F6FA;border-radius:12px;padding:10px;}
+body.im-taller .tpv-resumen b{display:block;font-size:18px;color:var(--im-navy);}
+body.im-taller .tpv-resumen span{font-size:12px;color:var(--im-muted);}
+body.im-taller .tpv-venta{all:unset;box-sizing:border-box;display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;width:100%;padding:10px 6px;border-bottom:1px solid #EEF1F5;cursor:pointer;}
+body.im-taller .tpv-venta:hover{background:#F8FAFC;}
+body.im-taller .tpv-v-num{font-weight:800;color:var(--im-navy);font-size:13px;}
+body.im-taller .tpv-v-det{font-size:13px;color:var(--im-muted);}
+body.im-taller .tpv-venta.anulada{opacity:.55;text-decoration:line-through;}
+.tpv-modal-ticket .tpv-cobrado{background:#E1F2EC;color:#137A3D;font-weight:800;font-size:20px;text-align:center;border-radius:12px;padding:12px;margin-bottom:10px;}
+.tpv-modal-ticket .tpv-cambio-grande{text-align:center;font-size:18px;margin-bottom:10px;}
+.tpv-modal-ticket .tpv-cambio-grande b{font-size:28px;color:#137A3D;}
+.tpv-tk-vista{background:#FFFEF8;border:1px solid #E6E2D3;border-radius:6px;padding:14px 10px;margin-bottom:12px;box-shadow:inset 0 0 0 1px #fff;}
+.tpv-tk-acc{display:flex;flex-wrap:wrap;gap:8px;}
+.tpv-tk-acc .btn{flex:1 1 140px;min-height:44px;justify-content:center;display:inline-flex;align-items:center;}
 </style>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton</title>
@@ -8063,6 +8142,7 @@ function defaultState() {
     pedidosProveedor: [],
     contabilidad: { movimientos: [] },
     raquetasExtra: [],
+    ventasTienda: [],
   };
 }
 function raquetasMercadoCompleto() {
@@ -8188,7 +8268,7 @@ function addArticulo(esCordaje) {
   const nuevo = {
     id: uid('art'), codigo: '', nombre: esCordaje ? 'Nuevo cordaje' : 'Nuevo artículo', tipo: esCordaje ? 'Cordaje' : 'Otro',
     esCordaje: !!esCordaje, precioCoste: 0, precio: 0, stock: 0, unidad: esCordaje ? 'metros' : 'unidades',
-    nivelRecomendado: 'todos', estiloRecomendado: 'todos', suave: false, proveedores: [], foto: null, ventaOnline: false,
+    nivelRecomendado: 'todos', estiloRecomendado: 'todos', suave: false, proveedores: [], foto: null, ventaOnline: false, ventaTienda: false,
   };
   state.articulos.push(nuevo);
   return nuevo;
@@ -8615,6 +8695,7 @@ function render() {
   try {
     if (activeTab === 'cola') main.appendChild(viewCola());
     else if (activeTab === 'nuevo') main.appendChild(viewNuevoPedido());
+    else if (activeTab === 'tienda') main.appendChild(viewTiendaFisica());
     else if (activeTab === 'cuentas') main.appendChild(viewCuentas());
     else if (activeTab === 'catalogo') main.appendChild(viewCatalogo());
     else if (activeTab === 'historial') main.appendChild(viewHistorial());
@@ -8630,7 +8711,8 @@ function render() {
 const TABS_TALLER = [
   ['cola', '🏸', 'Cola de trabajo', 'Cola', true],
   ['nuevo', '➕', 'Nuevo pedido', 'Nuevo', true],
-  ['cuentas', '👥', 'Clientes y proveedores', 'Clientes', true],
+  ['tienda', '🏪', 'Tienda (caja)', 'Tienda', true],
+  ['cuentas', '👥', 'Clientes y proveedores', 'Clientes', false],
   ['catalogo', '🧵', 'Cordajes y artículos', 'Stock', true],
   ['historial', '📚', 'Historial', 'Historial', false],
   ['facturas', '🧾', 'Facturas', 'Facturas', false],
@@ -8724,6 +8806,263 @@ function chipPago(p) {
   if (p.pagado) return el('span', { class: 'im-estado pagada' }, 'Pagada');
   if (p.pagoPrevisto === 'sinPagar') return el('span', { class: 'im-estado debe' }, 'Pagará más tarde');
   return el('span', { class: 'im-estado debe' }, 'Cobrar al recoger');
+}
+// ===== TIENDA FÍSICA (caja): cuadrícula de artículos con foto → ticket → cobro (descuenta stock y apunta el ingreso) =====
+let tpvTicket = [];           // [{articuloId, cantidad}]
+let tpvBusqueda = '';
+let tpvCategoria = '';
+let tpvPago = 'efectivo';
+let tpvClienteId = null;
+let tpvVerAnteriores = false;
+const TPV_PAGOS = { efectivo: '💶 Efectivo', tarjeta: '💳 Tarjeta', bizum: '📱 Bizum' };
+function tpvNorm(t) { return String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
+function tpvIcono(a) {
+  const t = tpvNorm((a.tipo || '') + ' ' + (a.nombre || ''));
+  if (a.esCordaje || t.includes('cordaje')) return '🧵';
+  if (t.includes('volante')) return '🏸';
+  if (t.includes('grip')) return '🤚';
+  if (t.includes('mochila') || t.includes('bolsa') || t.includes('raquetero')) return '🎒';
+  if (t.includes('llavero')) return '🔑';
+  if (t.includes('camiseta') || t.includes('ropa') || t.includes('pantal')) return '👕';
+  if (t.includes('zapat') || t.includes('calzado')) return '👟';
+  if (t.includes('raqueta')) return '🏸';
+  if (t.includes('pulsera') || t.includes('collar')) return '📿';
+  return '🛍️';
+}
+function tpvArticulos() { return state.articulos.filter(a => a.ventaTienda); }
+function tpvLineas() {
+  return tpvTicket.map(l => { const a = state.articulos.find(x => x.id === l.articuloId); return a ? { a, cantidad: l.cantidad, precio: a.precio || 0, importe: (a.precio || 0) * l.cantidad } : null; }).filter(Boolean);
+}
+function tpvTotal() { return tpvLineas().reduce((s, l) => s + l.importe, 0); }
+function tpvAnadir(a) {
+  const stock = Number(a.stock) || 0;
+  const l = tpvTicket.find(x => x.articuloId === a.id);
+  const ya = l ? l.cantidad : 0;
+  if (ya + 1 > stock) { alert('No quedan más «' + a.nombre + '» en stock (' + stock + ').'); return; }
+  if (l) l.cantidad++; else tpvTicket.push({ articuloId: a.id, cantidad: 1 });
+}
+function tpvSiguienteNumero() {
+  const max = (state.ventasTienda || []).reduce((m, v) => Math.max(m, v.numero || 0), 0);
+  return max + 1;
+}
+function tpvNumTxt(v) { return 'T-' + String(v.numero || 0).padStart(4, '0'); }
+function tpvCobrar() {
+  const lineas = tpvLineas();
+  if (!lineas.length) return;
+  const total = tpvTotal();
+  const cli = tpvClienteId ? clienteDe(tpvClienteId) : null;
+  const resumen = lineas.map(l => '• ' + l.cantidad + ' × ' + l.a.nombre + '  ' + euros(l.importe)).join('\n');
+  if (!confirm('¿Cobrar ' + euros(total) + ' (' + TPV_PAGOS[tpvPago].replace(/^\S+\s/, '').toLowerCase() + ')?\n\n' + resumen + (cli ? '\n\nCliente: ' + cli.nombre : ''))) return null;
+  for (const l of lineas) { if ((Number(l.a.stock) || 0) < l.cantidad) { alert('No hay stock suficiente de «' + l.a.nombre + '». Revisa el ticket.'); return null; } }
+  const venta = {
+    id: uid('vta'), numero: tpvSiguienteNumero(), fecha: Date.now(), pago: tpvPago, clienteId: cli ? cli.id : null, clienteNombre: cli ? cli.nombre : '',
+    lineas: lineas.map(l => ({ articuloId: l.a.id, nombre: l.a.nombre, cantidad: l.cantidad, precio: l.precio, coste: l.a.precioCoste || 0 })),
+    total: Math.round(total * 100) / 100, anulada: false, movimientoId: null,
+  };
+  lineas.forEach(l => { l.a.stock = Math.max(0, (Number(l.a.stock) || 0) - l.cantidad); });
+  const mov = addMovimientoTaller({ fecha: new Date().toISOString().slice(0, 10), tipo: 'ingreso', categoria: 'Venta en tienda', importe: venta.total,
+    concepto: 'Ticket ' + tpvNumTxt(venta) + ' (' + TPV_PAGOS[venta.pago].replace(/^\S+\s/, '') + ') · ' + venta.lineas.map(l => l.cantidad + ' × ' + l.nombre).join(', ') });
+  venta.movimientoId = mov ? mov.id : null;
+  if (!Array.isArray(state.ventasTienda)) state.ventasTienda = [];
+  state.ventasTienda.push(venta);
+  tpvTicket = []; tpvClienteId = null; tpvPago = 'efectivo';
+  render();
+  tpvAbrirTicket(venta, true);
+  return venta;
+}
+function tpvAnular(v) {
+  if (v.anulada) return;
+  if (!confirm('¿Anular el ticket ' + tpvNumTxt(v) + ' de ' + euros(v.total) + '?\n\nSe devuelve el stock de los artículos y se quita el ingreso de la contabilidad.')) return;
+  v.lineas.forEach(l => { const a = state.articulos.find(x => x.id === l.articuloId); if (a) a.stock = (Number(a.stock) || 0) + l.cantidad; });
+  if (v.movimientoId) removeMovimientoTaller(v.movimientoId);
+  v.anulada = true; v.fechaAnulacion = Date.now();
+  const root = document.getElementById('tallerModalRoot'); if (root) root.innerHTML = '';
+  render();
+}
+function tpvHtmlTicket(v) {
+  let em = { nombreComercial: state.config.nombreTaller || '' };
+  try { if (typeof facEmisor === 'function') em = facEmisor(); } catch (e) { }
+  const esc = (t) => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const d = new Date(v.fecha);
+  const f = String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear() + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  return '<div class="tk">' +
+    '<div class="tk-c"><b>' + esc(em.nombreComercial || em.razonSocial || 'IDERMAY CANTABRIA') + '</b>' +
+    (em.razonSocial && em.razonSocial !== em.nombreComercial ? '<br>' + esc(em.razonSocial) : '') + (em.nif ? '<br>NIF ' + esc(em.nif) : '') + (em.domicilio ? '<br>' + esc(em.domicilio) : '') + (em.telefono ? '<br>Tel. ' + esc(em.telefono) : '') + '</div>' +
+    '<div class="tk-r"><span>Ticket ' + tpvNumTxt(v) + '</span><span>' + f + '</span></div>' +
+    (v.clienteNombre ? '<div class="tk-r"><span>Cliente</span><span>' + esc(v.clienteNombre) + '</span></div>' : '') +
+    '<div class="tk-l"></div>' +
+    v.lineas.map(l => '<div class="tk-r"><span>' + l.cantidad + ' × ' + esc(l.nombre) + '<small>' + l.cantidad + ' × ' + euros(l.precio) + '</small></span><span>' + euros(l.precio * l.cantidad) + '</span></div>').join('') +
+    '<div class="tk-l"></div>' +
+    '<div class="tk-r tk-t"><span>TOTAL</span><span>' + euros(v.total) + '</span></div>' +
+    '<div class="tk-r"><span>Forma de pago</span><span>' + esc(TPV_PAGOS[v.pago].replace(/^\S+\s/, '')) + '</span></div>' +
+    (v.entregado ? '<div class="tk-r"><span>Entregado</span><span>' + euros(v.entregado) + '</span></div><div class="tk-r"><span>Cambio</span><span>' + euros(v.entregado - v.total) + '</span></div>' : '') +
+    '<div class="tk-c tk-pie">IVA incluido · ¡Gracias por tu compra!</div>' +
+    (v.anulada ? '<div class="tk-anulado">ANULADO</div>' : '') + '</div>';
+}
+const TPV_CSS_TICKET = '.tk{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;color:#111;max-width:300px;margin:0 auto;position:relative;}.tk-c{text-align:center;line-height:1.45;margin-bottom:8px;}.tk-c b{font-size:15px;}.tk-r{display:flex;justify-content:space-between;gap:10px;padding:2px 0;}.tk-r span:last-child{text-align:right;white-space:nowrap;}.tk-r small{display:block;color:#666;font-size:11px;}.tk-l{border-top:1px dashed #999;margin:8px 0;}.tk-t{font-size:16px;font-weight:800;}.tk-pie{margin-top:12px;font-size:12px;color:#444;}.tk-anulado{position:absolute;top:40%;left:0;right:0;text-align:center;font-size:34px;font-weight:900;color:rgba(224,22,43,.55);transform:rotate(-18deg);border:4px solid rgba(224,22,43,.55);}';
+function tpvImprimir(v) {
+  const w = window.open('', '_blank', 'width=380,height=640');
+  if (!w) { alert('El navegador ha bloqueado la ventana de impresión. Permite las ventanas emergentes para esta página.'); return; }
+  w.document.write('<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ticket ' + tpvNumTxt(v) + '</title><style>body{margin:12px;}@page{size:80mm auto;margin:4mm;}' + TPV_CSS_TICKET + '</style></head><body>' + tpvHtmlTicket(v) + '<script>setTimeout(function(){window.print();},300);<\/script></body></html>');
+  w.document.close();
+}
+function tpvAbrirTicket(v, recienCobrado) {
+  const root = document.getElementById('tallerModalRoot');
+  if (!root) return;
+  const cli = v.clienteId ? clienteDe(v.clienteId) : null;
+  const numWa = cli && cli.telefono ? telefonoParaWhatsapp(cli.telefono) : '';
+  const textoWa = 'Hola ' + (cli ? cli.nombre : '') + ', aquí tienes tu ticket ' + tpvNumTxt(v) + ' de ' + (state.config.nombreTaller || 'IDERMAY CANTABRIA') + ':\n' + v.lineas.map(l => '- ' + l.cantidad + ' x ' + l.nombre + ' (' + euros(l.precio * l.cantidad) + ')').join('\n') + '\nTotal: ' + euros(v.total) + '\n¡Gracias por tu compra!';
+  const caja = el('div', { class: 'tpv-tk-vista' }); caja.innerHTML = '<style>' + TPV_CSS_TICKET + '</style>' + tpvHtmlTicket(v);
+  root.innerHTML = '';
+  root.appendChild(el('div', { class: 'modal-bg', onclick: (e) => { if (e.target.classList.contains('modal-bg')) root.innerHTML = ''; } },
+    el('div', { class: 'modal tpv-modal-ticket', style: 'max-height:90vh;overflow-y:auto;' },
+      recienCobrado ? el('div', { class: 'tpv-cobrado' }, '✅ Cobrado ' + euros(v.total)) : el('h3', {}, '🧾 Ticket ' + tpvNumTxt(v)),
+      v.entregado && recienCobrado ? el('div', { class: 'tpv-cambio-grande' }, 'Cambio: ', el('b', {}, euros(v.entregado - v.total))) : null,
+      caja,
+      el('div', { class: 'tpv-tk-acc' },
+        el('button', { class: 'btn btn-primary', onclick: () => tpvImprimir(v) }, '🖨️ Imprimir ticket'),
+        numWa ? el('a', { class: 'btn btn-ghost', href: 'https://wa.me/' + numWa + '?text=' + encodeURIComponent(textoWa), target: '_blank', rel: 'noopener' }, '💬 Enviar por WhatsApp') : null,
+        !v.anulada ? el('button', { class: 'btn btn-danger btn-sm', onclick: () => tpvAnular(v) }, 'Anular ticket') : null,
+        el('button', { class: 'btn btn-ghost', onclick: () => { root.innerHTML = ''; } }, recienCobrado ? 'Nueva venta' : 'Cerrar')),
+    )));
+}
+// Contenido del ticket en curso (se usa en la columna de la derecha en PC y en la ventana del móvil)
+function tpvPanelTicket(enVentana) {
+  const lineas = tpvLineas();
+  const total = tpvTotal();
+  const p = el('div', { class: 'tpv-ticket' + (enVentana ? ' en-ventana' : '') });
+  p.appendChild(el('div', { class: 'tpv-tk-cab' }, el('h3', {}, '🧾 Ticket'), lineas.length ? el('button', { class: 'tpv-vaciar', type: 'button', onclick: () => { if (confirm('¿Vaciar el ticket?')) { tpvTicket = []; tpvRepintar(enVentana); } } }, 'Vaciar') : null));
+  if (!lineas.length) { p.appendChild(el('div', { class: 'tpv-vacio' }, 'Pincha los artículos para añadirlos al ticket.')); return p; }
+  const lista = el('div', { class: 'tpv-lineas' });
+  lineas.forEach(l => {
+    lista.appendChild(el('div', { class: 'tpv-linea' },
+      el('div', { class: 'tpv-l-nom' }, el('b', {}, l.a.nombre), el('small', {}, euros(l.precio) + ' / ud.')),
+      el('div', { class: 'tpv-paso' },
+        el('button', { type: 'button', 'aria-label': 'Quitar uno', onclick: () => { const t = tpvTicket.find(x => x.articuloId === l.a.id); if (!t) return; t.cantidad--; if (t.cantidad <= 0) tpvTicket = tpvTicket.filter(x => x !== t); tpvRepintar(enVentana); } }, '−'),
+        el('b', {}, String(l.cantidad)),
+        el('button', { type: 'button', 'aria-label': 'Añadir uno', onclick: () => { tpvAnadir(l.a); tpvRepintar(enVentana); } }, '+')),
+      el('div', { class: 'tpv-l-imp' }, euros(l.importe))));
+  });
+  p.appendChild(lista);
+  // Cliente (opcional)
+  const cli = tpvClienteId ? clienteDe(tpvClienteId) : null;
+  const zonaCli = el('div', { class: 'tpv-cli' });
+  if (cli) zonaCli.appendChild(el('div', { class: 'tpv-cli-ok' }, '👤 ' + cli.nombre, el('button', { type: 'button', onclick: () => { tpvClienteId = null; tpvRepintar(enVentana); } }, '✕')));
+  else {
+    const inp = el('input', { type: 'text', placeholder: 'Cliente (opcional): nombre o teléfono' });
+    const res = el('div', { class: 'tpv-cli-res' });
+    inp.addEventListener('input', () => {
+      res.innerHTML = ''; const q = tpvNorm(inp.value.trim()); if (!q) return;
+      state.clientes.filter(c => tpvNorm(c.nombre).includes(q) || String(c.telefono || '').replace(/\s/g, '').includes(q.replace(/\s/g, ''))).slice(0, 5).forEach(c =>
+        res.appendChild(el('button', { type: 'button', onclick: () => { tpvClienteId = c.id; tpvRepintar(enVentana); } }, c.nombre + (c.telefono ? ' · ' + c.telefono : ''))));
+    });
+    zonaCli.append(inp, res);
+  }
+  p.appendChild(zonaCli);
+  // Forma de pago
+  p.appendChild(el('div', { class: 'tpv-pagos', role: 'radiogroup', 'aria-label': 'Forma de pago' }, Object.keys(TPV_PAGOS).map(k =>
+    el('button', { type: 'button', class: tpvPago === k ? 'on' : '', 'aria-pressed': tpvPago === k ? 'true' : 'false', onclick: () => { tpvPago = k; tpvRepintar(enVentana); } }, TPV_PAGOS[k]))));
+  let entregadoInp = null; const cambioDiv = el('div', { class: 'tpv-cambio' });
+  if (tpvPago === 'efectivo') {
+    entregadoInp = el('input', { type: 'number', inputmode: 'decimal', step: '0.01', min: '0', placeholder: 'Entrega (€) para calcular el cambio' });
+    entregadoInp.addEventListener('input', () => { const e = parseFloat(entregadoInp.value); cambioDiv.textContent = e ? (e >= total ? 'Cambio: ' + euros(e - total) : 'Faltan ' + euros(total - e)) : ''; });
+    p.appendChild(el('div', { class: 'tpv-entrega' }, entregadoInp, cambioDiv));
+  }
+  p.appendChild(el('div', { class: 'tpv-total' }, el('span', {}, 'Total'), el('b', {}, euros(total))));
+  p.appendChild(el('button', { class: 'tpv-cobrar', type: 'button', onclick: () => {
+    const entregado = entregadoInp ? parseFloat(entregadoInp.value) || 0 : 0;
+    if (entregado && entregado < total) { alert('Lo entregado (' + euros(entregado) + ') no llega al total (' + euros(total) + ').'); return; }
+    if (enVentana) { const r = document.getElementById('tallerModalRoot'); if (r) r.innerHTML = ''; }
+    const v = tpvCobrar();
+    if (v && entregado) { v.entregado = entregado; saveLocal(); tpvAbrirTicket(v, true); }
+    else if (!v && enVentana) tpvAbrirVentanaTicket();
+  } }, 'Cobrar ' + euros(total)));
+  return p;
+}
+function tpvRepintar(enVentana) { render(); if (enVentana) tpvAbrirVentanaTicket(); }
+function tpvAbrirVentanaTicket() {
+  const root = document.getElementById('tallerModalRoot');
+  if (!root) return;
+  root.innerHTML = '';
+  root.appendChild(el('div', { class: 'modal-bg', onclick: (e) => { if (e.target.classList.contains('modal-bg')) root.innerHTML = ''; } },
+    el('div', { class: 'modal', style: 'max-height:90vh;overflow-y:auto;padding:16px;' }, tpvPanelTicket(true),
+      el('button', { class: 'btn btn-ghost', style: 'width:100%;margin-top:8px;', onclick: () => { root.innerHTML = ''; } }, '← Seguir añadiendo'))));
+}
+function viewTiendaFisica() {
+  const wrap = document.createDocumentFragment();
+  const arts = tpvArticulos();
+  const cont = el('div', { class: 'tpv' });
+  const izq = el('div', { class: 'tpv-izq' });
+  cont.appendChild(izq);
+  const panel = el('div', { class: 'panel tpv-panel' });
+  izq.appendChild(panel);
+  panel.appendChild(el('div', { class: 'tpv-cab' }, el('div', {}, el('h2', {}, 'Tienda'), el('div', { class: 'sub' }, 'Pincha un artículo para añadirlo al ticket.')),
+    el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { subTabCatalogo = 'fisica'; irA('catalogo'); } }, '⚙️ Elegir artículos')));
+  if (!arts.length) {
+    const conStock = state.articulos.filter(a => !a.esCordaje && (Number(a.stock) || 0) > 0);
+    panel.appendChild(el('div', { class: 'tpv-sin' },
+      el('div', { style: 'font-size:42px;' }, '🏪'),
+      el('b', {}, 'Todavía no hay artículos en la tienda'),
+      el('p', {}, 'Elige qué artículos vendes aquí. Saldrán en cuadraditos con su foto para cobrarlos con un toque.'),
+      el('div', { class: 'row', style: 'justify-content:center;gap:8px;flex-wrap:wrap;' },
+        conStock.length ? el('button', { class: 'btn btn-gold', onclick: () => { if (confirm('¿Poner en la tienda los ' + conStock.length + ' artículos que tienen stock (sin cordajes)? Luego puedes quitar los que no quieras.')) { conStock.forEach(a => { a.ventaTienda = true; }); render(); } } }, '+ Poner los ' + conStock.length + ' artículos con stock') : null,
+        el('button', { class: 'btn btn-ghost', onclick: () => { subTabCatalogo = 'fisica'; irA('catalogo'); } }, 'Elegirlos uno a uno'))));
+  } else {
+    const buscar = el('input', { type: 'search', placeholder: 'Buscar artículo…', value: tpvBusqueda, 'aria-label': 'Buscar artículo' });
+    panel.appendChild(el('div', { class: 'tpv-buscar' }, buscar));
+    const tipos = Array.from(new Set(arts.map(a => a.esCordaje ? 'Cordaje' : (a.tipo || 'Otros')))).sort((x, y) => x.localeCompare(y, 'es'));
+    if (tpvCategoria && !tipos.includes(tpvCategoria)) tpvCategoria = '';
+    if (tipos.length > 1) panel.appendChild(el('div', { class: 'tpv-chips' }, [''].concat(tipos).map(t => el('button', { type: 'button', class: tpvCategoria === t ? 'on' : '', onclick: () => { tpvCategoria = t; render(); } }, t || 'Todo'))));
+    const grid = el('div', { class: 'tpv-grid' });
+    const sinRes = el('div', { class: 'tpv-vacio', style: 'display:none;' }, 'Ningún artículo con ese nombre.');
+    arts.filter(a => !tpvCategoria || (a.esCordaje ? 'Cordaje' : (a.tipo || 'Otros')) === tpvCategoria).sort((x, y) => (x.nombre || '').localeCompare(y.nombre || '', 'es')).forEach(a => {
+      const stock = Number(a.stock) || 0;
+      const enTk = (tpvTicket.find(x => x.articuloId === a.id) || {}).cantidad || 0;
+      const b = el('button', { type: 'button', class: 'tpv-art' + (stock <= 0 ? ' agotado' : '') + (enTk ? ' en-ticket' : ''), 'data-buscar': tpvNorm(a.nombre + ' ' + (a.codigo || '') + ' ' + (a.tipo || '')), disabled: stock <= 0 ? 'disabled' : null,
+        'aria-label': a.nombre + ', ' + euros(a.precio) + (stock <= 0 ? ', agotado' : ''),
+        onclick: () => { tpvAnadir(a); render(); } },
+        el('div', { class: 'tpv-foto' + (a.foto ? '' : ' sin') }, a.foto ? el('img', { src: a.foto, alt: '', loading: 'lazy' }) : el('span', {}, tpvIcono(a)),
+          stock <= 0 ? el('i', { class: 'tpv-badge ag' }, 'Agotado') : stock <= 3 ? el('i', { class: 'tpv-badge' }, 'Quedan ' + stock) : null,
+          enTk ? el('i', { class: 'tpv-cant' }, String(enTk)) : null),
+        el('div', { class: 'tpv-nom' }, a.nombre),
+        el('div', { class: 'tpv-pre' }, euros(a.precio)));
+      grid.appendChild(b);
+    });
+    panel.appendChild(grid); panel.appendChild(sinRes);
+    const filtrar = () => { tpvBusqueda = buscar.value; const q = tpvNorm(buscar.value.trim()); let n = 0; grid.querySelectorAll('.tpv-art').forEach(x => { const v = !q || x.getAttribute('data-buscar').includes(q); x.style.display = v ? '' : 'none'; if (v) n++; }); sinRes.style.display = n ? 'none' : 'block'; };
+    buscar.addEventListener('input', filtrar); filtrar();
+  }
+  // Ventas de hoy
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  const todas = (state.ventasTienda || []).slice().sort((x, y) => y.fecha - x.fecha);
+  const deHoy = todas.filter(v => v.fecha >= hoy.getTime());
+  const validasHoy = deHoy.filter(v => !v.anulada);
+  const porPago = (k) => validasHoy.filter(v => v.pago === k).reduce((s, v) => s + v.total, 0);
+  const ventas = el('div', { class: 'panel tpv-ventas' },
+    el('h2', {}, 'Ventas de hoy'),
+    el('div', { class: 'tpv-resumen' },
+      el('div', {}, el('b', {}, euros(validasHoy.reduce((s, v) => s + v.total, 0))), el('span', {}, validasHoy.length + (validasHoy.length === 1 ? ' ticket' : ' tickets'))),
+      el('div', {}, el('b', {}, euros(porPago('efectivo'))), el('span', {}, 'Efectivo')),
+      el('div', {}, el('b', {}, euros(porPago('tarjeta'))), el('span', {}, 'Tarjeta')),
+      el('div', {}, el('b', {}, euros(porPago('bizum'))), el('span', {}, 'Bizum'))));
+  const lista = tpvVerAnteriores ? todas.slice(0, 60) : deHoy;
+  if (!lista.length) ventas.appendChild(el('div', { class: 'tpv-vacio' }, tpvVerAnteriores ? 'Todavía no hay ventas.' : 'Hoy todavía no has vendido nada en la tienda.'));
+  lista.forEach(v => {
+    const d = new Date(v.fecha);
+    ventas.appendChild(el('button', { type: 'button', class: 'tpv-venta' + (v.anulada ? ' anulada' : ''), onclick: () => tpvAbrirTicket(v) },
+      el('span', { class: 'tpv-v-num' }, tpvNumTxt(v)),
+      el('span', { class: 'tpv-v-det' }, (tpvVerAnteriores ? String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + ' ' : '') + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ' · ' + v.lineas.reduce((s, l) => s + l.cantidad, 0) + ' art. · ' + TPV_PAGOS[v.pago].replace(/^\S+\s/, '') + (v.clienteNombre ? ' · ' + v.clienteNombre : '') + (v.anulada ? ' · ANULADO' : '')),
+      el('b', {}, euros(v.total))));
+  });
+  if (todas.length > deHoy.length || tpvVerAnteriores) ventas.appendChild(el('button', { class: 'btn btn-ghost btn-sm', style: 'margin-top:8px;', onclick: () => { tpvVerAnteriores = !tpvVerAnteriores; render(); } }, tpvVerAnteriores ? 'Ver solo las de hoy' : 'Ver ventas anteriores'));
+  izq.appendChild(ventas);
+  // Ticket: columna derecha (PC) + barra flotante (móvil)
+  cont.appendChild(el('div', { class: 'tpv-der' }, tpvPanelTicket(false)));
+  wrap.appendChild(cont);
+  const n = tpvLineas().reduce((s, l) => s + l.cantidad, 0);
+  if (n) wrap.appendChild(el('button', { type: 'button', class: 'tpv-barra', onclick: () => tpvAbrirVentanaTicket() },
+    el('span', {}, '🧾 ' + n + (n === 1 ? ' artículo' : ' artículos')), el('b', {}, euros(tpvTotal())), el('span', { class: 'tpv-barra-ir' }, 'Cobrar →')));
+  return wrap;
 }
 function viewCola() {
   const wrap = document.createDocumentFragment();
@@ -9519,7 +9858,7 @@ function construirTablaArticulos(lista) {
     tbody.appendChild(el('tr', {},
       el('td', { class: 'c-sel' }, checkFila),
       el('td', { class: 'c-cod' }, a.codigo || '—'),
-      el('td', { class: 'c-nom' }, a.nombre + (a.ventaOnline ? ' 🛒' : '')),
+      el('td', { class: 'c-nom' }, a.nombre + (a.ventaOnline ? ' 🛒' : '') + (a.ventaTienda ? ' 🏪' : '')),
       el('td', { class: 'c-coste', 'data-et': 'Coste (€)' }, costeCelda),
       el('td', { class: 'c-venta', 'data-et': 'Venta (€)' }, ventaCelda),
       el('td', { class: 'c-stock', 'data-et': 'Stock (' + (a.unidad || 'unidades') + ')' }, el('div', { class: 'row', style: 'align-items:center;gap:4px;flex-wrap:nowrap;' }, stockCelda, el('span', { class: 'sub c-unidad' }, a.unidad || 'unidades'))),
@@ -9579,32 +9918,39 @@ function viewCatalogo() {
     el('button', { class: 'btn' + (subTabCatalogo === 'articulos' ? ' on' : ''), onclick: () => { subTabCatalogo = 'articulos'; render(); } }, 'Artículos'),
     el('button', { class: 'btn' + (subTabCatalogo === 'pedidosProv' ? ' on' : ''), onclick: () => { subTabCatalogo = 'pedidosProv'; render(); } }, 'Pedidos a proveedor'),
     el('button', { class: 'btn' + (subTabCatalogo === 'online' ? ' on' : ''), onclick: () => { subTabCatalogo = 'online'; render(); } }, 'Venta online (' + state.articulos.filter(a => a.ventaOnline).length + ')'),
+    el('button', { class: 'btn' + (subTabCatalogo === 'fisica' ? ' on' : ''), onclick: () => { subTabCatalogo = 'fisica'; render(); } }, 'Tienda física (' + state.articulos.filter(a => a.ventaTienda).length + ')'),
   ));
   if (subTabCatalogo === 'online') wrap.appendChild(viewVentaOnline());
+  else if (subTabCatalogo === 'fisica') wrap.appendChild(viewVentaOnline('ventaTienda'));
   else if (subTabCatalogo === 'articulos') wrap.appendChild(viewArticulos());
   else if (subTabCatalogo === 'pedidosProv') wrap.appendChild(viewPedidosProveedor());
   else wrap.appendChild(viewCordajes());
   return wrap;
 }
 // Artículos marcados «A la venta en el catálogo online»: lo que ve el cliente en la tienda.
-function viewVentaOnline() {
+function viewVentaOnline(campo) {
+  campo = campo || 'ventaOnline';
+  const fisica = campo === 'ventaTienda';
   const wrap = document.createDocumentFragment();
-  const enVenta = state.articulos.filter(a => a.ventaOnline).sort((x, y) => (x.nombre || '').localeCompare(y.nombre || '', 'es'));
+  const enVenta = state.articulos.filter(a => a[campo]).sort((x, y) => (x.nombre || '').localeCompare(y.nombre || '', 'es'));
   const enlace = location.origin + location.pathname + '?tiendaonline=1';
   const panel = el('div', { class: 'panel' },
-    el('h2', {}, 'Venta online'),
-    el('div', { class: 'sub' }, 'Los artículos que ve el cliente en la tienda online. Quítalos o añádelos desde aquí; el resto de datos (precio, foto, stock) se cambian en su ficha.'));
+    el('h2', {}, fisica ? 'Tienda física' : 'Venta online'),
+    el('div', { class: 'sub' }, fisica ? 'Los artículos que salen en la caja de la tienda (pestaña «Tienda»). Quítalos o añádelos desde aquí; precio, foto y stock se cambian en su ficha.' : 'Los artículos que ve el cliente en la tienda online. Quítalos o añádelos desde aquí; el resto de datos (precio, foto, stock) se cambian en su ficha.'));
   const agotados = enVenta.filter(a => !(Number(a.stock) > 0)).length;
   const sinFoto = enVenta.filter(a => !a.foto).length;
   panel.appendChild(el('div', { class: 'im-online-resumen' },
     el('div', {}, el('b', {}, String(enVenta.length)), el('span', {}, enVenta.length === 1 ? 'a la venta' : 'a la venta')),
     el('div', { class: agotados ? 'aviso' : '' }, el('b', {}, String(agotados)), el('span', {}, agotados === 1 ? 'agotado' : 'agotados')),
     el('div', { class: sinFoto ? 'aviso' : '' }, el('b', {}, String(sinFoto)), el('span', {}, 'sin foto'))));
-  panel.appendChild(el('div', { class: 'toolbar', style: 'margin:10px 0;flex-wrap:wrap;gap:8px;' },
+  if (fisica) panel.appendChild(el('div', { class: 'toolbar', style: 'margin:10px 0;flex-wrap:wrap;gap:8px;' },
+    el('button', { class: 'btn btn-gold btn-sm', onclick: () => irA('tienda') }, '🏪 Abrir la caja'),
+    (() => { const conStock = state.articulos.filter(a => !a[campo] && !a.esCordaje && (Number(a.stock) || 0) > 0); return conStock.length ? el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { if (confirm('¿Poner en la tienda los ' + conStock.length + ' artículos con stock que faltan (sin cordajes)?')) { conStock.forEach(a => { a[campo] = true; }); saveLocal(); render(); } } }, '+ Poner todos los que tienen stock (' + conStock.length + ')') : null; })()));
+  if (!fisica) panel.appendChild(el('div', { class: 'toolbar', style: 'margin:10px 0;flex-wrap:wrap;gap:8px;' },
     el('a', { class: 'btn btn-gold btn-sm', href: enlace + '&desde=app' }, 'Ver la tienda'),
     el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { (navigator.clipboard ? navigator.clipboard.writeText(enlace) : Promise.reject()).then(() => alert('Enlace de la tienda copiado.')).catch(() => alert(enlace)); } }, 'Copiar enlace de la tienda')));
   if (!enVenta.length) {
-    panel.appendChild(el('div', { class: 'empty-state' }, 'Todavía no hay ningún artículo a la venta online. Añádelo con el desplegable de abajo.'));
+    panel.appendChild(el('div', { class: 'empty-state' }, 'Todavía no hay ningún artículo ' + (fisica ? 'en la tienda física' : 'a la venta online') + '. Añádelo con el desplegable de abajo.'));
   } else {
     const tabla = el('div', { class: 'im-online-lista' });
     enVenta.forEach(a => {
@@ -9618,15 +9964,15 @@ function viewVentaOnline() {
           el('div', { class: 'im-online-chips' }, el('span', { class: 'chip im-online-precio' }, euros(a.precio || 0)), estado)),
         el('div', { class: 'im-online-acc' },
           el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { articuloAbiertoId = a.id; busquedaArticulo = ''; subTabCatalogo = 'articulos'; render(); window.scrollTo(0, 0); } }, 'Ficha'),
-          el('button', { class: 'btn btn-danger btn-sm', onclick: () => { a.ventaOnline = false; saveLocal(); render(); } }, 'Quitar'))));
+          el('button', { class: 'btn btn-danger btn-sm', onclick: () => { a[campo] = false; saveLocal(); render(); } }, 'Quitar'))));
     });
     panel.appendChild(tabla);
   }
-  const resto = state.articulos.filter(a => !a.ventaOnline).sort((x, y) => (x.nombre || '').localeCompare(y.nombre || '', 'es'));
+  const resto = state.articulos.filter(a => !a[campo]).sort((x, y) => (x.nombre || '').localeCompare(y.nombre || '', 'es'));
   if (resto.length) {
-    const sel = el('select', { id: 'imOnlineAnadir' }, el('option', { value: '' }, 'Elige un artículo…'), ...resto.map(a => el('option', { value: a.id }, (a.nombre || '(sin nombre)') + ' — ' + euros(a.precio || 0) + (Number(a.stock) > 0 ? '' : ' (sin stock)'))));
-    panel.appendChild(el('div', { class: 'im-online-anadir' }, field('Añadir a la venta online', sel),
-      el('button', { class: 'btn btn-gold btn-sm', onclick: () => { const a = state.articulos.find(x => x.id === sel.value); if (!a) { alert('Elige primero un artículo.'); return; } a.ventaOnline = true; saveLocal(); render(); } }, '+ Poner a la venta')));
+    const sel = el('select', { id: fisica ? 'imFisicaAnadir' : 'imOnlineAnadir' }, el('option', { value: '' }, 'Elige un artículo…'), ...resto.map(a => el('option', { value: a.id }, (a.nombre || '(sin nombre)') + ' — ' + euros(a.precio || 0) + (Number(a.stock) > 0 ? '' : ' (sin stock)'))));
+    panel.appendChild(el('div', { class: 'im-online-anadir' }, field(fisica ? 'Añadir a la tienda física' : 'Añadir a la venta online', sel),
+      el('button', { class: 'btn btn-gold btn-sm', onclick: () => { const a = state.articulos.find(x => x.id === sel.value); if (!a) { alert('Elige primero un artículo.'); return; } a[campo] = true; saveLocal(); render(); } }, fisica ? '+ Poner en la tienda' : '+ Poner a la venta')));
   }
   wrap.appendChild(panel);
   return wrap;
@@ -9708,6 +10054,11 @@ function articuloCard(a) {
       el('label', {}, el('input', { type: 'checkbox', style: 'width:auto;margin-right:6px;', checked: a.ventaOnline ? 'checked' : null,
         onchange: e => { a.ventaOnline = e.target.checked; render(); } }),
         '🛒 A la venta en el catálogo online'),
+    ),
+    el('div', { class: 'field', style: 'margin-top:6px;' },
+      el('label', {}, el('input', { type: 'checkbox', style: 'width:auto;margin-right:6px;', checked: a.ventaTienda ? 'checked' : null,
+        onchange: e => { a.ventaTienda = e.target.checked; render(); } }),
+        '🏪 A la venta en la tienda física (caja)'),
     ),
   );
   if (a.esCordaje) {
@@ -10795,7 +11146,9 @@ function facExportar(lista, periodo) {
 
 function facAbrirPorId(id) { facColeccion().doc(id).get().then(d => { if (d.exists) facVer(d.data()); else alert('No se encontró la factura ' + id); }).catch(e => alert('No se pudo abrir: ' + (e && e.message ? e.message : 'error'))); }
 function addMovimientoTaller(datos) {
-  state.contabilidad.movimientos.push({ id: uid('mov'), fecha: datos.fecha || new Date().toISOString().slice(0, 10), tipo: datos.tipo || 'gasto', categoria: datos.categoria || '', concepto: datos.concepto || '', importe: datos.importe || 0 });
+  const m = { id: uid('mov'), fecha: datos.fecha || new Date().toISOString().slice(0, 10), tipo: datos.tipo || 'gasto', categoria: datos.categoria || '', concepto: datos.concepto || '', importe: datos.importe || 0 };
+  state.contabilidad.movimientos.push(m);
+  return m;
 }
 function removeMovimientoTaller(id) { state.contabilidad.movimientos = state.contabilidad.movimientos.filter(m => m.id !== id); }
 function statCardTaller(num, lab) { return el('div', { class: 'stat-card' }, el('div', { class: 'num' }, num), el('div', { class: 'lab' }, lab)); }
@@ -10953,6 +11306,7 @@ function setState(s) {
   if (!state.contabilidad) state.contabilidad = { movimientos: [] };
   if (!Array.isArray(state.contabilidad.movimientos)) state.contabilidad.movimientos = [];
   if (!Array.isArray(state.raquetasExtra)) state.raquetasExtra = [];
+  if (!Array.isArray(state.ventasTienda)) state.ventasTienda = [];
   // Migración: los cordajes vivían en un catálogo aparte; ahora son artículos marcados con "es cordaje".
   if (Array.isArray(s && s.cordajes) && s.cordajes.length) {
     s.cordajes.forEach(c => {
@@ -10967,6 +11321,7 @@ function setState(s) {
     if (!a.unidad) a.unidad = a.esCordaje ? 'metros' : 'unidades';
     if (a.foto === undefined) a.foto = null;
     if (a.ventaOnline === undefined) a.ventaOnline = false;
+    if (a.ventaTienda === undefined) a.ventaTienda = false;
   });
 }
 function tryLoadLocal() {

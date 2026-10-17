@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261017-cobros">
+<meta name="build-id" content="v20261017-doble">
 <script>try{var q=new URLSearchParams(location.search);if(q.get('tiendaonline')==='1')document.documentElement.classList.add('tienda-pre');if(q.get('tallerpublico')==='1')document.documentElement.classList.add('tpub-pre');}catch(e){}</script>
 <style>html.tienda-pre,html.tienda-pre body{background:#061C3B !important;}html.tienda-pre header.app-header,html.tienda-pre footer.hint,html.tienda-pre #introScreen,html.tienda-pre #shellMain>*:not(#tiendaOnlineScreen){display:none !important;}
 body.im-taller .im-raqueta .im-izq{grid-row:span 4;display:flex;flex-direction:column;align-items:center;gap:6px;}
@@ -101,7 +101,7 @@ body.im-taller .tpv-chips button{white-space:nowrap;border:1px solid var(--im-li
 body.im-taller .tpv-chips button.on{background:var(--im-navy);border-color:var(--im-navy);color:#fff;}
 body.im-taller .tpv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:10px;margin-top:10px;}
 @media (max-width:420px){body.im-taller .tpv-grid{grid-template-columns:repeat(3,1fr);gap:8px;}}
-body.im-taller .tpv-art{all:unset;box-sizing:border-box;display:flex;flex-direction:column;background:#fff;border:1px solid var(--im-line);border-radius:14px;overflow:hidden;cursor:pointer;transition:transform .12s ease,box-shadow .12s ease,border-color .12s;}
+body.im-taller .tpv-art{all:unset;box-sizing:border-box;touch-action:manipulation;-webkit-user-select:none;user-select:none;display:flex;flex-direction:column;background:#fff;border:1px solid var(--im-line);border-radius:14px;overflow:hidden;cursor:pointer;transition:transform .12s ease,box-shadow .12s ease,border-color .12s;}
 body.im-taller .tpv-art:hover{box-shadow:0 8px 20px rgba(11,45,91,.12);}
 body.im-taller .tpv-art:active{transform:scale(.96);}
 body.im-taller .tpv-art:focus-visible{outline:3px solid var(--im-red);outline-offset:2px;}
@@ -8870,12 +8870,35 @@ function tpvLineas() {
   return tpvTicket.map(l => { const a = state.articulos.find(x => x.id === l.articuloId); return a ? { a, cantidad: l.cantidad, precio: a.precio || 0, importe: (a.precio || 0) * l.cantidad } : null; }).filter(Boolean);
 }
 function tpvTotal() { return tpvLineas().reduce((s, l) => s + l.importe, 0); }
-function tpvAnadir(a) {
+function tpvAnadir(a, silencioso) {
   const stock = Number(a.stock) || 0;
   const l = tpvTicket.find(x => x.articuloId === a.id);
   const ya = l ? l.cantidad : 0;
-  if (ya + 1 > stock) { alert('No quedan más «' + a.nombre + '» en stock (' + stock + ').'); return; }
+  if (ya + 1 > stock) { if (!silencioso) alert('No quedan más «' + a.nombre + '» en stock (' + stock + ').'); return false; }
   if (l) l.cantidad++; else tpvTicket.push({ articuloId: a.id, cantidad: 1 });
+  return true;
+}
+function tpvQuitarUno(a) {
+  const l = tpvTicket.find(x => x.articuloId === a.id);
+  if (!l) return false;
+  l.cantidad--; if (l.cantidad <= 0) tpvTicket = tpvTicket.filter(x => x !== l);
+  return true;
+}
+// Un toque añade uno; doble toque rápido quita uno (se deshace el primer toque y se resta otro).
+let tpvUltimoToque = { id: null, t: 0, anadio: false, aviso: null };
+function tpvToque(a) {
+  const ahora = Date.now();
+  if (tpvUltimoToque.id === a.id && ahora - tpvUltimoToque.t < 400) {
+    clearTimeout(tpvUltimoToque.aviso);
+    if (tpvUltimoToque.anadio) tpvQuitarUno(a);
+    tpvQuitarUno(a);
+    tpvUltimoToque = { id: null, t: 0, anadio: false, aviso: null };
+  } else {
+    const anadio = tpvAnadir(a, true);
+    const aviso = anadio ? null : setTimeout(() => alert('No quedan más «' + a.nombre + '» en stock (' + (Number(a.stock) || 0) + ').'), 420);
+    tpvUltimoToque = { id: a.id, t: ahora, anadio, aviso };
+  }
+  render();
 }
 function tpvSiguienteNumero() {
   const max = (state.ventasTienda || []).reduce((m, v) => Math.max(m, v.numero || 0), 0);
@@ -9113,7 +9136,7 @@ function viewTiendaFisica() {
   cont.appendChild(izq);
   const panel = el('div', { class: 'panel tpv-panel' });
   izq.appendChild(panel);
-  panel.appendChild(el('div', { class: 'tpv-cab' }, el('div', {}, el('h2', {}, 'Tienda'), el('div', { class: 'sub' }, 'Pincha un artículo para añadirlo al ticket.')),
+  panel.appendChild(el('div', { class: 'tpv-cab' }, el('div', {}, el('h2', {}, 'Tienda'), el('div', { class: 'sub' }, 'Un toque añade uno · doble toque rápido quita uno.')),
     el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { subTabCatalogo = 'fisica'; irA('catalogo'); } }, '⚙️ Elegir artículos')));
   if (!arts.length) {
     const conStock = state.articulos.filter(a => !a.esCordaje && (Number(a.stock) || 0) > 0);
@@ -9137,7 +9160,7 @@ function viewTiendaFisica() {
       const enTk = (tpvTicket.find(x => x.articuloId === a.id) || {}).cantidad || 0;
       const b = el('button', { type: 'button', class: 'tpv-art' + (stock <= 0 ? ' agotado' : '') + (enTk ? ' en-ticket' : ''), 'data-buscar': tpvNorm(a.nombre + ' ' + (a.codigo || '') + ' ' + (a.tipo || '')), disabled: stock <= 0 ? 'disabled' : null,
         'aria-label': a.nombre + ', ' + euros(a.precio) + (stock <= 0 ? ', agotado' : ''),
-        onclick: () => { tpvAnadir(a); render(); } },
+        onclick: () => tpvToque(a) },
         el('div', { class: 'tpv-foto' + (a.foto ? '' : ' sin') }, a.foto ? el('img', { src: a.foto, alt: '', loading: 'lazy' }) : el('span', {}, tpvIcono(a)),
           stock <= 0 ? el('i', { class: 'tpv-badge ag' }, 'Agotado') : stock <= 3 ? el('i', { class: 'tpv-badge' }, 'Quedan ' + stock) : null,
           enTk ? el('i', { class: 'tpv-cant' }, String(enTk)) : null),

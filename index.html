@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261017-ticket2">
+<meta name="build-id" content="v20261017-ticketwa">
 <script>try{var q=new URLSearchParams(location.search);if(q.get('tiendaonline')==='1')document.documentElement.classList.add('tienda-pre');if(q.get('tallerpublico')==='1')document.documentElement.classList.add('tpub-pre');}catch(e){}</script>
 <style>html.tienda-pre,html.tienda-pre body{background:#061C3B !important;}html.tienda-pre header.app-header,html.tienda-pre footer.hint,html.tienda-pre #introScreen,html.tienda-pre #shellMain>*:not(#tiendaOnlineScreen){display:none !important;}
 body.im-taller .im-raqueta .im-izq{grid-row:span 4;display:flex;flex-direction:column;align-items:center;gap:6px;}
@@ -168,6 +168,11 @@ body.im-taller .tpv-venta.anulada{opacity:.55;text-decoration:line-through;}
 .tpv-modal-ticket .tpv-cambio-grande{text-align:center;font-size:18px;margin-bottom:10px;}
 .tpv-modal-ticket .tpv-cambio-grande b{font-size:28px;color:#137A3D;}
 .tpv-tk-vista{background:#FFFEF8;border:1px solid #E6E2D3;border-radius:6px;padding:14px 10px;margin-bottom:12px;box-shadow:inset 0 0 0 1px #fff;}
+.tpv-wa-caja{background:#EAF7EF;border:1px solid #BFE5CC;border-radius:12px;padding:10px;margin-bottom:10px;}
+.tpv-wa-fila{display:flex;gap:8px;flex-wrap:wrap;}
+.tpv-wa-fila input{flex:1 1 180px;min-height:44px;font-size:16px;}
+.tpv-wa{background:#1FA855 !important;color:#fff !important;min-height:44px;display:inline-flex;align-items:center;justify-content:center;flex:1 1 160px;font-weight:800;text-decoration:none;}
+.tpv-compartir{width:100%;margin-top:8px;min-height:44px;}
 .tpv-tk-acc{display:flex;flex-wrap:wrap;gap:8px;}
 .tpv-tk-acc .btn{flex:1 1 140px;min-height:44px;justify-content:center;display:inline-flex;align-items:center;}
 </style>
@@ -8916,12 +8921,81 @@ function tpvImprimir(v) {
   setTimeout(() => { try { f.contentWindow.focus(); f.contentWindow.print(); } catch (e) { alert('No se pudo abrir la impresión en este dispositivo.'); } }, 250);
   setTimeout(() => { if (f.parentNode) f.remove(); }, 60000);
 }
+// Enviar el ticket por WhatsApp: con el teléfono del cliente o el que escribas; sin teléfono, WhatsApp deja elegir el contacto.
+function tpvBloqueWhatsapp(v, cli, textoWa) {
+  const inTel = el('input', { type: 'tel', inputmode: 'tel', placeholder: 'Teléfono (o déjalo vacío y eliges el contacto)', value: cli && cli.telefono ? cli.telefono : '', 'aria-label': 'Teléfono para WhatsApp' });
+  const enviar = el('a', { class: 'btn tpv-wa', href: '#', target: '_blank', rel: 'noopener' }, '💬 Enviar por WhatsApp');
+  const actualizar = () => { const n = telefonoParaWhatsapp(inTel.value); enviar.href = 'https://wa.me/' + (n || '') + '?text=' + encodeURIComponent(textoWa); };
+  inTel.addEventListener('input', actualizar); actualizar();
+  enviar.addEventListener('click', () => {
+    // Si el cliente del ticket no tenía teléfono y lo acabas de escribir, se le guarda.
+    if (cli && !cli.telefono && inTel.value.trim()) { cli.telefono = inTel.value.trim(); saveLocal(); }
+  });
+  const caja = el('div', { class: 'tpv-wa-caja' }, el('div', { class: 'tpv-wa-fila' }, inTel, enviar));
+  const puedeCompartir = typeof navigator !== 'undefined' && navigator.canShare && typeof File !== 'undefined' && navigator.canShare({ files: [new File(['x'], 't.png', { type: 'image/png' })] });
+  if (puedeCompartir) caja.appendChild(el('button', { type: 'button', class: 'btn btn-ghost tpv-compartir', onclick: async () => {
+    try {
+      const blob = await tpvTicketImagen(v);
+      const file = new File([blob], 'ticket-' + tpvNumTxt(v) + '.png', { type: 'image/png' });
+      await navigator.share({ files: [file], text: 'Ticket ' + tpvNumTxt(v) + ' · ' + euros(v.total) });
+    } catch (e) { if (!e || e.name !== 'AbortError') alert('No se pudo compartir la imagen: ' + (e && e.message ? e.message : 'error')); }
+  } }, '📤 Compartir ticket como imagen'));
+  return caja;
+}
+// Dibuja el ticket como imagen PNG (para compartirlo por WhatsApp como foto).
+function tpvTicketImagen(v) {
+  let em = { nombreComercial: state.config.nombreTaller || '' };
+  try { if (typeof facEmisor === 'function') em = facEmisor(); } catch (e) { }
+  const W = 600, pad = 34, mono = '"Courier New", ui-monospace, monospace';
+  const filas = [];
+  const t = (txt, o) => filas.push(Object.assign({ txt: String(txt), size: 24, bold: false, align: 'left' }, o || {}));
+  const dosCol = (izq, der, o) => filas.push(Object.assign({ izq: String(izq), der: String(der), size: 24, bold: false }, o || {}));
+  t(em.nombreComercial || em.razonSocial || 'IDERMAY CANTABRIA', { size: 32, bold: true, align: 'center' });
+  if (em.razonSocial && em.razonSocial !== em.nombreComercial) t(em.razonSocial, { align: 'center', size: 20 });
+  if (em.nif) t('NIF ' + em.nif, { align: 'center', size: 20 });
+  if (em.telefono) t('Tel. ' + em.telefono, { align: 'center', size: 20 });
+  filas.push({ esp: 14 });
+  const d = new Date(v.fecha);
+  dosCol('Ticket ' + tpvNumTxt(v), String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear() + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'), { size: 21 });
+  if (v.clienteNombre) dosCol('Cliente', v.clienteNombre, { size: 21 });
+  filas.push({ raya: true });
+  v.lineas.forEach(l => { dosCol(l.cantidad + ' x ' + l.nombre, euros(l.precio * l.cantidad)); t('   ' + l.cantidad + ' x ' + euros(l.precio), { size: 18, color: '#666' }); });
+  filas.push({ raya: true });
+  dosCol('TOTAL', euros(v.total), { size: 32, bold: true });
+  dosCol('Forma de pago', TPV_PAGOS[v.pago].replace(/^\S+\s/, ''), { size: 21 });
+  if (v.entregado) { dosCol('Entregado', euros(v.entregado), { size: 21 }); dosCol('Cambio', euros(v.entregado - v.total), { size: 21 }); }
+  filas.push({ esp: 18 });
+  t('IVA incluido · ¡Gracias por tu compra!', { align: 'center', size: 20, color: '#444' });
+  if (v.anulada) t('*** ANULADO ***', { align: 'center', size: 30, bold: true, color: '#E0162B' });
+  const cv = document.createElement('canvas'); const ctx = cv.getContext('2d');
+  // Cortar textos largos que no caben
+  const ajusta = (txt, max, font) => { ctx.font = font; if (ctx.measureText(txt).width <= max) return txt; while (txt.length > 3 && ctx.measureText(txt + '…').width > max) txt = txt.slice(0, -1); return txt + '…'; };
+  const alto = filas.reduce((h, f) => h + (f.esp || (f.raya ? 26 : Math.round((f.size || 24) * 1.45))), pad * 2);
+  cv.width = W; cv.height = alto;
+  ctx.fillStyle = '#FFFEF8'; ctx.fillRect(0, 0, W, alto);
+  let y = pad;
+  filas.forEach(f => {
+    if (f.esp) { y += f.esp; return; }
+    if (f.raya) { ctx.strokeStyle = '#999'; ctx.setLineDash([8, 6]); ctx.beginPath(); ctx.moveTo(pad, y + 13); ctx.lineTo(W - pad, y + 13); ctx.stroke(); ctx.setLineDash([]); y += 26; return; }
+    const font = (f.bold ? 'bold ' : '') + f.size + 'px ' + mono;
+    ctx.font = font; ctx.fillStyle = f.color || '#111'; ctx.textBaseline = 'top';
+    if (f.izq !== undefined) {
+      ctx.textAlign = 'right'; ctx.fillText(f.der, W - pad, y);
+      const anchoDer = ctx.measureText(f.der).width;
+      ctx.textAlign = 'left'; ctx.fillText(ajusta(f.izq, W - pad * 2 - anchoDer - 14, font), pad, y);
+    } else {
+      ctx.textAlign = f.align; ctx.fillText(ajusta(f.txt, W - pad * 2, font), f.align === 'center' ? W / 2 : pad, y);
+    }
+    y += Math.round(f.size * 1.45);
+  });
+  return new Promise((res, rej) => cv.toBlob(b => b ? res(b) : rej(new Error('sin imagen')), 'image/png'));
+}
+if (typeof window !== 'undefined') window.tpvTicketImagen = tpvTicketImagen;
 function tpvAbrirTicket(v, recienCobrado) {
   const root = document.getElementById('tallerModalRoot');
   if (!root) return;
   const cli = v.clienteId ? clienteDe(v.clienteId) : null;
-  const numWa = cli && cli.telefono ? telefonoParaWhatsapp(cli.telefono) : '';
-  const textoWa = 'Hola ' + (cli ? cli.nombre : '') + ', aquí tienes tu ticket ' + tpvNumTxt(v) + ' de ' + (state.config.nombreTaller || 'IDERMAY CANTABRIA') + ':\n' + v.lineas.map(l => '- ' + l.cantidad + ' x ' + l.nombre + ' (' + euros(l.precio * l.cantidad) + ')').join('\n') + '\nTotal: ' + euros(v.total) + '\n¡Gracias por tu compra!';
+  const textoWa = 'Hola' + (cli ? ' ' + cli.nombre : '') + ', aquí tienes tu ticket ' + tpvNumTxt(v) + ' de ' + (state.config.nombreTaller || 'IDERMAY CANTABRIA') + ':\n' + v.lineas.map(l => '- ' + l.cantidad + ' x ' + l.nombre + ' (' + euros(l.precio * l.cantidad) + ')').join('\n') + '\nTotal: ' + euros(v.total) + '\n¡Gracias por tu compra!';
   const caja = el('div', { class: 'tpv-tk-vista' }); caja.innerHTML = '<style>' + TPV_CSS_TICKET + '</style>' + tpvHtmlTicket(v);
   root.innerHTML = '';
   root.appendChild(el('div', { class: 'modal-bg', onclick: (e) => { if (e.target.classList.contains('modal-bg')) root.innerHTML = ''; } },
@@ -8930,9 +9004,10 @@ function tpvAbrirTicket(v, recienCobrado) {
       recienCobrado ? el('div', { class: 'tpv-cobrado' }, '✅ Cobrado ' + euros(v.total)) : el('h3', {}, '🧾 Ticket ' + tpvNumTxt(v)),
       v.entregado && recienCobrado ? el('div', { class: 'tpv-cambio-grande' }, 'Cambio: ', el('b', {}, euros(v.entregado - v.total))) : null,
       caja,
+      tpvBloqueWhatsapp(v, cli, textoWa),
       el('div', { class: 'tpv-tk-acc' },
         el('button', { class: 'btn btn-primary', onclick: () => tpvImprimir(v) }, '🖨️ Imprimir ticket'),
-        numWa ? el('a', { class: 'btn btn-ghost', href: 'https://wa.me/' + numWa + '?text=' + encodeURIComponent(textoWa), target: '_blank', rel: 'noopener' }, '💬 Enviar por WhatsApp') : null,
+        null,
         !v.anulada ? el('button', { class: 'btn btn-danger btn-sm', onclick: () => tpvAnular(v) }, 'Anular ticket') : null,
         el('button', { class: 'btn btn-ghost', onclick: () => { root.innerHTML = ''; } }, recienCobrado ? 'Nueva venta' : 'Cerrar')),
     )));

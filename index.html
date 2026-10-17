@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261017-tiendafisica">
+<meta name="build-id" content="v20261017-ticket2">
 <script>try{var q=new URLSearchParams(location.search);if(q.get('tiendaonline')==='1')document.documentElement.classList.add('tienda-pre');if(q.get('tallerpublico')==='1')document.documentElement.classList.add('tpub-pre');}catch(e){}</script>
 <style>html.tienda-pre,html.tienda-pre body{background:#061C3B !important;}html.tienda-pre header.app-header,html.tienda-pre footer.hint,html.tienda-pre #introScreen,html.tienda-pre #shellMain>*:not(#tiendaOnlineScreen){display:none !important;}
 body.im-taller .im-raqueta .im-izq{grid-row:span 4;display:flex;flex-direction:column;align-items:center;gap:6px;}
@@ -162,7 +162,9 @@ body.im-taller .tpv-venta:hover{background:#F8FAFC;}
 body.im-taller .tpv-v-num{font-weight:800;color:var(--im-navy);font-size:13px;}
 body.im-taller .tpv-v-det{font-size:13px;color:var(--im-muted);}
 body.im-taller .tpv-venta.anulada{opacity:.55;text-decoration:line-through;}
-.tpv-modal-ticket .tpv-cobrado{background:#E1F2EC;color:#137A3D;font-weight:800;font-size:20px;text-align:center;border-radius:12px;padding:12px;margin-bottom:10px;}
+.tpv-modal-ticket{position:relative;}
+.tpv-cerrar-x{position:absolute;top:8px;right:8px;width:40px;height:40px;border-radius:50%;border:0;background:#EEF1F5;color:#14213A;font-size:18px;font-weight:800;cursor:pointer;z-index:2;}
+.tpv-modal-ticket .tpv-cobrado{margin-right:44px;background:#E1F2EC;color:#137A3D;font-weight:800;font-size:20px;text-align:center;border-radius:12px;padding:12px;margin-bottom:10px;}
 .tpv-modal-ticket .tpv-cambio-grande{text-align:center;font-size:18px;margin-bottom:10px;}
 .tpv-modal-ticket .tpv-cambio-grande b{font-size:28px;color:#137A3D;}
 .tpv-tk-vista{background:#FFFEF8;border:1px solid #E6E2D3;border-radius:6px;padding:14px 10px;margin-bottom:12px;box-shadow:inset 0 0 0 1px #fff;}
@@ -8900,11 +8902,19 @@ function tpvHtmlTicket(v) {
     (v.anulada ? '<div class="tk-anulado">ANULADO</div>' : '') + '</div>';
 }
 const TPV_CSS_TICKET = '.tk{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;color:#111;max-width:300px;margin:0 auto;position:relative;}.tk-c{text-align:center;line-height:1.45;margin-bottom:8px;}.tk-c b{font-size:15px;}.tk-r{display:flex;justify-content:space-between;gap:10px;padding:2px 0;}.tk-r span:last-child{text-align:right;white-space:nowrap;}.tk-r small{display:block;color:#666;font-size:11px;}.tk-l{border-top:1px dashed #999;margin:8px 0;}.tk-t{font-size:16px;font-weight:800;}.tk-pie{margin-top:12px;font-size:12px;color:#444;}.tk-anulado{position:absolute;top:40%;left:0;right:0;text-align:center;font-size:34px;font-weight:900;color:rgba(224,22,43,.55);transform:rotate(-18deg);border:4px solid rgba(224,22,43,.55);}';
+// Imprime el ticket sin salir de la app (iframe oculto); así nunca te quedas en una página sin «atrás».
 function tpvImprimir(v) {
-  const w = window.open('', '_blank', 'width=380,height=640');
-  if (!w) { alert('El navegador ha bloqueado la ventana de impresión. Permite las ventanas emergentes para esta página.'); return; }
-  w.document.write('<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ticket ' + tpvNumTxt(v) + '</title><style>body{margin:12px;}@page{size:80mm auto;margin:4mm;}' + TPV_CSS_TICKET + '</style></head><body>' + tpvHtmlTicket(v) + '<script>setTimeout(function(){window.print();},300);<\/script></body></html>');
-  w.document.close();
+  const viejo = document.getElementById('tpvMarcoImpresion'); if (viejo) viejo.remove();
+  const f = document.createElement('iframe');
+  f.id = 'tpvMarcoImpresion'; f.setAttribute('aria-hidden', 'true');
+  f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;opacity:0;pointer-events:none;';
+  document.body.appendChild(f);
+  const d = f.contentWindow.document;
+  d.open();
+  d.write('<!doctype html><html><head><meta charset="utf-8"><title>Ticket ' + tpvNumTxt(v) + '</title><style>body{margin:8px;}@page{size:80mm auto;margin:4mm;}' + TPV_CSS_TICKET + '</style></head><body>' + tpvHtmlTicket(v) + '</body></html>');
+  d.close();
+  setTimeout(() => { try { f.contentWindow.focus(); f.contentWindow.print(); } catch (e) { alert('No se pudo abrir la impresión en este dispositivo.'); } }, 250);
+  setTimeout(() => { if (f.parentNode) f.remove(); }, 60000);
 }
 function tpvAbrirTicket(v, recienCobrado) {
   const root = document.getElementById('tallerModalRoot');
@@ -8916,6 +8926,7 @@ function tpvAbrirTicket(v, recienCobrado) {
   root.innerHTML = '';
   root.appendChild(el('div', { class: 'modal-bg', onclick: (e) => { if (e.target.classList.contains('modal-bg')) root.innerHTML = ''; } },
     el('div', { class: 'modal tpv-modal-ticket', style: 'max-height:90vh;overflow-y:auto;' },
+      el('button', { type: 'button', class: 'tpv-cerrar-x', 'aria-label': 'Cerrar', onclick: () => { root.innerHTML = ''; } }, '✕'),
       recienCobrado ? el('div', { class: 'tpv-cobrado' }, '✅ Cobrado ' + euros(v.total)) : el('h3', {}, '🧾 Ticket ' + tpvNumTxt(v)),
       v.entregado && recienCobrado ? el('div', { class: 'tpv-cambio-grande' }, 'Cambio: ', el('b', {}, euros(v.entregado - v.total))) : null,
       caja,

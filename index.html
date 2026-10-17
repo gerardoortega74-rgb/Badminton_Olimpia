@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261017-ticketwa">
+<meta name="build-id" content="v20261017-cobros">
 <script>try{var q=new URLSearchParams(location.search);if(q.get('tiendaonline')==='1')document.documentElement.classList.add('tienda-pre');if(q.get('tallerpublico')==='1')document.documentElement.classList.add('tpub-pre');}catch(e){}</script>
 <style>html.tienda-pre,html.tienda-pre body{background:#061C3B !important;}html.tienda-pre header.app-header,html.tienda-pre footer.hint,html.tienda-pre #introScreen,html.tienda-pre #shellMain>*:not(#tiendaOnlineScreen){display:none !important;}
 body.im-taller .im-raqueta .im-izq{grid-row:span 4;display:flex;flex-direction:column;align-items:center;gap:6px;}
@@ -175,6 +175,28 @@ body.im-taller .tpv-venta.anulada{opacity:.55;text-decoration:line-through;}
 .tpv-compartir{width:100%;margin-top:8px;min-height:44px;}
 .tpv-tk-acc{display:flex;flex-wrap:wrap;gap:8px;}
 .tpv-tk-acc .btn{flex:1 1 140px;min-height:44px;justify-content:center;display:inline-flex;align-items:center;}
+
+body.im-taller .im-mov-periodo{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0;}
+body.im-taller .im-mov-periodo button{border:1px solid var(--im-line);background:#fff;color:var(--im-navy);border-radius:999px;padding:8px 14px;font-weight:700;font-size:13.5px;min-height:38px;cursor:pointer;}
+body.im-taller .im-mov-periodo button.on{background:var(--im-navy);border-color:var(--im-navy);color:#fff;}
+body.im-taller .im-mov-desglose{display:flex;gap:8px 16px;flex-wrap:wrap;font-size:13.5px;color:var(--im-muted);margin-top:8px;}
+body.im-taller .im-mov-desglose b{color:var(--im-ink);}
+body.im-taller .im-movs{margin-top:6px;}
+body.im-taller .im-mov-dia{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--im-muted);padding:12px 2px 4px;border-bottom:1px solid var(--im-line);}
+body.im-taller .im-mov{display:grid;grid-template-columns:34px 1fr auto auto;gap:10px;align-items:center;padding:10px 2px;border-bottom:1px solid #EEF1F5;}
+body.im-taller .im-mov-ico{width:34px;height:34px;border-radius:10px;background:#F4F6FA;display:flex;align-items:center;justify-content:center;font-size:16px;}
+body.im-taller .im-mov-txt{min-width:0;}
+body.im-taller .im-mov-txt b{display:block;font-size:14px;color:var(--im-ink);}
+body.im-taller .im-mov-txt small{display:block;font-size:12.5px;color:var(--im-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+body.im-taller .im-mov-imp{font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums;}
+body.im-taller .im-mov.ingreso .im-mov-imp{color:#137A3D;}
+body.im-taller .im-mov.gasto .im-mov-imp{color:#B3261E;}
+@media (max-width:560px){body.im-taller .im-mov{grid-template-columns:34px 1fr auto;}body.im-taller .im-mov-acc{grid-column:2 / 4;justify-self:start;}}
+body.im-taller .im-cobro-imp{font-family:var(--im-cond);font-style:italic;font-weight:800;font-size:44px;color:var(--im-navy);}
+.im-cobro .tpv-pagos{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
+.im-cobro .tpv-pagos button{border:1px solid #DCE3EE;background:#fff;border-radius:10px;min-height:46px;font-weight:700;font-size:14px;cursor:pointer;color:#0B2D5B;}
+.im-cobro .tpv-pagos button.on{background:#0B2D5B;border-color:#0B2D5B;color:#fff;}
+.im-cobro .im-cobro-imp{font-weight:800;font-size:40px;color:#0B2D5B;font-style:italic;}
 </style>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton</title>
@@ -8561,7 +8583,10 @@ function abrirEntregaPedido(p) {
   const opciones = p.pagado
     ? [{ value: 'yaPagado', label: 'Ya estaba pagada' }]
     : [{ value: 'pagaAhora', label: 'Me paga ahora (' + euros(p.precio) + ')' }, { value: 'sinPagar', label: 'Se la lleva sin pagar (queda pendiente de cobro)' }];
-  const pagoEntregaSelect = selectEl(opciones, (!p.pagado && p.pagoPrevisto === 'sinPagar') ? 'sinPagar' : opciones[0].value, () => {});
+  const formaPagoSelect = selectEl(Object.keys(TPV_PAGOS).map(k => ({ value: k, label: TPV_PAGOS[k] })), 'efectivo', () => {});
+  const campoForma = field('Forma de pago', formaPagoSelect);
+  const pagoEntregaSelect = selectEl(opciones, (!p.pagado && p.pagoPrevisto === 'sinPagar') ? 'sinPagar' : opciones[0].value, (v) => { campoForma.style.display = v === 'pagaAhora' ? '' : 'none'; });
+  campoForma.style.display = pagoEntregaSelect.value === 'pagaAhora' ? '' : 'none';
   root.innerHTML = '';
   root.appendChild(el('div', { class: 'modal-bg', onclick: (e) => { if (e.target.classList.contains('modal-bg')) root.innerHTML = ''; } },
     el('div', { class: 'modal' },
@@ -8570,15 +8595,19 @@ function abrirEntregaPedido(p) {
       el('div', { class: 'grid' },
         field('Fecha de entrega', fechaInput),
         field('Pago', pagoEntregaSelect),
+        campoForma,
       ),
       el('div', { class: 'row', style: 'margin-top:16px;' },
         el('button', { class: 'btn btn-primary', onclick: () => {
           const ts = tsDeFechaISO(fechaInput.value);
           p.estado = 'entregado';
           p.fechaEntrega = ts;
-          if (pagoEntregaSelect.value === 'pagaAhora') { p.pagado = true; p.fechaPago = ts; }
+          let venta = null;
+          if (pagoEntregaSelect.value === 'pagaAhora') venta = registrarCobroPedido(p, formaPagoSelect.value, ts);
           root.innerHTML = '';
           render();
+          if (venta) tpvAbrirTicket(venta, true);
+          else if (p.pagado && ventaDePedido(p)) tpvAbrirTicket(ventaDePedido(p), false);
         } }, 'Confirmar entrega'),
         el('button', { class: 'btn btn-ghost', onclick: () => { root.innerHTML = ''; } }, 'Cancelar'),
       ),
@@ -8879,7 +8908,9 @@ function tpvCobrar() {
 }
 function tpvAnular(v) {
   if (v.anulada) return;
-  if (!confirm('¿Anular el ticket ' + tpvNumTxt(v) + ' de ' + euros(v.total) + '?\n\nSe devuelve el stock de los artículos y se quita el ingreso de la contabilidad.')) return;
+  const ped = v.pedidoId ? state.pedidos.find(x => x.id === v.pedidoId) : null;
+  if (!confirm('¿Anular el ticket ' + tpvNumTxt(v) + ' de ' + euros(v.total) + '?\n\n' + (v.pedidoId ? 'La raqueta volverá a quedar pendiente de cobro.' : 'Se devuelve el stock de los artículos y se quita el ingreso de la contabilidad.'))) return;
+  if (ped) { ped.pagado = false; ped.fechaPago = null; ped.formaPago = null; }
   v.lineas.forEach(l => { const a = state.articulos.find(x => x.id === l.articuloId); if (a) a.stock = (Number(a.stock) || 0) + l.cantidad; });
   if (v.movimientoId) removeMovimientoTaller(v.movimientoId);
   v.anulada = true; v.fechaAnulacion = Date.now();
@@ -9125,18 +9156,19 @@ function viewTiendaFisica() {
   const validasHoy = deHoy.filter(v => !v.anulada);
   const porPago = (k) => validasHoy.filter(v => v.pago === k).reduce((s, v) => s + v.total, 0);
   const ventas = el('div', { class: 'panel tpv-ventas' },
-    el('h2', {}, 'Ventas de hoy'),
+    el('h2', {}, 'Ventas y cobros de hoy'),
+    el('div', { class: 'sub' }, '🛍️ ventas de la tienda · 🏸 raquetas cobradas'),
     el('div', { class: 'tpv-resumen' },
       el('div', {}, el('b', {}, euros(validasHoy.reduce((s, v) => s + v.total, 0))), el('span', {}, validasHoy.length + (validasHoy.length === 1 ? ' ticket' : ' tickets'))),
       el('div', {}, el('b', {}, euros(porPago('efectivo'))), el('span', {}, 'Efectivo')),
       el('div', {}, el('b', {}, euros(porPago('tarjeta'))), el('span', {}, 'Tarjeta')),
       el('div', {}, el('b', {}, euros(porPago('bizum'))), el('span', {}, 'Bizum'))));
   const lista = tpvVerAnteriores ? todas.slice(0, 60) : deHoy;
-  if (!lista.length) ventas.appendChild(el('div', { class: 'tpv-vacio' }, tpvVerAnteriores ? 'Todavía no hay ventas.' : 'Hoy todavía no has vendido nada en la tienda.'));
+  if (!lista.length) ventas.appendChild(el('div', { class: 'tpv-vacio' }, tpvVerAnteriores ? 'Todavía no hay ventas.' : 'Hoy todavía no hay ventas ni cobros.'));
   lista.forEach(v => {
     const d = new Date(v.fecha);
     ventas.appendChild(el('button', { type: 'button', class: 'tpv-venta' + (v.anulada ? ' anulada' : ''), onclick: () => tpvAbrirTicket(v) },
-      el('span', { class: 'tpv-v-num' }, tpvNumTxt(v)),
+      el('span', { class: 'tpv-v-num' }, (v.tipo === 'encordado' ? '🏸 ' : '🛍️ ') + tpvNumTxt(v)),
       el('span', { class: 'tpv-v-det' }, (tpvVerAnteriores ? String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + ' ' : '') + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ' · ' + v.lineas.reduce((s, l) => s + l.cantidad, 0) + ' art. · ' + TPV_PAGOS[v.pago].replace(/^\S+\s/, '') + (v.clienteNombre ? ' · ' + v.clienteNombre : '') + (v.anulada ? ' · ANULADO' : '')),
       el('b', {}, euros(v.total))));
   });
@@ -9149,6 +9181,49 @@ function viewTiendaFisica() {
   if (n) wrap.appendChild(el('button', { type: 'button', class: 'tpv-barra', onclick: () => tpvAbrirVentanaTicket() },
     el('span', {}, '🧾 ' + n + (n === 1 ? ' artículo' : ' artículos')), el('b', {}, euros(tpvTotal())), el('span', { class: 'tpv-barra-ir' }, 'Cobrar →')));
   return wrap;
+}
+// ===== Cobro de raquetas con ticket (misma numeración que la tienda) =====
+function ventaDePedido(p) { return (state.ventasTienda || []).find(v => v.pedidoId === p.id && !v.anulada) || null; }
+function registrarCobroPedido(p, pago, ts) {
+  ts = ts || Date.now();
+  p.pagado = true; p.fechaPago = ts; p.formaPago = pago;
+  if (ventaDePedido(p)) return ventaDePedido(p);
+  const cli = clienteDe(p.clienteId);
+  let lineas;
+  try { lineas = facLineasDePedido(p).map(l => ({ articuloId: null, nombre: l.concepto, cantidad: l.cantidad, precio: l.precio })); }
+  catch (e) { lineas = [{ articuloId: null, nombre: 'Encordado ' + (p.marcaModelo || 'raqueta'), cantidad: 1, precio: p.precio || 0 }]; }
+  if (!lineas.length) lineas = [{ articuloId: null, nombre: 'Encordado ' + (p.marcaModelo || 'raqueta'), cantidad: 1, precio: p.precio || 0 }];
+  const venta = { id: uid('vta'), numero: tpvSiguienteNumero(), fecha: ts, pago, tipo: 'encordado', pedidoId: p.id, clienteId: cli ? cli.id : null, clienteNombre: cli ? cli.nombre : '',
+    lineas, total: Math.round((p.precio || 0) * 100) / 100, anulada: false, movimientoId: null };
+  if (!Array.isArray(state.ventasTienda)) state.ventasTienda = [];
+  state.ventasTienda.push(venta);
+  return venta;
+}
+function anularCobroPedido(p) {
+  const v = ventaDePedido(p);
+  if (v) { v.anulada = true; v.fechaAnulacion = Date.now(); }
+  p.pagado = false; p.fechaPago = null; p.formaPago = null;
+}
+// Ventana para cobrar una raqueta: elige forma de pago → genera el ticket.
+function abrirCobroPedido(p, titulo) {
+  const root = document.getElementById('tallerModalRoot');
+  if (!root) return;
+  const cli = clienteDe(p.clienteId);
+  let pago = p.formaPago || 'efectivo';
+  const botones = el('div', { class: 'tpv-pagos' });
+  const pintar = () => { botones.innerHTML = ''; Object.keys(TPV_PAGOS).forEach(k => botones.appendChild(el('button', { type: 'button', class: pago === k ? 'on' : '', 'aria-pressed': pago === k ? 'true' : 'false', onclick: () => { pago = k; pintar(); } }, TPV_PAGOS[k]))); };
+  pintar();
+  root.innerHTML = '';
+  root.appendChild(el('div', { class: 'modal-bg', onclick: (e) => { if (e.target.classList.contains('modal-bg')) root.innerHTML = ''; } },
+    el('div', { class: 'modal im-cobro' },
+      el('h3', {}, titulo || '💶 Cobrar raqueta'),
+      el('div', { class: 'sub', style: 'margin-bottom:10px;' }, (cli ? cli.nombre + ' · ' : '') + (p.marcaModelo || 'Raqueta')),
+      el('div', { class: 'im-cobro-imp' }, euros(p.precio)),
+      el('div', { class: 'sub', style: 'margin:10px 0 4px;font-weight:700;' }, 'Forma de pago'),
+      botones,
+      el('div', { class: 'row', style: 'margin-top:16px;gap:8px;' },
+        el('button', { class: 'btn btn-primary', onclick: () => { const v = registrarCobroPedido(p, pago); root.innerHTML = ''; render(); tpvAbrirTicket(v, true); } }, 'Cobrar y sacar ticket'),
+        el('button', { class: 'btn btn-ghost', onclick: () => { root.innerHTML = ''; } }, 'Cancelar')))));
 }
 function viewCola() {
   const wrap = document.createDocumentFragment();
@@ -9323,8 +9398,8 @@ function abrirEditarPedido(p) {
     p.precio = nuevo.precio; p.pretensado = nuevo.pre; p.notas = nuevo.notas;
     if (nuevo.pago !== pagoAntes) {
       p.pagoPrevisto = nuevo.pago;
-      if (nuevo.pago === 'adelantado') { p.pagado = true; if (!p.fechaPago) p.fechaPago = Date.now(); }
-      else { p.pagado = false; p.fechaPago = null; }
+      if (nuevo.pago === 'adelantado') { if (!p.pagado) { root.innerHTML = ''; render(); abrirCobroPedido(p, '💶 Cobro por adelantado'); return; } }
+      else if (p.pagado) anularCobroPedido(p);
     }
     root.innerHTML = '';
     render();
@@ -9740,6 +9815,7 @@ function viewNuevoPedido() {
     clientePreseleccionadoId = irACola ? null : clienteElegidoId;
     activeTab = irACola ? 'cola' : 'nuevo';
     render();
+    if (nuevo.pagado) abrirCobroPedido(nuevo, '💶 Cobro por adelantado');
   }
 
   panel.appendChild(el('div', { class: 'im-barra-pedido' },
@@ -10970,7 +11046,7 @@ function viewHistorial() {
       el('td', {}, fmtTension(p)),
       el('td', {}, duracion),
       el('td', {}, euros(p.precio)),
-      el('td', {}, el('button', { class: 'btn btn-sm ' + (p.pagado ? 'btn-gold' : 'btn-ghost'), onclick: () => { p.pagado = !p.pagado; p.fechaPago = p.pagado ? Date.now() : null; render(); } }, p.pagado ? '✓ Pagado' : 'Pendiente')),
+      el('td', {}, el('button', { class: 'btn btn-sm ' + (p.pagado ? 'btn-gold' : 'btn-ghost'), onclick: () => { if (!p.pagado) { abrirCobroPedido(p); return; } if (confirm('¿Marcar esta raqueta como NO pagada? Su ticket de cobro quedará anulado.')) { anularCobroPedido(p); render(); } } }, p.pagado ? '✓ Pagado' : 'Pendiente')),
       el('td', {}, p.facturaId
         ? el('button', { class: 'btn btn-ghost btn-sm', onclick: () => facAbrirPorId(p.facturaId) }, '🧾 ' + p.facturaId)
         : p.pagado ? el('button', { class: 'btn btn-ghost btn-sm', onclick: () => facFacturarPedido(p) }, '🧾 Facturar') : el('span', { class: 'sub' }, 'Sin cobrar')),
@@ -11279,7 +11355,7 @@ function viewPendientesCobro() {
       el('td', {}, p.marcaModelo || '—'),
       el('td', {}, p.estado === 'entregado' ? el('span', { class: 'chip chip-gold' }, 'Entregada ' + fmtFechaTs(p.fechaEntrega)) : el('span', { class: 'chip chip-muted' }, 'Sin recoger')),
       el('td', {}, euros(p.precio)),
-      el('td', {}, el('button', { class: 'btn btn-primary btn-sm', onclick: () => { p.pagado = true; p.fechaPago = Date.now(); render(); } }, '✓ Cobrado')),
+      el('td', {}, el('button', { class: 'btn btn-primary btn-sm', onclick: () => abrirCobroPedido(p) }, '✓ Cobrado')),
     ));
   });
   table.appendChild(tbody);
@@ -11287,60 +11363,91 @@ function viewPendientesCobro() {
   wrap.appendChild(panel);
   return wrap;
 }
+let movPeriodo = 'mes';
+let movFiltro = 'todos';
 function viewMovimientosTaller() {
   const wrap = document.createDocumentFragment();
   const panel = el('div', { class: 'panel' },
     el('h2', {}, '💰 Contabilidad del taller'),
-    el('div', { class: 'sub' }, 'Las raquetas ya cobradas cuentan como ingreso automático. Aquí apuntas a mano el resto: material, gasolina, viajes, hoteles, lo que necesites — puedes ir ampliándolo con el tiempo.'),
+    el('div', { class: 'sub' }, 'Cada movimiento por separado: raquetas cobradas y ventas de la tienda (se apuntan solos) y lo que añadas a mano.'),
   );
-
-  const ingresosAuto = state.pedidos.filter(p => p.pagado).reduce((s, p) => s + (p.precio || 0), 0);
-  const manualIngresos = state.contabilidad.movimientos.filter(m => m.tipo === 'ingreso').reduce((s, m) => s + (m.importe || 0), 0);
-  const manualGastos = state.contabilidad.movimientos.filter(m => m.tipo === 'gasto').reduce((s, m) => s + (m.importe || 0), 0);
-  const totalIngresos = ingresosAuto + manualIngresos;
-  const balance = totalIngresos - manualGastos;
-
+  // Todos los movimientos: manuales + una línea por cada raqueta cobrada
+  const ventaPorMov = {}; (state.ventasTienda || []).forEach(v => { if (v.movimientoId) ventaPorMov[v.movimientoId] = v; });
+  const filas = [];
+  state.contabilidad.movimientos.forEach(m => {
+    const v = ventaPorMov[m.id];
+    filas.push({ fecha: m.fecha || '', tipo: m.tipo, clase: v ? 'tienda' : 'manual', categoria: m.categoria || (m.tipo === 'ingreso' ? 'Ingreso' : 'Gasto'), concepto: m.concepto || '', importe: m.importe || 0, mov: m, venta: v || null });
+  });
+  state.pedidos.filter(p => p.pagado).forEach(p => {
+    const cli = clienteDe(p.clienteId);
+    const v = ventaDePedido(p);
+    const ts = p.fechaPago || p.fechaEntrega || p.horaFin || p.horaLlegada;
+    const d = new Date(ts); const iso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    filas.push({ fecha: iso, tipo: 'ingreso', clase: 'encordado', categoria: 'Encordado', concepto: (p.marcaModelo || 'Raqueta') + (cli ? ' · ' + cli.nombre : '') + (v ? ' · ' + tpvNumTxt(v) : '') + (p.formaPago ? ' (' + TPV_PAGOS[p.formaPago].replace(/^\S+\s/, '') + ')' : ''), importe: p.precio || 0, pedido: p, venta: v });
+  });
+  // Periodo
+  const hoy = new Date(); const y = hoy.getFullYear(), mo = hoy.getMonth();
+  const pref = (yy, mm) => yy + '-' + String(mm + 1).padStart(2, '0');
+  const enPeriodo = (f) => movPeriodo === 'todo' ? true : movPeriodo === 'mes' ? f.startsWith(pref(y, mo)) : movPeriodo === 'mesAnt' ? f.startsWith(mo === 0 ? pref(y - 1, 11) : pref(y, mo - 1)) : f.startsWith(String(y));
+  const delPeriodo = filas.filter(f => enPeriodo(f.fecha));
+  const sum = (arr) => arr.reduce((s, f) => s + (f.importe || 0), 0);
+  const ingEnc = sum(delPeriodo.filter(f => f.clase === 'encordado'));
+  const ingTienda = sum(delPeriodo.filter(f => f.clase === 'tienda'));
+  const ingOtros = sum(delPeriodo.filter(f => f.clase === 'manual' && f.tipo === 'ingreso'));
+  const gastos = sum(delPeriodo.filter(f => f.tipo === 'gasto'));
+  const ingresos = ingEnc + ingTienda + ingOtros;
+  panel.appendChild(el('div', { class: 'im-mov-periodo' }, [['mes', 'Este mes'], ['mesAnt', 'Mes anterior'], ['año', 'Este año'], ['todo', 'Todo']].map(([k, t]) =>
+    el('button', { type: 'button', class: movPeriodo === k ? 'on' : '', onclick: () => { movPeriodo = k; render(); } }, t))));
   panel.appendChild(el('div', { class: 'stat-cards' },
-    statCardTaller(euros(totalIngresos), 'Ingresos (' + euros(ingresosAuto) + ' de raquetas)'),
-    statCardTaller(euros(manualGastos), 'Gastos'),
-    statCardTaller(euros(balance), 'Balance'),
-    statCardTaller(euros(pedidosPendientesDeCobro().reduce((sum, p) => sum + (p.precio || 0), 0)), 'Pendiente de cobro'),
+    statCardTaller(euros(ingresos), 'Ingresos'),
+    statCardTaller(euros(gastos), 'Gastos'),
+    statCardTaller(euros(ingresos - gastos), 'Balance'),
+    statCardTaller(euros(pedidosPendientesDeCobro().reduce((s, p) => s + (p.precio || 0), 0)), 'Pendiente de cobro'),
   ));
+  panel.appendChild(el('div', { class: 'im-mov-desglose' },
+    el('span', {}, '🏸 Encordados ', el('b', {}, euros(ingEnc))),
+    el('span', {}, '🛍️ Tienda ', el('b', {}, euros(ingTienda))),
+    el('span', {}, '➕ Otros ingresos ', el('b', {}, euros(ingOtros)))));
 
+  // Añadir a mano (plegado)
   const fechaInput = el('input', { type: 'date', value: new Date().toISOString().slice(0, 10) });
   const tipoSelect = selectEl([{ value: 'gasto', label: 'Gasto' }, { value: 'ingreso', label: 'Ingreso' }], 'gasto', () => {});
   const categoriaInput = el('input', { type: 'text', placeholder: 'Ej: Gasolina, Hotel, Material, Viaje…' });
   const conceptoInput = el('input', { type: 'text', placeholder: 'Concepto' });
   const importeInput = el('input', { type: 'number', step: '0.5', min: '0', placeholder: '0' });
-  panel.appendChild(el('div', { class: 'grid' },
-    field('Fecha', fechaInput), field('Tipo', tipoSelect), field('Categoría', categoriaInput), field('Concepto', conceptoInput), field('Importe (€)', importeInput),
-  ));
-  panel.appendChild(el('div', { class: 'toolbar', style: 'margin:10px 0 16px;' },
-    el('button', { class: 'btn btn-gold btn-sm', onclick: () => {
-      addMovimientoTaller({ fecha: fechaInput.value, tipo: tipoSelect.value, categoria: categoriaInput.value.trim(), concepto: conceptoInput.value.trim(), importe: parseFloat(importeInput.value) || 0 });
-      render();
-    } }, '+ Añadir movimiento'),
-  ));
+  panel.appendChild(el('details', { class: 'im-plegable', style: 'margin:12px 0;' }, el('summary', {}, '+ Apuntar un gasto o ingreso a mano'),
+    el('div', { class: 'im-plegable-cuerpo' },
+      el('div', { class: 'grid' }, field('Fecha', fechaInput), field('Tipo', tipoSelect), field('Categoría', categoriaInput), field('Concepto', conceptoInput), field('Importe (€)', importeInput)),
+      el('div', { class: 'toolbar', style: 'margin-top:10px;' }, el('button', { class: 'btn btn-gold btn-sm', onclick: () => {
+        const imp = parseFloat(importeInput.value) || 0;
+        if (!imp) { alert('Pon el importe.'); return; }
+        addMovimientoTaller({ fecha: fechaInput.value, tipo: tipoSelect.value, categoria: categoriaInput.value.trim(), concepto: conceptoInput.value.trim(), importe: imp });
+        render();
+      } }, 'Añadir movimiento')))));
 
-  const movimientos = state.contabilidad.movimientos.slice().sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
-  if (!movimientos.length) {
-    panel.appendChild(el('div', { class: 'empty-state' }, 'Todavía no has apuntado ningún gasto o ingreso a mano.'));
-  } else {
-    const table = el('table', {}, el('thead', {}, el('tr', {},
-      el('th', {}, 'Fecha'), el('th', {}, 'Tipo'), el('th', {}, 'Categoría'), el('th', {}, 'Concepto'), el('th', {}, 'Importe'), el('th', {}, ''))));
-    const tbody = el('tbody');
-    movimientos.forEach(m => {
-      tbody.appendChild(el('tr', {},
-        el('td', {}, fmtFechaDMY(m.fecha)),
-        el('td', {}, m.tipo === 'ingreso' ? el('span', { class: 'chip chip-gold' }, 'Ingreso') : el('span', { class: 'chip' }, 'Gasto')),
-        el('td', {}, m.categoria || '—'),
-        el('td', {}, m.concepto || '—'),
-        el('td', {}, euros(m.importe)),
-        el('td', {}, el('button', { class: 'btn btn-danger btn-sm', onclick: () => { removeMovimientoTaller(m.id); render(); } }, 'Eliminar')),
-      ));
+  // Filtros por tipo
+  const cuenta = (fn) => delPeriodo.filter(fn).length;
+  const FILTROS = [['todos', 'Todos', () => true], ['ingresos', 'Ingresos', f => f.tipo === 'ingreso'], ['gastos', 'Gastos', f => f.tipo === 'gasto'], ['encordado', '🏸 Encordados', f => f.clase === 'encordado'], ['tienda', '🛍️ Tienda', f => f.clase === 'tienda'], ['manual', '✍️ A mano', f => f.clase === 'manual']];
+  panel.appendChild(el('div', { class: 'tpv-chips im-mov-filtros' }, FILTROS.map(([k, t, fn]) => el('button', { type: 'button', class: movFiltro === k ? 'on' : '', onclick: () => { movFiltro = k; render(); } }, t + ' (' + cuenta(fn) + ')'))));
+  const fn = (FILTROS.find(x => x[0] === movFiltro) || FILTROS[0])[2];
+  const lista = delPeriodo.filter(fn).sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '') || ((b.venta ? b.venta.fecha : 0) - (a.venta ? a.venta.fecha : 0)));
+  if (!lista.length) panel.appendChild(el('div', { class: 'empty-state' }, 'No hay movimientos en este periodo.'));
+  else {
+    const cont = el('div', { class: 'im-movs' });
+    let fechaActual = '';
+    lista.forEach(f => {
+      if (f.fecha !== fechaActual) { fechaActual = f.fecha; cont.appendChild(el('div', { class: 'im-mov-dia' }, fmtFechaDMY(f.fecha))); }
+      const ico = f.clase === 'encordado' ? '🏸' : f.clase === 'tienda' ? '🛍️' : f.tipo === 'gasto' ? '➖' : '➕';
+      const acc = f.venta ? el('button', { class: 'btn btn-ghost btn-sm', onclick: () => tpvAbrirTicket(f.venta) }, '🧾 Ticket')
+        : f.clase === 'encordado' ? el('button', { class: 'btn btn-ghost btn-sm', title: 'Sacar el ticket de este cobro', onclick: () => { const v = registrarCobroPedido(f.pedido, f.pedido.formaPago || 'efectivo', f.pedido.fechaPago); render(); tpvAbrirTicket(v); } }, '🧾 Sacar ticket')
+        : el('button', { class: 'btn btn-danger btn-sm', onclick: () => { if (confirm('¿Eliminar este movimiento?\n\n' + (f.concepto || f.categoria) + ' · ' + euros(f.importe))) { removeMovimientoTaller(f.mov.id); render(); } } }, 'Eliminar');
+      cont.appendChild(el('div', { class: 'im-mov ' + f.tipo },
+        el('span', { class: 'im-mov-ico', 'aria-hidden': 'true' }, ico),
+        el('div', { class: 'im-mov-txt' }, el('b', {}, f.categoria), el('small', {}, f.concepto || '—')),
+        el('div', { class: 'im-mov-imp' }, (f.tipo === 'gasto' ? '− ' : '+ ') + euros(f.importe)),
+        el('div', { class: 'im-mov-acc' }, acc)));
     });
-    table.appendChild(tbody);
-    panel.appendChild(table);
+    panel.appendChild(cont);
   }
   wrap.appendChild(panel);
   return wrap;

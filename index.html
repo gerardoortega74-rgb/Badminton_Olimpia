@@ -4,8 +4,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261017-cola">
-<script>try{if(new URLSearchParams(location.search).get('tiendaonline')==='1')document.documentElement.classList.add('tienda-pre');}catch(e){}</script>
+<meta name="build-id" content="v20261017-seguimiento">
+<script>try{var q=new URLSearchParams(location.search);if(q.get('tiendaonline')==='1')document.documentElement.classList.add('tienda-pre');if(q.get('tallerpublico')==='1')document.documentElement.classList.add('tpub-pre');}catch(e){}</script>
 <style>html.tienda-pre,html.tienda-pre body{background:#061C3B !important;}html.tienda-pre header.app-header,html.tienda-pre footer.hint,html.tienda-pre #introScreen,html.tienda-pre #shellMain>*:not(#tiendaOnlineScreen){display:none !important;}
 body.im-taller .im-raqueta .im-izq{grid-row:span 4;display:flex;flex-direction:column;align-items:center;gap:6px;}
 body.im-taller .im-raqueta .im-izq .im-num{grid-row:auto;}
@@ -21,6 +21,74 @@ body.im-taller .im-raqueta.en-curso .im-izq{display:none;}
 .im-cliente-nuevo{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-top:8px;}
 .im-cliente-nuevo .field{flex:1;min-width:170px;margin:0;}
 .im-cliente-nuevo .btn{min-height:42px;}
+/* ===== Seguimiento público de la raqueta ===== */
+html.tpub-pre,html.tpub-pre body{background:#061C3B !important;}
+html.tpub-pre header.app-header,html.tpub-pre footer.hint,html.tpub-pre #introScreen,html.tpub-pre #shellMain>*:not(#tallerPublicoScreen){display:none !important;}
+body.tpub-on,html.tpub-pre body.tpub-on{background:#F3F5F9 !important;}
+body.tpub-on header.app-header,body.tpub-on footer.hint,body.tpub-on #marcaAguaTaller{display:none !important;}
+body.tpub-on main#shellMain{max-width:none !important;margin:0 !important;padding:0 !important;}
+#tallerPublicoScreen{--tn:#0B2D5B;--tn2:#061C3B;--tr:#E0162B;color:#14213A;}
+#tallerPublicoScreen *{box-sizing:border-box;}
+.tpb-hero{position:relative;overflow:hidden;color:#fff;text-align:center;background:radial-gradient(120% 90% at 85% 0%,#1B4C8C 0%,rgba(27,76,140,0) 60%),linear-gradient(160deg,var(--tn) 0%,var(--tn2) 100%);padding:26px 20px 70px;}
+.tpb-hero::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent calc(50% - 1px),rgba(255,255,255,.07) calc(50% - 1px),rgba(255,255,255,.07) calc(50% + 1px),transparent calc(50% + 1px));pointer-events:none;}
+.tpb-hero::after{content:"";position:absolute;left:0;right:0;bottom:0;height:5px;background:var(--tr);}
+.tpb-hero-in{position:relative;max-width:640px;margin:0 auto;}
+.tpb-hero .tpb-logo{width:150px;margin:0 auto 14px;}
+.tpb-logo svg{width:100%;height:auto;display:block;}
+.tpb-eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);padding:6px 12px;border-radius:999px;}
+.tpb-directo{width:8px;height:8px;border-radius:50%;background:#3EE08F;box-shadow:0 0 0 0 rgba(62,224,143,.7);animation:tpbLatido 1.8s infinite;}
+@keyframes tpbLatido{0%{box-shadow:0 0 0 0 rgba(62,224,143,.7);}70%{box-shadow:0 0 0 9px rgba(62,224,143,0);}100%{box-shadow:0 0 0 0 rgba(62,224,143,0);}}
+.tpb-hero h1{font-size:clamp(26px,6vw,40px);line-height:1.1;margin:14px 0 8px;font-weight:800;color:#fff;}
+.tpb-hero p{margin:0 auto;max-width:440px;color:#D6E2F3;font-size:15px;line-height:1.5;}
+.tpb-cuerpo{max-width:640px;margin:-48px auto 0;padding:0 16px 28px;position:relative;z-index:2;display:flex;flex-direction:column;gap:14px;}
+.tpb-card{background:#fff;border-radius:18px;padding:18px;box-shadow:0 6px 22px rgba(11,45,91,.10);border:1px solid #E4EAF3;}
+.tpb-estado{text-align:center;padding:22px 18px;border-top:5px solid #9CC2F2;}
+.tpb-estado.curso{border-top-color:var(--tr);}
+.tpb-estado.lista{border-top-color:#1FA855;background:linear-gradient(180deg,#EFFBF3,#fff 60%);}
+.tpb-estado.entregada{border-top-color:#7A889C;}
+.tpb-est-ico{font-size:38px;line-height:1;margin-bottom:6px;}
+.tpb-estado h2{margin:0 0 6px;font-size:24px;color:var(--tn);}
+.tpb-estado.lista h2{color:#137A3D;}
+.tpb-estado p{margin:0;color:#4D5C72;font-size:15.5px;line-height:1.5;}
+.tpb-barra{height:10px;border-radius:99px;background:#E8EDF5;margin-top:14px;overflow:hidden;}
+.tpb-barra i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--tr),#FF6B7A);transition:width .6s ease;}
+.tpb-pasos{list-style:none;margin:0;padding:16px 10px;display:grid;grid-template-columns:repeat(4,1fr);background:#fff;border-radius:18px;border:1px solid #E4EAF3;box-shadow:0 2px 10px rgba(11,45,91,.06);position:relative;}
+.tpb-pasos li{display:flex;flex-direction:column;align-items:center;text-align:center;gap:3px;position:relative;}
+.tpb-pasos li:not(:last-child)::after{content:"";position:absolute;top:15px;left:calc(50% + 18px);right:calc(-50% + 18px);height:3px;border-radius:2px;background:#E1E7F0;}
+.tpb-pasos li.hecho:not(:last-child)::after{background:var(--tn);}
+.tpb-punto{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;background:#EEF1F5;color:#8A97AA;border:2px solid #E1E7F0;}
+.tpb-pasos li.hecho .tpb-punto{background:var(--tn);border-color:var(--tn);color:#fff;}
+.tpb-pasos li.ahora .tpb-punto{background:var(--tr);border-color:var(--tr);color:#fff;box-shadow:0 0 0 5px rgba(224,22,43,.15);}
+.tpb-pasos b{font-size:12.5px;color:#14213A;}
+.tpb-pasos li:not(.hecho):not(.ahora) b{color:#8A97AA;}
+.tpb-pasos small{font-size:12px;color:#5B6B82;font-variant-numeric:tabular-nums;min-height:15px;}
+.tpb-cifras{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;}
+.tpb-cifra{background:#fff;border-radius:16px;padding:14px;border:1px solid #E4EAF3;box-shadow:0 2px 10px rgba(11,45,91,.05);}
+.tpb-cifra b{display:block;font-size:26px;font-weight:800;color:var(--tn);font-variant-numeric:tabular-nums;line-height:1.1;}
+.tpb-cifra span{font-size:12.5px;color:#5B6B82;}
+.tpb-cifra.destacada{background:var(--tn);border-color:var(--tn);}
+.tpb-cifra.destacada b{color:#fff;}
+.tpb-cifra.destacada span{color:#9CC2F2;}
+.tpb-cifra.ok b{color:#137A3D;}
+.tpb-detalle h3,.tpb-foto h3{margin:0 0 8px;font-size:15px;color:var(--tn);text-transform:uppercase;letter-spacing:.06em;}
+.tpb-fila{display:flex;justify-content:space-between;gap:14px;padding:9px 0;border-bottom:1px dashed #DCE3EE;font-size:15px;}
+.tpb-fila:last-child{border-bottom:0;}
+.tpb-fila span{color:#5B6B82;}
+.tpb-fila b{text-align:right;color:#14213A;}
+.tpb-foto{text-align:center;}
+.tpb-foto img{max-width:100%;max-height:360px;border-radius:12px;cursor:pointer;display:block;margin:0 auto 6px;}
+.tpb-foto small{color:#7A889C;}
+.tpb-acciones{display:flex;flex-direction:column;gap:10px;}
+.tpb-btn{display:flex;align-items:center;justify-content:center;gap:8px;min-height:52px;border-radius:14px;font-weight:800;font-size:16px;text-decoration:none;}
+.tpb-btn.rojo{background:var(--tr);color:#fff;box-shadow:0 6px 18px rgba(224,22,43,.3);}
+.tpb-btn.claro{background:#fff;color:var(--tn);border:1px solid #CBD6E6;}
+.tpb-tarjeta{padding:10px;text-align:center;}
+.tpb-tarjeta img{max-width:100%;border-radius:10px;display:block;margin:0 auto;}
+.tpb-pie{background:var(--tn2);color:#C5D3E8;padding:22px 20px;display:flex;align-items:center;justify-content:center;gap:14px;}
+.tpb-pie .tpb-logo{width:86px;}
+.tpb-pie b{display:block;color:#fff;}
+.tpb-pie span{font-size:13px;}
+@media (max-width:380px){.tpb-pasos b{font-size:11px;}.tpb-cifra b{font-size:22px;}}
 </style>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton</title>
@@ -8309,12 +8377,25 @@ function ponerPrimeraEnCola(p) {
 function pedidosAplazados() {
   return state.pedidos.filter(p => p.aplazado && (p.estado === 'pendiente' || p.estado === 'en_proceso')).sort((a, b) => a.horaLlegada - b.horaLlegada);
 }
+// Hora estimada de fin FIJA: parte de cuándo empezó la raqueta que se encorda (o de la última terminada hoy)
+// y suma el tiempo por raqueta de cada una en la cola. No cambia al mirarla; solo si se empieza, termina o reordena.
+function calcularFinesCola(pedidos, tiempoMedioMin) {
+  const ms = (tiempoMedioMin || 35) * 60000;
+  const activos = (pedidos || []).filter(p => !p.aplazado && (p.estado === 'pendiente' || p.estado === 'en_proceso')).sort(compararCola);
+  const fines = {};
+  let t = 0;
+  const enCurso = activos.find(p => p.estado === 'en_proceso');
+  if (enCurso) { t = (enCurso.horaInicio || enCurso.horaLlegada || 0) + ms; fines[enCurso.id] = t; }
+  else {
+    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+    t = (pedidos || []).filter(p => p.horaFin && p.horaFin >= hoy.getTime()).reduce((m, p) => Math.max(m, p.horaFin), 0);
+  }
+  activos.filter(p => p.estado !== 'en_proceso').forEach(p => { const ini = Math.max(t, p.horaLlegada || 0); t = ini + ms; fines[p.id] = t; });
+  return fines;
+}
+if (typeof window !== 'undefined') window.calcularFinesCola = calcularFinesCola;
 function horaEstimadaPara(pedidoId) {
-  const cola = pedidosEnCola();
-  const posicion = cola.findIndex(p => p.id === pedidoId);
-  if (posicion === -1) return null;
-  const minutos = (posicion + 1) * (state.config.tiempoMedioMinutos || 35);
-  return Date.now() + minutos * 60000;
+  return calcularFinesCola(state.pedidos, state.config.tiempoMedioMinutos)[pedidoId] || null;
 }
 function tiempoMedioReal() {
   const terminados = state.pedidos.filter(p => p.estado !== 'pendiente' && p.estado !== 'en_proceso' && p.horaInicio && p.horaFin);
@@ -11719,104 +11800,122 @@ function enlacePublicoPedidoTaller(pedidoId) {
   return location.origin + location.pathname + '?tallerpublico=1&pedido=' + pedidoId;
 }
 window.enlacePublicoPedidoTaller = enlacePublicoPedidoTaller;
+let tpbTemporizador = null;
 function renderVistaPublicaTaller() {
   const headerActions = document.getElementById('headerActions');
   if (headerActions) headerActions.style.display = 'none';
   ['loginScreen', 'onboardingScreen', 'homeScreen', 'clubGestionScreen', 'torneoScreen', 'planScreen', 'tallerScreen', 'publicoScreen', 'tiendaOnlineScreen'].forEach(id => {
     const e = document.getElementById(id); if (e) e.style.display = 'none';
   });
+  document.body.classList.add('tpub-on');
+  document.body.classList.remove('solo-lectura');
   const root = document.getElementById('tallerPublicoScreen');
   root.style.display = 'block';
   root.innerHTML = '';
   const taller = TallerApp.getState();
-  document.getElementById('shellTitle').textContent = 'Taller de Raquetas';
-  document.getElementById('shellSubtitle').textContent = (taller.config && taller.config.nombreTaller) || 'Sigue tu reparación en directo · se actualiza sola';
-  const nubeEl = document.getElementById('nubeIndicador');
-  if (nubeEl) nubeEl.style.display = 'none';
-  const badgePublico = document.querySelector('#shellBrand .brand-badge');
-  if (badgePublico) {
-    badgePublico.innerHTML = '';
-    badgePublico.style.display = 'flex';
-    badgePublico.style.width = 'clamp(72px, 16vw, 150px)';
-    badgePublico.style.height = 'clamp(72px, 16vw, 150px)';
-    badgePublico.style.borderRadius = '16px';
-    badgePublico.style.fontSize = 'clamp(32px, 8vw, 70px)';
-    const fotoBadge = taller.config && (taller.config.logoTaller || taller.config.tarjetaVisitaFoto);
-    if (fotoBadge) badgePublico.appendChild(el('img', { src: fotoBadge, style: 'width:100%;height:100%;object-fit:cover;border-radius:16px;' }));
-    else if (typeof clubGlobal !== 'undefined' && clubGlobal.logo) badgePublico.appendChild(el('img', { src: clubGlobal.logo, style: 'width:100%;height:100%;object-fit:cover;border-radius:16px;' }));
-    else badgePublico.textContent = '🏸';
-  }
-  if (typeof actualizarMarcaAguaTaller === 'function') actualizarMarcaAguaTaller(true);
-  document.body.classList.remove('solo-lectura');
+  const cfg = taller.config || {};
+  const nombreTaller = cfg.nombreTaller || 'IDERMAY CANTABRIA';
+  document.title = 'Tu raqueta · ' + nombreTaller;
+  const nubeEl = document.getElementById('nubeIndicador'); if (nubeEl) nubeEl.style.display = 'none';
+  if (!tpbTemporizador) tpbTemporizador = setInterval(() => { if (document.body.classList.contains('tpub-on') && !document.hidden) renderVistaPublicaTaller(); }, 30000);
+
+  const hora = (ts) => ts ? fmtHoraShell(ts) : '—';
+  const fecha = (ts) => { const d = new Date(ts); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0'); };
+  const logo = () => el('div', { class: 'tpb-logo', html: typeof OL_LOGO_IDERMAY_BLANCO !== 'undefined' ? OL_LOGO_IDERMAY_BLANCO : '' });
+  const tel = typeof telefonoParaWhatsappTienda === 'function' ? telefonoParaWhatsappTienda(cfg.telefonoTienda) : '';
 
   const pedidoId = new URLSearchParams(location.search).get('pedido');
   const pedido = (taller.pedidos || []).find(p => p.id === pedidoId);
+  const cliente = pedido ? (taller.clientes || []).find(c => c.id === pedido.clienteId) : null;
+  const nombrePila = cliente && cliente.nombre ? String(cliente.nombre).trim().split(/\s+/)[0] : '';
+
+  root.appendChild(el('section', { class: 'tpb-hero' },
+    el('div', { class: 'tpb-hero-in' },
+      logo(),
+      el('div', { class: 'tpb-eyebrow' }, el('span', { class: 'tpb-directo' }), 'Seguimiento en directo'),
+      el('h1', {}, pedido ? (pedido.marcaModelo || 'Tu raqueta') : 'Tu raqueta'),
+      nombrePila ? el('p', {}, 'Hola, ' + nombrePila + '. Aquí ves cómo va tu raqueta; la página se actualiza sola.') : el('p', {}, 'La página se actualiza sola.'))));
+  const cuerpo = el('div', { class: 'tpb-cuerpo' });
+  root.appendChild(cuerpo);
+
   if (!pedido) {
-    root.appendChild(el('div', { class: 'panel' }, el('div', { class: 'empty-state' }, 'No se encuentra esa reparación. Puede que el enlace no sea correcto o que se haya eliminado.')));
-    return;
-  }
-  const cliente = (taller.clientes || []).find(c => c.id === pedido.clienteId);
-  const cordaje = (taller.articulos || []).find(c => c.id === pedido.cordajeId);
-  const cordajeH = pedido.cordajeIdH ? (taller.articulos || []).find(c => c.id === pedido.cordajeIdH) : null;
-  const textoCordaje = cordajeH ? ('V: ' + (cordaje ? cordaje.nombre : 'sin especificar') + ' · H: ' + cordajeH.nombre) : (cordaje ? cordaje.nombre : 'sin especificar');
-
-  const panel = el('div', { class: 'panel' },
-    el('h2', {}, '🏸 ' + (pedido.marcaModelo || 'Tu raqueta')),
-    cliente ? el('div', { class: 'sub' }, 'Cliente: ' + cliente.nombre) : null,
-  );
-
-  if (pedido.estado === 'pendiente' || pedido.estado === 'en_proceso') {
+    cuerpo.appendChild(el('section', { class: 'tpb-card tpb-estado' }, el('div', { class: 'tpb-est-ico' }, '🔎'), el('h2', {}, 'No encontramos esta raqueta'), el('p', {}, 'Puede que el enlace no esté completo o que el pedido ya se haya cerrado. Si tienes dudas, escríbenos.')));
+  } else {
+    const tm = cfg.tiempoMedioMinutos || 35;
+    const fines = window.calcularFinesCola ? window.calcularFinesCola(taller.pedidos, tm) : {};
+    const fin = fines[pedido.id] || null;
     const clave = p => (typeof p.ordenCola === 'number') ? p.ordenCola : (p.horaLlegada || 0);
     const cola = (taller.pedidos || []).filter(p => !p.aplazado && (p.estado === 'pendiente' || p.estado === 'en_proceso')).sort((a, b) => ((b.estado === 'en_proceso') - (a.estado === 'en_proceso')) || (clave(a) - clave(b)));
-    const posicion = cola.findIndex(p => p.id === pedido.id);
-    const delante = Math.max(0, posicion);
-    const tiempoMedio = taller.config.tiempoMedioMinutos || 35;
-    const minutosEstimados = (posicion + 1) * tiempoMedio;
-    const horaEstimada = fmtHoraShell(Date.now() + minutosEstimados * 60000);
-    if (pedido.estado === 'en_proceso') {
-      panel.appendChild(el('div', { class: 'msg msg-info', style: 'font-size:16px;font-weight:700;' }, '🔧 ¡Ya se ha empezado a encordar tu raqueta!'));
-    } else {
-      panel.appendChild(el('div', { class: 'msg msg-info' },
-        delante > 0
-          ? `📋 Tienes ${delante} raqueta(s) por delante de la tuya en la cola.`
-          : '📋 ¡Eres el siguiente! Tu raqueta empezará enseguida.'));
+    const delante = Math.max(0, cola.findIndex(p => p.id === pedido.id));
+    const est = pedido.aplazado ? 'aplazado' : pedido.estado;
+
+    // Estado grande
+    const E = {
+      pendiente: { cls: 'cola', ico: '📋', tit: delante > 0 ? 'En cola' : '¡Eres el siguiente!', txt: delante > 0 ? 'Hay ' + delante + (delante === 1 ? ' raqueta' : ' raquetas') + ' por delante de la tuya.' : 'Tu raqueta empezará enseguida.' },
+      en_proceso: { cls: 'curso', ico: '🧵', tit: 'Encordando tu raqueta', txt: 'Empezamos a las ' + hora(pedido.horaInicio) + '. Estará lista hacia las ' + hora(fin) + '.' },
+      terminado: { cls: 'lista', ico: '✅', tit: '¡Lista para recoger!', txt: 'Terminada a las ' + hora(pedido.horaFin) + '. Pasa cuando quieras.' },
+      entregado: { cls: 'entregada', ico: '🏸', tit: 'Raqueta entregada', txt: (pedido.fechaEntrega ? 'Entregada el ' + fecha(pedido.fechaEntrega) + '. ' : '') + '¡Que la disfrutes!' },
+      aplazado: { cls: 'cola', ico: '📅', tit: 'Aplazada para otro día', txt: 'Te avisaremos cuando nos pongamos con ella.' },
+    }[est] || { cls: 'cola', ico: '📋', tit: 'Recibida', txt: '' };
+    const estado = el('section', { class: 'tpb-card tpb-estado ' + E.cls },
+      el('div', { class: 'tpb-est-ico' }, E.ico), el('h2', {}, E.tit), E.txt ? el('p', {}, E.txt) : null);
+    if (est === 'en_proceso' && pedido.horaInicio && fin) {
+      const pct = Math.max(3, Math.min(100, Math.round((Date.now() - pedido.horaInicio) / (fin - pedido.horaInicio) * 100)));
+      estado.appendChild(el('div', { class: 'tpb-barra', role: 'progressbar', 'aria-valuenow': String(pct), 'aria-valuemin': '0', 'aria-valuemax': '100' }, el('i', { style: 'width:' + pct + '%' })));
     }
-    panel.appendChild(el('div', { class: 'stat-cards' },
-      statCardShell(fmtHoraShell(pedido.horaLlegada), 'Hora de entrada'),
-      statCardShell(horaEstimada, 'Hora aproximada de fin'),
-    ));
-  } else if (pedido.estado === 'terminado' || pedido.estado === 'entregado') {
-    panel.appendChild(el('div', { class: 'msg msg-info', style: 'font-size:16px;font-weight:700;' },
-      pedido.estado === 'entregado'
-        ? '✅ Raqueta entregada' + (pedido.fechaEntrega ? ' el ' + (() => { const d = new Date(pedido.fechaEntrega); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear(); })() : '')
-        : '✅ ¡Tu raqueta ya está lista para recoger!'));
-    panel.appendChild(el('div', { class: 'stat-cards' },
-      statCardShell(euros(pedido.precio), 'Precio'),
-      statCardShell(pedido.pagado ? 'Pagado' : 'Pendiente de pago', 'Pago'),
-    ));
+    cuerpo.appendChild(estado);
+
+    // Pasos
+    const orden = ['pendiente', 'en_proceso', 'terminado', 'entregado'];
+    const actual = Math.max(0, orden.indexOf(pedido.estado));
+    const pasos = [
+      ['Recibida', hora(pedido.horaLlegada)],
+      ['Encordando', pedido.horaInicio ? hora(pedido.horaInicio) : ''],
+      ['Lista', pedido.horaFin ? hora(pedido.horaFin) : (fin && actual < 2 ? '≈ ' + hora(fin) : '')],
+      ['Entregada', pedido.fechaEntrega ? fecha(pedido.fechaEntrega) : ''],
+    ];
+    cuerpo.appendChild(el('ol', { class: 'tpb-pasos', 'aria-label': 'Estado de la raqueta' }, pasos.map(([t, h], i) =>
+      el('li', { class: (i < actual || pedido.estado === 'entregado') ? 'hecho' : i === actual ? 'ahora' : '' }, el('span', { class: 'tpb-punto' }, (i < actual || pedido.estado === 'entregado') ? '✓' : String(i + 1)), el('b', {}, t), el('small', {}, h || ' ')))));
+
+    // Cifras
+    const cifra = (n, t, extra) => el('div', { class: 'tpb-cifra' + (extra ? ' ' + extra : '') }, el('b', {}, n), el('span', {}, t));
+    const cifras = el('section', { class: 'tpb-cifras' });
+    cifras.appendChild(cifra(hora(pedido.horaLlegada), 'Hora de entrada'));
+    if (pedido.horaInicio) cifras.appendChild(cifra(hora(pedido.horaInicio), 'Empezó a encordarse'));
+    if (est === 'pendiente') cifras.appendChild(cifra(String(delante + 1) + 'º', 'Puesto en la cola'));
+    if (est === 'pendiente' || est === 'en_proceso') cifras.appendChild(cifra(hora(fin), 'Lista aproximadamente', 'destacada'));
+    if (est === 'terminado') cifras.appendChild(cifra(hora(pedido.horaFin), 'Terminada', 'destacada'));
+    if (est === 'terminado' || est === 'entregado') {
+      cifras.appendChild(cifra(euros(pedido.precio), 'Importe'));
+      cifras.appendChild(cifra(pedido.pagado ? 'Pagado' : 'Pendiente', 'Pago', pedido.pagado ? 'ok' : ''));
+    }
+    cuerpo.appendChild(cifras);
+
+    // Detalles del encordado
+    const cordaje = (taller.articulos || []).find(c => c.id === pedido.cordajeId);
+    const cordajeH = pedido.cordajeIdH ? (taller.articulos || []).find(c => c.id === pedido.cordajeIdH) : null;
+    const filaDet = (k, v) => v ? el('div', { class: 'tpb-fila' }, el('span', {}, k), el('b', {}, v)) : null;
+    cuerpo.appendChild(el('section', { class: 'tpb-card tpb-detalle' },
+      el('h3', {}, 'Tu encordado'),
+      filaDet('Raqueta', pedido.marcaModelo || 'Sin especificar'),
+      filaDet(cordajeH ? 'Cordaje vertical' : 'Cordaje', cordaje ? cordaje.nombre : 'El que trajiste'),
+      cordajeH ? filaDet('Cordaje horizontal', cordajeH.nombre) : null,
+      filaDet('Tensión', (pedido.tensionVertical || pedido.tensionHorizontal) ? (pedido.tensionVertical || '—') + ' / ' + (pedido.tensionHorizontal || '—') + ' kg' : ''),
+      pedido.pretensado ? filaDet('Pretensado', 'Sí') : null));
+
     if (pedido.fotoDespues) {
-      panel.appendChild(el('div', { style: 'margin-top:12px;' },
-        el('div', { class: 'sub', style: 'margin-bottom:6px;' }, '📷 Foto de tu raqueta terminada (pulsa para verla más grande)'),
-        el('img', { src: pedido.fotoDespues, style: 'max-width:220px;border-radius:8px;box-shadow:var(--shadow);cursor:pointer;display:block;', onclick: () => abrirFotoGrandePublica(pedido.fotoDespues) }),
-      ));
+      cuerpo.appendChild(el('section', { class: 'tpb-card tpb-foto' }, el('h3', {}, 'Así ha quedado'),
+        el('img', { src: pedido.fotoDespues, alt: 'Foto de tu raqueta terminada', onclick: () => abrirFotoGrandePublica(pedido.fotoDespues) }), el('small', {}, 'Pulsa la foto para verla más grande')));
     }
   }
 
-  panel.appendChild(el('div', { class: 'sub', style: 'margin-top:12px;' },
-    'Cordaje: ' + textoCordaje + (pedido.tensionVertical || pedido.tensionHorizontal ? ' · Tensión: ' + (pedido.tensionVertical || '') + '/' + (pedido.tensionHorizontal || '') + ' kg' : '')));
-  if ((taller.articulos || []).some(a => a.ventaOnline)) {
-    panel.appendChild(el('a', {
-      class: 'btn btn-gold', target: '_blank',
-      href: location.origin + location.pathname + '?tiendaonline=1',
-      style: 'display:flex;align-items:center;justify-content:center;width:100%;box-sizing:border-box;margin-top:14px;padding:18px;font-size:17px;border-radius:12px;',
-    }, '🛒 Ir a tienda'));
-  }
-  root.appendChild(panel);
-  if (taller.config && taller.config.tarjetaVisitaFoto) {
-    root.appendChild(el('div', { class: 'panel', style: 'text-align:center;' },
-      el('img', { src: taller.config.tarjetaVisitaFoto, style: 'max-width:280px;border-radius:8px;' }),
-    ));
-  }
+  // Acciones
+  const acciones = el('section', { class: 'tpb-acciones' });
+  if ((taller.articulos || []).some(a => a.ventaOnline)) acciones.appendChild(el('a', { class: 'tpb-btn rojo', href: location.origin + location.pathname + '?tiendaonline=1' }, '🛒 Ver la tienda online'));
+  if (tel) acciones.appendChild(el('a', { class: 'tpb-btn claro', href: 'https://wa.me/' + tel + '?text=' + encodeURIComponent('Hola, tengo una pregunta sobre mi raqueta' + (pedido && pedido.marcaModelo ? ' (' + pedido.marcaModelo + ')' : '') + '.'), target: '_blank', rel: 'noopener' }, '💬 ¿Alguna duda? Escríbenos'));
+  if (acciones.children.length) cuerpo.appendChild(acciones);
+  if (cfg.tarjetaVisitaFoto) cuerpo.appendChild(el('section', { class: 'tpb-card tpb-tarjeta' }, el('img', { src: cfg.tarjetaVisitaFoto, alt: 'Tarjeta de ' + nombreTaller })));
+  root.appendChild(el('footer', { class: 'tpb-pie' }, logo(), el('div', {}, el('b', {}, nombreTaller), el('span', {}, 'Encordado profesional de bádminton'))));
 }
 function statCardShell(num, lab) { return el('div', { class: 'stat-card' }, el('div', { class: 'num' }, num), el('div', { class: 'lab' }, lab)); }
 function abrirFotoGrandePublica(src) {
@@ -15191,7 +15290,7 @@ function estadoPublicoParaNube() {
     },
     pedidos: (t.pedidos || []).map(p => ({
       id: p.id, estado: p.estado, marcaModelo: p.marcaModelo, clienteId: p.clienteId, cordajeId: p.cordajeId, cordajeIdH: p.cordajeIdH,
-      tensionVertical: p.tensionVertical, tensionHorizontal: p.tensionHorizontal, horaLlegada: p.horaLlegada, ordenCola: (typeof p.ordenCola === 'number') ? p.ordenCola : null, fechaEntrega: p.fechaEntrega,
+      tensionVertical: p.tensionVertical, tensionHorizontal: p.tensionHorizontal, horaLlegada: p.horaLlegada, horaInicio: p.horaInicio || null, horaFin: p.horaFin || null, pretensado: !!p.pretensado, ordenCola: (typeof p.ordenCola === 'number') ? p.ordenCola : null, fechaEntrega: p.fechaEntrega,
       precio: p.precio, pagado: p.pagado, aplazado: p.aplazado, tieneFotoDespues: !!p.fotoDespues, fotoAntes: null, fotoDespues: null,
     })),
     clientes: (t.clientes || []).map(c => ({ id: c.id, nombre: c.nombre })),

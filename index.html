@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261017-historial">
+<meta name="build-id" content="v20261017-raqueta">
 <script>try{var q=new URLSearchParams(location.search);if(q.get('tiendaonline')==='1')document.documentElement.classList.add('tienda-pre');if(q.get('tallerpublico')==='1')document.documentElement.classList.add('tpub-pre');}catch(e){}</script>
 <style>html.tienda-pre,html.tienda-pre body{background:#061C3B !important;}html.tienda-pre header.app-header,html.tienda-pre footer.hint,html.tienda-pre #introScreen,html.tienda-pre #shellMain>*:not(#tiendaOnlineScreen){display:none !important;}
 body.im-taller .im-raqueta .im-izq{grid-row:span 4;display:flex;flex-direction:column;align-items:center;gap:6px;}
@@ -202,6 +202,15 @@ body.im-taller .im-raqueta.im-hist-card{grid-template-columns:1fr !important;dis
 body.im-taller .im-hist-card .im-acc{grid-column:1;}
 body.im-taller .im-hist-card img.im-foto{grid-column:1;}
 body.im-taller .im-hist-fecha{font-size:12.5px;font-weight:700;color:var(--im-muted);}
+
+.im-rq-sug{display:flex;flex-direction:column;margin-top:4px;}
+.im-rq-sug button{text-align:left;background:#F4F6FA;border:0;border-bottom:1px solid #fff;padding:11px 10px;font-size:14.5px;cursor:pointer;color:#14213A;border-radius:6px;}
+.im-rq-estado{margin-top:6px;font-size:13.5px;font-weight:700;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;}
+.im-rq-estado.ok{color:#137A3D;}
+.im-rq-estado.no{color:#B7791F;}
+.im-rq-estado.aviso{color:#B3261E;flex-direction:column;align-items:flex-start;}
+.im-rq-anadir{width:100%;gap:6px;flex-wrap:wrap;margin-top:4px;}
+.im-rq-anadir input{flex:1 1 90px;min-width:0;}
 </style>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton</title>
@@ -9377,6 +9386,55 @@ function cambiarCordajePedido(p, campo, nuevoId) {
     if (n) n.stock = Math.max(0, (n.stock || 0) - (p[campoCant] || 1));
   } else p[campoCant] = null;
 }
+// Casilla de raqueta con la lista de raquetas: sugerencias al escribir, aviso de si está en la lista y botón para añadirla.
+function campoRaquetaConLista(valorInicial, tensiones) {
+  const input = el('input', { type: 'text', value: valorInicial || '', autocomplete: 'off', placeholder: 'Ej: Yonex Astrox 99' });
+  const sug = el('div', { class: 'im-rq-sug' });
+  const estado = el('div', { class: 'im-rq-estado' });
+  const norm = (t) => imNormal(String(t || '')).replace(/\s+/g, ' ').trim();
+  const plana = () => { const c = raquetasMercadoCompleto(); const out = []; Object.keys(c).sort().forEach(m => c[m].forEach(r => out.push({ marca: m, modelo: r.modelo, tensionMaxKg: r.tensionMaxKg, nombre: m + ' ' + r.modelo }))); return out; };
+  const exacta = () => { const q = norm(input.value); return q ? plana().find(r => norm(r.nombre) === q) || null : null; };
+  function pintar(mostrarSug) {
+    const q = norm(input.value);
+    sug.innerHTML = '';
+    if (mostrarSug && q) {
+      const palabras = q.split(' ');
+      const cands = plana().filter(r => { const n = norm(r.nombre); return palabras.every(w => n.includes(w)); }).filter(r => norm(r.nombre) !== q).slice(0, 6);
+      cands.forEach(r => sug.appendChild(el('button', { type: 'button', onpointerdown: (e) => { e.preventDefault(); input.value = r.nombre; pintar(false); }, onclick: () => { input.value = r.nombre; pintar(false); } }, r.nombre + (r.tensionMaxKg ? ' · máx. ' + r.tensionMaxKg + ' kg' : ''))));
+    }
+    estado.innerHTML = '';
+    if (!q) return;
+    const r = exacta();
+    if (r) {
+      if (input.value !== r.nombre) input.value = r.nombre;
+      const vMax = Math.max(...(tensiones ? tensiones().map(x => parseFloat(x) || 0) : [0]));
+      estado.className = 'im-rq-estado ok';
+      estado.appendChild(el('span', {}, '✓ Está en tu lista de raquetas' + (r.tensionMaxKg ? ' · tensión máx. ' + r.tensionMaxKg + ' kg' : '')));
+      if (r.tensionMaxKg && vMax > r.tensionMaxKg) { estado.className = 'im-rq-estado aviso'; estado.appendChild(el('div', {}, '⚠️ Estás poniendo ' + vMax + ' kg, más de lo que recomienda el fabricante.')); }
+    } else {
+      estado.className = 'im-rq-estado no';
+      estado.appendChild(el('span', {}, 'No está en tu lista de raquetas'));
+      const partes = input.value.trim().split(/\s+/);
+      const inMarca = el('input', { type: 'text', value: partes[0] || '', placeholder: 'Marca' });
+      const inModelo = el('input', { type: 'text', value: partes.slice(1).join(' '), placeholder: 'Modelo' });
+      const inMax = el('input', { type: 'number', step: '0.5', min: '0', placeholder: 'Máx. kg' });
+      const form = el('div', { class: 'im-rq-anadir', style: 'display:none;' }, inMarca, inModelo, inMax,
+        el('button', { type: 'button', class: 'btn btn-gold btn-sm', onclick: () => {
+          if (!inMarca.value.trim() || !inModelo.value.trim()) { alert('Pon marca y modelo.'); return; }
+          addRaquetaExtra(inMarca.value, inModelo.value, inMax.value ? parseFloat(inMax.value) : null);
+          saveLocal();
+          input.value = inMarca.value.trim() + ' ' + inModelo.value.trim();
+          pintar(false);
+        } }, 'Añadir'));
+      estado.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-sm', onclick: () => { form.style.display = form.style.display === 'none' ? 'flex' : 'none'; } }, '+ Añadirla a la lista'));
+      estado.appendChild(form);
+    }
+  }
+  input.addEventListener('input', () => pintar(true));
+  input.addEventListener('blur', () => setTimeout(() => pintar(false), 200));
+  pintar(false);
+  return { input, nodo: el('div', { class: 'im-rq' }, input, sug, estado), repintar: () => pintar(false) };
+}
 function abrirEditarPedido(p) {
   const root = document.getElementById('tallerModalRoot');
   if (!root) return;
@@ -9385,9 +9443,11 @@ function abrirEditarPedido(p) {
   const opcCordaje = (sel) => [el('option', { value: '' }, 'Sin cordaje (lo trae el cliente)')].concat(cordajes.map(c => el('option', { value: c.id, selected: c.id === sel ? 'selected' : null }, c.nombre + ' (stock: ' + (c.stock || 0) + ')')));
   const inNombre = el('input', { type: 'text', value: cli ? cli.nombre : '' });
   const inTel = el('input', { type: 'tel', inputmode: 'tel', value: cli ? (cli.telefono || '') : '', placeholder: 'Ej: 600 123 456' });
-  const inRaqueta = el('input', { type: 'text', value: p.marcaModelo || '' });
   const inV = el('input', { type: 'number', step: '0.1', min: '0', value: p.tensionVertical || '' });
   const inH = el('input', { type: 'number', step: '0.1', min: '0', value: p.tensionHorizontal || '' });
+  const campoRq = campoRaquetaConLista(p.marcaModelo || '', () => [inV.value, inH.value]);
+  const inRaqueta = campoRq.input;
+  inV.addEventListener('input', campoRq.repintar); inH.addEventListener('input', campoRq.repintar);
   const selCor = el('select', {}, opcCordaje(p.cordajeId)); selCor.value = p.cordajeId || '';
   const selCorH = el('select', {}, [el('option', { value: '' }, 'Igual que el vertical')].concat(cordajes.map(c => el('option', { value: c.id }, c.nombre + ' (stock: ' + (c.stock || 0) + ')')))); selCorH.value = p.cordajeIdH || '';
   const inPrecio = el('input', { type: 'number', step: '0.5', min: '0', value: p.precio || 0 });
@@ -9447,7 +9507,7 @@ function abrirEditarPedido(p) {
         el('div', { class: 'im-editar-2' }, field('Nombre', inNombre), field('Teléfono', inTel))) : el('div', { class: 'msg msg-warn' }, 'El cliente de este pedido se ha eliminado.'),
       el('div', { class: 'im-editar-grupo' },
         el('div', { class: 'im-editar-tit' }, 'Raqueta y encordado'),
-        field('Raqueta', inRaqueta),
+        field('Raqueta', campoRq.nodo),
         el('div', { class: 'im-editar-2' }, field('Tensión vertical (kg)', inV), field('Tensión horizontal (kg)', inH)),
         field('Cordaje', selCor),
         field('Cordaje horizontal (si es distinto)', selCorH),

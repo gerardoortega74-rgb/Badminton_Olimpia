@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261018-lupa4">
+<meta name="build-id" content="v20261018-fondos">
 <script>try{var q=new URLSearchParams(location.search);if(q.get('tiendaonline')==='1')document.documentElement.classList.add('tienda-pre');if(q.get('tallerpublico')==='1')document.documentElement.classList.add('tpub-pre');}catch(e){}</script>
 <style>html.tienda-pre,html.tienda-pre body{background:#061C3B !important;}html.tienda-pre header.app-header,html.tienda-pre footer.hint,html.tienda-pre #introScreen,html.tienda-pre #shellMain>*:not(#tiendaOnlineScreen){display:none !important;}
 body.im-taller .im-raqueta .im-izq{grid-row:span 4;display:flex;flex-direction:column;align-items:center;gap:6px;}
@@ -233,6 +233,13 @@ body.im-taller .tpv-lupa:active{transform:scale(.92);}
 .tpv-visor-acc{padding:0 14px 14px;}
 .tpv-visor-anadir{width:100%;min-height:50px;border:0;border-radius:12px;background:#E0162B;color:#fff;font-size:16px;font-weight:800;cursor:pointer;}
 .tpv-visor-anadir:disabled{background:#C9D3E0;color:#5B6B82;cursor:not-allowed;}
+
+.im-fondos{display:flex;flex-direction:column;gap:8px;}
+.im-fondo{text-transform:none;letter-spacing:0;display:grid;grid-template-columns:auto 72px auto 72px 1fr;gap:8px;align-items:center;padding:8px;border:1px solid #E4EAF3;border-radius:12px;cursor:pointer;}
+.im-fondo img{width:72px;height:72px;object-fit:contain;border-radius:8px;border:1px solid #E4EAF3;background:#fff;}
+.im-fondo .flecha{font-weight:800;color:#7A889C;}
+.im-fondo .nom{font-size:13px;font-weight:700;color:#14213A;}
+@media (max-width:420px){.im-fondo{grid-template-columns:auto 60px auto 60px;}.im-fondo img{width:60px;height:60px;}.im-fondo .nom{grid-column:1 / -1;}}
 </style>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton</title>
@@ -7796,6 +7803,7 @@ function comprimirImagen(file, maxWidth, calidad) {
         const canvas = document.createElement('canvas');
         canvas.width = w; canvas.height = h;
         const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, w, h); // lo transparente (PNG) queda blanco, no negro
         ctx.drawImage(img, 0, 0, w, h);
         resolve(canvas.toDataURL('image/jpeg', calidad));
       };
@@ -8305,7 +8313,9 @@ function comprimirImagen(file, maxWidth, calidad) {
         if (w > maxWidth) { h = Math.round(h * (maxWidth / w)); w = maxWidth; }
         const canvas = document.createElement('canvas');
         canvas.width = w; canvas.height = h;
-        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        const cx2 = canvas.getContext('2d');
+        cx2.fillStyle = '#FFFFFF'; cx2.fillRect(0, 0, w, h); // lo transparente (PNG) queda blanco, no negro
+        cx2.drawImage(img, 0, 0, w, h);
         resolve(canvas.toDataURL('image/jpeg', calidad));
       };
       img.onerror = reject;
@@ -10267,6 +10277,90 @@ function viewCatalogo() {
   return wrap;
 }
 // Artículos marcados «A la venta en el catálogo online»: lo que ve el cliente en la tienda.
+// Fotos con fondo negro (PNG transparentes guardados antes como JPG): cambia a blanco el negro que toca los bordes.
+function fotoFondoNegroABlanco(dataUrl) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const w = img.width, h = img.height;
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      const ctx = c.getContext('2d'); ctx.drawImage(img, 0, 0);
+      let d; try { d = ctx.getImageData(0, 0, w, h); } catch (e) { resolve(null); return; }
+      const px = d.data, n = w * h, marca = new Uint8Array(n), cola = new Int32Array(n);
+      const oscuro = (i, lim) => px[i * 4] <= lim && px[i * 4 + 1] <= lim && px[i * 4 + 2] <= lim;
+      let ini = 0, fin = 0;
+      const meter = (i) => { if (!marca[i] && oscuro(i, 42)) { marca[i] = 1; cola[fin++] = i; } };
+      for (let x = 0; x < w; x++) { meter(x); meter((h - 1) * w + x); }
+      for (let y = 0; y < h; y++) { meter(y * w); meter(y * w + w - 1); }
+      while (ini < fin) { const i = cola[ini++], x = i % w, y = (i / w) | 0; if (x > 0) meter(i - 1); if (x < w - 1) meter(i + 1); if (y > 0) meter(i - w); if (y < h - 1) meter(i + w); }
+      if (fin < n * 0.04) { resolve(null); return; } // casi nada de fondo negro: no se toca
+      for (let k = 0; k < fin; k++) { const j = cola[k] * 4; px[j] = px[j + 1] = px[j + 2] = 255; }
+      // Suaviza el borde oscuro que deja la antigua transparencia (2 pasadas)
+      for (let pasada = 0; pasada < 2; pasada++) {
+        const nuevos = [];
+        for (let i = 0; i < n; i++) {
+          if (marca[i]) continue;
+          const x = i % w, y = (i / w) | 0;
+          const vecino = (x > 0 && marca[i - 1]) || (x < w - 1 && marca[i + 1]) || (y > 0 && marca[i - w]) || (y < h - 1 && marca[i + w]);
+          if (!vecino) continue;
+          const j = i * 4, m = Math.max(px[j], px[j + 1], px[j + 2]);
+          if (m <= 110) { const a = 1 - m / 110; px[j] += (255 - px[j]) * a; px[j + 1] += (255 - px[j + 1]) * a; px[j + 2] += (255 - px[j + 2]) * a; nuevos.push(i); }
+        }
+        nuevos.forEach(i => { marca[i] = 1; });
+      }
+      ctx.putImageData(d, 0, 0);
+      resolve(c.toDataURL('image/jpeg', 0.85));
+    };
+    img.onerror = () => resolve(null);
+    img.src = dataUrl;
+  });
+}
+let fotosFondoDeshacer = null;
+async function abrirArreglarFondosFotos() {
+  const root = document.getElementById('tallerModalRoot');
+  if (!root) return;
+  const conFoto = state.articulos.filter(a => a.foto);
+  root.innerHTML = '';
+  const cuerpo = el('div', {}, el('div', { class: 'sub' }, 'Buscando fotos con fondo negro… (' + conFoto.length + ' fotos)'));
+  const modal = el('div', { class: 'modal', style: 'max-width:640px;max-height:88vh;overflow-y:auto;' }, el('h3', {}, '🖌️ Fondo blanco en las fotos'), cuerpo);
+  root.appendChild(el('div', { class: 'modal-bg', onclick: (e) => { if (e.target.classList.contains('modal-bg')) root.innerHTML = ''; } }, modal));
+  const encontrados = [];
+  for (const a of conFoto) { const nueva = await fotoFondoNegroABlanco(a.foto); if (nueva) encontrados.push({ a, nueva, elegido: true }); }
+  cuerpo.innerHTML = '';
+  if (!encontrados.length) {
+    cuerpo.appendChild(el('div', { class: 'msg msg-info' }, 'No hay ninguna foto con fondo negro. 👍'));
+    cuerpo.appendChild(el('button', { class: 'btn btn-ghost', style: 'margin-top:12px;', onclick: () => { root.innerHTML = ''; } }, 'Cerrar'));
+    return;
+  }
+  cuerpo.appendChild(el('div', { class: 'sub', style: 'margin-bottom:10px;' }, encontrados.length + ' foto(s) con fondo negro. Así quedarían (antes → después). Quita la marca a las que no quieras cambiar.'));
+  const lista = el('div', { class: 'im-fondos' });
+  encontrados.forEach(f => {
+    const chk = el('input', { type: 'checkbox', checked: 'checked', style: 'width:22px;height:22px;' });
+    chk.addEventListener('change', () => { f.elegido = chk.checked; });
+    lista.appendChild(el('label', { class: 'im-fondo' }, chk,
+      el('img', { src: f.a.foto, alt: 'Antes' }), el('span', { class: 'flecha' }, '→'), el('img', { src: f.nueva, alt: 'Después' }),
+      el('span', { class: 'nom' }, f.a.nombre)));
+  });
+  cuerpo.appendChild(lista);
+  cuerpo.appendChild(el('div', { class: 'row', style: 'margin-top:14px;gap:8px;' },
+    el('button', { class: 'btn btn-primary', onclick: () => {
+      const elegidos = encontrados.filter(f => f.elegido);
+      if (!elegidos.length) { root.innerHTML = ''; return; }
+      if (!confirm('¿Poner fondo blanco a ' + elegidos.length + ' foto(s)?')) return;
+      fotosFondoDeshacer = elegidos.map(f => ({ id: f.a.id, foto: f.a.foto }));
+      elegidos.forEach(f => { f.a.foto = f.nueva; if (window.guardarFotoArticuloTallerEnNube) window.guardarFotoArticuloTallerEnNube(f.a.id, f.nueva); });
+      root.innerHTML = '';
+      render();
+      setTimeout(() => alert('✅ Listo: ' + elegidos.length + ' foto(s) con fondo blanco. Si algo no te gusta, en «Tienda física» o «Venta online» tienes el botón «Deshacer fondos».'), 50);
+    } }, 'Poner fondo blanco'),
+    el('button', { class: 'btn btn-ghost', onclick: () => { root.innerHTML = ''; } }, 'Cancelar')));
+}
+function deshacerFondosFotos() {
+  if (!fotosFondoDeshacer) return;
+  if (!confirm('¿Volver a dejar las ' + fotosFondoDeshacer.length + ' foto(s) como estaban?')) return;
+  fotosFondoDeshacer.forEach(x => { const a = state.articulos.find(y => y.id === x.id); if (a) { a.foto = x.foto; if (window.guardarFotoArticuloTallerEnNube) window.guardarFotoArticuloTallerEnNube(a.id, x.foto); } });
+  fotosFondoDeshacer = null; render();
+}
 function viewVentaOnline(campo) {
   campo = campo || 'ventaOnline';
   const fisica = campo === 'ventaTienda';
@@ -10282,6 +10376,9 @@ function viewVentaOnline(campo) {
     el('div', {}, el('b', {}, String(enVenta.length)), el('span', {}, enVenta.length === 1 ? 'a la venta' : 'a la venta')),
     el('div', { class: agotados ? 'aviso' : '' }, el('b', {}, String(agotados)), el('span', {}, agotados === 1 ? 'agotado' : 'agotados')),
     el('div', { class: sinFoto ? 'aviso' : '' }, el('b', {}, String(sinFoto)), el('span', {}, 'sin foto'))));
+  panel.appendChild(el('div', { class: 'toolbar', style: 'margin:6px 0 0;flex-wrap:wrap;gap:8px;' },
+    el('button', { class: 'btn btn-ghost btn-sm', onclick: () => abrirArreglarFondosFotos() }, '🖌️ Fondo blanco en fotos con fondo negro'),
+    fotosFondoDeshacer ? el('button', { class: 'btn btn-ghost btn-sm', onclick: () => deshacerFondosFotos() }, '↩️ Deshacer fondos') : null));
   if (fisica) panel.appendChild(el('div', { class: 'toolbar', style: 'margin:10px 0;flex-wrap:wrap;gap:8px;' },
     el('button', { class: 'btn btn-gold btn-sm', onclick: () => irA('tienda') }, '🏪 Abrir la caja'),
     (() => { const conStock = state.articulos.filter(a => !a[campo] && !a.esCordaje && (Number(a.stock) || 0) > 0); return conStock.length ? el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { if (confirm('¿Poner en la tienda los ' + conStock.length + ' artículos con stock que faltan (sin cordajes)?')) { conStock.forEach(a => { a[campo] = true; }); saveLocal(); render(); } } }, '+ Poner todos los que tienen stock (' + conStock.length + ')') : null; })()));

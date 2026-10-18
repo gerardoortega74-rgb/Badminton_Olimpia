@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261018-lupa">
+<meta name="build-id" content="v20261018-lupa4">
 <script>try{var q=new URLSearchParams(location.search);if(q.get('tiendaonline')==='1')document.documentElement.classList.add('tienda-pre');if(q.get('tallerpublico')==='1')document.documentElement.classList.add('tpub-pre');}catch(e){}</script>
 <style>html.tienda-pre,html.tienda-pre body{background:#061C3B !important;}html.tienda-pre header.app-header,html.tienda-pre footer.hint,html.tienda-pre #introScreen,html.tienda-pre #shellMain>*:not(#tiendaOnlineScreen){display:none !important;}
 body.im-taller .im-raqueta .im-izq{grid-row:span 4;display:flex;flex-direction:column;align-items:center;gap:6px;}
@@ -229,6 +229,10 @@ body.im-taller .tpv-lupa:active{transform:scale(.92);}
 .tpv-visor-pie button{width:44px;height:40px;border-radius:10px;border:1px solid #DCE3EE;background:#F4F6FA;font-size:22px;font-weight:800;color:#0B2D5B;cursor:pointer;}
 .tpv-visor-nivel{min-width:48px;text-align:center;font-weight:700;color:#5B6B82;font-variant-numeric:tabular-nums;}
 .tpv-visor-precio{margin-left:auto;font-weight:800;font-size:18px;color:#0B2D5B;}
+
+.tpv-visor-acc{padding:0 14px 14px;}
+.tpv-visor-anadir{width:100%;min-height:50px;border:0;border-radius:12px;background:#E0162B;color:#fff;font-size:16px;font-weight:800;cursor:pointer;}
+.tpv-visor-anadir:disabled{background:#C9D3E0;color:#5B6B82;cursor:not-allowed;}
 </style>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton</title>
@@ -1576,7 +1580,12 @@ body.tienda-on main#shellMain{max-width:none !important;margin:0 !important;padd
 .tdo-card{background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(11,45,91,.07);border:1px solid #E4EAF3;display:flex;flex-direction:column;transition:transform .18s ease,box-shadow .18s ease;}
 .tdo-card:hover{transform:translateY(-3px);box-shadow:0 12px 28px rgba(11,45,91,.14);}
 .tdo-foto{position:relative;aspect-ratio:1/1;background:#F6F8FB;display:flex;align-items:center;justify-content:center;}
-.tdo-foto img{width:100%;height:100%;object-fit:cover;display:block;}
+.tdo-foto img{width:100%;height:100%;object-fit:contain;display:block;padding:6px;box-sizing:border-box;}
+.tdo-foto.con-foto{background:#fff;}
+.tdo-foto{cursor:pointer;touch-action:manipulation;-webkit-user-select:none;user-select:none;}
+.tdo-cant{position:absolute;top:10px;right:10px;font-style:normal;min-width:30px;height:30px;border-radius:15px;background:#E0162B;color:#fff;font-weight:800;font-size:15px;display:flex;align-items:center;justify-content:center;padding:0 8px;box-shadow:0 2px 6px rgba(0,0,0,.25);}
+.tdo-ayuda{font-size:13px;color:#5B6B82;margin:-4px 0 12px;}
+.tdo-lupa{position:absolute;right:8px;bottom:8px;width:38px;height:38px;border-radius:50%;border:0;background:rgba(255,255,255,.95);color:#0B2D5B;box-shadow:0 2px 8px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;}
 .tdo-foto.sin{background:linear-gradient(150deg,#EAF0F9 0%,#D3E0F2 100%);}
 .tdo-foto.sin span{font-size:clamp(46px,8vw,64px);filter:drop-shadow(0 6px 10px rgba(11,45,91,.18));}
 .tdo-badge{position:absolute;top:10px;left:10px;font-style:normal;font-size:11.5px;font-weight:800;padding:5px 9px;border-radius:7px;letter-spacing:.02em;}
@@ -9161,7 +9170,8 @@ function tpvAbrirVentanaTicket() {
       el('button', { class: 'btn btn-ghost', style: 'width:100%;margin-top:8px;', onclick: () => { root.innerHTML = ''; } }, '← Seguir añadiendo'))));
 }
 // Visor de foto de artículo: ventana (no pantalla completa) con zoom +/−, doble toque, pellizco y arrastre.
-function tpvVerFoto(a) {
+function tpvVerFoto(a, opc) {
+  opc = opc || {};
   const viejo = document.getElementById('tpvVisor'); if (viejo) viejo.remove();
   let zoom = 1;
   const img = el('img', { src: a.foto, alt: a.nombre, draggable: 'false' });
@@ -9202,10 +9212,18 @@ function tpvVerFoto(a) {
       el('button', { type: 'button', 'aria-label': 'Alejar', onclick: () => aplicar(zoom / 1.5) }, '−'),
       nivel,
       el('button', { type: 'button', 'aria-label': 'Ampliar', onclick: () => aplicar(zoom * 1.5) }, '+'),
-      el('span', { class: 'tpv-visor-precio' }, euros(a.precio))));
+      el('span', { class: 'tpv-visor-precio' }, euros(a.precio))),
+    opc.alAnadir ? (() => {
+      const btn = el('button', { type: 'button', class: 'tpv-visor-anadir' });
+      const pintarBtn = () => { const n = opc.cantidad ? opc.cantidad() : 0; const ag = opc.agotado && opc.agotado(); btn.disabled = !!ag; btn.textContent = ag ? 'Agotado' : (n ? '✓ ' + n + ' en ' + (opc.donde || 'el carrito') + ' · añadir otro' : '+ Añadir a' + (opc.donde ? ' ' + opc.donde.replace(/^el /, 'l ') : 'l carrito')); };
+      btn.addEventListener('click', () => { opc.alAnadir(); pintarBtn(); });
+      pintarBtn();
+      return el('div', { class: 'tpv-visor-acc' }, btn);
+    })() : null);
   const capa = el('div', { id: 'tpvVisor', onclick: (e) => { if (e.target.id === 'tpvVisor') cerrar(); } }, caja);
   document.body.appendChild(capa);
 }
+if (typeof window !== 'undefined') window.tpvVerFoto = tpvVerFoto;
 function viewTiendaFisica() {
   const wrap = document.createDocumentFragment();
   const arts = tpvArticulos();
@@ -9242,7 +9260,7 @@ function viewTiendaFisica() {
         el('div', { class: 'tpv-foto' + (a.foto ? '' : ' sin') }, a.foto ? el('img', { src: a.foto, alt: '', loading: 'lazy' }) : el('span', {}, tpvIcono(a)),
           stock <= 0 ? el('i', { class: 'tpv-badge ag' }, 'Agotado') : stock <= 3 ? el('i', { class: 'tpv-badge' }, 'Quedan ' + stock) : null,
           enTk ? el('i', { class: 'tpv-cant' }, String(enTk)) : null,
-          a.foto ? (() => { const lb = el('button', { type: 'button', class: 'tpv-lupa', 'aria-label': 'Ver la foto de ' + a.nombre, onclick: (e) => { e.stopPropagation(); tpvVerFoto(a); }, onpointerdown: (e) => e.stopPropagation() }); lb.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4.6-4.6M10.5 7.5v6M7.5 10.5h6"/></svg>'; return lb; })() : null),
+          a.foto ? (() => { const lb = el('button', { type: 'button', class: 'tpv-lupa', 'aria-label': 'Ver la foto de ' + a.nombre, onclick: (e) => { e.stopPropagation(); tpvVerFoto(a, { donde: 'el ticket', cantidad: () => (tpvTicket.find(x => x.articuloId === a.id) || {}).cantidad || 0, agotado: () => (Number(a.stock) || 0) <= 0, alAnadir: () => { tpvAnadir(a); render(); } }); }, onpointerdown: (e) => e.stopPropagation() }); lb.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4.6-4.6M10.5 7.5v6M7.5 10.5h6"/></svg>'; return lb; })() : null),
         el('div', { class: 'tpv-nom' }, a.nombre),
         el('div', { class: 'tpv-pre' }, euros(a.precio)));
       grid.appendChild(b);
@@ -12643,6 +12661,25 @@ function telefonoParaWhatsappTienda(tel) {
 }
 let carritoTienda = {};
 let tiendaCategoria = '';
+// Tienda online: un toque en la foto añade uno al carrito; doble toque rápido quita uno.
+let tdoUltimoToque = { id: null, t: 0, anadio: false, aviso: null };
+function tdoToque(a) {
+  const ahora = Date.now(), max = a.stock || 0;
+  const quitar = () => { if (carritoTienda[a.id]) { carritoTienda[a.id]--; if (!carritoTienda[a.id]) delete carritoTienda[a.id]; } };
+  if (tdoUltimoToque.id === a.id && ahora - tdoUltimoToque.t < 400) {
+    clearTimeout(tdoUltimoToque.aviso);
+    if (tdoUltimoToque.anadio) quitar();
+    quitar();
+    tdoUltimoToque = { id: null, t: 0, anadio: false, aviso: null };
+  } else {
+    let anadio = false, aviso = null;
+    if (max <= 0) aviso = null;
+    else if ((carritoTienda[a.id] || 0) < max) { carritoTienda[a.id] = (carritoTienda[a.id] || 0) + 1; anadio = true; }
+    else aviso = setTimeout(() => alert('No quedan más unidades de «' + a.nombre + '».'), 420);
+    tdoUltimoToque = { id: a.id, t: ahora, anadio, aviso };
+  }
+  const y = window.scrollY; renderTiendaOnline(); window.scrollTo(0, y);
+}
 function tdoNorm(t) { return String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
 function iconoTiendaTipo(tipo) {
   const t = String(tipo || '').toLowerCase();
@@ -12927,6 +12964,7 @@ function renderTiendaOnline() {
       el('label', { class: 'tdo-buscar' }, svgTiendaIcono('buscar'), el('input', { type: 'search', id: 'tdoBuscar', placeholder: 'Buscar artículo…', 'aria-label': 'Buscar artículo' })),
     );
     cuerpo.appendChild(cab);
+    cuerpo.appendChild(el('div', { class: 'tdo-ayuda' }, 'Toca la foto para añadir · doble toque para quitar uno · 🔍 para verla en grande'));
     if (tipos.length > 1) {
       const chips = el('div', { class: 'tdo-chips', style: '--d:640' });
       [''].concat(tipos).forEach(t => chips.appendChild(el('button', { class: 'tdo-chip' + (tiendaCategoria === t ? ' on' : ''), onclick: () => { tiendaCategoria = t; renderTiendaOnline(); } }, t ? iconoTiendaTipo(t) + ' ' + t : 'Todo')));
@@ -12938,9 +12976,13 @@ function renderTiendaOnline() {
       const stock = a.stock || 0;
       const sinStock = stock <= 0;
       const enCarrito = carritoTienda[a.id] || 0;
-      const foto = el('div', { class: 'tdo-foto' + (a.foto ? '' : ' sin') },
+      const verFoto = () => { if (a.foto && window.tpvVerFoto) window.tpvVerFoto(a, { donde: 'el carrito', cantidad: () => carritoTienda[a.id] || 0, agotado: () => (a.stock || 0) <= 0,
+        alAnadir: () => { const max = a.stock || 0; if ((carritoTienda[a.id] || 0) >= max) { alert('No quedan más unidades de «' + a.nombre + '».'); return; } carritoTienda[a.id] = (carritoTienda[a.id] || 0) + 1; renderTiendaOnline(); } }); };
+      const foto = el('div', { class: 'tdo-foto' + (a.foto ? ' con-foto' : ' sin'), onclick: () => tdoToque(a) },
         a.foto ? el('img', { src: a.foto, alt: a.nombre, loading: 'lazy' }) : el('span', {}, iconoTiendaTipo(a.tipo)),
         sinStock ? el('i', { class: 'tdo-badge agotado' }, 'Agotado') : (stock <= 3 && !a.esCordaje ? el('i', { class: 'tdo-badge ultimas' }, '¡Últimas ' + stock + '!') : null),
+        carritoTienda[a.id] ? el('i', { class: 'tdo-cant' }, String(carritoTienda[a.id])) : null,
+        a.foto ? (() => { const lb = el('button', { type: 'button', class: 'tdo-lupa', 'aria-label': 'Ver la foto de ' + a.nombre, onclick: (e) => { e.stopPropagation(); verFoto(); } }); lb.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4.6-4.6M10.5 7.5v6M7.5 10.5h6"/></svg>'; return lb; })() : null,
       );
       let accion;
       if (sinStock) {

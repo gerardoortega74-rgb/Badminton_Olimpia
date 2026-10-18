@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261017-raqueta">
+<meta name="build-id" content="v20261018-lupa">
 <script>try{var q=new URLSearchParams(location.search);if(q.get('tiendaonline')==='1')document.documentElement.classList.add('tienda-pre');if(q.get('tallerpublico')==='1')document.documentElement.classList.add('tpub-pre');}catch(e){}</script>
 <style>html.tienda-pre,html.tienda-pre body{background:#061C3B !important;}html.tienda-pre header.app-header,html.tienda-pre footer.hint,html.tienda-pre #introScreen,html.tienda-pre #shellMain>*:not(#tiendaOnlineScreen){display:none !important;}
 body.im-taller .im-raqueta .im-izq{grid-row:span 4;display:flex;flex-direction:column;align-items:center;gap:6px;}
@@ -108,7 +108,8 @@ body.im-taller .tpv-art:focus-visible{outline:3px solid var(--im-red);outline-of
 body.im-taller .tpv-art.en-ticket{border:2px solid var(--im-red);}
 body.im-taller .tpv-art.agotado{opacity:.5;cursor:not-allowed;}
 body.im-taller .tpv-foto{position:relative;aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;background:#F4F6FA;}
-body.im-taller .tpv-foto img{width:100%;height:100%;object-fit:cover;display:block;}
+body.im-taller .tpv-foto{background:#fff;}
+body.im-taller .tpv-foto img{width:100%;height:100%;object-fit:contain;display:block;padding:4px;box-sizing:border-box;}
 body.im-taller .tpv-foto.sin{background:linear-gradient(150deg,#EAF0F9,#D3E0F2);}
 body.im-taller .tpv-foto.sin span{font-size:38px;}
 body.im-taller .tpv-badge{position:absolute;top:6px;left:6px;font-style:normal;font-size:10.5px;font-weight:800;padding:3px 7px;border-radius:6px;background:var(--im-wait,#B7791F);color:#fff;}
@@ -211,6 +212,23 @@ body.im-taller .im-hist-fecha{font-size:12.5px;font-weight:700;color:var(--im-mu
 .im-rq-estado.aviso{color:#B3261E;flex-direction:column;align-items:flex-start;}
 .im-rq-anadir{width:100%;gap:6px;flex-wrap:wrap;margin-top:4px;}
 .im-rq-anadir input{flex:1 1 90px;min-width:0;}
+
+body.im-taller .tpv-art.agotado{opacity:.6;cursor:not-allowed;}
+body.im-taller .tpv-art.agotado .tpv-lupa{opacity:1;cursor:pointer;}
+body.im-taller .tpv-lupa{position:absolute;right:6px;bottom:6px;width:36px;height:36px;border-radius:50%;border:0;background:rgba(255,255,255,.95);color:#0B2D5B;box-shadow:0 2px 8px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;}
+body.im-taller .tpv-lupa:active{transform:scale(.92);}
+#tpvVisor{position:fixed;inset:0;z-index:9000;background:rgba(6,28,59,.45);display:flex;align-items:center;justify-content:center;padding:16px;}
+.tpv-visor{background:#fff;border-radius:16px;width:min(560px,100%);max-height:86vh;display:flex;flex-direction:column;box-shadow:0 18px 50px rgba(0,0,0,.35);overflow:hidden;}
+.tpv-visor-cab{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 10px 10px 16px;border-bottom:1px solid #EEF1F5;}
+.tpv-visor-cab b{font-size:15px;color:#14213A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.tpv-visor-x{width:40px;height:40px;border-radius:50%;border:0;background:#EEF1F5;font-size:18px;font-weight:800;cursor:pointer;color:#14213A;flex:none;}
+.tpv-visor-zona{height:min(60vh,480px);overflow:auto;background:#fff;display:flex;align-items:center;justify-content:center;cursor:zoom-in;touch-action:pan-x pan-y;}
+.tpv-visor-zona.ampliada{display:block;cursor:grab;}
+.tpv-visor-zona img{width:100%;max-height:100%;object-fit:contain;display:block;user-select:none;-webkit-user-drag:none;}
+.tpv-visor-pie{display:flex;align-items:center;gap:10px;padding:10px 14px;border-top:1px solid #EEF1F5;}
+.tpv-visor-pie button{width:44px;height:40px;border-radius:10px;border:1px solid #DCE3EE;background:#F4F6FA;font-size:22px;font-weight:800;color:#0B2D5B;cursor:pointer;}
+.tpv-visor-nivel{min-width:48px;text-align:center;font-weight:700;color:#5B6B82;font-variant-numeric:tabular-nums;}
+.tpv-visor-precio{margin-left:auto;font-weight:800;font-size:18px;color:#0B2D5B;}
 </style>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bádminton</title>
@@ -9142,6 +9160,52 @@ function tpvAbrirVentanaTicket() {
     el('div', { class: 'modal', style: 'max-height:90vh;overflow-y:auto;padding:16px;' }, tpvPanelTicket(true),
       el('button', { class: 'btn btn-ghost', style: 'width:100%;margin-top:8px;', onclick: () => { root.innerHTML = ''; } }, '← Seguir añadiendo'))));
 }
+// Visor de foto de artículo: ventana (no pantalla completa) con zoom +/−, doble toque, pellizco y arrastre.
+function tpvVerFoto(a) {
+  const viejo = document.getElementById('tpvVisor'); if (viejo) viejo.remove();
+  let zoom = 1;
+  const img = el('img', { src: a.foto, alt: a.nombre, draggable: 'false' });
+  const zona = el('div', { class: 'tpv-visor-zona' }, img);
+  const nivel = el('span', { class: 'tpv-visor-nivel' }, '100%');
+  const aplicar = (z, cx, cy) => {
+    const ant = zoom; zoom = Math.max(1, Math.min(5, z));
+    const r = zona.getBoundingClientRect();
+    const px = (cx === undefined ? r.width / 2 : cx - r.left), py = (cy === undefined ? r.height / 2 : cy - r.top);
+    const sx = (zona.scrollLeft + px) / ant, sy = (zona.scrollTop + py) / ant;
+    img.style.width = (zoom * 100) + '%'; img.style.maxHeight = zoom === 1 ? '100%' : 'none';
+    zona.classList.toggle('ampliada', zoom > 1);
+    zona.scrollLeft = sx * zoom - px; zona.scrollTop = sy * zoom - py;
+    nivel.textContent = Math.round(zoom * 100) + '%';
+  };
+  const cerrar = () => { capa.remove(); document.removeEventListener('keydown', teclas); };
+  const teclas = (e) => { if (e.key === 'Escape') cerrar(); };
+  document.addEventListener('keydown', teclas);
+  // Doble toque / doble clic: alterna 1x ↔ 2,5x en el punto tocado
+  let ultimo = 0;
+  zona.addEventListener('click', (e) => { const t = Date.now(); if (t - ultimo < 320) { aplicar(zoom > 1 ? 1 : 2.5, e.clientX, e.clientY); ultimo = 0; } else ultimo = t; });
+  // Arrastrar con el ratón cuando está ampliada (en el móvil se arrastra con el dedo de forma natural)
+  let arr = null;
+  zona.addEventListener('mousedown', (e) => { if (zoom > 1) { arr = { x: e.clientX, y: e.clientY, l: zona.scrollLeft, t: zona.scrollTop }; e.preventDefault(); } });
+  window.addEventListener('mousemove', (e) => { if (arr) { zona.scrollLeft = arr.l - (e.clientX - arr.x); zona.scrollTop = arr.t - (e.clientY - arr.y); } });
+  window.addEventListener('mouseup', () => { arr = null; });
+  // Pellizco con dos dedos
+  let pinza = null;
+  const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  zona.addEventListener('touchstart', (e) => { if (e.touches.length === 2) pinza = { d: dist(e.touches), z: zoom }; }, { passive: true });
+  zona.addEventListener('touchmove', (e) => { if (pinza && e.touches.length === 2) { e.preventDefault(); const c = { x: (e.touches[0].clientX + e.touches[1].clientX) / 2, y: (e.touches[0].clientY + e.touches[1].clientY) / 2 }; aplicar(pinza.z * dist(e.touches) / pinza.d, c.x, c.y); } }, { passive: false });
+  zona.addEventListener('touchend', () => { pinza = null; });
+  zona.addEventListener('wheel', (e) => { if (e.ctrlKey || zoom > 1 || e.deltaY < 0) { e.preventDefault(); aplicar(zoom * (e.deltaY < 0 ? 1.2 : 1 / 1.2), e.clientX, e.clientY); } }, { passive: false });
+  const caja = el('div', { class: 'tpv-visor', role: 'dialog', 'aria-label': 'Foto de ' + a.nombre },
+    el('div', { class: 'tpv-visor-cab' }, el('b', {}, a.nombre), el('button', { type: 'button', class: 'tpv-visor-x', 'aria-label': 'Cerrar', onclick: cerrar }, '✕')),
+    zona,
+    el('div', { class: 'tpv-visor-pie' },
+      el('button', { type: 'button', 'aria-label': 'Alejar', onclick: () => aplicar(zoom / 1.5) }, '−'),
+      nivel,
+      el('button', { type: 'button', 'aria-label': 'Ampliar', onclick: () => aplicar(zoom * 1.5) }, '+'),
+      el('span', { class: 'tpv-visor-precio' }, euros(a.precio))));
+  const capa = el('div', { id: 'tpvVisor', onclick: (e) => { if (e.target.id === 'tpvVisor') cerrar(); } }, caja);
+  document.body.appendChild(capa);
+}
 function viewTiendaFisica() {
   const wrap = document.createDocumentFragment();
   const arts = tpvArticulos();
@@ -9172,12 +9236,13 @@ function viewTiendaFisica() {
     arts.filter(a => !tpvCategoria || (a.esCordaje ? 'Cordaje' : (a.tipo || 'Otros')) === tpvCategoria).sort((x, y) => (x.nombre || '').localeCompare(y.nombre || '', 'es')).forEach(a => {
       const stock = Number(a.stock) || 0;
       const enTk = (tpvTicket.find(x => x.articuloId === a.id) || {}).cantidad || 0;
-      const b = el('button', { type: 'button', class: 'tpv-art' + (stock <= 0 ? ' agotado' : '') + (enTk ? ' en-ticket' : ''), 'data-buscar': tpvNorm(a.nombre + ' ' + (a.codigo || '') + ' ' + (a.tipo || '')), disabled: stock <= 0 ? 'disabled' : null,
+      const b = el('div', { role: 'button', tabindex: stock <= 0 ? '-1' : '0', class: 'tpv-art' + (stock <= 0 ? ' agotado' : '') + (enTk ? ' en-ticket' : ''), 'data-buscar': tpvNorm(a.nombre + ' ' + (a.codigo || '') + ' ' + (a.tipo || '')),
         'aria-label': a.nombre + ', ' + euros(a.precio) + (stock <= 0 ? ', agotado' : ''),
-        onclick: () => tpvToque(a) },
+        onclick: () => { if (stock > 0) tpvToque(a); }, onkeydown: (e) => { if ((e.key === 'Enter' || e.key === ' ') && stock > 0) { e.preventDefault(); tpvToque(a); } } },
         el('div', { class: 'tpv-foto' + (a.foto ? '' : ' sin') }, a.foto ? el('img', { src: a.foto, alt: '', loading: 'lazy' }) : el('span', {}, tpvIcono(a)),
           stock <= 0 ? el('i', { class: 'tpv-badge ag' }, 'Agotado') : stock <= 3 ? el('i', { class: 'tpv-badge' }, 'Quedan ' + stock) : null,
-          enTk ? el('i', { class: 'tpv-cant' }, String(enTk)) : null),
+          enTk ? el('i', { class: 'tpv-cant' }, String(enTk)) : null,
+          a.foto ? (() => { const lb = el('button', { type: 'button', class: 'tpv-lupa', 'aria-label': 'Ver la foto de ' + a.nombre, onclick: (e) => { e.stopPropagation(); tpvVerFoto(a); }, onpointerdown: (e) => e.stopPropagation() }); lb.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4.6-4.6M10.5 7.5v6M7.5 10.5h6"/></svg>'; return lb; })() : null),
         el('div', { class: 'tpv-nom' }, a.nombre),
         el('div', { class: 'tpv-pre' }, euros(a.precio)));
       grid.appendChild(b);

@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261019-presvalles">
+<meta name="build-id" content="v20261019-mecha">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -512,6 +512,7 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 #presTorneo.pt-valles .pt-dato b{color:#E0162B;}
 #presTorneo.pt-valles .pt-botones button:focus-visible{outline:3px solid #E0162B;}
 #presTorneo.pt-valles .pt-logo.pt-logo-svg{box-shadow:none;}
+#presTorneo.pt-valles .pt-logo-wrap.es-svg.golpe{filter:drop-shadow(0 0 22px rgba(224,22,43,.55)) drop-shadow(0 18px 40px rgba(0,0,0,.6));}
 #presTorneo.pt-valles .pt-mini img{background:none;padding:0;border-radius:0;height:clamp(40px,7vw,64px);}
 #presTorneo.pt-valles .pt-anillo{border-color:#E0162B;}
 #presTorneo.pt-valles .pt-logo-wrap::after{background:linear-gradient(90deg,transparent,#E0162B 20%,#fff 50%,#E0162B 80%,transparent);box-shadow:0 0 22px 6px rgba(224,22,43,.8);}
@@ -13492,7 +13493,8 @@ function mostrarPresentacionTorneo(st, opciones) {
       k < arr.length - 1 ? el('span', { class: 'pt-ch', style: 'animation-delay:0s' }, ' ') : null));
   };
   // El logo se genera con partículas durante ~1,7 s tras el remate; el nombre del club entra después
-  const RETARDO_NOMBRE = reducido ? 0 : 1.75;
+  // En Valles Cántabros el logo sale después de la mecha del mapa: el nombre entra más tarde
+  const RETARDO_NOMBRE = reducido ? 0 : ((typeof esOtroClub === 'function' && esOtroClub()) ? 3.15 : 1.75);
   const NS = 'http://www.w3.org/2000/svg';
   const svg = document.createElementNS(NS, 'svg'); svg.setAttribute('viewBox', '0 0 1340 610'); svg.setAttribute('preserveAspectRatio', 'none');
   [['rect', { x: 20, y: 20, width: 1300, height: 570 }], ['line', { x1: 20, y1: 66, x2: 1320, y2: 66 }], ['line', { x1: 20, y1: 544, x2: 1320, y2: 544 }],
@@ -13507,6 +13509,9 @@ function mostrarPresentacionTorneo(st, opciones) {
   const imgClub = otroClub && typeof OL_LOGO_VALLES_URL !== 'undefined' ? OL_LOGO_VALLES_URL : '';
   const acento = otroClub ? '#E0162B' : '#3DD6C4';
   const acentoRGB = otroClub ? '224,22,43' : '61,214,196'; // (Olimpia: turquesa)
+  // Contorno de Cantabria (x,y en milésimas del ancho), para la mecha de pólvora que dibuja el mapa antes del logo
+  const MAPA_CANTABRIA = otroClub ? '1000,156,996,171,975,173,966,185,933,175,917,180,915,171,898,177,886,176,889,189,864,196,853,215,824,223,833,248,833,269,843,306,790,304,769,295,745,289,734,293,729,278,706,269,690,289,687,304,675,318,660,330,644,332,643,344,624,351,612,344,590,345,599,362,589,381,566,379,554,400,533,408,520,426,507,469,516,485,544,491,545,482,565,474,566,455,578,450,601,471,595,481,587,478,578,495,560,491,563,504,552,528,571,534,578,529,574,515,581,503,603,520,598,533,608,546,604,576,581,587,562,571,553,587,553,601,541,596,532,606,513,609,500,600,503,587,499,550,488,559,492,570,475,584,474,602,452,606,443,583,427,580,411,584,392,562,407,545,415,551,426,529,413,517,384,540,369,524,361,481,360,451,347,442,296,437,280,418,266,386,246,377,229,365,221,383,194,375,172,399,144,386,124,400,98,392,79,399,66,396,69,375,50,369,49,353,11,331,0,312,9,287,0,275,5,269,16,270,42,259,57,266,69,262,67,245,77,228,71,207,86,199,128,198,126,193,143,175,177,184,184,197,193,188,193,141,185,137,187,117,200,106,198,96,212,94,222,99,239,93,282,96,302,87,307,98,336,100,364,91,373,94,435,76,452,60,455,66,487,57,501,59,525,46,533,35,574,26,581,30,611,14,627,17,635,36,612,46,608,61,616,70,608,85,630,72,623,66,636,52,651,52,632,43,657,43,673,27,688,27,709,12,729,10,738,0,749,5,766,3,771,16,787,17,787,29,811,38,835,40,839,55,817,60,815,87,824,63,840,81,870,77,873,82,897,78,926,89,938,89,959,96,964,111,974,113,993,130,999,129' : '';
+  const DUR_MECHA = 2700, EXTRA_MECHA = otroClub && !reducido ? 1400 : 0;
   const svgClub = (!otroClub && typeof OL_LOGO_CLUB_BLANCO !== 'undefined' && OL_LOGO_CLUB_BLANCO) ? OL_LOGO_CLUB_BLANCO : '';
   const logo = imgClub ? el('img', { class: 'pt-logo pt-logo-svg pt-logo-img', src: imgClub, alt: '' })
     : svgClub ? el('div', { class: 'pt-logo pt-logo-svg', html: svgClub })
@@ -13553,7 +13558,7 @@ function mostrarPresentacionTorneo(st, opciones) {
       el('button', { type: 'button', onclick: () => cerrar() }, opciones.auto ? 'Saltar ⏭' : '✕ Cerrar')));
   document.body.appendChild(caja);
   // Lanzada sola al entrar en el enlace: se cierra sola al terminar (salvo en modo proyector)
-  if (opciones.cerrarSola) setTimeout(() => { if (document.body.contains(caja)) { caja.style.transition = 'opacity .8s ease'; caja.style.opacity = '0'; setTimeout(() => { if (caja.__cerrar) caja.__cerrar(); }, 800); } }, reducido ? 2500 : 13500);
+  if (opciones.cerrarSola) setTimeout(() => { if (document.body.contains(caja)) { caja.style.transition = 'opacity .8s ease'; caja.style.opacity = '0'; setTimeout(() => { if (caja.__cerrar) caja.__cerrar(); }, 800); } }, reducido ? 2500 : 13500 + EXTRA_MECHA);
 
   // ---- Sonido sintetizado ----
   let audio = null;
@@ -13566,6 +13571,9 @@ function mostrarPresentacionTorneo(st, opciones) {
     impacto(t) { if (!audio) return; const o = audio.createOscillator(), g = audio.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(160, t); o.frequency.exponentialRampToValueAtTime(38, t + 0.9); g.gain.setValueAtTime(0.9, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.1); o.connect(g).connect(audio.destination); o.start(t); o.stop(t + 1.2);
       const s = ruido(0.5), f = audio.createBiquadFilter(), g2 = audio.createGain(); f.type = 'highpass'; f.frequency.value = 900; g2.gain.setValueAtTime(0.55, t); g2.gain.exponentialRampToValueAtTime(0.0001, t + 0.35); s.connect(f).connect(g2).connect(audio.destination); s.start(t); s.stop(t + 0.5); },
     brillo(t) { if (!audio) return; [523.25, 659.25, 783.99, 1046.5].forEach((fr, i) => { const o = audio.createOscillator(), g = audio.createGain(); o.type = 'triangle'; o.frequency.value = fr; const t0 = t + i * 0.07; g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.12, t0 + 0.05); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.8); o.connect(g).connect(audio.destination); o.start(t0); o.stop(t0 + 1.9); }); },
+    mecha(t, dur) { if (!audio) return; const s = ruido(dur), f = audio.createBiquadFilter(), g = audio.createGain(); f.type = 'bandpass'; f.frequency.value = 3200; f.Q.value = 0.8; g.gain.setValueAtTime(0.0001, t);
+      for (let i = 0; i < dur * 45; i++) { const ti = t + i / 45; g.gain.setValueAtTime(0.03 + (Math.random() < 0.35 ? Math.random() * 0.32 : 0), ti); }
+      g.gain.setValueAtTime(0.0001, t + dur); s.connect(f).connect(g).connect(audio.destination); s.start(t); s.stop(t + dur + 0.05); },
     barrido(t) { if (!audio) return; const s = ruido(0.9), f = audio.createBiquadFilter(), g = audio.createGain(); f.type = 'lowpass'; f.frequency.setValueAtTime(400, t); f.frequency.exponentialRampToValueAtTime(6000, t + 0.6); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.35, t + 0.45); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.85); s.connect(f).connect(g).connect(audio.destination); s.start(t); s.stop(t + 0.9); },
   };
   const ahoraAudio = () => (audio ? audio.currentTime : 0);
@@ -13579,7 +13587,7 @@ function mostrarPresentacionTorneo(st, opciones) {
   const chispas = [];
   const estela = [];
   const T0 = performance.now();
-  const T_IMPACTO = 2350, T_BARRIDO = 7700, T_TORNEO = 8150;
+  const T_IMPACTO = 2350, T_BARRIDO = 7700 + EXTRA_MECHA, T_TORNEO = 8150 + EXTRA_MECHA;
   // ---- Logo hecho de partículas: se muestrea la imagen y cada punto vuela a su sitio ----
   const logoWrap = escenaClub.querySelector('.pt-logo-wrap');
   let puntosLogo = null, logoT0 = 0, logoListo = false;
@@ -13647,8 +13655,53 @@ function mostrarPresentacionTorneo(st, opciones) {
     ctx.globalAlpha = 1;
     if (e >= 0.97) mostrarLogoReal('revela');
   };
-  const promesaPuntos = reducido ? Promise.resolve(null) : new Promise(r => requestAnimationFrame(() => prepararPuntos().then(r)));
+  const promesaPuntos = (reducido || MAPA_CANTABRIA) ? Promise.resolve(null) : new Promise(r => requestAnimationFrame(() => prepararPuntos().then(r)));
   promesaPuntos.then(p => { puntosLogo = p; });
+  // ---- Mecha de pólvora «a la contra»: la chispa va dibujando el contorno de Cantabria y al cerrarlo explota y sale el escudo ----
+  let mechaT0 = 0, mecha = null, mechaFin = false;
+  const prepararMecha = () => {
+    const n = MAPA_CANTABRIA.split(',').map(Number); let q = [];
+    for (let i = 0; i + 1 < n.length; i += 2) q.push([n[i] / 1000, n[i + 1] / 1000]);
+    for (let it = 0; it < 2; it++) { const r = []; for (let j = 0; j < q.length; j++) { const a = q[j], b = q[(j + 1) % q.length]; r.push([0.75 * a[0] + 0.25 * b[0], 0.75 * a[1] + 0.25 * b[1]], [0.25 * a[0] + 0.75 * b[0], 0.25 * a[1] + 0.75 * b[1]]); } q = r; }
+    q.push(q[0]);
+    const altoRel = Math.max.apply(null, q.map(p => p[1]));
+    const r = logoWrap.getBoundingClientRect(), cr = caja.getBoundingClientRect();
+    const ancho = Math.min(W * 0.9, r.width * 1.3), alto = ancho * altoRel;
+    const cx = r.left - cr.left + r.width / 2, cy = r.top - cr.top + r.height * 0.45;
+    const pts = q.map(p => [cx - ancho / 2 + p[0] * ancho, cy - alto / 2 + p[1] * ancho]);
+    const acc = [0]; for (let i = 1; i < pts.length; i++) acc.push(acc[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+    return { pts, acc, L: acc[acc.length - 1], cx, cy };
+  };
+  const reactivar = (nodo, clase) => { nodo.classList.remove(clase); void nodo.offsetWidth; nodo.classList.add(clase); };
+  const dibujarMecha = (t) => {
+    if (!mecha || !mechaT0 || t < mechaT0) return;
+    const e = (t - mechaT0) / DUR_MECHA, k = Math.min(1, e);
+    const fade = e > 1 ? Math.max(0, 1 - (e - 1) / 0.3) : 1;
+    if (fade <= 0) { mecha = null; return; }
+    const P = mecha.pts, A = mecha.acc, dist = mecha.L * (k < 1 ? k * (0.85 + 0.15 * k) : 1);
+    let hx = P[0][0], hy = P[0][1], i = 1;
+    ctx.save(); ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(P[0][0], P[0][1]);
+    for (; i < P.length && A[i] <= dist; i++) { ctx.lineTo(P[i][0], P[i][1]); hx = P[i][0]; hy = P[i][1]; }
+    if (i < P.length) { const f = (dist - A[i - 1]) / ((A[i] - A[i - 1]) || 1); hx = P[i - 1][0] + (P[i][0] - P[i - 1][0]) * f; hy = P[i - 1][1] + (P[i][1] - P[i - 1][1]) * f; ctx.lineTo(hx, hy); }
+    ctx.globalAlpha = fade;
+    ctx.strokeStyle = 'rgba(' + acentoRGB + ',.9)'; ctx.lineWidth = 5; ctx.shadowColor = 'rgba(' + acentoRGB + ',1)'; ctx.shadowBlur = 18; ctx.stroke();
+    ctx.shadowBlur = 0; ctx.strokeStyle = 'rgba(255,244,228,.95)'; ctx.lineWidth = 1.8; ctx.stroke();
+    ctx.restore();
+    if (k < 1) {
+      // la chispa de la pólvora en la punta, chisporroteando
+      const fl = 0.7 + Math.random() * 0.6, rad = 15 * fl;
+      const g = ctx.createRadialGradient(hx, hy, 0, hx, hy, rad); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.3, 'rgba(255,214,130,.95)'); g.addColorStop(1, 'rgba(255,110,40,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(hx, hy, rad, 0, 6.283); ctx.fill();
+      for (let s2 = 0; s2 < 5; s2++) { const a = Math.random() * 6.283, v = Math.random() * 3.4 + 0.8; chispas.push({ x: hx, y: hy, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 1.3, vida: 1, dec: Math.random() * 0.05 + 0.035, r: Math.random() * 1.6 + 0.6, col: Math.random() < 0.55 ? '255,196,96' : (Math.random() < 0.5 ? acentoRGB : '255,255,255'), pluma: false }); }
+    } else if (!mechaFin) {
+      // mapa cerrado: explota y aparece el escudo con el mapa ya hecho
+      mechaFin = true;
+      explotar(mecha.cx, mecha.cy); explotar(mecha.cx, mecha.cy);
+      reactivar(flash, 'on'); reactivar(caja, 'pt-shake');
+      mostrarLogoReal('golpe');
+      if (sonido) { sfx.impacto(ahoraAudio()); sfx.brillo(ahoraAudio() + 0.25); }
+    }
+  };
   let impactoHecho = false, barridoHecho = false, torneoHecho = false, raf = 0, vivo = true;
   const explotar = (cx, cy) => {
     for (let i = 0; i < 160; i++) { const ang = Math.random() * Math.PI * 2, vel = Math.random() * 13 + 3; chispas.push({ x: cx, y: cy, vx: Math.cos(ang) * vel, vy: Math.sin(ang) * vel, vida: 1, dec: Math.random() * 0.012 + 0.008, r: Math.random() * 2.6 + 0.8, col: Math.random() < 0.65 ? acentoRGB : '255,255,255', pluma: false }); }
@@ -13690,12 +13743,15 @@ function mostrarPresentacionTorneo(st, opciones) {
       impactoHecho = true; explotar(W * 0.5, H * 0.46);
       flash.classList.add('on'); caja.classList.add('pt-shake'); escenaClub.classList.add('on');
       if (sonido) sfx.impacto(ahoraAudio());
-      if (traza) {
+      if (MAPA_CANTABRIA && !reducido) {
+        try { mecha = prepararMecha(); mechaT0 = t + 180; if (sonido) sfx.mecha(ahoraAudio() + 0.18, DUR_MECHA / 1000); } catch (e) { mostrarLogoReal('golpe'); }
+      } else if (traza) {
         // el contorno del escudo se dibuja con luz mientras llegan las partículas
         try { const pa = traza.querySelector('path'); const L = pa.getTotalLength(); pa.style.strokeDasharray = L + ' ' + L; pa.style.strokeDashoffset = L;
           logoWrap.classList.add('trazando'); pa.animate([{ strokeDashoffset: L }, { strokeDashoffset: 0 }], { duration: 1500, easing: 'cubic-bezier(.5,0,.2,1)', fill: 'forwards' }); } catch (e) { }
       }
-      if (puntosLogo) { logoT0 = t; if (sonido) { sfx.barrido(ahoraAudio() + 0.25); sfx.brillo(ahoraAudio() + 1.45); } }
+      if (MAPA_CANTABRIA && !reducido) { /* el escudo sale al terminar la mecha */ }
+      else if (puntosLogo) { logoT0 = t; if (sonido) { sfx.barrido(ahoraAudio() + 0.25); sfx.brillo(ahoraAudio() + 1.45); } }
       else if (traza) { setTimeout(() => mostrarLogoReal('revela'), 1500); if (sonido) sfx.brillo(ahoraAudio() + 1.45); }
       else mostrarLogoReal('golpe');
     }
@@ -13706,6 +13762,7 @@ function mostrarPresentacionTorneo(st, opciones) {
       setTimeout(() => { if (vivo) explotar(W * 0.5, H * 0.5); }, 350);
     }
     dibujarPuntosLogo(t);
+    dibujarMecha(t);
     // chispas y plumas
     for (let i = chispas.length - 1; i >= 0; i--) {
       const c = chispas[i]; c.x += c.vx; c.y += c.vy; c.vx *= c.pluma ? 0.97 : 0.955; c.vy = c.vy * (c.pluma ? 0.97 : 0.955) + (c.pluma ? 0.06 : 0.12); c.vida -= c.dec;

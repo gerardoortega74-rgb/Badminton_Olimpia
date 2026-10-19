@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261019-introclubs">
+<meta name="build-id" content="v20261019-sonidocine">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -36,6 +36,7 @@ P.getItem=function(x){return g.call(this,k(this,x));};P.setItem=function(x,v){re
 #introClubs .ic-titulo{position:absolute;left:0;right:0;bottom:9vh;text-align:center;z-index:4;}
 #introClubs .ic-titulo small{display:block;font-size:clamp(11px,1.4vw,15px);letter-spacing:.6em;text-transform:uppercase;color:#3DD6C4;opacity:0;transition:opacity .6s ease .5s;}
 #introClubs .ic-titulo h1{margin:6px 0 0;font-family:'Barlow Condensed','Inter',sans-serif;font-weight:800;font-size:clamp(34px,7.4vw,96px);line-height:1;letter-spacing:.04em;}
+#introClubs .ic-titulo h1 .ic-pal{display:inline-block;white-space:nowrap;font-weight:inherit;}
 #introClubs .ic-titulo h1 span{display:inline-block;opacity:0;transform:translateY(30px) scale(.8);filter:blur(8px);}
 #introClubs.titulo .ic-titulo h1 span{animation:icLetra .55s cubic-bezier(.2,1.2,.4,1) forwards;}
 #introClubs.titulo .ic-titulo small{opacity:1;}
@@ -43,12 +44,24 @@ P.getItem=function(x){return g.call(this,k(this,x));};P.setItem=function(x,v){re
 #introClubs .ic-flash.on{animation:icFlash .6s ease-out forwards;}
 #introClubs.tiembla{animation:icTiembla .45s ease;}
 #introClubs.sale{transition:opacity .6s ease;opacity:0;}
+#introClubs .ic-idermay .ic-logo{aspect-ratio:1142/667;}
+#introClubs .ic-idermay .ic-logo svg{height:auto;overflow:visible;filter:drop-shadow(0 0 14px rgba(233,16,39,.35));}
+#introClubs .ic-logos.tres{gap:min(5vw,70px);}
+#introClubs .ic-logos.tres .ic-logo{width:min(23vw,34vh,280px);}
+#introClubs .ic-logos.tres .ic-idermay .ic-logo{width:min(28vw,40vh,340px);}
+#introClubs.ic-principal .ic-titulo h1{font-size:clamp(28px,5vw,72px);}
 @keyframes icFade{to{opacity:1}}
 @keyframes icGolpe{0%{opacity:0;transform:scale(2.6);filter:blur(14px)}60%{opacity:1;transform:scale(.93);filter:blur(0) drop-shadow(0 0 30px rgba(224,22,43,.9))}100%{opacity:1;transform:scale(1);filter:drop-shadow(0 0 20px rgba(224,22,43,.6))}}
 @keyframes icLetra{to{opacity:1;transform:none;filter:none}}
 @keyframes icFlash{0%{opacity:.95}100%{opacity:0}}
 @keyframes icTiembla{0%,100%{transform:none}20%{transform:translate(-6px,3px)}40%{transform:translate(5px,-4px)}60%{transform:translate(-3px,2px)}80%{transform:translate(2px,-1px)}}
-@media (orientation:portrait){#introClubs .ic-logos{flex-direction:column;gap:5vh;padding:0 8vw 18vh;}#introClubs .ic-logo{width:min(54vw,27vh);}}
+@media (orientation:portrait){#introClubs .ic-logos{flex-direction:column;gap:5vh;padding:0 8vw 18vh;}#introClubs .ic-logo{width:min(54vw,27vh);}
+  #introClubs .ic-logos.tres{display:grid;grid-template-columns:1fr 1fr;align-content:center;justify-items:center;gap:4vh 4vw;padding:0 5vw 22vh;}
+  #introClubs .ic-logos.tres .ic-logo{width:min(40vw,22vh);}
+  #introClubs .ic-logos.tres .ic-idermay{grid-column:1 / -1;}
+  #introClubs .ic-logos.tres .ic-idermay .ic-logo{width:min(70vw,30vh);}
+  #introClubs .ic-logos.tres .ic-nombre{letter-spacing:.18em;font-size:11px;}
+  #introClubs.ic-principal .ic-titulo h1{font-size:clamp(24px,8vw,40px);padding:0 10px;}}
 @media (prefers-reduced-motion:reduce){#introClubs *{animation-duration:.01s !important;transition-duration:.01s !important;}}
 </style>
 <style>html.tienda-pre,html.tienda-pre body{background:#061C3B !important;}html.tienda-pre header.app-header,html.tienda-pre footer.hint,html.tienda-pre #introScreen,html.tienda-pre #shellMain>*:not(#tiendaOnlineScreen){display:none !important;}
@@ -13602,15 +13615,14 @@ function mostrarPresentacionTorneo(st, opciones) {
   // Al abrir el enlace, el navegador no deja sonar nada hasta que la persona toca la pantalla: esa vez va en silencio
   if (audio && audio.state !== 'running' && opciones.auto) { sonido = false; btnSonido.textContent = '🔇'; }
   const ruido = (dur) => { const b = audio.createBuffer(1, Math.floor(audio.sampleRate * dur), audio.sampleRate); const d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; const s = audio.createBufferSource(); s.buffer = b; return s; };
+  const cine = crearSonidoCine(audio);
   const sfx = {
-    zumbido(t) { if (!audio) return; const s = ruido(1.6), f = audio.createBiquadFilter(), g = audio.createGain(); f.type = 'bandpass'; f.Q.value = 2.5; f.frequency.setValueAtTime(300, t); f.frequency.exponentialRampToValueAtTime(4200, t + 1.25); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.5, t + 1.15); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.4); s.connect(f).connect(g).connect(audio.destination); s.start(t); s.stop(t + 1.6); },
-    impacto(t) { if (!audio) return; const o = audio.createOscillator(), g = audio.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(160, t); o.frequency.exponentialRampToValueAtTime(38, t + 0.9); g.gain.setValueAtTime(0.9, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.1); o.connect(g).connect(audio.destination); o.start(t); o.stop(t + 1.2);
-      const s = ruido(0.5), f = audio.createBiquadFilter(), g2 = audio.createGain(); f.type = 'highpass'; f.frequency.value = 900; g2.gain.setValueAtTime(0.55, t); g2.gain.exponentialRampToValueAtTime(0.0001, t + 0.35); s.connect(f).connect(g2).connect(audio.destination); s.start(t); s.stop(t + 0.5); },
-    brillo(t) { if (!audio) return; [523.25, 659.25, 783.99, 1046.5].forEach((fr, i) => { const o = audio.createOscillator(), g = audio.createGain(); o.type = 'triangle'; o.frequency.value = fr; const t0 = t + i * 0.07; g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.12, t0 + 0.05); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.8); o.connect(g).connect(audio.destination); o.start(t0); o.stop(t0 + 1.9); }); },
-    mecha(t, dur) { if (!audio) return; const s = ruido(dur), f = audio.createBiquadFilter(), g = audio.createGain(); f.type = 'bandpass'; f.frequency.value = 3200; f.Q.value = 0.8; g.gain.setValueAtTime(0.0001, t);
-      for (let i = 0; i < dur * 45; i++) { const ti = t + i / 45; g.gain.setValueAtTime(0.03 + (Math.random() < 0.35 ? Math.random() * 0.32 : 0), ti); }
-      g.gain.setValueAtTime(0.0001, t + dur); s.connect(f).connect(g).connect(audio.destination); s.start(t); s.stop(t + dur + 0.05); },
-    barrido(t) { if (!audio) return; const s = ruido(0.9), f = audio.createBiquadFilter(), g = audio.createGain(); f.type = 'lowpass'; f.frequency.setValueAtTime(400, t); f.frequency.exponentialRampToValueAtTime(6000, t + 0.6); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.35, t + 0.45); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.85); s.connect(f).connect(g).connect(audio.destination); s.start(t); s.stop(t + 0.9); },
+    zumbido(t) { if (cine) cine.zumbido(t); },
+    impacto(t) { if (cine) cine.impacto(t); },
+    brillo(t) { if (cine) cine.brillo(t); },
+    mecha(t, dur) { if (cine) cine.mecha(t, dur); },
+    explosion(t) { if (cine) cine.explosion(t); },
+    barrido(t) { if (cine) cine.barrido(t); },
   };
   const ahoraAudio = () => (audio ? audio.currentTime : 0);
 
@@ -13735,7 +13747,7 @@ function mostrarPresentacionTorneo(st, opciones) {
       explotar(mecha.cx, mecha.cy); explotar(mecha.cx, mecha.cy);
       reactivar(flash, 'on'); reactivar(caja, 'pt-shake');
       mostrarLogoReal('golpe');
-      if (sonido) { sfx.impacto(ahoraAudio()); sfx.brillo(ahoraAudio() + 0.25); }
+      if (sonido) { sfx.explosion(ahoraAudio()); sfx.brillo(ahoraAudio() + 0.35); }
     }
   };
   let impactoHecho = false, barridoHecho = false, torneoHecho = false, raf = 0, vivo = true;
@@ -15959,6 +15971,20 @@ function bloquePortadaClub2() {
       el('span', { class: 'ol-entrar' }, 'Entrar al club')));
 }
 
+// Animación «Gestión de Clubs» encima de la pantalla de elegir club (se puede saltar tocando)
+function mostrarIntroClubes() {
+  if (document.getElementById('introClubesCapa')) return;
+  const capa = document.createElement('div'); capa.id = 'introClubesCapa';
+  capa.style.cssText = 'position:fixed;inset:0;z-index:9998;background:#1B2125;';
+  const saltar = document.createElement('button'); saltar.type = 'button'; saltar.textContent = 'Saltar';
+  saltar.style.cssText = 'position:absolute;top:16px;right:16px;z-index:10;background:rgba(0,0,0,0.55);color:#fff;border:1px solid rgba(255,255,255,0.6);border-radius:20px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;';
+  capa.appendChild(saltar); document.body.appendChild(capa);
+  let parar = null;
+  const quitar = () => { if (!capa.isConnected) return; capa.remove(); if (parar) parar(); };
+  saltar.addEventListener('click', quitar);
+  try { parar = introGestionClubs(capa, quitar, 'clubes'); } catch (e) { quitar(); }
+}
+
 function renderHome() {
   const root = document.getElementById('homeScreen');
   root.innerHTML = '';
@@ -16053,7 +16079,7 @@ function renderHome() {
         if (typeof chActualizarAvisoSolicitudes === 'function') chActualizarAvisoSolicitudes().then(n => { if (n) { chipSol.textContent = n + (n === 1 ? ' solicitud pendiente' : ' solicitudes pendientes'); chipSol.classList.add('aviso'); } });
         { const ch = CorreoApp.chipPortada('todo', dato); if (ch) datosClubes.appendChild(ch); }
       }
-      portada.appendChild(el('section', { class: 'ol-mitad ol-mitad-club ol-mitad-clubes', role: 'button', tabindex: '0', 'aria-label': 'Elegir club', onclick: () => { homeGrupoAbierto = 'clubes'; renderHome(); window.scrollTo(0, 0); } },
+      portada.appendChild(el('section', { class: 'ol-mitad ol-mitad-club ol-mitad-clubes', role: 'button', tabindex: '0', 'aria-label': 'Elegir club', onclick: () => { homeGrupoAbierto = 'clubes'; renderHome(); window.scrollTo(0, 0); mostrarIntroClubes(); } },
         el('div', { class: 'ol-logos' },
           el('div', { class: 'ol-logo ol-logo-blanco', html: OL_LOGO_CLUB_BLANCO }),
           el('div', { class: 'ol-logo ol-logo-blanco ol-logo-valles', html: OL_LOGO_VALLES_BLANCO })),
@@ -18929,17 +18955,97 @@ document.getElementById('btnAyuda').addEventListener('click', () => abrirAyuda()
 
 // ===== Intro «Gestión de Clubs»: el escudo de Olimpia se dibuja trazo a trazo y el de Valles Cántabros
 // nace de una mecha de pólvora que dibuja el mapa de Cantabria y explota. Sustituye al vídeo de Olimpia.
-function introGestionClubs(raiz, alTerminar) {
+
+// ===== Motor de sonido «de cine» (sintetizado, sin archivos) =====
+// Bus con compresor y reverb de sala; sonidos: golpe de volante, mecha de pólvora, explosión, barrido y brillo.
+function crearSonidoCine(audio) {
+  if (!audio) return null;
+  const sr = audio.sampleRate;
+  const comp = audio.createDynamicsCompressor();
+  comp.threshold.value = -16; comp.knee.value = 12; comp.ratio.value = 4; comp.attack.value = 0.004; comp.release.value = 0.25;
+  const master = audio.createGain(); master.gain.value = 0.85;
+  comp.connect(master).connect(audio.destination);
+  // reverb: respuesta al impulso sintética (sala grande, 2,6 s), en estéreo
+  const rev = audio.createConvolver();
+  { const len = Math.floor(sr * 2.6), ir = audio.createBuffer(2, len, sr);
+    for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); let lp = 0; for (let i = 0; i < len; i++) { const x = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2); lp = lp + (x - lp) * (0.55 - 0.4 * i / len); d[i] = lp; } }
+    rev.buffer = ir; }
+  const revVol = audio.createGain(); revVol.gain.value = 0.55; rev.connect(revVol).connect(comp);
+  // ruido blanco y rosa precalculados (se reutilizan)
+  const hacerRuido = (seg, rosa) => { const b = audio.createBuffer(1, Math.floor(sr * seg), sr), d = b.getChannelData(0); let b0 = 0, b1 = 0, b2 = 0;
+    for (let i = 0; i < d.length; i++) { const w = Math.random() * 2 - 1; if (!rosa) { d[i] = w; continue; } b0 = 0.99765 * b0 + w * 0.099046; b1 = 0.963 * b1 + w * 0.2965164; b2 = 0.57 * b2 + w * 1.0526913; d[i] = (b0 + b1 + b2 + w * 0.1848) * 0.2; } return b; };
+  const BLANCO = hacerRuido(3, false), ROSA = hacerRuido(3, true);
+  const fuente = (buf, t, dur) => { const s = audio.createBufferSource(); s.buffer = buf; s.loop = dur > buf.duration; s.start(t, Math.random() * Math.max(0, buf.duration - Math.min(dur, buf.duration))); s.stop(t + dur + 0.05); return s; };
+  const salida = (nodo, seco, mojado, pan) => { let n = nodo; if (pan && audio.createStereoPanner) { const p = audio.createStereoPanner(); p.pan.value = pan; n.connect(p); n = p; }
+    const g1 = audio.createGain(); g1.gain.value = seco; n.connect(g1).connect(comp); if (mojado) { const g2 = audio.createGain(); g2.gain.value = mojado; n.connect(g2).connect(rev); } };
+  const env = (g, t, ataque, pico, caida) => { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(pico, t + ataque); g.gain.exponentialRampToValueAtTime(0.0001, t + ataque + caida); };
+  const chasquido = (t, vol, fr, dur, pan, mojado) => { const s = fuente(BLANCO, t, dur + 0.02), f = audio.createBiquadFilter(), g = audio.createGain(); f.type = 'bandpass'; f.frequency.value = fr; f.Q.value = 2.2; env(g, t, 0.0015, vol, dur); s.connect(f).connect(g); salida(g, 1, mojado || 0.15, pan); };
+  return {
+    // remate del volante: chasquido seco + cuerpo grave
+    impacto(t) {
+      chasquido(t, 0.9, 2400, 0.05, 0, 0.35);
+      const o = audio.createOscillator(), g = audio.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.5); env(g, t, 0.004, 0.8, 0.7); o.connect(g); salida(g, 1, 0.3); o.start(t); o.stop(t + 0.8);
+      const s = fuente(ROSA, t, 1.2), f = audio.createBiquadFilter(), g2 = audio.createGain(); f.type = 'lowpass'; f.frequency.setValueAtTime(3000, t); f.frequency.exponentialRampToValueAtTime(180, t + 0.9); env(g2, t, 0.005, 0.5, 1.0); s.connect(f).connect(g2); salida(g2, 0.8, 0.6);
+    },
+    // mecha de pólvora: siseo continuo con vida + chisporroteos sueltos que recorren el estéreo
+    mecha(t, dur) {
+      const s = fuente(BLANCO, t, dur + 0.3), hp = audio.createBiquadFilter(), bp = audio.createBiquadFilter(), g = audio.createGain();
+      hp.type = 'highpass'; hp.frequency.value = 2500; bp.type = 'peaking'; bp.frequency.value = 6500; bp.gain.value = 6; bp.Q.value = 0.9;
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.07, t + 0.12);
+      for (let x = 0.15; x < dur; x += 0.09) g.gain.setTargetAtTime(0.045 + Math.random() * 0.045, t + x, 0.04);
+      g.gain.setTargetAtTime(0.0001, t + dur, 0.03);
+      s.connect(hp).connect(bp).connect(g); salida(g, 1, 0.12);
+      const sub = fuente(ROSA, t, dur + 0.2), lp = audio.createBiquadFilter(), gs = audio.createGain(); lp.type = 'lowpass'; lp.frequency.value = 420; gs.gain.setValueAtTime(0.0001, t); gs.gain.exponentialRampToValueAtTime(0.09, t + 0.2); gs.gain.setTargetAtTime(0.0001, t + dur, 0.05); sub.connect(lp).connect(gs); salida(gs, 1, 0.05);
+      const n = Math.round(dur * 30);
+      for (let i = 0; i < n; i++) { const ti = t + Math.random() * dur, k = (ti - t) / dur; chasquido(ti, 0.05 + Math.pow(Math.random(), 2) * 0.26, 1800 + Math.random() * 5200, 0.008 + Math.random() * 0.03, Math.sin(k * 6.28) * 0.6, 0.1); }
+    },
+    // explosión: golpe sub, cuerpo que se apaga, estallido agudo y metralla de chispas, con mucha sala
+    explosion(t) {
+      const o = audio.createOscillator(), g = audio.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(120, t); o.frequency.exponentialRampToValueAtTime(30, t + 0.9); env(g, t, 0.006, 1.0, 1.5); o.connect(g); salida(g, 1, 0.25); o.start(t); o.stop(t + 1.6);
+      const s = fuente(ROSA, t, 2.6), f = audio.createBiquadFilter(), g2 = audio.createGain(); f.type = 'lowpass'; f.Q.value = 0.7; f.frequency.setValueAtTime(5200, t); f.frequency.exponentialRampToValueAtTime(140, t + 2.0); env(g2, t, 0.008, 1.0, 2.4); s.connect(f).connect(g2); salida(g2, 0.9, 0.9);
+      chasquido(t, 1.0, 3000, 0.07, 0, 0.6); chasquido(t + 0.012, 0.6, 900, 0.09, 0, 0.6);
+      for (let i = 0; i < 46; i++) { const ti = t + 0.08 + Math.pow(Math.random(), 1.6) * 1.5; chasquido(ti, 0.05 + Math.random() * 0.2 * (1 - (ti - t) / 1.7), 2000 + Math.random() * 6000, 0.01 + Math.random() * 0.03, Math.random() * 1.6 - 0.8, 0.35); }
+    },
+    // barrido de aire (transición)
+    barrido(t, dur) {
+      dur = dur || 0.9; const s = fuente(ROSA, t, dur), f = audio.createBiquadFilter(), g = audio.createGain(); f.type = 'bandpass'; f.Q.value = 1.4; f.frequency.setValueAtTime(350, t); f.frequency.exponentialRampToValueAtTime(5000, t + dur * 0.75);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.45, t + dur * 0.6); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); s.connect(f).connect(g);
+      let n = g; if (audio.createStereoPanner) { const p = audio.createStereoPanner(); p.pan.setValueAtTime(-0.7, t); p.pan.linearRampToValueAtTime(0.7, t + dur); g.connect(p); n = p; } salida(n, 1, 0.3);
+    },
+    // brillo: campanas suaves con armónicos y sala
+    brillo(t) {
+      [[523.25, 0], [659.25, 0.08], [783.99, 0.16], [1046.5, 0.26], [1567.98, 0.36]].forEach(([fr, d], i) => {
+        const t0 = t + d; [1, 2.01, 3.0].forEach((h, j) => { const o = audio.createOscillator(), g = audio.createGain(); o.type = 'sine'; o.frequency.value = fr * h; o.detune.value = (Math.random() - 0.5) * 8; env(g, t0, 0.008, [0.11, 0.035, 0.015][j] * (1 - i * 0.08), 2.2 - j * 0.6); o.connect(g); salida(g, 0.7, 0.9, (i - 2) * 0.25); o.start(t0); o.stop(t0 + 2.4); });
+      });
+    },
+    // zumbido: el volante acercándose (doppler)
+    zumbido(t) {
+      const s = fuente(ROSA, t, 1.6), f = audio.createBiquadFilter(), g = audio.createGain(); f.type = 'bandpass'; f.Q.value = 3; f.frequency.setValueAtTime(260, t); f.frequency.exponentialRampToValueAtTime(3600, t + 1.3);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.5, t + 1.2); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.45); s.connect(f).connect(g);
+      let n = g; if (audio.createStereoPanner) { const p = audio.createStereoPanner(); p.pan.setValueAtTime(0.8, t); p.pan.linearRampToValueAtTime(0, t + 1.3); g.connect(p); n = p; } salida(n, 1, 0.25);
+    },
+  };
+}
+window.crearSonidoCine = crearSonidoCine;
+
+// modo 'principal' (al abrir la app): los dos clubes y el taller IDERMAY, con «Gestión Integral Bádminton».
+// modo 'clubes' (al pulsar el bloque Clubes): solo los dos clubes, con «Gestión de Clubs».
+function introGestionClubs(raiz, alTerminar, modo) {
   const reducido = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const principal = modo === 'principal';
   const caja = document.createElement('div'); caja.id = 'introClubs';
-  const titulo = 'GESTIÓN DE CLUBS';
-  caja.innerHTML = '<div class="ic-pista"></div><div class="ic-logos">'
+  if (principal) caja.classList.add('ic-principal');
+  const titulo = principal ? 'GESTIÓN INTEGRAL BÁDMINTON' : 'GESTIÓN DE CLUBS';
+  const montable = principal && typeof tdoLogoMontable === 'function' ? tdoLogoMontable() : null;
+  caja.innerHTML = '<div class="ic-pista"></div><div class="ic-logos' + (principal ? ' tres' : '') + '">'
     + '<div class="ic-club ic-olimpia"><div class="ic-logo"><div class="ic-relleno">' + OL_LOGO_CLUB_BLANCO + '</div></div><div class="ic-nombre">Olimpia Torrelavega</div></div>'
     + '<div class="ic-club ic-valles"><div class="ic-logo"><img src="' + OL_LOGO_VALLES_URL + '" alt="Bádminton Valles Cántabros"></div><div class="ic-nombre">Valles Cántabros</div></div>'
+    + (principal ? '<div class="ic-club ic-idermay"><div class="ic-logo"></div><div class="ic-nombre">IDERMAY Cantabria · Taller y tienda</div></div>' : '')
     + '</div><canvas aria-hidden="true"></canvas><div class="ic-flash"></div>'
-    + '<div class="ic-titulo"><small>Bádminton</small><h1 aria-label="Gestión de Clubs">' + Array.from(titulo).map((c, i) => '<span style="animation-delay:' + (i * 0.045).toFixed(3) + 's">' + (c === ' ' ? '&nbsp;' : c) + '</span>').join('') + '</h1></div>';
+    + '<div class="ic-titulo"><small>' + (principal ? 'Clubes · Taller · Tienda' : 'Bádminton') + '</small><h1 aria-label="' + (principal ? 'Gestión Integral Bádminton' : 'Gestión de Clubs') + '">' + (() => { let k = 0; return titulo.split(' ').map(pal => '<b class="ic-pal">' + Array.from(pal).map(c => '<span style="animation-delay:' + ((k++) * 0.045).toFixed(3) + 's">' + c + '</span>').join('') + '</b>').join(' '); })() + '</h1></div>';
   raiz.appendChild(caja);
-  const olimpia = caja.querySelector('.ic-olimpia'), valles = caja.querySelector('.ic-valles'), flash = caja.querySelector('.ic-flash');
+  const olimpia = caja.querySelector('.ic-olimpia'), valles = caja.querySelector('.ic-valles'), idermay = caja.querySelector('.ic-idermay'), flash = caja.querySelector('.ic-flash');
+  if (idermay) { if (montable) idermay.querySelector('.ic-logo').appendChild(montable.svg); else idermay.querySelector('.ic-logo').innerHTML = typeof OL_LOGO_IDERMAY_BLANCO !== 'undefined' ? OL_LOGO_IDERMAY_BLANCO : ''; }
   // contorno de Olimpia: el mismo dibujo, solo con trazo, que se va pintando
   const svgO = caja.querySelector('.ic-olimpia svg');
   let pathTraza = null;
@@ -18950,15 +19056,24 @@ function introGestionClubs(raiz, alTerminar) {
   ajustar(); window.addEventListener('resize', ajustar);
   let vivo = true, raf = 0; const timers = [];
   const luego = (ms, fn) => timers.push(setTimeout(() => { if (vivo) fn(); }, ms));
-  const terminar = () => { if (!vivo) return; vivo = false; cancelAnimationFrame(raf); timers.forEach(clearTimeout); window.removeEventListener('resize', ajustar); if (alTerminar) alTerminar(); };
-  if (reducido) { olimpia.classList.add('lleno'); valles.classList.add('lleno'); caja.classList.add('titulo'); luego(1600, terminar); return terminar; }
+  // sonido (si el navegador lo permite: al abrir la app sin tocar nada suele ir en silencio)
+  let audio = null, cine = null;
+  try { if (localStorage.getItem('ptSonido') !== '0') { const AC = window.AudioContext || window.webkitAudioContext; if (AC) { audio = new AC(); if (audio.state !== 'running' && audio.resume) audio.resume().catch(() => {}); cine = crearSonidoCine(audio); } } } catch (e) { audio = null; cine = null; }
+  const suena = (fn, desfase) => { try { if (cine && audio.state === 'running') fn(cine, audio.currentTime + (desfase || 0)); } catch (e) { } };
+  const terminar = () => { if (!vivo) return; vivo = false; cancelAnimationFrame(raf); timers.forEach(clearTimeout); window.removeEventListener('resize', ajustar);
+    if (audio) { const a = audio; setTimeout(() => { try { a.close(); } catch (e) { } }, 2500); }
+    if (alTerminar) alTerminar(); };
+  if (reducido) { olimpia.classList.add('lleno'); valles.classList.add('lleno'); if (idermay) { idermay.classList.add('lleno'); if (montable) montable.set(9); } caja.classList.add('titulo'); luego(1600, terminar); return terminar; }
+  const T_IDM = 1500, D_IDM = montable ? montable.duracion * 1000 : 0;
   // 1) Olimpia: trazo
   const T_OLI = 300, D_OLI = 2000;
   if (pathTraza) { try { const L = pathTraza.getTotalLength(); pathTraza.style.strokeDasharray = L + ' ' + L; pathTraza.style.strokeDashoffset = L;
     pathTraza.animate([{ strokeDashoffset: L }, { strokeDashoffset: 0 }], { duration: D_OLI, delay: T_OLI, easing: 'cubic-bezier(.45,0,.25,1)', fill: 'forwards' }); } catch (e) { } }
-  luego(T_OLI + D_OLI - 150, () => olimpia.classList.add('lleno'));
+  luego(T_OLI, () => suena((c, t) => c.barrido(t, D_OLI / 1000)));
+  luego(T_OLI + D_OLI - 150, () => { olimpia.classList.add('lleno'); suena((c, t) => c.brillo(t)); });
   // 2) Valles: mecha de pólvora que dibuja Cantabria
   const T_MECHA = 800, D_MECHA = 2600;
+  luego(T_MECHA, () => suena((c, t) => c.mecha(t, D_MECHA / 1000)));
   let mecha = null;
   const prepararMecha = () => {
     const n = MAPA_CANTABRIA_PTS.split(',').map(Number); let q = [];
@@ -19000,9 +19115,14 @@ function introGestionClubs(raiz, alTerminar) {
           estallar(mecha.cx, mecha.cy, 220, 12);
           flash.style.setProperty('--fx', (mecha.cx / W * 100).toFixed(1) + '%'); flash.style.setProperty('--fy', (mecha.cy / H * 100).toFixed(1) + '%');
           flash.classList.add('on'); caja.classList.add('tiembla'); valles.classList.add('lleno');
+          suena((c, t) => c.explosion(t));
         }
       }
     }
+    if (montable && t >= T_IDM && !idermay.classList.contains('lleno')) {
+      if (!idermay.dataset.son) { idermay.dataset.son = '1'; suena((c, t2) => c.zumbido(t2)); }
+      montable.set((t - T_IDM) / 1000);
+      if (t >= T_IDM + D_IDM) { montable.set(montable.duracion + 1); idermay.classList.add('lleno'); suena((c, t2) => c.impacto(t2)); } }
     for (let i = chispas.length - 1; i >= 0; i--) {
       const c = chispas[i]; c.x += c.vx; c.y += c.vy; c.vx *= 0.955; c.vy = c.vy * 0.955 + 0.11; c.vida -= c.dec;
       if (c.vida <= 0) { chispas.splice(i, 1); continue; }
@@ -19012,9 +19132,11 @@ function introGestionClubs(raiz, alTerminar) {
   };
   raf = requestAnimationFrame(bucle);
   // 3) título y salida
-  luego(T_MECHA + D_MECHA + 300, () => caja.classList.add('titulo'));
-  luego(T_MECHA + D_MECHA + 2400, () => caja.classList.add('sale'));
-  luego(T_MECHA + D_MECHA + 3000, terminar);
+  if (idermay && !montable) luego(T_IDM, () => idermay.classList.add('lleno'));
+  const T_FIN = Math.max(T_MECHA + D_MECHA, montable ? T_IDM + D_IDM : 0);
+  luego(T_FIN + 300, () => { caja.classList.add('titulo'); suena((c, t) => { c.barrido(t, 0.8); c.brillo(t + 0.5); }); });
+  luego(T_FIN + 2500, () => caja.classList.add('sale'));
+  luego(T_FIN + 3100, terminar);
   return terminar;
 }
 
@@ -19048,7 +19170,7 @@ if (!esVistaPublica() && esDispositivoFichaje()) {
     if (pararIntro) pararIntro();
     const c = document.getElementById('introClubs'); if (c) c.remove();
   };
-  try { pararIntro = introGestionClubs(introScreen, ocultarIntro); } catch (e) { console.warn('Intro:', e); ocultarIntro(); }
+  try { pararIntro = introGestionClubs(introScreen, ocultarIntro, 'principal'); } catch (e) { console.warn('Intro:', e); ocultarIntro(); }
   btnSaltarIntro.addEventListener('click', ocultarIntro);
   setTimeout(ocultarIntro, 15000);
 }

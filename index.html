@@ -4,7 +4,16 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261018-cuadros">
+<meta name="build-id" content="v20261019-club2">
+<script>
+// Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
+(function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
+var NS={badmintonClubGlobal:1,badmintonJugadoresGlobal:1,badmintonJugadoresExternos:1,badmintonPagosState:1,badmintonPlanSensibles:1,badmintonPlanState:1,badmintonTorneoState:1,badmintonTorneoActivoId:1,badmintonTorneosHistorial:1};
+var P=Storage.prototype,g=P.getItem,st=P.setItem,rm=P.removeItem,ls=null;try{ls=window.localStorage;}catch(e){}
+var k=function(o,x){return (o===ls&&NS[x])?x+'@'+c:x;};
+P.getItem=function(x){return g.call(this,k(this,x));};P.setItem=function(x,v){return st.call(this,k(this,x),v);};P.removeItem=function(x){return rm.call(this,k(this,x));};
+}catch(e){window.CLUB_CTX='';}})();
+</script>
 <script>try{var q=new URLSearchParams(location.search);if(q.get('tiendaonline')==='1')document.documentElement.classList.add('tienda-pre');if(q.get('tallerpublico')==='1')document.documentElement.classList.add('tpub-pre');}catch(e){}</script>
 <style>html.tienda-pre,html.tienda-pre body{background:#061C3B !important;}html.tienda-pre header.app-header,html.tienda-pre footer.hint,html.tienda-pre #introScreen,html.tienda-pre #shellMain>*:not(#tiendaOnlineScreen){display:none !important;}
 body.im-taller .im-raqueta .im-izq{grid-row:span 4;display:flex;flex-direction:column;align-items:center;gap:6px;}
@@ -1247,6 +1256,28 @@ body.ol-club .ol-entrar{display:inline-flex;align-items:center;gap:8px;backgroun
 body.ol-club .ol-mitad-taller .ol-entrar{background:#E0162B;color:#fff;}
 body.ol-club .ol-entrar::after{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-top:2px solid currentColor;transform:rotate(45deg);}
 body.ol-club #homeScreen:has(.ol-portada){max-width:none;}
+/* Tercer bloque: el otro club */
+body.ol-club .ol-portada.tres{grid-template-rows:none;grid-auto-rows:minmax(min-content,1fr);}
+body.ol-club .ol-portada.tres .ol-mitad{padding:20px 20px 22px;gap:14px;}
+body.ol-club .ol-portada.tres .ol-mitad h2{font-size:clamp(30px,8.5vw,40px);}
+body.ol-club .ol-portada.tres .ol-mitad p{margin:6px 0 10px;}
+body.ol-club .ol-portada.tres .ol-datos{margin-bottom:12px;}
+body.ol-club .ol-mitad-club2{background-color:#3A2C5E;background-image:radial-gradient(circle at 85% 18%,rgba(255,255,255,.10) 0 70px,transparent 71px),linear-gradient(0deg,transparent 20%,rgba(255,255,255,.09) 20%,rgba(255,255,255,.09) calc(20% + 2px),transparent calc(20% + 2px));border-top:4px solid #F2A93B;}
+body.ol-club .ol-mitad-club2 .ol-logo-vacio{background:rgba(255,255,255,.14);box-shadow:none;border:2px dashed rgba(255,255,255,.45);}
+body.ol-club .ol-mitad-club2 .ol-dato.aviso{color:#3A2C5E;}
+body.ol-club .ol-mitad-club2 .ol-entrar,html.dg body.ol-club .ol-mitad-club2 .ol-entrar{background:#F2A93B !important;color:#2A1A00 !important;}
+.dg-logo.dg-logo-foto{width:52px;height:52px;border-radius:14px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.dg-logo.dg-logo-foto img{width:100%;height:100%;object-fit:contain}
+.dg-logo-vacio{font-size:26px}
+.dg-aviso-club2{display:flex;flex-wrap:wrap;align-items:center;gap:10px;justify-content:space-between;margin:0 0 14px;padding:12px 14px;border-radius:14px;background:rgba(242,169,59,.14);border:1px solid rgba(242,169,59,.5);color:#F7E2BF;font-size:14px;position:relative;z-index:1}
+.dg-aviso-club2 button{border:0;border-radius:10px;padding:9px 14px;background:#F2A93B;color:#2A1A00;font-weight:800;font-family:inherit;cursor:pointer}
+@media (min-width:860px){
+  body.ol-club .ol-portada.tres{grid-auto-rows:auto;grid-template-columns:1fr 1fr 1fr;max-width:1240px;}
+  body.ol-club .ol-portada.tres .ol-mitad{padding:30px 26px;}
+  body.ol-club .ol-portada.tres .ol-mitad h2{font-size:clamp(32px,3.2vw,42px);}
+  body.ol-club .ol-portada.tres .ol-mitad-taller .ol-logo.ol-logo-blanco{width:200px;height:116px;}
+  body.ol-club .ol-mitad-club2{border-top:0;border-left:5px solid #F2A93B;}
+}
 @media (min-width:860px){
   body.ol-club .ol-portada{grid-template-rows:none;grid-template-columns:1fr 1fr;margin:0 auto;max-width:1100px;min-height:calc(100vh - 140px);border-radius:22px;overflow:hidden;}
   body.ol-club .ol-portada.sola{grid-template-columns:1fr;}
@@ -3016,7 +3047,8 @@ function viewConfig() {
     ));
   }
   const enlaceInput = el('input', { type: 'text', value: enlacePublico, readonly: true, style: 'flex:1;min-width:220px;' });
-  if (!(entradaActivaCfg && entradaActivaCfg.estado === 'finalizado')) wrap.appendChild(el('div', { class: 'panel', style: 'border:2px solid var(--gold);' },
+  if (esOtroClub()) wrap.appendChild(el('div', { class: 'panel' }, el('h2', {}, '📱 Enlace en directo para los jugadores'), el('div', { class: 'msg msg-info' }, 'El enlace en directo para los jugadores todavía solo funciona con los torneos de Olimpia. Aquí puedes llevar el torneo con normalidad.')));
+  else if (!(entradaActivaCfg && entradaActivaCfg.estado === 'finalizado')) wrap.appendChild(el('div', { class: 'panel', style: 'border:2px solid var(--gold);' },
     el('h2', {}, '📱 Enlace en directo para los jugadores'),
     el('div', { class: 'sub' }, 'Comparte este enlace con los jugadores: podrán ver el calendario, los horarios y cómo va el cuadro en directo desde su propio móvil, sin necesidad de usuario ni PIN, y sin poder tocar nada.'),
     el('div', { class: 'row', style: 'gap:8px;' },
@@ -11364,7 +11396,7 @@ const FAC_TIPOS = {
 function facCfg() { state.config.factura = state.config.factura || {}; const f = state.config.factura; if (f.iva == null) f.iva = 21; if (!f.serie) f.serie = 'F'; return f; }
 function facR(n) { return Math.round((Number(n) || 0) * 100) / 100; }
 function facEur(n) { return typeof nomEur === 'function' ? nomEur(n) : facR(n).toFixed(2).replace('.', ',') + ' €'; }
-function facColeccion() { return docNube().collection('facturas'); }
+function facColeccion() { return docPrincipal().collection('facturas'); }
 function facCalcular(lineas, ivaPct) {
   const ls = lineas.filter(l => (Number(l.cantidad) || 0) && (Number(l.precio) || 0) !== 0).map(l => Object.assign({}, l, { cantidad: Number(l.cantidad), precio: facR(l.precio), total: facR(Number(l.cantidad) * Number(l.precio)), iva: FAC_TIPOS[l.tipo] ? FAC_TIPOS[l.tipo].iva : true }));
   const conIva = facR(ls.filter(l => l.iva).reduce((s, l) => s + l.total, 0));
@@ -14153,7 +14185,10 @@ function abrirAyuda() {
   pintarResultados();
   input.focus();
 }
+function volverPortadaGeneral() { try { sessionStorage.setItem('olSaltarIntro', '1'); } catch (e) { } location.href = location.pathname; }
+function irAOtroClub(id) { try { sessionStorage.setItem('olSaltarIntro', '1'); } catch (e) { } location.href = location.pathname + '?club=' + encodeURIComponent(id); }
 function showSection(sec) {
+  if (esOtroClub() && (sec === 'taller' || sec === 'correo' || sec === 'fichar' || sec === 'controlhorario')) { volverPortadaGeneral(); return; }
   if (esTrabajador()) sec = 'fichar';
   if (sec !== 'fichar' && typeof fxPararGPS === 'function') fxPararGPS();
   if (sec === 'controlhorario') { goToClubGestion('horario'); return; }
@@ -14240,17 +14275,17 @@ function renderClubGestionTabsNav() {
     ['general', '🌍 Base general de jugadores', 'jugadores'],
     ['pagos', '💶 Pagos y Cuotas', 'pagos'],
   ].filter(([, , permiso]) => tienePermiso(permiso));
-  if (esAdmin()) tabs.push(['trabajadores', '👔 Trabajadores']);
-  if (esAdmin()) tabs.push(['nominas', '💶 Nóminas']);
-  if (esAdmin()) tabs.push(['horario', '⏱️ Control horario']);
-  if (esAdmin()) tabs.push(['acceso', '🔐 Control de acceso']);
+  if (esAdmin() && !esOtroClub()) tabs.push(['trabajadores', '👔 Trabajadores']);
+  if (esAdmin() && !esOtroClub()) tabs.push(['nominas', '💶 Nóminas']);
+  if (esAdmin() && !esOtroClub()) tabs.push(['horario', '⏱️ Control horario']);
+  if (esAdmin() && !esOtroClub()) tabs.push(['acceso', '🔐 Control de acceso']);
   tabs.forEach(([id, label]) => {
     nav.appendChild(el('button', { class: clubGestionTab === id ? 'active' : '', onclick: () => { showClubGestionTab(id); } }, label));
   });
 }
 
 function showClubGestionTab(tab) {
-  if ((tab === 'acceso' || tab === 'horario' || tab === 'trabajadores' || tab === 'nominas') && !esAdmin()) tab = 'datos';
+  if ((tab === 'acceso' || tab === 'horario' || tab === 'trabajadores' || tab === 'nominas') && (!esAdmin() || esOtroClub())) tab = 'datos';
   const permisoDeTab = { datos: 'club', jugadores: 'jugadores', general: 'jugadores', pagos: 'pagos', acceso: null, horario: null, trabajadores: null, nominas: null };
   if (tab !== 'acceso' && tab !== 'horario' && tab !== 'trabajadores' && tab !== 'nominas' && !tienePermiso(permisoDeTab[tab])) {
     tab = tienePermiso('club') ? 'datos' : tienePermiso('jugadores') ? 'jugadores' : tienePermiso('pagos') ? 'pagos' : 'datos';
@@ -15163,15 +15198,21 @@ function renderPanelClub(root, gruposClub, onclickClub) {
   document.body.classList.add('dg-panel');
   if (!document.getElementById('dgMarcaClub') && typeof OL_LOGO_CLUB_BLANCO !== 'undefined') {
     const m = document.createElement('div'); m.id = 'dgMarcaClub'; m.setAttribute('aria-hidden', 'true');
-    m.style.backgroundImage = 'url("data:image/svg+xml;utf8,' + encodeURIComponent(OL_LOGO_CLUB_BLANCO) + '")';
     document.body.insertBefore(m, document.body.firstChild);
   }
+  { const m = document.getElementById('dgMarcaClub');
+    if (m) m.style.backgroundImage = esOtroClub() ? (clubGlobal.logo ? 'url("' + clubGlobal.logo + '")' : 'none') : 'url("data:image/svg+xml;utf8,' + encodeURIComponent(OL_LOGO_CLUB_BLANCO) + '")'; }
   const wrap = el('div', { class: 'dg' });
   const fecha = new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
   wrap.appendChild(el('div', { class: 'dg-cab' },
-    el('button', { class: 'dg-volver', type: 'button', 'aria-label': 'Volver a la portada', html: dgI('inicio') + '<span>Inicio</span>', onclick: () => { homeGrupoAbierto = null; renderHome(); window.scrollTo(0, 0); } }),
-    el('div', { class: 'dg-logo', html: typeof OL_LOGO_CLUB_BLANCO !== 'undefined' ? OL_LOGO_CLUB_BLANCO : '' }),
-    el('div', { class: 'dg-tit' }, el('small', {}, 'Club Bádminton'), el('b', {}, (clubGlobal.nombre || 'Olimpia Torrelavega').replace(/^Club\s+B[aá]dminton\s+/i, '')))));
+    el('button', { class: 'dg-volver', type: 'button', 'aria-label': 'Volver a la portada', html: dgI('inicio') + '<span>Inicio</span>', onclick: () => { if (esOtroClub()) { volverPortadaGeneral(); return; } homeGrupoAbierto = null; renderHome(); window.scrollTo(0, 0); } }),
+    esOtroClub()
+      ? (clubGlobal.logo ? el('div', { class: 'dg-logo dg-logo-foto' }, el('img', { src: clubGlobal.logo, alt: '' })) : el('div', { class: 'dg-logo dg-logo-foto' }, el('span', { class: 'dg-logo-vacio' }, '🏸')))
+      : el('div', { class: 'dg-logo', html: typeof OL_LOGO_CLUB_BLANCO !== 'undefined' ? OL_LOGO_CLUB_BLANCO : '' }),
+    el('div', { class: 'dg-tit' }, el('small', {}, 'Club Bádminton'), el('b', {}, (clubGlobal.nombre || (esOtroClub() ? 'Club nuevo' : 'Olimpia Torrelavega')).replace(/^Club\s+B[aá]dminton\s+/i, '')))));
+  if (esOtroClub() && tienePermiso('club') && (!clubGlobal.logo || clubGlobal.nombre === 'Club nuevo')) wrap.appendChild(el('div', { class: 'dg-aviso-club2' },
+    el('span', {}, 'Este club es nuevo: ponle su nombre y su logo en «Datos del club».'),
+    el('button', { type: 'button', onclick: () => { document.body.classList.remove('dg-panel'); goToClubGestion('datos'); } }, 'Poner nombre y logo')));
   const pendientes = [];
   const saludo = el('div', { class: 'dg-saludo' });
   wrap.appendChild(saludo);
@@ -15209,7 +15250,7 @@ function renderPanelClub(root, gruposClub, onclickClub) {
       `<span class="dg-fl">${dgI('flecha')}</span><div class="dg-et">${dgI('jugadores')}Jugadores</div><div class="dg-num">${js.length}</div><div class="dg-sub"><b>${fed}</b> federado${fed === 1 ? '' : 's'}</div>`));
   }
   // Personal
-  if (esAdmin()) {
+  if (esAdmin() && !esOtroClub()) {
     const nTrab = (accessControl.usuarios || []).filter(u => u.rol === 'trabajador').length;
     const pPers = dgPieza('', ir(() => goToClubGestion('horario')),
       `<span class="dg-fl">${dgI('flecha')}</span><div class="dg-et">${dgI('reloj')}Personal</div><div class="dg-pers"><div class="dg-sub">Comprobando fichajes…</div></div>`);
@@ -15251,7 +15292,7 @@ function renderPanelClub(root, gruposClub, onclickClub) {
       `<span class="dg-fl">${dgI('flecha')}</span><div class="dg-et">${dgI('copa')}Torneo</div><h3>Ningún torneo en marcha</h3><div class="dg-sub">Crea uno y sigue aquí cómo avanza el cuadro.</div>`));
   }
   // Correo
-  if (esAdmin() && typeof CorreoApp !== 'undefined') {
+  if (esAdmin() && !esOtroClub() && typeof CorreoApp !== 'undefined') {
     const ch = el('span');
     const fake = CorreoApp.chipPortada('todo', (t) => { ch.textContent = t; return ch; });
     const txt = fake ? fake.textContent : 'Correo';
@@ -15747,6 +15788,38 @@ function renderControlAcceso() {
 }
 
 let homeGrupoAbierto = null;
+// ---- Segundo club (se lleva aparte: sus jugadores, cuotas, torneos y planificación son suyos) ----
+const CLUB2_ID = 'c2';
+function resumenClub2() { try { return JSON.parse(localStorage.getItem('badmintonResumenClub2') || 'null') || {}; } catch (e) { return {}; } }
+let club2Consultado = false;
+function consultarResumenClub2() {
+  if (club2Consultado || typeof firebaseDisponible === 'undefined' || !firebaseDisponible || esOtroClub()) return;
+  club2Consultado = true;
+  docPrincipal().collection('clubes').doc(CLUB2_ID).get().then(d => {
+    const x = d.exists ? d.data() : {};
+    const r = { nombre: (x.club && x.club.nombre) || '', logo: (x.club && x.club.logo) || '', jugadores: Array.isArray(x.jugadoresGlobal) ? x.jugadoresGlobal.length : (x.jugadoresGlobal && typeof x.jugadoresGlobal === 'object' ? Object.keys(x.jugadoresGlobal).length : 0) };
+    const antes = JSON.stringify(resumenClub2());
+    try { localStorage.setItem('badmintonResumenClub2', JSON.stringify(r)); } catch (e) { }
+    if (antes !== JSON.stringify(r) && currentSection === 'home' && !homeGrupoAbierto) renderHome();
+  }).catch(err => { console.warn('No se pudo leer el resumen del otro club:', err); });
+}
+function bloquePortadaClub2() {
+  consultarResumenClub2();
+  const r = resumenClub2();
+  const nombre = r.nombre || 'Club nuevo';
+  const entrar = () => irAOtroClub(CLUB2_ID);
+  const datos = el('div', { class: 'ol-datos' },
+    el('button', { class: 'ol-dato', type: 'button', onclick: (e) => { e.stopPropagation(); entrar(); } }, (r.jugadores || 0) + (r.jugadores === 1 ? ' jugador' : ' jugadores')));
+  const logo = r.logo ? el('div', { class: 'ol-logo ol-logo-foto' }, el('img', { src: r.logo, alt: '' })) : el('div', { class: 'ol-logo ol-logo-vacio', 'aria-hidden': 'true' }, '🏸');
+  return el('section', { class: 'ol-mitad ol-mitad-club2', role: 'button', tabindex: '0', 'aria-label': 'Entrar a ' + nombre, onclick: entrar },
+    logo,
+    el('div', { class: 'ol-pie' },
+      el('h2', {}, nombre),
+      el('p', {}, r.nombre ? 'Torneos, escuela, jugadores y cuotas' : 'Toca para entrar y poner su nombre y su logo'),
+      datos,
+      el('span', { class: 'ol-entrar' }, 'Entrar al club')));
+}
+
 function renderHome() {
   const root = document.getElementById('homeScreen');
   root.innerHTML = '';
@@ -15770,9 +15843,9 @@ function renderHome() {
     { icon: '📅', title: 'Planificación Anual', desc: 'De la iniciación a la tecnificación: macrociclo, microciclo y evaluación.', sec: 'planificacion', permiso: 'planificacion' },
     { icon: '🏛️', title: 'Gestión de Club', desc: esAdmin() ? 'Datos del club, jugadores, y pagos y cuotas.' : ([tienePermiso('club') ? 'datos del club' : '', tienePermiso('jugadores') ? 'jugadores' : '', tienePermiso('pagos') ? 'pagos y cuotas' : ''].filter(Boolean).join(', ').replace(/^./, c => c.toUpperCase()) + '.'), sec: 'clubgestion', permiso: null },
   ];
-  if (esAdmin()) gruposClub.push({ icon: '👔', title: 'Trabajadores', desc: 'Fichas del personal (datos personales y de nómina) y su acceso para fichar.', sec: 'clubgestion', tab: 'trabajadores', permiso: null });
-  if (esAdmin()) gruposClub.push({ icon: '💶', title: 'Nóminas', desc: 'Nóminas por horas trabajadas, recibos en PDF y Excel para la gestoría.', sec: 'clubgestion', tab: 'nominas', permiso: null });
-  if (esAdmin()) gruposClub.push({ icon: '⏱️', title: 'Control horario', desc: 'Fichajes, solicitudes de ausencia, calendario, plantillas y festivos.' + (chPendientesSolicitudes ? ' 📨 ' + chPendientesSolicitudes + ' solicitud(es) pendiente(s).' : ''), sec: 'clubgestion', tab: 'horario', permiso: null });
+  if (esAdmin() && !esOtroClub()) gruposClub.push({ icon: '👔', title: 'Trabajadores', desc: 'Fichas del personal (datos personales y de nómina) y su acceso para fichar.', sec: 'clubgestion', tab: 'trabajadores', permiso: null });
+  if (esAdmin() && !esOtroClub()) gruposClub.push({ icon: '💶', title: 'Nóminas', desc: 'Nóminas por horas trabajadas, recibos en PDF y Excel para la gestoría.', sec: 'clubgestion', tab: 'nominas', permiso: null });
+  if (esAdmin() && !esOtroClub()) gruposClub.push({ icon: '⏱️', title: 'Control horario', desc: 'Fichajes, solicitudes de ausencia, calendario, plantillas y festivos.' + (chPendientesSolicitudes ? ' 📨 ' + chPendientesSolicitudes + ' solicitud(es) pendiente(s).' : ''), sec: 'clubgestion', tab: 'horario', permiso: null });
   const onclickClub = (c) => {
     if (c.sec !== 'clubgestion') { showSection(c.sec); return; }
     if (c.tab) { goToClubGestion(c.tab); return; }
@@ -15791,7 +15864,10 @@ function renderHome() {
     { icon: '⚙️', title: 'Configuración', desc: 'Precios, tiempos y publicidad.', sec: 'taller', tallerTab: 'config', permiso: 'taller' },
   ];
   const onclickTaller = (c) => { showSection('taller'); if (c.tallerTab) TallerApp.irATab(c.tallerTab); };
-  const hayTaller = tienePermiso('taller');
+  const hayTaller = tienePermiso('taller') && !esOtroClub();
+  // En el otro club no hay portada partida: se entra directo a su panel.
+  if (esOtroClub()) homeGrupoAbierto = 'club';
+  const hayClub2 = !esOtroClub() && (esAdmin() || !accesoActivo());
 
   // Si hay un grupo abierto, mostrar solo ese: su cabecera (más pequeña) + sus acciones.
   document.body.classList.remove('dg-panel');
@@ -15818,7 +15894,8 @@ function renderHome() {
     root.appendChild(construirGrid(gruposTaller, onclickTaller));
   } else {
     // Pantalla principal: la pantalla partida en dos, con los datos del día de cada negocio.
-    const portada = el('div', { class: 'ol-portada' + (hayClub && hayTaller ? '' : ' sola') });
+    const nBloques = (hayClub ? 1 : 0) + (hayTaller ? 1 : 0) + (hayClub2 ? 1 : 0);
+    const portada = el('div', { class: 'ol-portada' + (nBloques === 3 ? ' tres' : nBloques === 1 ? ' sola' : '') });
     const dato = (texto, accion, aviso) => el('button', { class: 'ol-dato' + (aviso ? ' aviso' : ''), type: 'button', onclick: (e) => { e.stopPropagation(); accion(); } }, texto);
     if (hayClub) {
       const datosClub = el('div', { class: 'ol-datos' });
@@ -15856,6 +15933,7 @@ function renderHome() {
           datosTaller,
           el('span', { class: 'ol-entrar' }, 'Entrar al taller'))));
     }
+    if (hayClub2) portada.appendChild(bloquePortadaClub2());
     portada.querySelectorAll('.ol-mitad').forEach(m => m.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); m.click(); } }));
     root.appendChild(portada);
   }
@@ -15941,7 +16019,11 @@ function inicializarFirebase() {
     }
   } catch (e) { console.warn('Firebase no disponible:', e); firebaseDisponible = false; }
 }
-function docNube() { return firebaseDb.collection('club').doc('datos'); }
+// Documento del club principal (Olimpia): aquí viven también el taller, el personal y los accesos.
+function docPrincipal() { return firebaseDb.collection('club').doc('datos'); }
+// Documento del club activo: Olimpia o, con ?club=…, el del otro club (guardado aparte dentro del principal).
+function docNube() { return window.CLUB_CTX ? docPrincipal().collection('clubes').doc(window.CLUB_CTX) : docPrincipal(); }
+function esOtroClub() { return !!window.CLUB_CTX; }
 function marcarEstadoNube(texto) {
   const ind = document.getElementById('nubeIndicador');
   if (ind) ind.textContent = texto;
@@ -15976,7 +16058,7 @@ function estadoCompletoParaNube() {
       a.foto = null;
     });
   }
-  return {
+  const datos = {
     club: clubGlobal,
     jugadoresGlobal: jugadoresGlobal,
     jugadoresExternos: jugadoresExternos,
@@ -15989,8 +16071,11 @@ function estadoCompletoParaNube() {
     accessControl: accessControl,
     actualizadoEn: Date.now(),
   };
+  // El otro club no sube el taller ni los accesos: esos son del club principal.
+  if (esOtroClub()) { delete datos.taller; delete datos.accessControl; }
+  return datos;
 }
-function coleccionFotosTaller() { return docNube().collection('taller_fotos'); }
+function coleccionFotosTaller() { return docPrincipal().collection('taller_fotos'); }
 function guardarFotosTallerEnNube(pedidoId, fotoAntes, fotoDespues) {
   fotosPedidosCache[pedidoId] = { fotoAntes: fotoAntes || null, fotoDespues: fotoDespues || null };
   if (!firebaseDisponible || !sincronizacionInicialLista) return;
@@ -16176,7 +16261,7 @@ function estadoPublicoParaNube() {
 }
 let publicoTimer = null;
 function subirCopiaPublica() {
-  if (!firebaseDisponible || esVistaPublica()) return;
+  if (!firebaseDisponible || esVistaPublica() || esOtroClub()) return;
   if (typeof esTrabajador === 'function' && esTrabajador()) return;
   clearTimeout(publicoTimer);
   publicoTimer = setTimeout(() => {
@@ -16209,8 +16294,8 @@ function inicializarAuth() {
 function derivarClave(pin, usuarioId) { return 'Olimpia#' + pin + '#' + usuarioId; }
 function docAccesoPublico() { return firebaseDb.collection('publico').doc('acceso'); }
 function coleccionRoles() { return firebaseDb.collection('roles'); }
-function coleccionEstadoCuentas() { return docNube().collection('ch_estado_cuentas'); }
-function docHorarioTrabajador(usuarioId) { return docNube().collection('ch_horarios').doc(usuarioId); }
+function coleccionEstadoCuentas() { return docPrincipal().collection('ch_estado_cuentas'); }
+function docHorarioTrabajador(usuarioId) { return docPrincipal().collection('ch_horarios').doc(usuarioId); }
 function mensajeErrorAuth(e) {
   const c = (e && e.code) || '';
   if (/invalid-credential|wrong-password|user-not-found|invalid-login/.test(c)) return 'Datos incorrectos.';
@@ -16693,7 +16778,7 @@ function aplicarDatosDeNube(dataOriginal) {
   if (data.torneoActivoId) TorneoApp.setTorneoActivoId(data.torneoActivoId);
   if (data.planificacion) PlanApp.setState(data.planificacion);
   if (data.pagos) PagosApp.setState(data.pagos);
-  if (data.taller) TallerApp.setState(data.taller);
+  if (data.taller && !esOtroClub()) TallerApp.setState(data.taller);
   // La tarjeta de visita se guarda aparte (no viaja en este documento, para no saturarlo);
   // cada sincronización pisa el campo con null, así que la reponemos desde la caché local.
   if (tarjetaVisitaCache && TallerApp.getState().config) TallerApp.getState().config.tarjetaVisitaFoto = tarjetaVisitaCache;
@@ -16706,7 +16791,7 @@ function aplicarDatosDeNube(dataOriginal) {
       if (fotosPedidosCache[p.id] !== undefined) { p.fotoAntes = fotosPedidosCache[p.id].fotoAntes; p.fotoDespues = fotosPedidosCache[p.id].fotoDespues; }
     });
   }
-  if (data.accessControl) { accessControl = data.accessControl; saveAccessControl(); }
+  if (data.accessControl && !esOtroClub()) { accessControl = data.accessControl; saveAccessControl(); }
   if (typeof currentSection !== 'undefined' && currentSection === 'taller' && typeof renderShellHeader === 'function') renderShellHeader();
   if (typeof currentSection !== 'undefined' && currentSection === 'taller' && typeof actualizarMarcaAguaTaller === 'function') actualizarMarcaAguaTaller(true);
   if (typeof esVistaPublicaTaller === 'function' && esVistaPublicaTaller() && typeof renderVistaPublicaTaller === 'function') renderVistaPublicaTaller();
@@ -16726,7 +16811,7 @@ const OPCIONES_ROL = [
   { value: 'trabajador', label: 'Trabajador (solo fichar)' },
 ];
 function esTrabajador() { return rolActual() === 'trabajador'; }
-function coleccionFichajes() { return docNube().collection('ch_fichajes'); }
+function coleccionFichajes() { return docPrincipal().collection('ch_fichajes'); }
 function chMesDe(ts) { const d = new Date(ts); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
 function chFechaDe(ts) { const d = new Date(ts); return chMesDe(ts) + '-' + String(d.getDate()).padStart(2, '0'); }
 function chMesAnterior(mes) { const [a, m] = mes.split('-').map(Number); return m === 1 ? (a - 1) + '-12' : a + '-' + String(m - 1).padStart(2, '0'); }
@@ -17061,7 +17146,7 @@ function chFichar(tipo, boton, avisos) {
 // Se guarda en un documento aparte (club/datos/ch_config/general), solo lo edita el administrador.
 const CH_DIAS = [['1', 'Lunes'], ['2', 'Martes'], ['3', 'Miércoles'], ['4', 'Jueves'], ['5', 'Viernes'], ['6', 'Sábado'], ['7', 'Domingo']];
 let chConfig = null;
-function docConfigHorario() { return docNube().collection('ch_config').doc('general'); }
+function docConfigHorario() { return docPrincipal().collection('ch_config').doc('general'); }
 function chNormalizarConfig(c) {
   c = c || {};
   return { plantillas: Array.isArray(c.plantillas) ? c.plantillas : [], asignaciones: c.asignaciones || {}, festivos: Array.isArray(c.festivos) ? c.festivos : [], ausencias: Array.isArray(c.ausencias) ? c.ausencias : [], altas: c.altas || {}, nominasEmpresa: c.nominasEmpresa || {} };
@@ -17480,8 +17565,8 @@ function chRenderCalendario(root) {
 }
 
 // ---------- Solicitudes de ausencia (las hace el trabajador, las resuelve el administrador) ----------
-function coleccionSolicitudes() { return docNube().collection('ch_solicitudes'); }
-function coleccionAuditoria() { return docNube().collection('ch_auditoria'); }
+function coleccionSolicitudes() { return docPrincipal().collection('ch_solicitudes'); }
+function coleccionAuditoria() { return docPrincipal().collection('ch_auditoria'); }
 const CH_ESTADOS_SOL = { pendiente: ['⏳ Pendiente', '#FBF1D9', '#7A5B00'], aprobada: ['✅ Aprobada', '#E4F3E9', '#1E5B3C'], rechazada: ['❌ Rechazada', '#FBE4E2', '#B3261E'], cancelada: ['Cancelada', '#EEE', '#666'] };
 function chChipEstado(e) { const c = CH_ESTADOS_SOL[e] || CH_ESTADOS_SOL.pendiente; return el('span', { class: 'chip', style: `background:${c[1]};color:${c[2]};` }, c[0]); }
 function chEtiquetaSolicitud(s) { return s.tipo === 'correccion' ? 'Corrección de fichaje' : (CH_TIPOS_AUSENCIA[s.tipo] ? CH_TIPOS_AUSENCIA[s.tipo].label : s.tipo); }
@@ -17753,8 +17838,8 @@ function chTextoCambio(a) {
 
 // ===== TRABAJADORES: ficha completa (datos personales y de nómina) + acceso a la app =====
 // Las fichas van en su propia colección (club/datos/ch_empleados); el móvil de un trabajador nunca las descarga.
-function coleccionEmpleados() { return docNube().collection('ch_empleados'); }
-function coleccionPins() { return docNube().collection('ch_pins'); }
+function coleccionEmpleados() { return docPrincipal().collection('ch_empleados'); }
+function coleccionPins() { return docPrincipal().collection('ch_pins'); }
 let chPinsCache = {};
 function chCargarPins() {
   if (!firebaseDisponible) return Promise.resolve();
@@ -18085,7 +18170,7 @@ function nomCalcular(e) {
 }
 
 // ===== NÓMINAS: pantalla, recibo y exportación =====
-function coleccionNominas() { return docNube().collection('ch_nominas'); }
+function coleccionNominas() { return docPrincipal().collection('ch_nominas'); }
 const NOM_MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 function nomMesTxt(mes) { const [a, m] = mes.split('-').map(Number); return NOM_MESES[m - 1] + ' de ' + a; }
 function nomDiasMes(mes) { const [a, m] = mes.split('-').map(Number); return new Date(a, m, 0).getDate(); }
@@ -18662,6 +18747,9 @@ function marcarDispositivoFichaje(esFichaje) { try { localStorage.setItem('badmi
 if (!esVistaPublica() && esDispositivoFichaje()) {
   const v = document.getElementById('introVideo');
   try { v.pause(); v.removeAttribute('src'); } catch (e) {}
+} else if (!esVistaPublica() && (esOtroClub() || (() => { try { const s = sessionStorage.getItem('olSaltarIntro') === '1'; sessionStorage.removeItem('olSaltarIntro'); return s; } catch (e) { return false; } })())) {
+  const v = document.getElementById('introVideo');
+  try { v.pause(); v.removeAttribute('src'); } catch (e) {}
 } else if (!esVistaPublica()) {
   const introScreen = document.getElementById('introScreen');
   const introVideo = document.getElementById('introVideo');
@@ -18680,6 +18768,7 @@ if (!esVistaPublica() && esDispositivoFichaje()) {
 }
 
 loadClubGlobal();
+if (esOtroClub() && !clubGlobal.nombre) { clubGlobal.nombre = 'Club nuevo'; try { localStorage.setItem('badmintonClubGlobal', JSON.stringify(clubGlobal)); } catch (e) { } }
 loadJugadoresGlobal();
 loadJugadoresExternos();
 loadAccessControl();

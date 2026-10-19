@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261019-club2">
+<meta name="build-id" content="v20261019-clubes">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -1257,6 +1257,11 @@ body.ol-club .ol-mitad-taller .ol-entrar{background:#E0162B;color:#fff;}
 body.ol-club .ol-entrar::after{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-top:2px solid currentColor;transform:rotate(45deg);}
 body.ol-club #homeScreen:has(.ol-portada){max-width:none;}
 /* Tercer bloque: el otro club */
+body.ol-club .ol-logos{display:flex;align-items:center;gap:16px;}
+body.ol-club .ol-mitad-clubes .ol-logo-vacio,body.ol-club .ol-mitad-clubes .ol-logo-foto{width:64px;height:64px;}
+body.ol-club .ol-mitad-clubes .ol-logo-vacio{background:rgba(255,255,255,.14);box-shadow:none;border:2px dashed rgba(255,255,255,.45);font-size:30px;}
+body.ol-club .ol-volver-clubes{margin:0 0 12px;position:relative;z-index:1;}
+body.ol-club .ol-volver-clubes + .ol-portada{margin-top:0;}
 body.ol-club .ol-portada.tres{grid-template-rows:none;grid-auto-rows:minmax(min-content,1fr);}
 body.ol-club .ol-portada.tres .ol-mitad{padding:20px 20px 22px;gap:14px;}
 body.ol-club .ol-portada.tres .ol-mitad h2{font-size:clamp(30px,8.5vw,40px);}
@@ -15894,10 +15899,37 @@ function renderHome() {
     root.appendChild(construirGrid(gruposTaller, onclickTaller));
   } else {
     // Pantalla principal: la pantalla partida en dos, con los datos del día de cada negocio.
-    const nBloques = (hayClub ? 1 : 0) + (hayTaller ? 1 : 0) + (hayClub2 ? 1 : 0);
-    const portada = el('div', { class: 'ol-portada' + (nBloques === 3 ? ' tres' : nBloques === 1 ? ' sola' : '') });
+    // Con el segundo club: un bloque «Clubes» (que abre la elección de club) y otro del taller, como antes.
+    const eligiendoClub = homeGrupoAbierto === 'clubes' && hayClub2 && hayClub;
+    if (homeGrupoAbierto === 'clubes' && !eligiendoClub) homeGrupoAbierto = null;
+    const portada = el('div', { class: 'ol-portada' + ((hayClub && (hayTaller || eligiendoClub)) ? '' : ' sola') });
     const dato = (texto, accion, aviso) => el('button', { class: 'ol-dato' + (aviso ? ' aviso' : ''), type: 'button', onclick: (e) => { e.stopPropagation(); accion(); } }, texto);
-    if (hayClub) {
+    const entrarOlimpia = () => { homeGrupoAbierto = 'club'; renderHome(); window.scrollTo(0, 0); };
+    if (hayClub && hayClub2 && !eligiendoClub) {
+      const r2 = resumenClub2(); consultarResumenClub2();
+      const nJug = (jugadoresGlobal || []).length, n2 = r2.jugadores || 0;
+      const nombreOl = (clubGlobal.nombre || 'Olimpia').replace(/^Club\s+B[aá]dminton\s+/i, '').replace(/\s+Torrelavega$/i, '');
+      const nombre2 = r2.nombre || 'Club nuevo';
+      const datosClubes = el('div', { class: 'ol-datos' },
+        dato(nombreOl + ' · ' + nJug + (nJug === 1 ? ' jugador' : ' jugadores'), entrarOlimpia),
+        dato(nombre2 + ' · ' + n2 + (n2 === 1 ? ' jugador' : ' jugadores'), () => irAOtroClub(CLUB2_ID)));
+      if (esAdmin()) {
+        const chipSol = dato(chPendientesSolicitudes ? chPendientesSolicitudes + (chPendientesSolicitudes === 1 ? ' solicitud pendiente' : ' solicitudes pendientes') : 'Control horario', () => goToClubGestion('horario'), chPendientesSolicitudes > 0);
+        datosClubes.appendChild(chipSol);
+        if (typeof chActualizarAvisoSolicitudes === 'function') chActualizarAvisoSolicitudes().then(n => { if (n) { chipSol.textContent = n + (n === 1 ? ' solicitud pendiente' : ' solicitudes pendientes'); chipSol.classList.add('aviso'); } });
+        { const ch = CorreoApp.chipPortada('todo', dato); if (ch) datosClubes.appendChild(ch); }
+      }
+      portada.appendChild(el('section', { class: 'ol-mitad ol-mitad-club ol-mitad-clubes', role: 'button', tabindex: '0', 'aria-label': 'Elegir club', onclick: () => { homeGrupoAbierto = 'clubes'; renderHome(); window.scrollTo(0, 0); } },
+        el('div', { class: 'ol-logos' },
+          el('div', { class: 'ol-logo ol-logo-blanco', html: OL_LOGO_CLUB_BLANCO }),
+          r2.logo ? el('div', { class: 'ol-logo ol-logo-foto' }, el('img', { src: r2.logo, alt: '' })) : el('div', { class: 'ol-logo ol-logo-vacio', 'aria-hidden': 'true' }, '🏸')),
+        el('div', { class: 'ol-pie' },
+          el('h2', {}, 'Clubes'),
+          el('p', {}, nombreOl + ' y ' + nombre2 + ': torneos, escuela, jugadores y cuotas'),
+          datosClubes,
+          el('span', { class: 'ol-entrar' }, 'Elegir club'))));
+    } else if (hayClub) {
+      if (eligiendoClub) root.appendChild(el('button', { class: 'btn btn-ghost btn-sm home-back-btn ol-volver-clubes', onclick: () => { homeGrupoAbierto = null; renderHome(); window.scrollTo(0, 0); } }, '← Inicio'));
       const datosClub = el('div', { class: 'ol-datos' });
       const nJug = (jugadoresGlobal || []).length;
       if (tienePermiso('jugadores')) datosClub.appendChild(dato(nJug + (nJug === 1 ? ' jugador' : ' jugadores'), () => goToClubGestion('jugadores')));
@@ -15907,7 +15939,7 @@ function renderHome() {
         if (typeof chActualizarAvisoSolicitudes === 'function') chActualizarAvisoSolicitudes().then(n => { if (n) { chipSol.textContent = n + (n === 1 ? ' solicitud pendiente' : ' solicitudes pendientes'); chipSol.classList.add('aviso'); } });
         { const ch = CorreoApp.chipPortada('todo', dato); if (ch) datosClub.appendChild(ch); }
       }
-      portada.appendChild(el('section', { class: 'ol-mitad ol-mitad-club', role: 'button', tabindex: '0', 'aria-label': 'Entrar al club', onclick: () => { homeGrupoAbierto = 'club'; renderHome(); window.scrollTo(0, 0); } },
+      portada.appendChild(el('section', { class: 'ol-mitad ol-mitad-club', role: 'button', tabindex: '0', 'aria-label': 'Entrar al club', onclick: entrarOlimpia },
         el('div', { class: 'ol-logo ol-logo-blanco', html: OL_LOGO_CLUB_BLANCO }),
         el('div', { class: 'ol-pie' },
           el('h2', {}, clubGlobal.nombre || 'Club'),
@@ -15915,7 +15947,7 @@ function renderHome() {
           datosClub,
           el('span', { class: 'ol-entrar' }, 'Entrar al club'))));
     }
-    if (hayTaller) {
+    if (hayTaller && !eligiendoClub) {
       const ped = (TallerApp.getState().pedidos || []);
       const enCola = ped.filter(x => !x.aplazado && (x.estado === 'pendiente' || x.estado === 'en_proceso')).length;
       const recoger = ped.filter(x => x.estado === 'terminado').length;
@@ -15933,7 +15965,7 @@ function renderHome() {
           datosTaller,
           el('span', { class: 'ol-entrar' }, 'Entrar al taller'))));
     }
-    if (hayClub2) portada.appendChild(bloquePortadaClub2());
+    if (eligiendoClub) portada.appendChild(bloquePortadaClub2());
     portada.querySelectorAll('.ol-mitad').forEach(m => m.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); m.click(); } }));
     root.appendChild(portada);
   }

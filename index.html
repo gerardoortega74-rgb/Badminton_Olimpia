@@ -12053,30 +12053,95 @@ function formatFechaExcel(d) {
   const s = String(d).trim();
   return s;
 }
+// Lee filas de Excel en dos formatos: el de la federación (cabeceras en inglés: First name, Member ID...)
+// y listados de club en español (Nombre, Apellido 1, Fecha de Nacimiento, Rol...). Las cabeceras se comparan
+// sin tildes, mayúsculas ni signos, y admite erratas habituales («Adellido 1»).
+function claveCabeceraExcel(k) {
+  return String(k || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+const CABECERAS_EXCEL_PERSONA = {
+  nombre: ['firstname', 'nombre', 'nombres'],
+  apellido1: ['lastname', 'apellido1', 'adellido1', 'primerapellido', 'apellido'],
+  apellido2: ['lastname2', 'apellido2', 'segundoapellido'],
+  fechaNacimiento: ['dateofbirth', 'fechadenacimiento', 'fechanacimiento', 'nacimiento'],
+  sexo: ['gender', 'genero', 'sexo'],
+  movil: ['mobile', 'movil'],
+  telefono: ['phone', 'telefono', 'tfno', 'tlf'],
+  email: ['email', 'correo', 'correoelectronico', 'mail'],
+  direccion: ['address', 'direccion', 'domicilio'],
+  codigoPostal: ['postalcode', 'cp', 'codigopostal'],
+  localidad: ['city', 'localidad', 'poblacion', 'municipio'],
+  provincia: ['state', 'provincia'],
+  numeroLicencia: ['memberid', 'licencia', 'numerolicencia', 'nlicencia'],
+  nacionalidad: ['nationality', 'nacionalidad'],
+  clubFederativo: ['membershipto', 'club'],
+  tipoLicencia: ['type', 'tipo', 'tipolicencia'],
+  role: ['role', 'rol'],
+};
 function filaExcelAPersona(row) {
-  return {
-    nombre: String(row['First name'] || '').trim(),
-    apellido1: String(row['Last name'] || '').trim(),
-    apellido2: String(row['Last name 2'] || '').trim(),
-    fechaNacimiento: formatFechaExcel(row['Date of birth']),
-    sexo: String(row['Gender'] || '').trim(),
-    telefono: String(row['Mobile'] || '').trim() || String(row['Phone'] || '').trim(),
-    email: String(row['Email'] || '').trim(),
-    direccion: String(row['Address'] || '').trim(),
-    codigoPostal: String(row['Postalcode'] || '').trim(),
-    localidad: String(row['City'] || '').trim(),
-    provincia: String(row['State'] || '').trim(),
-    numeroLicencia: String(row['Member ID'] || '').trim(),
-    nacionalidad: String(row['Nationality'] || '').trim(),
-    clubFederativo: String(row['Membership to'] || '').trim(),
-    tipoLicencia: String(row['Type'] || '').trim(),
-    role: String(row['Role'] || '').trim(),
+  const porClave = {};
+  Object.keys(row).forEach(k => { porClave[claveCabeceraExcel(k)] = row[k]; });
+  const v = (campo) => {
+    for (const c of CABECERAS_EXCEL_PERSONA[campo]) {
+      const x = porClave[c];
+      if (x !== undefined && x !== null && String(x).trim() !== '') return x;
+    }
+    return '';
   };
+  const txt = (campo) => String(v(campo)).replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
+  let sexo = txt('sexo').toUpperCase();
+  if (/^(H|HOMBRE|MASCULINO|MALE|CHICO|NINO)$/.test(sexo)) sexo = 'M';
+  else if (/^(MUJER|FEMENINO|FEMALE|CHICA|NINA)$/.test(sexo)) sexo = 'F';
+  let role = txt('role');
+  const rolClave = claveCabeceraExcel(role);
+  if (!rolClave || rolClave.startsWith('jugador') || rolClave === 'player' || rolClave === 'alumno') role = 'Jugador';
+  else if (rolClave.startsWith('tecnico') || rolClave.startsWith('entrenador') || rolClave === 'coach') role = 'Tecnico';
+  return {
+    nombre: txt('nombre'),
+    apellido1: txt('apellido1'),
+    apellido2: txt('apellido2'),
+    fechaNacimiento: formatFechaExcel(v('fechaNacimiento')),
+    sexo: sexo,
+    telefono: txt('movil') || txt('telefono'),
+    email: txt('email'),
+    direccion: txt('direccion'),
+    codigoPostal: txt('codigoPostal'),
+    localidad: txt('localidad'),
+    provincia: txt('provincia'),
+    numeroLicencia: txt('numeroLicencia'),
+    nacionalidad: txt('nacionalidad'),
+    clubFederativo: txt('clubFederativo'),
+    tipoLicencia: txt('tipoLicencia'),
+    role: role,
+  };
+}
+// Identidad de una persona del Excel: su licencia si la tiene; si no, nombre + apellidos (sin tildes ni mayúsculas).
+function clavePersonaExcel(p) {
+  if (p.numeroLicencia) return 'lic:' + p.numeroLicencia;
+  return 'nom:' + claveCabeceraExcel(p.nombre) + '|' + claveCabeceraExcel(p.apellido1) + '|' + claveCabeceraExcel(p.apellido2);
 }
 function dedupePorLicencia(filas) {
   const mapa = new Map();
-  filas.forEach(f => { if (f.numeroLicencia) mapa.set(f.numeroLicencia, f); });
+  filas.forEach(f => { if (f.nombre) mapa.set(clavePersonaExcel(f), f); });
   return Array.from(mapa.values());
+}
+// Busca en una lista (jugadores o técnicos) a la persona del Excel: por licencia, o si no hay, por nombre y apellidos.
+function buscarPersonaExistente(lista, p) {
+  if (p.numeroLicencia) {
+    const porLic = lista.find(j => j.numeroLicencia && j.numeroLicencia === p.numeroLicencia);
+    if (porLic) return porLic;
+  }
+  const n = claveCabeceraExcel(p.nombre), a1 = claveCabeceraExcel(p.apellido1), a2 = claveCabeceraExcel(p.apellido2);
+  if (!n) return null;
+  return lista.find(j => {
+    const jn = claveCabeceraExcel(j.nombre);
+    const ja1 = claveCabeceraExcel(j.apellido1 || String(j.apellidos || '').split(/\s+/)[0] || '');
+    const ja2 = claveCabeceraExcel(j.apellido2 || '');
+    if (jn !== n || ja1 !== a1) return false;
+    if (a2 && ja2 && a2 !== ja2) return false;
+    if (p.fechaNacimiento && j.fechaNacimiento && p.fechaNacimiento !== j.fechaNacimiento) return false;
+    return true;
+  }) || null;
 }
 function importarDesdeExcelFile(file) {
   if (!file) return;
@@ -12089,13 +12154,14 @@ function importarDesdeExcelFile(file) {
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
       if (!rows.length) { alert('El archivo no tiene filas de datos, o no tiene el formato esperado.'); return; }
-      const personas = rows.map(filaExcelAPersona);
+      const personas = rows.map(filaExcelAPersona).filter(p => p.nombre);
+      if (!personas.length) { alert('No se ha encontrado ninguna persona en el archivo. Comprueba que tiene una columna «Nombre» (o «First name»).'); return; }
       const jugadoresFilas = dedupePorLicencia(personas.filter(p => p.role === 'Jugador'));
       const tecnicosFilas = dedupePorLicencia(personas.filter(p => p.role === 'Tecnico'));
 
       let addedJ = 0, updatedJ = 0, addedT = 0, updatedT = 0;
       jugadoresFilas.forEach(p => {
-        const existente = jugadoresGlobal.find(j => j.numeroLicencia && j.numeroLicencia === p.numeroLicencia);
+        const existente = buscarPersonaExistente(jugadoresGlobal, p);
         if (!existente) {
           window.JugadoresGlobal.add({
             nombre: normalizarNombre(p.nombre), apellido1: normalizarNombre(p.apellido1), apellido2: normalizarNombre(p.apellido2),
@@ -12103,7 +12169,7 @@ function importarDesdeExcelFile(file) {
             fechaNacimiento: p.fechaNacimiento, sexo: p.sexo, telefono: p.telefono, email: p.email,
             direccion: p.direccion, codigoPostal: p.codigoPostal, localidad: p.localidad, provincia: p.provincia,
             numeroLicencia: p.numeroLicencia, nacionalidad: p.nacionalidad, clubFederativo: p.clubFederativo, tipoLicencia: p.tipoLicencia,
-            federado: true,
+            federado: !!p.numeroLicencia,
           });
           addedJ++;
         } else {
@@ -12123,7 +12189,7 @@ function importarDesdeExcelFile(file) {
           if (p.nacionalidad) existente.nacionalidad = p.nacionalidad;
           if (p.clubFederativo) existente.clubFederativo = p.clubFederativo;
           if (p.tipoLicencia) existente.tipoLicencia = p.tipoLicencia;
-          existente.federado = true;
+          if (p.numeroLicencia) { existente.numeroLicencia = p.numeroLicencia; existente.federado = true; }
           const despues = JSON.stringify(existente);
           if (antes !== despues) updatedJ++;
         }
@@ -12132,7 +12198,8 @@ function importarDesdeExcelFile(file) {
 
       clubGlobal.tecnicos = clubGlobal.tecnicos || [];
       tecnicosFilas.forEach(p => {
-        const existente = clubGlobal.tecnicos.find(t => t.numeroLicencia && t.numeroLicencia === p.numeroLicencia);
+        const nombreTec = claveCabeceraExcel(p.nombre + p.apellido1 + p.apellido2);
+        const existente = clubGlobal.tecnicos.find(t => (p.numeroLicencia && t.numeroLicencia === p.numeroLicencia) || (!p.numeroLicencia && claveCabeceraExcel(t.nombre) === nombreTec));
         const nombreCompleto = normalizarNombre((p.nombre + ' ' + p.apellido1 + ' ' + p.apellido2).replace(/\s+/g, ' ').trim());
         if (!existente) {
           clubGlobal.tecnicos.push({
@@ -12156,7 +12223,7 @@ function importarDesdeExcelFile(file) {
       renderJugadores();
       alert('Importación completada.\n\nJugadores: ' + addedJ + ' nuevos, ' + updatedJ + ' actualizados (de ' + jugadoresFilas.length + ' en el archivo).\nTécnicos: ' + addedT + ' nuevos, ' + updatedT + ' actualizados (de ' + tecnicosFilas.length + ' en el archivo).');
     } catch (err) {
-      alert('No se ha podido leer el archivo. Asegúrate de que es un Excel (.xlsx) con las mismas columnas que el de la federación (Member ID, First name, Last name, Last name 2, Role, Type, etc.).\n\nDetalle: ' + err.message);
+      alert('No se ha podido leer el archivo. Asegúrate de que es un Excel (.xlsx) con columnas como las de la federación (Member ID, First name, Last name...) o en español (Nombre, Apellido 1, Apellido 2, Fecha de Nacimiento, Género, Teléfono, Email, Rol...).\n\nDetalle: ' + err.message);
     }
   };
   reader.readAsArrayBuffer(file);

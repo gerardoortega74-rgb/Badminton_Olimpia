@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261021-tiendaapple">
+<meta name="build-id" content="v20261021-tiendaoscura2">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -1884,6 +1884,29 @@ body.tienda-on,html.tienda-pre body.tienda-on{background:#F5F5F7 !important;}
   #tiendaOnlineScreen .tdo-nombre{font-size:15px;}
   #tiendaOnlineScreen .tdo-barra{border-radius:28px;}
 }
+/* ===== Tienda online en oscuro (estilo páginas «Pro» de Apple): negro, tarjetas grafito, texto claro ===== */
+body.tienda-on.tienda-oscura,html.tienda-pre body.tienda-on.tienda-oscura{background:#000 !important;}
+#tiendaOnlineScreen.ap-oscuro{--ap-tinta:#F5F5F7;--ap-gris:#A1A1A6;--ap-ctrl:#333336;--ap-ctrl-txt:#F5F5F7;--ap-linea:#424245;--ap-lienzo:#000;--ap-carta:#1D1D1F;--ap-ac:#FF2D46;--ap-ac2:#E0162B;color:var(--ap-tinta);}
+#tiendaOnlineScreen.ap-oscuro .th-hero{background:#000;border-bottom-color:#1D1D1F;}
+#tiendaOnlineScreen.ap-oscuro .th-logo svg [fill="#fff"],#tiendaOnlineScreen.ap-oscuro .th-logo svg [fill="#FFF"],#tiendaOnlineScreen.ap-oscuro .th-logo svg [fill="#ffffff"],#tiendaOnlineScreen.ap-oscuro .th-logo svg [fill="#FFFFFF"],
+#tiendaOnlineScreen.ap-oscuro .tdo-hero .tdo-logo svg [fill="#fff"],#tiendaOnlineScreen.ap-oscuro .tdo-hero .tdo-logo svg [fill="#FFF"],#tiendaOnlineScreen.ap-oscuro .tdo-hero .tdo-logo svg [fill="#ffffff"],#tiendaOnlineScreen.ap-oscuro .tdo-hero .tdo-logo svg [fill="#FFFFFF"],
+#tiendaOnlineScreen.ap-oscuro .tdo-pie-pag .tdo-logo svg [fill="#fff"],#tiendaOnlineScreen.ap-oscuro .tdo-pie-pag .tdo-logo svg [fill="#FFF"],#tiendaOnlineScreen.ap-oscuro .tdo-pie-pag .tdo-logo svg [fill="#ffffff"],#tiendaOnlineScreen.ap-oscuro .tdo-pie-pag .tdo-logo svg [fill="#FFFFFF"]{fill:#F5F5F7;}
+#tiendaOnlineScreen.ap-oscuro .th-pedido{background:var(--ap-carta);}
+#tiendaOnlineScreen.ap-oscuro .tdo-hero{background:#000;}
+#tiendaOnlineScreen.ap-oscuro .tdo-volver-barra{background:#000;border-bottom-color:#1D1D1F;}
+#tiendaOnlineScreen.ap-oscuro .tdo-ventajas>div,#tiendaOnlineScreen.ap-oscuro .tdo-card,#tiendaOnlineScreen.ap-oscuro .tdo-pedido,#tiendaOnlineScreen.ap-oscuro .tdo-vacio,#tiendaOnlineScreen.ap-oscuro .tdo-cat-prox{background:var(--ap-carta);}
+#tiendaOnlineScreen.ap-oscuro .tdo-ventajas .tdo-ico,#tiendaOnlineScreen.ap-oscuro .tdo-cat-ico{background:#2C2C2E;color:var(--ap-tinta);}
+#tiendaOnlineScreen.ap-oscuro .tdo-foto,#tiendaOnlineScreen.ap-oscuro .tdo-foto.con-foto,#tiendaOnlineScreen.ap-oscuro .tdo-foto.sin{background:var(--ap-carta);}
+#tiendaOnlineScreen.ap-oscuro .tdo-buscar{background:var(--ap-carta);}
+#tiendaOnlineScreen.ap-oscuro .tdo-buscar input{color:var(--ap-tinta);}
+#tiendaOnlineScreen.ap-oscuro .tdo-chip.on{background:var(--ap-tinta);border-color:var(--ap-tinta);color:#000;}
+#tiendaOnlineScreen.ap-oscuro .tdo-badge.agotado,#tiendaOnlineScreen.ap-oscuro .th-card .th-agot{background:#F5F5F7;color:#000;}
+#tiendaOnlineScreen.ap-oscuro .tdo-badge.ultimas{background:#2C2C2E;}
+#tiendaOnlineScreen.ap-oscuro .tdo-barra{background:rgba(29,29,31,.88);border-color:#424245;color:var(--ap-tinta);}
+#tiendaOnlineScreen.ap-oscuro .tdo-vaciar{color:#2997FF;}
+#tiendaOnlineScreen.ap-oscuro .tdo-pie-pag{background:#000;border-top-color:#1D1D1F;}
+#tiendaOnlineScreen.ap-oscuro .tdo-linea{border-bottom-color:#424245;}
+#tiendaOnlineScreen.ap-oscuro .tdo-card.agotado .tdo-foto{opacity:.55;}
 /* Intro animada de la tienda */
 body.tdo-intro-on{overflow:hidden;}
 body.tdo-intro-on #tiendaOnlineScreen .tdo-hero .tdo-logo,body.tdo-intro-on #tiendaOnlineScreen .th-hero .th-logo{visibility:hidden;}
@@ -13367,7 +13390,8 @@ function tdoHeroCarrusel(articulos, op) {
 .th-card .th-suelo{position:absolute;left:18%;right:18%;top:72%;height:7%;border-radius:50%;background:radial-gradient(closest-side,rgba(0,0,0,.45),rgba(0,0,0,0));pointer-events:none;}
 .th-card .th-sinfoto{position:absolute;left:0;right:0;top:22%;text-align:center;font-size:56px;}
 .th-card .th-info{position:absolute;left:0;right:0;bottom:2%;padding:0 6%;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;}
-.th-card .th-nom{color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.5);font-weight:600;line-height:1.15;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.th-card .th-mas{display:none !important;}
+.th-card .th-nom{-webkit-line-clamp:3 !important;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.5);font-weight:600;line-height:1.15;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
 .th-card .th-pre{background:#fff;color:#0B2D5B;border-radius:999px;font-weight:700;padding:3px 10px;}
 .th-card .th-mas{position:absolute;border-radius:50%;background:rgba(11,45,91,.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:inset 0 0 0 1px rgba(255,255,255,.4);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;line-height:1;}
 .th-card .th-cant{position:absolute;top:10%;right:9%;min-width:30px;height:30px;padding:0 8px;border-radius:999px;background:#E0162B;color:#fff;font-weight:800;display:none;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(224,22,43,.45);}
@@ -13407,7 +13431,7 @@ function tdoHeroCarrusel(articulos, op) {
   const logoSvg = typeof OL_LOGO_IDERMAY_BLANCO !== 'undefined' ? OL_LOGO_IDERMAY_BLANCO : '';
   const tipos = Array.from(new Set(articulos.map(a => a.tipo || 'Otros'))).slice(0, 4);
   const raiz = document.createElement('section'); raiz.className = 'th-hero'; raiz.setAttribute('aria-label', 'Portada de la tienda');
-  const subHTML = 'Cordajes, grips, volantes y accesorios de ' + nombreTienda.replace(/</g, '') + '. <br>Toca un artículo y se añade a tu pedido: <br>te lo preparamos para recoger en el taller.';
+  const subHTML = 'Grips, volantes, mochilas y accesorios de ' + nombreTienda.replace(/</g, '') + '. <br>Toca un artículo y se añade a tu pedido: <br>te lo preparamos para recoger en el taller.';
   const esc = (t) => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   raiz.innerHTML = `
 <div class="th-frame">
@@ -13601,7 +13625,12 @@ function renderTiendaOnline() {
 
   const tel = telefonoParaWhatsappTienda(cfg.telefonoTienda);
   const enlaceWa = (texto) => 'https://wa.me/' + tel + '?text=' + encodeURIComponent(texto);
-  const articulos = (taller.articulos || []).filter(a => a.ventaOnline);
+  // Los cordajes no se venden en la tienda online (son para encordar en el taller)
+  const esCordajeTienda = (a) => !!a.esCordaje || /cordaje/i.test(String(a.tipo || ''));
+  const articulos = (taller.articulos || []).filter(a => a.ventaOnline && !esCordajeTienda(a));
+  // Tienda en oscuro (con ?claro=1 se ve la versión clara)
+  const oscuro = (() => { try { return new URLSearchParams(location.search).get('claro') !== '1'; } catch (e) { return true; } })();
+  root.classList.toggle('ap-oscuro', oscuro); document.body.classList.toggle('tienda-oscura', oscuro);
   const logo = () => {
     const d = el('div', { class: 'tdo-logo' });
     if (typeof OL_LOGO_IDERMAY_BLANCO !== 'undefined') d.innerHTML = OL_LOGO_IDERMAY_BLANCO;
@@ -13630,7 +13659,7 @@ function renderTiendaOnline() {
       el('div', { class: 'tdo-hero-txt' },
         el('div', { class: 'tdo-eyebrow', style: '--d:0' }, 'Tienda online'),
         el('h1', { style: '--d:90' }, 'Material de bádminton', el('br'), 'listo para ', el('span', {}, 'jugar')),
-        el('p', { style: '--d:180' }, 'Cordajes, grips, volantes y accesorios de ' + nombreTienda + '. Haz tu pedido y te lo preparamos.'),
+        el('p', { style: '--d:180' }, 'Grips, volantes, mochilas y accesorios de ' + nombreTienda + '. Haz tu pedido y te lo preparamos.'),
         el('div', { class: 'tdo-hero-btns', style: '--d:270' },
           articulos.length ? el('a', { class: 'tdo-btn tdo-btn-rojo', href: '#tdoCatalogo', onclick: (e) => { e.preventDefault(); const c = document.getElementById('tdoCatalogo'); if (c) c.scrollIntoView({ behavior: 'smooth' }); } }, svgTiendaIcono('tienda'), 'Ver catálogo (' + articulos.length + ')') : null,
           tel ? el('a', { class: 'tdo-btn ' + (articulos.length ? 'tdo-btn-claro' : 'tdo-btn-rojo'), href: enlaceWa('Hola, tengo una consulta sobre la tienda.'), target: '_blank', rel: 'noopener' }, svgTiendaIcono('chat'), 'Pregúntanos por WhatsApp') : null,
@@ -13689,7 +13718,7 @@ function renderTiendaOnline() {
       const verFoto = () => { if (a.foto && window.tpvVerFoto) window.tpvVerFoto(a, { donde: 'el carrito', cantidad: () => carritoTienda[a.id] || 0, agotado: () => (a.stock || 0) <= 0,
         alAnadir: () => { const max = a.stock || 0; if ((carritoTienda[a.id] || 0) >= max) { alert('No quedan más unidades de «' + a.nombre + '».'); return; } carritoTienda[a.id] = (carritoTienda[a.id] || 0) + 1; renderTiendaOnline(); } }); };
       const foto = el('div', { class: 'tdo-foto' + (a.foto ? ' con-foto' : ' sin'), onclick: () => tdoToque(a) },
-        a.foto ? el('img', { src: a.foto, alt: a.nombre, loading: 'lazy' }) : el('span', {}, iconoTiendaTipo(a.tipo)),
+        a.foto ? (() => { const im = el('img', { src: a.foto, alt: a.nombre, loading: 'lazy' }); if (oscuro && typeof tdoRecortarFondo === 'function') tdoRecortarFondo(a.foto, a.id + ':' + a.foto.length).then(u => { im.src = u; }); return im; })() : el('span', {}, iconoTiendaTipo(a.tipo)),
         sinStock ? el('i', { class: 'tdo-badge agotado' }, 'Agotado') : (stock <= 3 && !a.esCordaje ? el('i', { class: 'tdo-badge ultimas' }, '¡Últimas ' + stock + '!') : null),
         carritoTienda[a.id] ? el('i', { class: 'tdo-cant' }, String(carritoTienda[a.id])) : null,
         a.foto ? (() => { const lb = el('button', { type: 'button', class: 'tdo-lupa', 'aria-label': 'Ver la foto de ' + a.nombre, onclick: (e) => { e.stopPropagation(); verFoto(); } }); lb.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4.6-4.6M10.5 7.5v6M7.5 10.5h6"/></svg>'; return lb; })() : null,

@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261021-suelologo">
+<meta name="build-id" content="v20261021-girosobresi">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -13508,7 +13508,7 @@ function tdoHeroCarrusel(articulos, op) {
       c.querySelector('.th-pre').textContent = typeof euros === 'function' ? euros(a.precio) : (a.precio + ' €');
       c.dataset.id = a.id;
       f.appendChild(c);
-      return { c, a, nom: c.querySelector('.th-nom'), pre: c.querySelector('.th-pre'), mas: c.querySelector('.th-mas'), cant: c.querySelector('.th-cant') };
+      return { c, a, img: c.querySelector('img, .th-sinfoto'), nom: c.querySelector('.th-nom'), pre: c.querySelector('.th-pre'), mas: c.querySelector('.th-mas'), cant: c.querySelector('.th-cant') };
     });
     fila = { el: f, cards, movil };
     actualizar();
@@ -13558,6 +13558,8 @@ function tdoHeroCarrusel(articulos, op) {
       K.c.style.zIndex = String(Math.round(prof * 1000));
       K.c.style.opacity = (0.28 + 0.72 * Math.pow(prof, 1.4)).toFixed(3);
       K.c.style.pointerEvents = prof > 0.45 ? '' : 'none';
+      // cada artículo gira sobre sí mismo (una vuelta cada ~7 s, cada uno desfasado)
+      if (K.img && !reducido) K.img.style.transform = 'perspective(' + (700 * u).toFixed(0) + 'px) rotateY(' + (((ahora() * 52) + i * 61) % 360).toFixed(1) + 'deg)';
       const umbral = fila.movil ? 0.8 : 0.55; const info = K.nom.parentElement; info.style.opacity = Math.min(1, Math.max(0, (prof - umbral) / (1 - umbral) * 1.6)).toFixed(3);
       const fs = Math.max(10, 15 * u * (fila.movil ? 1.5 : 1));
       K.nom.style.fontSize = fs + 'px'; K.pre.style.fontSize = (fs * 0.95) + 'px';

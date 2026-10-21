@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261021-carruselredondo">
+<meta name="build-id" content="v20261021-huecos">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -13329,6 +13329,22 @@ function tdoRecortarFondo(src, clave) {
         for (let x = 0; x < w; x++) { meter(x); meter((h - 1) * w + x); }
         for (let y = 0; y < h; y++) { meter(y * w); meter(y * w + w - 1); }
         while (cab < fin) { const p = cola[cab++], x = p % w, y = (p - x) / w; if (x > 0) meter(p - 1); if (x < w - 1) meter(p + 1); if (y > 0) meter(p - w); if (y < h - 1) meter(p + w); }
+        // Huecos cerrados (p. ej. dentro de la anilla de un llavero): manchas de blanco puro y liso que no tocan el borde.
+        // Solo se quitan si son blanco casi perfecto y sin degradado, para no comerse un peluche o una camiseta blanca.
+        { const marca = new Int32Array(w * h).fill(-1), pila = new Int32Array(w * h);
+          for (let p0 = 0; p0 < w * h; p0++) {
+            if (visto[p0] || marca[p0] !== -1 || !fondo(p0 * 4)) continue;
+            let tope = 0, n = 0, suma = 0, suma2 = 0; const comp = [];
+            pila[tope++] = p0; marca[p0] = p0;
+            while (tope) {
+              const p = pila[--tope]; comp.push(p); const i = p * 4, l = (px[i] + px[i + 1] + px[i + 2]) / 3; n++; suma += l; suma2 += l * l;
+              const x = p % w, y = (p - x) / w;
+              const ve = (q) => { if (!visto[q] && marca[q] === -1 && fondo(q * 4)) { marca[q] = p0; pila[tope++] = q; } };
+              if (x > 0) ve(p - 1); if (x < w - 1) ve(p + 1); if (y > 0) ve(p - w); if (y < h - 1) ve(p + w);
+            }
+            const media = suma / n, desv = Math.sqrt(Math.max(0, suma2 / n - media * media));
+            if (n >= 25 && media >= 247 && desv <= 3.5) comp.forEach(q => { visto[q] = 1; });
+          } }
         let quitados = 0;
         for (let p = 0; p < w * h; p++) if (visto[p]) { px[p * 4 + 3] = 0; quitados++; }
         // borde suave: los píxeles claros junto al fondo quitado quedan semitransparentes

@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261021-tiendasincajas">
+<meta name="build-id" content="v20261021-tiendashop">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -1755,6 +1755,112 @@ body.tienda-on main#shellMain{max-width:none !important;margin:0 !important;padd
   .tdo-add,.tdo-paso{justify-content:center;width:100%;}
   .tdo-paso{justify-content:space-between;}
   .tdo-buscar{max-width:none;}
+}
+/* ===== Tienda online · estilo «Shop» (lienzo claro, todo redondeado, sombras suaves, un solo acento: rojo IDERMAY) ===== */
+body.tienda-on,html.tienda-pre body.tienda-on{background:#F2F4F5 !important;}
+#tiendaOnlineScreen{--sh-ac:#E0162B;--sh-ac-sombra:rgba(224,22,43,.34);--sh-tinta:#000;--sh-gris:#787574;--sh-linea:#EBEBEB;--sh-lienzo:#F2F4F5;
+  --sh-s1:rgba(0,0,0,.1) 0 4px 6px -1px,rgba(0,0,0,.1) 0 2px 4px -2px;--sh-s2:rgba(0,0,0,.06) 0 2px 8px 0;--sh-s3:rgba(0,0,0,.12) 0 4px 24px 0;
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif;letter-spacing:-.031em;color:#000;}
+#tiendaOnlineScreen b,#tiendaOnlineScreen strong,#tiendaOnlineScreen h1,#tiendaOnlineScreen h2,#tiendaOnlineScreen h3{font-weight:600;}
+/* barra de volver */
+#tiendaOnlineScreen .tdo-volver-barra{background:#000;}
+#tiendaOnlineScreen .tdo-volver{background:#fff;color:#000 !important;font-weight:500;}
+#tiendaOnlineScreen .tdo-volver-barra span{color:#ACB0AA;font-weight:500;letter-spacing:.02em;}
+/* portada en hero */
+#tiendaOnlineScreen .th-hero{background:radial-gradient(70% 60% at 50% 30%,#FFFFFF 0%,rgba(255,255,255,0) 70%),#F2F4F5;color:#000;}
+#tiendaOnlineScreen .th-logo svg [fill="#fff"],#tiendaOnlineScreen .th-logo svg [fill="#FFF"],#tiendaOnlineScreen .th-logo svg [fill="#ffffff"],#tiendaOnlineScreen .th-logo svg [fill="#FFFFFF"]{fill:#000;}
+#tiendaOnlineScreen .th-nav button{color:var(--sh-gris);font-weight:400;letter-spacing:-.031em;}
+#tiendaOnlineScreen .th-nav button:hover{color:#000;}
+#tiendaOnlineScreen .th-pill{font-weight:500;letter-spacing:-.031em;}
+#tiendaOnlineScreen .th-pedido{background:#fff;color:#000;box-shadow:var(--sh-s2),inset 0 0 0 1px var(--sh-linea);}
+#tiendaOnlineScreen .th-wa{background:var(--sh-ac);color:#fff;box-shadow:0 4px 24px var(--sh-ac-sombra);}
+#tiendaOnlineScreen .th-badge{background:#fff;color:#000;box-shadow:var(--sh-s2),inset 0 0 0 1px var(--sh-linea);font-weight:500;}
+#tiendaOnlineScreen .th-badge i{background:var(--sh-ac);box-shadow:none;}
+#tiendaOnlineScreen .th-h1{color:#000;font-weight:600;letter-spacing:-.05em;}
+#tiendaOnlineScreen .th-h1 span+span{color:var(--sh-gris);letter-spacing:-.05em;}
+#tiendaOnlineScreen .th-sub{color:var(--sh-gris);}
+#tiendaOnlineScreen .th-svg,#tiendaOnlineScreen .th-nota{display:none;}
+#tiendaOnlineScreen .th-anillo{border:0;}
+#tiendaOnlineScreen .th-cta{background:var(--sh-ac);font-weight:500;letter-spacing:-.031em;box-shadow:0 4px 24px var(--sh-ac-sombra);}
+#tiendaOnlineScreen .th-card img{filter:drop-shadow(0 10px 12px rgba(0,0,0,.14));}
+#tiendaOnlineScreen .th-card .th-suelo{background:radial-gradient(closest-side,rgba(0,0,0,.12),rgba(0,0,0,0));}
+#tiendaOnlineScreen .th-card .th-nom{color:#000;text-shadow:none;font-weight:500;}
+#tiendaOnlineScreen .th-card .th-pre{background:#fff;color:#000;font-weight:500;box-shadow:var(--sh-s2),inset 0 0 0 1px var(--sh-linea);}
+#tiendaOnlineScreen .th-card .th-mas{background:#fff;color:#000;box-shadow:var(--sh-s3);backdrop-filter:none;-webkit-backdrop-filter:none;}
+#tiendaOnlineScreen .th-card .th-cant{background:var(--sh-ac);box-shadow:0 4px 14px var(--sh-ac-sombra);font-weight:600;}
+#tiendaOnlineScreen .th-card .th-agot{background:#000;border-radius:999px;font-weight:500;}
+/* portada sencilla (sin artículos) */
+#tiendaOnlineScreen .tdo-hero{background:#F2F4F5;color:#000;}
+#tiendaOnlineScreen .tdo-hero::before{display:none;}
+#tiendaOnlineScreen .tdo-hero::after{display:none;}
+#tiendaOnlineScreen .tdo-hero h1{color:#000;font-weight:600;letter-spacing:-.05em;}
+#tiendaOnlineScreen .tdo-hero h1 span{color:var(--sh-gris);}
+#tiendaOnlineScreen .tdo-hero p{color:var(--sh-gris);}
+#tiendaOnlineScreen .tdo-hero .tdo-logo svg [fill="#fff"],#tiendaOnlineScreen .tdo-hero .tdo-logo svg [fill="#FFF"],#tiendaOnlineScreen .tdo-hero .tdo-logo svg [fill="#ffffff"],#tiendaOnlineScreen .tdo-hero .tdo-logo svg [fill="#FFFFFF"]{fill:#000;}
+#tiendaOnlineScreen .tdo-eyebrow{background:#fff;color:#000;border-radius:999px;font-weight:500;letter-spacing:.02em;box-shadow:var(--sh-s2),inset 0 0 0 1px var(--sh-linea);}
+/* botones: todos en píldora; el rojo solo para la acción principal */
+#tiendaOnlineScreen .tdo-btn{border-radius:999px;font-weight:500;letter-spacing:-.031em;}
+#tiendaOnlineScreen .tdo-btn-rojo,#tiendaOnlineScreen .tdo-btn-verde{background:var(--sh-ac);color:#fff;box-shadow:0 4px 24px var(--sh-ac-sombra);}
+#tiendaOnlineScreen .tdo-btn-rojo:hover,#tiendaOnlineScreen .tdo-btn-verde:hover{background:#C2112A;}
+#tiendaOnlineScreen .tdo-btn-claro,#tiendaOnlineScreen .tdo-btn-claro2{background:#fff;color:#000;border:1px solid var(--sh-linea);box-shadow:var(--sh-s2);}
+#tiendaOnlineScreen .tdo-btn:focus-visible,#tiendaOnlineScreen .tdo-add:focus-visible,#tiendaOnlineScreen .tdo-chip:focus-visible{outline:2px solid #000;outline-offset:2px;}
+/* ventajas */
+#tiendaOnlineScreen .tdo-ventajas>div{border-radius:28px;box-shadow:var(--sh-s1);padding:16px 18px;}
+#tiendaOnlineScreen .tdo-ventajas .tdo-ico{border-radius:999px;background:var(--sh-lienzo);color:#000;}
+#tiendaOnlineScreen .tdo-ventajas b{color:#000;font-weight:500;}
+#tiendaOnlineScreen .tdo-ventajas span:not(.tdo-ico){color:var(--sh-gris);}
+/* catálogo */
+#tiendaOnlineScreen .tdo-cuerpo{padding-top:48px;}
+#tiendaOnlineScreen .tdo-cat-cab h2,#tiendaOnlineScreen .tdo-h3,#tiendaOnlineScreen .tdo-pedido h2,#tiendaOnlineScreen .tdo-vacio h2{color:#000;font-weight:600;letter-spacing:-.05em;}
+#tiendaOnlineScreen .tdo-cat-cab h2::after{content:"";display:inline-block;width:9px;height:9px;margin-left:10px;border-right:2px solid #000;border-top:2px solid #000;transform:rotate(45deg) translateY(-3px);}
+#tiendaOnlineScreen .tdo-buscar{border-radius:999px;border:1px solid rgba(5,41,77,.1);background:#fff;padding:4px 4px 4px 20px;flex-direction:row-reverse;min-height:52px;box-shadow:var(--sh-s2);}
+#tiendaOnlineScreen .tdo-buscar .tdo-ico{width:44px;height:44px;padding:12px;border-radius:50%;background:var(--sh-ac);color:#fff;box-shadow:0 4px 24px var(--sh-ac-sombra);}
+#tiendaOnlineScreen .tdo-buscar input{letter-spacing:-.031em;}
+#tiendaOnlineScreen .tdo-buscar input::placeholder{color:var(--sh-gris);}
+#tiendaOnlineScreen .tdo-buscar:focus-within{border-color:rgba(0,0,0,.3);box-shadow:var(--sh-s2);}
+#tiendaOnlineScreen .tdo-ayuda{color:var(--sh-gris);}
+#tiendaOnlineScreen .tdo-chip{background:#fff;border:1px solid var(--sh-linea);color:#000;font-weight:400;letter-spacing:-.031em;box-shadow:var(--sh-s2);}
+#tiendaOnlineScreen .tdo-chip.on{background:#000;border-color:#000;color:#fff;}
+#tiendaOnlineScreen .tdo-grid{gap:16px;}
+#tiendaOnlineScreen .tdo-card{border:0;border-radius:28px;box-shadow:var(--sh-s1);padding:8px;}
+#tiendaOnlineScreen .tdo-card:hover{transform:translateY(-3px);box-shadow:var(--sh-s3);}
+#tiendaOnlineScreen .tdo-foto{border-radius:20px;overflow:hidden;background:var(--sh-lienzo);}
+#tiendaOnlineScreen .tdo-foto.con-foto{background:#fff;}
+#tiendaOnlineScreen .tdo-foto.sin{background:var(--sh-lienzo);}
+#tiendaOnlineScreen .tdo-foto.sin span{filter:none;}
+#tiendaOnlineScreen .tdo-info{padding:12px 8px 6px;}
+#tiendaOnlineScreen .tdo-tipo{color:var(--sh-gris);font-weight:500;letter-spacing:.01em;font-size:11px;}
+#tiendaOnlineScreen .tdo-nombre{color:#000;font-weight:500;letter-spacing:-.031em;}
+#tiendaOnlineScreen .tdo-precio{color:#000;font-weight:600;letter-spacing:-.05em;}
+#tiendaOnlineScreen .tdo-badge{border-radius:999px;font-weight:500;}
+#tiendaOnlineScreen .tdo-badge.agotado{background:#000;}
+#tiendaOnlineScreen .tdo-badge.ultimas{background:#fff;color:var(--sh-ac);box-shadow:var(--sh-s2);}
+#tiendaOnlineScreen .tdo-cant{background:var(--sh-ac);font-weight:600;box-shadow:0 4px 14px var(--sh-ac-sombra);}
+#tiendaOnlineScreen .tdo-lupa{color:#000;box-shadow:var(--sh-s3);}
+#tiendaOnlineScreen .tdo-add{border-radius:999px;background:#fff;color:#000;border:1px solid var(--sh-linea);font-weight:500;box-shadow:var(--sh-s2);}
+#tiendaOnlineScreen .tdo-add:hover{background:#000;color:#fff;border-color:#000;}
+#tiendaOnlineScreen .tdo-add.aviso{background:#fff;color:#000;border:1px solid var(--sh-linea);box-shadow:var(--sh-s2);}
+#tiendaOnlineScreen .tdo-add.off{background:var(--sh-lienzo);color:var(--sh-gris);box-shadow:none;}
+#tiendaOnlineScreen .tdo-paso{border-radius:999px;background:var(--sh-lienzo);}
+#tiendaOnlineScreen .tdo-paso button,#tiendaOnlineScreen .tdo-paso b{color:#000;font-weight:500;}
+/* pedido y barra */
+#tiendaOnlineScreen .tdo-pedido{border:0;border-radius:28px;box-shadow:var(--sh-s1);padding:24px;}
+#tiendaOnlineScreen .tdo-linea{border-bottom:1px solid var(--sh-linea);}
+#tiendaOnlineScreen .tdo-total{color:#000;font-weight:600;}
+#tiendaOnlineScreen .tdo-vaciar{color:var(--sh-gris);}
+#tiendaOnlineScreen .tdo-barra{background:#fff;color:#000;border-radius:999px;padding:8px 8px 8px 22px;box-shadow:var(--sh-s3);}
+#tiendaOnlineScreen .tdo-barra span{color:var(--sh-gris);font-weight:500;}
+#tiendaOnlineScreen .tdo-barra button{border-radius:999px;background:var(--sh-ac);font-weight:500;box-shadow:0 4px 24px var(--sh-ac-sombra);}
+#tiendaOnlineScreen .tdo-vacio,#tiendaOnlineScreen .tdo-cat-prox{border:0;border-radius:28px;box-shadow:var(--sh-s1);}
+#tiendaOnlineScreen .tdo-cat-ico{border-radius:999px;background:var(--sh-lienzo);}
+#tiendaOnlineScreen .tdo-cat-prox b{color:#000;}
+#tiendaOnlineScreen .tdo-cat-prox em{color:var(--sh-ac);font-weight:500;}
+/* pie: banda oscura */
+#tiendaOnlineScreen .tdo-pie-pag{background:#000;color:#ACB0AA;}
+@media (max-width:700px){
+  #tiendaOnlineScreen .tdo-card{padding:6px;border-radius:24px;}
+  #tiendaOnlineScreen .tdo-foto{border-radius:18px;}
+  #tiendaOnlineScreen .tdo-barra{border-radius:28px;}
 }
 /* Intro animada de la tienda */
 body.tdo-intro-on{overflow:hidden;}

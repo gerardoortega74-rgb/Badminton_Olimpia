@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261021-volumen">
+<meta name="build-id" content="v20261021-ayudaaccesos">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -4954,7 +4954,7 @@ function mount() {
   asegurarTorneoActivo();
   render();
 }
-return { podiosDeEstado, render, mount, getState, setState, getHistorial, setHistorial, trayectoriaDeJugador, computeStandings, getTorneoActivoId: () => torneoActivoId, setTorneoActivoId: (id) => { torneoActivoId = id; } };
+return { irATab: (t) => { activeTab = t; render(); }, podiosDeEstado, render, mount, getState, setState, getHistorial, setHistorial, trayectoriaDeJugador, computeStandings, getTorneoActivoId: () => torneoActivoId, setTorneoActivoId: (id) => { torneoActivoId = id; } };
 })();
 </script>
 <script>
@@ -7601,7 +7601,7 @@ function mount() {
   aplicarGrupoActivo();
   render();
 }
-return { render, mount, getState, setState, getSensibles, setSensibles };
+return { render, mount, getState, setState, getSensibles, setSensibles, irATab: (t) => { activeTab = t; render(); } };
 })();
 </script>
 <script>
@@ -12084,7 +12084,7 @@ function pedidoDesdeCorreo(d) {
   clientePreseleccionadoId = id; activeTab = 'nuevo'; saveLocal();
 }
 function movimientoDesdeCorreo(d) { addMovimientoTaller(d); activeTab = 'contabilidad'; saveLocal(); }
-return { render, mount, getState, setState, saveLocal, irATab, pdfPendientesDeCobro, tituloTab, pedidoDesdeCorreo, movimientoDesdeCorreo };
+return { render, mount, getState, setState, saveLocal, irATab, irAAlmacen: (sub) => { subTabCatalogo = sub; irA('catalogo'); }, pdfPendientesDeCobro, tituloTab, pedidoDesdeCorreo, movimientoDesdeCorreo };
 })();
 
 </script>
@@ -14838,9 +14838,71 @@ const AYUDA_INDICE = [
   { pregunta: 'Buscar un artículo o cordaje concreto, o borrar varios a la vez', ruta: 'Almacén → buscador arriba de la lista; marca las casillas y pulsa "Borrar seleccionados"', palabras: 'buscar articulo cordaje borrar varios seleccionar' },
   { pregunta: 'Ver el historial de raquetas ya entregadas', ruta: 'Menú → bloque del Taller de Raquetas → Historial', palabras: 'historial raqueta entregada terminada taller' },
   { pregunta: 'Ver la contabilidad del taller y lo pendiente de cobro', ruta: 'Menú → bloque del Taller de Raquetas → Contabilidad', palabras: 'contabilidad taller ingreso gasto pendiente cobro pdf' },
+  { pregunta: 'Cobrar en la tienda física (caja) y sacar un ticket', ruta: 'Taller → 🏪 Tienda (caja)', ir: 'taller:tienda', palabras: 'caja tienda fisica vender venta ticket cobrar efectivo tarjeta bizum' },
+  { pregunta: 'Ver las ventas del día o anular un ticket', ruta: 'Taller → 🏪 Tienda (caja) → Ventas de hoy', ir: 'taller:tienda', palabras: 'ventas dia hoy anular ticket devolver caja' },
+  { pregunta: 'Elegir qué artículos salen en la caja de la tienda física', ruta: 'Taller → Cordajes y artículos → Tienda física', ir: 'almacen:fisica', palabras: 'tienda fisica caja articulos elegir mostrar' },
+  { pregunta: 'Elegir qué artículos salen en la tienda online', ruta: 'Taller → Cordajes y artículos → Venta online', ir: 'almacen:online', palabras: 'venta online tienda web articulos publicar mostrar clientes' },
+  { pregunta: 'Ver la tienda online como la ve el cliente', ruta: 'Taller → Cordajes y artículos → Venta online → «Ver la tienda»', ir: 'tiendaonline', palabras: 'tienda online web cliente ver carrusel pedido whatsapp' },
+  { pregunta: 'Quitar el fondo negro o de cuadros de las fotos de los artículos', ruta: 'Taller → Cordajes y artículos → Artículos → «🖌️ Fondo blanco en fotos»', ir: 'almacen:articulos', palabras: 'foto fondo negro cuadros blanco transparente arreglar' },
+  { pregunta: 'Editar una raqueta de la cola o cambiar el orden de la cola', ruta: 'Taller → Cola de trabajo → ✏️ Editar / ▲▼ / «Poner la primera»', ir: 'taller:cola', palabras: 'editar raqueta cola orden mover primera tension nombre telefono' },
+  { pregunta: 'Editar un encordado ya entregado (historial)', ruta: 'Taller → Historial → buscar → Editar', ir: 'taller:historial', palabras: 'editar historial entregado raqueta corregir' },
+  { pregunta: 'Sacar un ticket al cobrar una raqueta', ruta: 'Taller → Cola de trabajo → Entregar / Cobrar', ir: 'taller:cola', palabras: 'ticket cobrar raqueta entregar pago' },
+  { pregunta: 'Hacer o ver facturas del taller', ruta: 'Taller → 🧾 Facturas', ir: 'taller:facturas', palabras: 'factura facturar rectificar serie' },
+  { pregunta: 'Entrar en el club Valles Cántabros', ruta: 'Portada → bloque Clubes → «Valles Cántabros»', ir: 'club2', palabras: 'valles cantabros club nuevo segundo club cambiar' },
+  { pregunta: 'Volver al club Olimpia o a la portada general', ruta: 'Panel del club → botón «Inicio»', ir: 'portada', palabras: 'olimpia portada inicio volver club principal' },
+  { pregunta: 'Cambiar el nombre, logo o datos del club', ruta: 'Gestión de Club → 🏛️ Datos del club', ir: 'club:datos', palabras: 'nombre logo datos club localidad temporada' },
+  { pregunta: 'Ver la presentación animada de un torneo', ruta: 'Gestor de Torneos → Configuración → «🎬 Presentación del torneo»', ir: 'torneo:config', palabras: 'presentacion animacion video torneo proyector' },
   { pregunta: 'Cambiar precios, tiempos, nombre del taller, logo o tarjeta de visita', ruta: 'Menú → bloque del Taller de Raquetas → Configuración', palabras: 'configuracion taller precio tiempo nombre logo tarjeta visita publicidad' },
 ];
 // En la ayuda solo sale lo que el usuario puede usar (según la ruta de cada entrada).
+// Destino de cada entrada de la ayuda: el explícito (ir) o deducido de la ruta
+function ayudaDestino(item) {
+  if (item.ir) return item.ir;
+  const r = String(item.ruta || '');
+  const tallerTabs = [[/Nuevo pedido/i, 'taller:nuevo'], [/Cuentas|Clientes|Proveedores del taller/i, 'taller:cuentas'], [/Pedidos a proveedor/i, 'almacen:pedidosProv'], [/Almac[eé]n.*Art[ií]culos|Importar art/i, 'almacen:articulos'], [/Almac[eé]n/i, 'taller:catalogo'],
+    [/Historial/i, 'taller:historial'], [/Contabilidad/i, 'taller:contabilidad'], [/Configuraci[oó]n/i, 'taller:config'], [/Cola/i, 'taller:cola']];
+  if (/Taller|Almac[eé]n|Nuevo pedido/i.test(r)) { for (const [re, d] of tallerTabs) if (re.test(r)) return d; return 'taller:cola'; }
+  if (/Control horario/i.test(r)) return 'club:horario';
+  if (/Trabajadores/i.test(r)) return 'club:trabajadores';
+  if (/N[oó]minas/i.test(r)) return 'club:nominas';
+  if (/Control de acceso/i.test(r)) return 'club:acceso';
+  if (/Exportar todo/i.test(r)) return 'ajustes';
+  if (/Base general/i.test(r)) return 'club:general';
+  if (/Jugadores/i.test(r)) return 'club:jugadores';
+  if (/Pagos y Cuotas/i.test(r)) { if (/Contabilidad/i.test(r)) return 'pagos:contabilidad'; if (/Configuraci[oó]n/i.test(r)) return 'pagos:config'; if (/Competiciones/i.test(r)) return 'pagos:competiciones'; if (/Proveedores/i.test(r)) return 'pagos:proveedores'; return 'pagos:cuotas'; }
+  if (/Gestor de Torneos/i.test(r)) { const m = [[/Participantes/i, 'participants'], [/Sorteo/i, 'draw'], [/Calendario/i, 'schedule'], [/Eliminatoria/i, 'knockout'], [/Resultados/i, 'results'], [/Partidos/i, 'partidos'], [/Historial/i, 'historial'], [/Configuraci[oó]n/i, 'config']].find(([re]) => re.test(r)); return 'torneo:' + (m ? m[1] : 'config'); }
+  if (/Planificaci[oó]n/i.test(r)) return 'plan:' + (/Reglamento/i.test(r) ? 'reglamento' : 'grupos');
+  return null;
+}
+function ayudaIr(d) {
+  const [tipo, sub] = String(d).split(':');
+  if (tipo === 'portada') { if (esOtroClub()) { volverPortadaGeneral(); return; } homeGrupoAbierto = null; showSection('home'); return; }
+  if (tipo === 'club2') { if (esOtroClub()) { homeGrupoAbierto = 'club'; showSection('home'); } else irAOtroClub(CLUB2_ID); return; }
+  if (tipo === 'tiendaonline') { location.href = location.pathname + '?tiendaonline=1&desde=app'; return; }
+  if (tipo === 'ajustes') { const b = document.getElementById('btnAcceso'); if (b && b.offsetParent) b.click(); return; }
+  if (tipo === 'taller') { showSection('taller'); if (currentSection === 'taller') TallerApp.irATab(sub || 'cola'); window.scrollTo(0, 0); return; }
+  if (tipo === 'almacen') { showSection('taller'); if (currentSection === 'taller') TallerApp.irAAlmacen(sub || 'articulos'); window.scrollTo(0, 0); return; }
+  if (tipo === 'club') { goToClubGestion(sub || 'datos'); return; }
+  if (tipo === 'pagos') { goToClubGestion('pagos'); if (PagosApp.irATab) PagosApp.irATab(sub || 'cuotas'); return; }
+  if (tipo === 'torneo') { showSection('torneo'); if (currentSection === 'torneo' && TorneoApp.irATab) TorneoApp.irATab(sub || 'config'); window.scrollTo(0, 0); return; }
+  if (tipo === 'plan') { showSection('planificacion'); if (currentSection === 'planificacion' && PlanApp.irATab) PlanApp.irATab(sub || 'grupos'); window.scrollTo(0, 0); return; }
+}
+// Accesos directos arriba de la ayuda: los sitios y enlaces principales
+function ayudaAccesos(cerrar) {
+  const base = location.origin + location.pathname;
+  const caja = el('div', { style: 'display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px;' });
+  const b = (txt, fn, visible) => { if (visible === false) return; caja.appendChild(el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => { cerrar(); fn(); } }, txt)); };
+  const copiar = (url, nombre) => (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(() => alert('Enlace ' + nombre + ' copiado:\n' + url)).catch(() => prompt('Copia el enlace ' + nombre + ':', url));
+  b('🏠 Portada', () => ayudaIr('portada'));
+  b('🏸 Olimpia', () => { if (esOtroClub()) volverPortadaGeneral(); else { homeGrupoAbierto = 'club'; showSection('home'); } }, esAdmin() || !accesoActivo());
+  b('⛰️ Valles Cántabros', () => ayudaIr('club2'), esAdmin() || !accesoActivo());
+  b('🧵 Taller', () => ayudaIr('taller:cola'), tienePermiso('taller'));
+  b('🏪 Caja', () => ayudaIr('taller:tienda'), tienePermiso('taller'));
+  b('🛒 Tienda online', () => ayudaIr('tiendaonline'), tienePermiso('taller'));
+  b('🔗 Copiar enlace de la tienda', () => copiar(base + '?tiendaonline=1', 'de la tienda online'), tienePermiso('taller'));
+  b('🔗 Copiar enlace de la app', () => copiar(base, 'de la app'));
+  return caja;
+}
 function ayudaPermitida(item) {
   if (esAdmin()) return true;
   const r = String(item.ruta || '') + ' ' + String(item.pregunta || '');
@@ -14870,9 +14932,12 @@ function abrirAyuda() {
       return;
     }
     resultados.forEach(item => {
-      cont.appendChild(el('div', { class: 'card', style: 'padding:12px;margin-bottom:8px;' },
-        el('div', { style: 'font-weight:700;margin-bottom:4px;' }, item.pregunta),
-        el('div', { class: 'sub' }, '📍 ' + item.ruta),
+      const destino = ayudaDestino(item);
+      cont.appendChild(el('div', { class: 'card', style: 'padding:12px;margin-bottom:8px;display:flex;gap:10px;align-items:center;' },
+        el('div', { style: 'flex:1;min-width:0;' },
+          el('div', { style: 'font-weight:700;margin-bottom:4px;' }, item.pregunta),
+          el('div', { class: 'sub' }, '📍 ' + item.ruta)),
+        destino ? el('button', { class: 'btn btn-gold btn-sm', style: 'flex-shrink:0;', onclick: () => { root.innerHTML = ''; ayudaIr(destino); } }, 'Ir →') : null,
       ));
     });
   }
@@ -14882,7 +14947,8 @@ function abrirAyuda() {
   root.appendChild(el('div', { class: 'modal-bg', onclick: (e) => { if (e.target.classList.contains('modal-bg')) root.innerHTML = ''; } },
     el('div', { class: 'modal', style: 'max-width:560px;max-height:80vh;overflow-y:auto;' },
       el('h3', {}, '❓ ¿Dónde encuentro…?'),
-      el('div', { class: 'sub', style: 'margin-bottom:10px;' }, 'Escribe qué quieres hacer y te digo en qué pantalla está.'),
+      el('div', { class: 'sub', style: 'margin-bottom:10px;' }, 'Escribe qué quieres hacer y te digo en qué pantalla está. Pulsa «Ir →» para ir directamente.'),
+      ayudaAccesos(() => { root.innerHTML = ''; }),
       input,
       el('div', { id: 'ayudaResultados', style: 'margin-top:14px;' }),
       el('div', { class: 'row', style: 'margin-top:10px;' }, el('button', { class: 'btn btn-ghost', onclick: () => { root.innerHTML = ''; } }, 'Cerrar')),

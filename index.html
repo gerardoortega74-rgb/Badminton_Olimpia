@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261021-huecos">
+<meta name="build-id" content="v20261021-suelologo">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -13407,7 +13407,9 @@ function tdoHeroCarrusel(articulos, op) {
 .th-card .th-sinfoto{position:absolute;left:0;right:0;top:22%;text-align:center;font-size:56px;}
 .th-card .th-info{position:absolute;left:0;right:0;bottom:2%;padding:0 6%;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;}
 .th-card .th-mas{display:none !important;}
-.th-anillo-suelo{position:absolute;border-radius:50%;pointer-events:none;border:1px solid rgba(255,255,255,.07);background:radial-gradient(closest-side,rgba(255,255,255,.05),rgba(255,255,255,0));}
+.th-suelo-logo{position:absolute;left:50%;top:50%;width:40%;aspect-ratio:1126/651;transform:translate(-50%,-50%) perspective(700px) rotateX(64deg);background:center/contain no-repeat;opacity:.2;filter:blur(2.5px);pointer-events:none;}
+#tiendaOnlineScreen:not(.ap-oscuro) .th-suelo-logo{opacity:.12;filter:blur(2.5px) brightness(.2);}
+.th-anillo-suelo{position:absolute;border-radius:50%;pointer-events:none;overflow:hidden;border:1px solid rgba(255,255,255,.07);background:radial-gradient(closest-side,rgba(255,255,255,.05),rgba(255,255,255,0));}
 #tiendaOnlineScreen:not(.ap-oscuro) .th-anillo-suelo{border-color:rgba(0,0,0,.08);background:radial-gradient(closest-side,rgba(0,0,0,.04),rgba(0,0,0,0));}
 .th-card .th-nom{-webkit-line-clamp:3 !important;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.5);font-weight:600;line-height:1.15;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
 .th-card .th-pre{background:#fff;color:#0B2D5B;border-radius:999px;font-weight:700;padding:3px 10px;}
@@ -13531,7 +13533,12 @@ function tdoHeroCarrusel(articulos, op) {
     // los de delante grandes y nítidos, los de detrás pequeños, más altos y apagados.
     const R = fila.movil ? 245 : 610, CY = 690, RY = fila.movil ? 55 : 85, BASE = fila.movil ? 1.0 : 1;
     // suelo: la elipse del anillo
-    if (!fila.suelo) { fila.suelo = document.createElement('div'); fila.suelo.className = 'th-anillo-suelo'; fila.el.prepend(fila.suelo); }
+    if (!fila.suelo) {
+      fila.suelo = document.createElement('div'); fila.suelo.className = 'th-anillo-suelo'; fila.el.prepend(fila.suelo);
+      // logo de IDERMAY tumbado en el suelo del anillo, difuminado
+      if (typeof OL_LOGO_IDERMAY_BLANCO !== 'undefined') { const lg = document.createElement('div'); lg.className = 'th-suelo-logo';
+        lg.style.backgroundImage = 'url("data:image/svg+xml;utf8,' + encodeURIComponent(OL_LOGO_IDERMAY_BLANCO) + '")'; fila.suelo.appendChild(lg); }
+    }
     { const rx = (R + 40) * u, ry = (RY + 26) * u, cxp = (720 + ox) * u, cyp = (CY + 120 * BASE + oy) * u;
       fila.suelo.style.cssText = 'left:' + (cxp - rx).toFixed(1) + 'px;top:' + (cyp - ry).toFixed(1) + 'px;width:' + (2 * rx).toFixed(1) + 'px;height:' + (2 * ry).toFixed(1) + 'px;'; }
     fila.cards.forEach((K, i) => {

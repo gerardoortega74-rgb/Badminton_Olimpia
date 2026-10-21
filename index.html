@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261021-girosobresi">
+<meta name="build-id" content="v20261021-volumen">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -13403,6 +13403,10 @@ function tdoHeroCarrusel(articulos, op) {
 .th-card{position:absolute;left:0;top:0;will-change:transform;cursor:pointer;transform-origin:50% 60%;}
 .th-card img{position:absolute;left:0;right:0;top:4%;width:100%;height:70%;object-fit:contain;pointer-events:none;-webkit-user-drag:none;opacity:0;transition:opacity .5s ease;filter:drop-shadow(0 16px 14px rgba(0,0,0,.45)) drop-shadow(0 0 22px rgba(120,170,255,.18));}
 .th-card img.listo{opacity:1;}
+.th-card .th-objeto{position:absolute;left:0;right:0;top:4%;height:70%;transform-style:preserve-3d;pointer-events:none;}
+.th-card .th-objeto img{top:0;height:100%;filter:none !important;backface-visibility:visible;}
+.th-card .th-objeto img.capa{filter:brightness(.42) saturate(.8) !important;}
+.th-card.agotado .th-objeto{filter:grayscale(1);opacity:.45;}
 .th-card .th-suelo{position:absolute;left:18%;right:18%;top:72%;height:7%;border-radius:50%;background:radial-gradient(closest-side,rgba(0,0,0,.45),rgba(0,0,0,0));pointer-events:none;}
 .th-card .th-sinfoto{position:absolute;left:0;right:0;top:22%;text-align:center;font-size:56px;}
 .th-card .th-info{position:absolute;left:0;right:0;bottom:2%;padding:0 6%;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;}
@@ -13501,14 +13505,15 @@ function tdoHeroCarrusel(articulos, op) {
     const f = raiz.querySelector(movil ? '[data-k="filaM"]' : '[data-k="fila"]');
     const cards = lista.map(a => {
       const c = document.createElement('div'); c.className = 'th-card' + ((a.stock || 0) <= 0 ? ' agotado' : '');
-      c.innerHTML = (a.foto ? '<img alt="" draggable="false"><div class="th-suelo"></div>' : '<div class="th-sinfoto">' + (typeof iconoTiendaTipo === 'function' ? iconoTiendaTipo(a.tipo) : '🏸') + '</div>')
+      const CAPAS = 12;
+      c.innerHTML = (a.foto ? '<div class="th-objeto">' + Array.from({ length: CAPAS }, (_, k) => '<img alt="" draggable="false" data-k="' + k + '"' + (k > 0 && k < CAPAS - 1 ? ' class="capa"' : '') + '>').join('') + '</div><div class="th-suelo"></div>' : '<div class="th-sinfoto">' + (typeof iconoTiendaTipo === 'function' ? iconoTiendaTipo(a.tipo) : '🏸') + '</div>')
         + '<div class="th-info"><div class="th-nom"></div><div class="th-pre"></div></div><div class="th-mas">+</div><div class="th-cant"></div>' + ((a.stock || 0) <= 0 ? '<div class="th-agot">Agotado</div>' : '');
-      if (a.foto) { const img = c.querySelector('img'); tdoRecortarFondo(a.foto, a.id + ':' + a.foto.length).then(url => { img.onload = () => img.classList.add('listo'); img.src = url; }); }
+      if (a.foto) { const imgs = Array.from(c.querySelectorAll('.th-objeto img')); tdoRecortarFondo(a.foto, a.id + ':' + a.foto.length).then(url => { imgs.forEach(img => { img.onload = () => img.classList.add('listo'); img.src = url; }); }); }
       c.querySelector('.th-nom').textContent = a.nombre || '';
       c.querySelector('.th-pre').textContent = typeof euros === 'function' ? euros(a.precio) : (a.precio + ' €');
       c.dataset.id = a.id;
       f.appendChild(c);
-      return { c, a, img: c.querySelector('img, .th-sinfoto'), nom: c.querySelector('.th-nom'), pre: c.querySelector('.th-pre'), mas: c.querySelector('.th-mas'), cant: c.querySelector('.th-cant') };
+      return { c, a, img: c.querySelector('.th-objeto, .th-sinfoto'), capas: Array.from(c.querySelectorAll('.th-objeto img')), nom: c.querySelector('.th-nom'), pre: c.querySelector('.th-pre'), mas: c.querySelector('.th-mas'), cant: c.querySelector('.th-cant') };
     });
     fila = { el: f, cards, movil };
     actualizar();
@@ -13560,6 +13565,7 @@ function tdoHeroCarrusel(articulos, op) {
       K.c.style.pointerEvents = prof > 0.45 ? '' : 'none';
       // cada artículo gira sobre sí mismo (una vuelta cada ~7 s, cada uno desfasado)
       if (K.img && !reducido) K.img.style.transform = 'perspective(' + (700 * u).toFixed(0) + 'px) rotateY(' + (((ahora() * 52) + i * 61) % 360).toFixed(1) + 'deg)';
+      if (K.capas.length) { const grosor = W * 0.16, nC = K.capas.length; if (K.grosor !== Math.round(grosor)) { K.grosor = Math.round(grosor); K.capas.forEach((im, k) => { im.style.transform = 'translateZ(' + (grosor * (k / (nC - 1) - 0.5)).toFixed(2) + 'px)'; }); } }
       const umbral = fila.movil ? 0.8 : 0.55; const info = K.nom.parentElement; info.style.opacity = Math.min(1, Math.max(0, (prof - umbral) / (1 - umbral) * 1.6)).toFixed(3);
       const fs = Math.max(10, 15 * u * (fila.movil ? 1.5 : 1));
       K.nom.style.fontSize = fs + 'px'; K.pre.style.fontSize = (fs * 0.95) + 'px';

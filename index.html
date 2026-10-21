@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261021-heroprueba">
+<meta name="build-id" content="v20261021-sinhero">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -15530,7 +15530,6 @@ function renderPanelClub(root, gruposClub, onclickClub) {
   // Todas las secciones (lo que había antes, para no perder nada)
   const iconoDe = (t) => /Torneo/i.test(t) ? 'copa' : /Planific/i.test(t) ? 'calendario' : /Gesti/i.test(t) ? 'edificio' : /Trabajador/i.test(t) ? 'maletin' : /N[oó]mina/i.test(t) ? 'documento' : /horario/i.test(t) ? 'reloj' : 'mas';
   const lista = el('nav', { class: 'dg-lista', 'aria-label': 'Todas las secciones del club' }, el('div', { class: 'dg-et' }, 'Todas las secciones'));
-  if (esOtroClub()) { const b = el('button', { type: 'button', html: dgI('mas', 'ic') + '<span><b>Portada de prueba</b><small>Ver otra vez la portada nueva (Reelmark)</small></span>' + dgI('mas', 'ch') }); b.addEventListener('click', () => montarHeroReelmark()); lista.appendChild(b); }
   gruposClub.filter(c => c.permiso ? tienePermiso(c.permiso) : (c.tab ? esAdmin() : (tienePermiso('club') || tienePermiso('jugadores') || tienePermiso('pagos')))).forEach(c => {
     const b = el('button', { type: 'button', html: dgI(iconoDe(c.title), 'ic') + '<span><b>' + dgEsc(c.title) + '</b><small>' + dgEsc(String(c.desc || '').replace(/[\u{1F300}-\u{1FAFF}☀-➿]️?/gu, '')) + '</small></span>' + dgI('mas', 'ch') });
     b.addEventListener('click', ir(() => onclickClub(c))); lista.appendChild(b);
@@ -16039,259 +16038,6 @@ function bloquePortadaClub2() {
       el('span', { class: 'ol-entrar' }, 'Entrar al club')));
 }
 
-// ===== Portada de prueba «Reelmark hero» (solo en el club Valles Cántabros) =====
-// Montada tal cual el encargo: marco 1440×1080 contenido y centrado, carrusel curvo de 10 tarjetas con vídeo,
-// arrastrable con inercia, notas a mano que se dibujan solas y entrada animada. En móvil (≤820px) se apila.
-function montarHeroReelmark(alCerrar) {
-  const POSTER = 'https://d2ol7oe51mr4n9.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/b7ebb74a-8c8a-4f7e-8f80-55e2d74ecd05.webp';
-  const VIDEO = 'https://d2ol7oe51mr4n9.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/04fd3d5f-99d7-476e-98a4-46c08518ffb3.mp4';
-  const reducido = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
-  if (!document.getElementById('rmFuentes')) {
-    const l = document.createElement('link'); l.id = 'rmFuentes'; l.rel = 'stylesheet';
-    l.href = 'https://fonts.googleapis.com/css2?family=Inter+Tight:wght@700&family=Inter:wght@400;500;600&family=Caveat:wght@600&display=swap';
-    document.head.appendChild(l);
-  }
-  if (!document.getElementById('rmEstilos')) {
-    const st = document.createElement('style'); st.id = 'rmEstilos';
-    st.textContent = `
-#rmHero{position:fixed;inset:0;z-index:9000;background:#F5F8EF;overflow:hidden;color:#101410;font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;}
-#rmHero *{box-sizing:border-box;}
-#rmHero .rm-frame{--u:min(calc(100vw / 1440),calc(100vh / 1080));position:absolute;left:50%;top:50%;width:calc(1440 * var(--u));height:calc(1080 * var(--u));transform:translate(-50%,-50%);overflow:hidden;}
-#rmHero .rm-abs{position:absolute;}
-#rmHero .rm-logo{left:calc(37*var(--u));top:calc(36*var(--u));display:flex;align-items:center;gap:calc(9*var(--u));font-weight:600;font-size:calc(21*var(--u));letter-spacing:-.02em;color:#101410;}
-#rmHero .rm-logo svg{width:calc(28*var(--u));height:calc(28*var(--u));}
-#rmHero .rm-nav{left:calc(505*var(--u));top:calc(29*var(--u));height:calc(40*var(--u));display:flex;align-items:center;gap:calc(31*var(--u));font-size:calc(16.4*var(--u));}
-#rmHero .rm-nav a{color:#101410;text-decoration:none;}
-#rmHero .rm-pill{display:flex;align-items:center;justify-content:center;border-radius:999px;font-size:calc(15.5*var(--u));font-weight:500;border:0;cursor:pointer;font-family:inherit;}
-#rmHero .rm-login{left:calc(1211*var(--u));top:calc(29*var(--u));width:calc(92*var(--u));height:calc(40*var(--u));background:#fff;color:#101410;box-shadow:inset 0 0 0 1px rgba(16,20,16,.1);}
-#rmHero .rm-signup{left:calc(1304*var(--u));top:calc(29*var(--u));width:calc(97*var(--u));height:calc(40*var(--u));background:#08482D;color:#fff;}
-#rmHero .rm-badge{left:calc(575*var(--u));top:calc(115*var(--u));width:calc(292*var(--u));height:calc(37*var(--u));background:#DAE7C7;color:#08482D;border-radius:999px;display:flex;align-items:center;justify-content:center;font-weight:500;font-size:calc(16.6*var(--u));white-space:nowrap;}
-#rmHero .rm-h1{left:0;right:0;top:calc(176*var(--u));margin:0;text-align:center;font-family:'Inter Tight',Inter,sans-serif;font-weight:700;font-size:calc(88*var(--u));line-height:calc(92*var(--u));letter-spacing:-.035em;color:#101410;}
-#rmHero .rm-h1 span{display:block;}
-#rmHero .rm-h1 span+span{letter-spacing:-.022em;}
-#rmHero .rm-sub{left:0;right:0;top:calc(394*var(--u));margin:0;text-align:center;font-size:calc(20.8*var(--u));line-height:calc(32*var(--u));color:#5E5E61;}
-#rmHero .rm-nota{font-family:Caveat,cursive;font-weight:600;color:#08482D;white-space:nowrap;}
-#rmHero .rm-svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible;pointer-events:none;}
-#rmHero .rm-svg path{fill:none;stroke:#08482D;stroke-linecap:round;stroke-linejoin:round;}
-#rmHero .rm-fila{position:absolute;left:0;top:0;width:100%;height:100%;cursor:grab;touch-action:pan-y;user-select:none;-webkit-user-select:none;}
-#rmHero .rm-fila.agarrando{cursor:grabbing;}
-#rmHero .rm-card{position:absolute;left:0;top:0;overflow:hidden;background:#C9DDB5;will-change:transform,clip-path;}
-#rmHero .rm-media{position:absolute;left:0;top:0;}
-#rmHero .rm-media img,#rmHero .rm-media video{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;display:block;pointer-events:none;}
-#rmHero .rm-media video{opacity:0;transition:opacity .5s ease;}
-#rmHero .rm-media video.listo{opacity:1;}
-#rmHero .rm-play{position:absolute;width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.35);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:inset 0 0 0 1px rgba(255,255,255,.45);display:flex;align-items:center;justify-content:center;}
-#rmHero .rm-play::after{content:"";margin-left:2px;border-style:solid;border-width:6px 0 6px 10px;border-color:transparent transparent transparent #fff;}
-#rmHero .rm-anillo{left:calc(626*var(--u));top:calc(901*var(--u));width:calc(190*var(--u));height:calc(74*var(--u));border:calc(1.5*var(--u)) dashed #08482D;border-radius:999px;display:flex;align-items:center;justify-content:center;}
-#rmHero .rm-cta{width:calc(172*var(--u));height:calc(58*var(--u));border-radius:999px;background:#08482D;color:#fff;border:0;font-family:inherit;font-weight:500;font-size:calc(18*var(--u));cursor:pointer;}
-#rmHero .rm-salir{position:fixed;right:14px;bottom:14px;z-index:5;border:0;border-radius:999px;padding:10px 16px;background:#08482D;color:#fff;font:600 14px Inter,system-ui,sans-serif;cursor:pointer;box-shadow:0 6px 20px rgba(8,72,45,.3);}
-/* ---- móvil ---- */
-#rmHero .rm-movil{display:none;}
-@media (max-width:820px){
-  #rmHero .rm-frame{display:none;}
-  #rmHero .rm-movil{display:flex;flex-direction:column;align-items:center;position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;padding:16px 0 80px;}
-  #rmHero .rm-mtop{width:100%;display:flex;justify-content:space-between;align-items:center;padding:0 16px;}
-  #rmHero .rm-mtop .rm-logo{position:static;font-size:19px;gap:8px;}
-  #rmHero .rm-mtop .rm-logo svg{width:24px;height:24px;}
-  #rmHero .rm-mtop .rm-signup{position:static;width:auto;height:38px;padding:0 18px;font-size:15px;}
-  #rmHero .rm-mcopy{display:flex;flex-direction:column;align-items:center;padding:28px 16px 6px;text-align:center;}
-  #rmHero .rm-mcopy .rm-badge{position:static;width:auto;height:34px;padding:0 16px;font-size:14px;}
-  #rmHero .rm-mcopy .rm-h1{position:static;margin:18px 0 0;font-size:clamp(38px,11vw,56px);line-height:1.05;}
-  #rmHero .rm-mcopy .rm-sub{position:static;margin:14px 0 0;font-size:16px;line-height:1.5;max-width:520px;}
-  #rmHero .rm-mcopy .rm-sub br{display:none;}
-  #rmHero .rm-banda{position:relative;width:100%;height:250px;flex:none;margin-top:18px;overflow:hidden;}
-  #rmHero .rm-mpie{position:relative;margin-top:22px;display:flex;flex-direction:column;align-items:center;}
-  #rmHero .rm-mpie .rm-anillo{position:relative;left:auto;top:auto;width:190px;height:74px;border-width:1.5px;}
-  #rmHero .rm-mpie .rm-cta{width:172px;height:58px;font-size:18px;}
-  #rmHero .rm-mpie .rm-zero{position:absolute;right:calc(100% - 4px);top:58px;font-size:24px;transform:rotate(-12deg);}
-}
-`;
-    document.head.appendChild(st);
-  }
-  const leaf = '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M5 27C5 14 13 5 27 5c0 14-9 22-22 22z" fill="#08482D"/><path d="M8 24C13 18 18 13 23 9" stroke="#DAE7C7" stroke-width="2" fill="none" stroke-linecap="round"/></svg>';
-  const raiz = document.createElement('div'); raiz.id = 'rmHero'; raiz.setAttribute('role', 'dialog'); raiz.setAttribute('aria-label', 'Portada de prueba');
-  const subHTML = 'Grow your brand with short, snappy product clips by <br>our handpicked video makers. Our crew is ready to <br>lift your next launch higher.';
-  raiz.innerHTML = `
-<div class="rm-frame">
-  <div class="rm-abs rm-logo">${leaf}<span>Reelmark</span></div>
-  <nav class="rm-abs rm-nav" aria-label="Menú"><a href="#" tabindex="-1">Brands</a><a href="#" tabindex="-1">Creators</a><a href="#" tabindex="-1">Pricing</a><a href="#" tabindex="-1">Use Cases</a><a href="#" tabindex="-1">Contact</a></nav>
-  <button class="rm-abs rm-pill rm-login" type="button">Log in</button>
-  <button class="rm-abs rm-pill rm-signup" type="button">Sign up</button>
-  <div class="rm-abs rm-badge">Trusted by 120,000+ indie makers</div>
-  <h1 class="rm-abs rm-h1"><span>Captivate Crowds</span><span>with Snackable Reels</span></h1>
-  <p class="rm-abs rm-sub">${subHTML}</p>
-  <div class="rm-fila" data-k="fila"></div>
-  <svg class="rm-svg" viewBox="0 0 1440 1080" aria-hidden="true">
-    <path data-trazo d="M266 404 L281 380" stroke-width="3.2"/>
-    <path data-trazo d="M279 406 L294 382" stroke-width="3.2"/>
-    <path data-trazo d="M1252 418 C1278 458 1270 500 1236 522 C1216 534 1198 538 1186 552" stroke-width="2.6"/>
-    <path data-trazo d="M1176 536 L1186 553 L1205 551" stroke-width="2.6"/>
-    <path data-trazo d="M592 966 C606 960 616 950 622 938" stroke-width="2.4"/>
-    <path data-trazo d="M611 939 L623 936 L626 949" stroke-width="2.4"/>
-  </svg>
-  <div class="rm-abs rm-nota" data-nota style="left:calc(1212*var(--u));top:calc(310*var(--u));font-size:calc(30*var(--u));line-height:calc(30*var(--u));transform:rotate(16deg);transform-origin:left top;text-align:center;">Be seen<br>with clips</div>
-  <div class="rm-abs rm-nota" data-nota style="left:calc(521*var(--u));top:calc(937*var(--u));font-size:calc(28*var(--u));transform:rotate(24deg);transform-origin:left top;">Zero cost</div>
-  <div class="rm-abs rm-anillo"><button class="rm-cta" type="button">Make a Reel</button></div>
-</div>
-<div class="rm-movil">
-  <div class="rm-mtop"><div class="rm-logo">${leaf}<span>Reelmark</span></div><button class="rm-pill rm-signup" type="button">Sign up</button></div>
-  <div class="rm-mcopy"><div class="rm-badge">Trusted by 120,000+ indie makers</div><h1 class="rm-h1"><span>Captivate Crowds</span><span>with Snackable Reels</span></h1><p class="rm-sub">${subHTML}</p></div>
-  <div class="rm-banda"><div class="rm-fila" data-k="filaM"></div></div>
-  <div class="rm-mpie"><div class="rm-anillo"><button class="rm-cta" type="button">Make a Reel</button></div><div class="rm-nota rm-zero">Zero cost</div></div>
-</div>
-<button class="rm-salir" type="button">Panel del club ›</button>`;
-  document.body.appendChild(raiz);
-
-  // ---------- carrusel curvo ----------
-  const N = 10, PASO = 196, TOTAL = N * PASO;
-  const reloj = document.documentElement.animate([{ opacity: 1 }, { opacity: 1 }], { duration: 1e9 });
-  const ahora = () => (reloj.currentTime || 0) / 1000;
-  let desplaz = 0, vel = 0, arrastrando = false, ultimo = ahora();
-  let videoMaestro = null;
-  const crearFila = (fila, esMovil) => {
-    const cards = [];
-    for (let i = 0; i < N; i++) {
-      const c = document.createElement('div'); c.className = 'rm-card';
-      const m = document.createElement('div'); m.className = 'rm-media';
-      const im = document.createElement('img'); im.src = POSTER; im.alt = ''; im.draggable = false; m.appendChild(im);
-      let v = null;
-      if (!reducido) {
-        v = document.createElement('video'); v.muted = true; v.defaultMuted = true; v.loop = true; v.autoplay = true; v.playsInline = true; v.setAttribute('playsinline', ''); v.setAttribute('muted', ''); v.preload = 'auto'; v.src = VIDEO;
-        const listo = () => v.classList.add('listo');
-        v.addEventListener('loadeddata', listo); v.addEventListener('playing', listo);
-        const p = v.play(); if (p && p.catch) p.catch(() => {});
-        m.appendChild(v);
-        if (!videoMaestro) videoMaestro = v;
-      }
-      const play = document.createElement('div'); play.className = 'rm-play';
-      c.append(m, play); fila.appendChild(c);
-      cards.push({ c, m, v, play, col: i % 5, row: Math.floor(i / 5) });
-    }
-    return { fila, cards, esMovil };
-  };
-  // solo se montan los vídeos de la versión visible (ordenador o móvil): así no se decodifican 20 a la vez
-  const mqMovil = window.matchMedia ? matchMedia('(max-width: 820px)') : { matches: false };
-  let filas = [];
-  const montarFilas = () => {
-    filas.forEach(F => { F.cards.forEach(K => { if (K.v) { try { K.v.pause(); K.v.removeAttribute('src'); K.v.load(); } catch (e) { } } }); F.fila.innerHTML = ''; });
-    videoMaestro = null;
-    const movil = !!mqMovil.matches;
-    filas = [crearFila(raiz.querySelector(movil ? '[data-k="filaM"]' : '[data-k="fila"]'), movil)];
-  };
-  montarFilas();
-  const cambioModo = () => { if (vivo) montarFilas(); };
-  if (mqMovil.addEventListener) mqMovil.addEventListener('change', cambioModo);
-  // esquinas redondeadas de un cuadrilátero (radio r) como path para clip-path
-  const quad = (P, r) => {
-    let d = '';
-    for (let k = 0; k < 4; k++) {
-      const a = P[(k + 3) % 4], b = P[k], c = P[(k + 1) % 4];
-      const la = Math.hypot(a[0] - b[0], a[1] - b[1]), lc = Math.hypot(c[0] - b[0], c[1] - b[1]);
-      const ra = Math.min(r, la / 2), rc = Math.min(r, lc / 2);
-      const p1 = [b[0] + (a[0] - b[0]) * ra / la, b[1] + (a[1] - b[1]) * ra / la], p2 = [b[0] + (c[0] - b[0]) * rc / lc, b[1] + (c[1] - b[1]) * rc / lc];
-      d += (k === 0 ? 'M' : 'L') + p1[0].toFixed(2) + ' ' + p1[1].toFixed(2) + 'Q' + b[0].toFixed(2) + ' ' + b[1].toFixed(2) + ' ' + p2[0].toFixed(2) + ' ' + p2[1].toFixed(2);
-    }
-    return d + 'Z';
-  };
-  const pintar = () => {
-    filas.forEach(F => {
-      const ancho = F.fila.clientWidth; if (!ancho) return;
-      // escritorio: 1 unidad = ancho del marco/1440; móvil: ventana de 640 unidades centrada en el carrusel
-      const u = F.esMovil ? ancho / 640 : ancho / 1440;
-      const ox = F.esMovil ? -400 : 0;                      // unidad x del borde izquierdo de lo visible
-      const oy = F.esMovil ? (F.fila.clientHeight / u) / 2 - 687 : 0;
-      F.cards.forEach((K, i) => {
-        let t = ((i * PASO - desplaz) % TOTAL + TOTAL) % TOTAL; if (t >= TOTAL / 2) t -= TOTAL;
-        const x = 720 + t * (1 + 0.083 * Math.pow(t / 706, 2));
-        const d = Math.abs(x - 720) / 706;
-        const w = 170 + 48 * d * d;
-        const xl = x - w / 2, xr = x + w / 2;
-        const hl = 280 + 92 * Math.pow(Math.abs(xl - 720) / 706, 2.6), hr = 280 + 92 * Math.pow(Math.abs(xr - 720) / 706, 2.6);
-        const cy = 687 - 12 * d * d;
-        const hB = Math.max(hl, hr), top = cy - hB / 2;
-        const W = w * u, Hh = hB * u;
-        if ((xr + ox) * u < -50 || (xl + ox) * u > ancho + 50) { K.c.style.display = 'none'; return; }
-        K.c.style.display = '';
-        K.c.style.width = W + 'px'; K.c.style.height = Hh + 'px';
-        K.c.style.transform = 'translate(' + ((xl + ox) * u).toFixed(2) + 'px,' + ((top + oy) * u).toFixed(2) + 'px)';
-        const P = [[0, (cy - hl / 2 - top) * u], [W, (cy - hr / 2 - top) * u], [W, (cy + hr / 2 - top) * u], [0, (cy + hl / 2 - top) * u]];
-        K.c.style.clipPath = 'path("' + quad(P, 15 * u) + '")';
-        // azulejo de este card dentro de la rejilla 5×2 del vídeo, ajustado en «cover»
-        const tH = Math.max(hB, w / 0.7111) * u, tW = tH * 0.7111;
-        K.m.style.width = (5 * tW) + 'px'; K.m.style.height = (2 * tH) + 'px';
-        K.m.style.transform = 'translate(' + (-K.col * tW + (W - tW) / 2).toFixed(2) + 'px,' + (-K.row * tH + (Hh - tH) / 2).toFixed(2) + 'px)';
-        const s = Math.max(22, 32 * u * (F.esMovil ? 1.6 : 1));
-        K.play.style.width = K.play.style.height = s + 'px';
-        K.play.style.left = (12 * u + 4) + 'px'; K.play.style.top = (P[3][1] - s - 12 * u - 4) + 'px';
-      });
-    });
-  };
-  // arrastre con inercia
-  let xPrev = 0, tPrev = 0, uArr = 1;
-  const abajo = (e) => {
-    arrastrando = true; vel = 0; xPrev = e.clientX; tPrev = performance.now();
-    const f = e.currentTarget; uArr = f.dataset.k === 'filaM' ? f.clientWidth / 640 : f.clientWidth / 1440; f.classList.add('agarrando');
-    try { f.setPointerCapture(e.pointerId); } catch (er) { }
-  };
-  const mover = (e) => {
-    if (!arrastrando) return;
-    const now = performance.now(), dx = (e.clientX - xPrev) / uArr, dt = Math.max(1, now - tPrev) / 1000;
-    desplaz -= dx; vel = -dx / dt; xPrev = e.clientX; tPrev = now;
-  };
-  const arriba = (e) => { if (!arrastrando) return; arrastrando = false; e.currentTarget.classList.remove('agarrando'); };
-  raiz.querySelectorAll('.rm-fila').forEach(f => { f.addEventListener('pointerdown', abajo); f.addEventListener('pointermove', mover); f.addEventListener('pointerup', arriba); f.addEventListener('pointercancel', arriba); });
-  let vivo = true, raf = 0, ultSync = 0;
-  const bucle = () => {
-    if (!vivo) return;
-    const t = ahora(), dt = Math.min(0.1, Math.max(0, t - ultimo)); ultimo = t;
-    if (!arrastrando) {
-      desplaz += (reducido ? 0 : 50 * dt) + vel * dt;
-      vel *= Math.pow(0.05, dt);
-      if (Math.abs(vel) < 1) vel = 0;
-    }
-    desplaz = ((desplaz % TOTAL) + TOTAL) % TOTAL;
-    pintar();
-    // todos los vídeos al mismo instante
-    if (videoMaestro && t - ultSync > 1) {
-      ultSync = t; const ref = videoMaestro.currentTime;
-      filas.forEach(F => F.cards.forEach(K => { if (K.v && K.v !== videoMaestro && K.v.readyState >= 2 && Math.abs(K.v.currentTime - ref) > 0.08) { try { K.v.currentTime = ref; } catch (e) { } } }));
-    }
-    raf = requestAnimationFrame(bucle);
-  };
-  raf = requestAnimationFrame(bucle);
-
-  // trazos que se dibujan
-  const trazos = Array.from(raiz.querySelectorAll('[data-trazo]'));
-  trazos.forEach(p => { try { const L = p.getTotalLength(); p.style.strokeDasharray = L + ' ' + L; p.style.strokeDashoffset = reducido ? 0 : L; } catch (e) { } });
-
-  // entrada animada (una vez)
-  if (!reducido) {
-    const A = (sel, kf, op) => raiz.querySelectorAll(sel).forEach((n, i) => n.animate(kf, Object.assign({ fill: 'backwards', easing: 'cubic-bezier(.2,.8,.2,1)' }, op, { delay: (op.delay || 0) + i * (op.paso || 0) })));
-    A('.rm-frame .rm-logo, .rm-frame .rm-nav, .rm-frame .rm-login, .rm-frame .rm-signup, .rm-mtop', [{ opacity: 0, transform: 'translateY(-18px)' }, { opacity: 1, transform: 'none' }], { duration: 600, delay: 100, paso: 60 });
-    A('.rm-badge', [{ opacity: 0, transform: 'scale(.6)' }, { opacity: 1, transform: 'scale(1.06)', offset: .7 }, { opacity: 1, transform: 'scale(1)' }], { duration: 600, delay: 350 });
-    A('.rm-h1 span', [{ opacity: 0, transform: 'translateY(40px)', filter: 'blur(12px)' }, { opacity: 1, transform: 'none', filter: 'blur(0)' }], { duration: 850, delay: 520, paso: 140 });
-    A('.rm-sub', [{ opacity: 0, transform: 'translateY(16px)' }, { opacity: 1, transform: 'none' }], { duration: 700, delay: 900 });
-    A('.rm-fila', [{ opacity: 0, transform: 'translateY(90px)' }, { opacity: 1, transform: 'none' }], { duration: 1100, delay: 1050 });
-    A('.rm-anillo', [{ opacity: 0, transform: 'scale(.7)' }, { opacity: 1, transform: 'scale(1)' }], { duration: 650, delay: 1500 });
-    trazos.forEach((p, i) => { const L = parseFloat(p.style.strokeDashoffset) || 0; p.animate([{ strokeDashoffset: L }, { strokeDashoffset: 0 }], { duration: 700, delay: 1700 + i * 140, fill: 'forwards', easing: 'cubic-bezier(.5,0,.2,1)' }); });
-    A('[data-nota], .rm-zero', [{ opacity: 0 }, { opacity: 1 }], { duration: 700, delay: 1900, paso: 200 });
-  }
-
-  const cerrar = () => {
-    if (!vivo) return; vivo = false; cancelAnimationFrame(raf); try { reloj.cancel(); } catch (e) { }
-    if (mqMovil.removeEventListener) mqMovil.removeEventListener('change', cambioModo);
-    raiz.querySelectorAll('video').forEach(v => { try { v.pause(); v.removeAttribute('src'); v.load(); } catch (e) { } });
-    raiz.remove(); document.removeEventListener('keydown', tecla);
-    if (alCerrar) alCerrar();
-  };
-  const tecla = (e) => { if (e.key === 'Escape') cerrar(); };
-  document.addEventListener('keydown', tecla);
-  raiz.querySelector('.rm-salir').addEventListener('click', cerrar);
-  return cerrar;
-}
-
-window.montarHeroReelmark = montarHeroReelmark;
-
 // Animación «Gestión de Clubs» encima de la pantalla de elegir club (se puede saltar tocando)
 function mostrarIntroClubes() {
   if (document.getElementById('introClubesCapa')) return;
@@ -16353,8 +16099,6 @@ function renderHome() {
   const hayTaller = tienePermiso('taller') && !esOtroClub();
   // En el otro club no hay portada partida: se entra directo a su panel.
   if (esOtroClub()) homeGrupoAbierto = 'club';
-  // Valles Cántabros: portada de prueba «Reelmark» al entrar (una vez por carga; «Panel del club ›» la cierra)
-  if (esOtroClub() && !window.__rmHeroVisto && !document.getElementById('rmHero')) { window.__rmHeroVisto = true; try { montarHeroReelmark(); } catch (e) { console.warn('Portada de prueba:', e); } }
   const hayClub2 = !esOtroClub() && (esAdmin() || !accesoActivo());
 
   // Si hay un grupo abierto, mostrar solo ese: su cabecera (más pequeña) + sus acciones.

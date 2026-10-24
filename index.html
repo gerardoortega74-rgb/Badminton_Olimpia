@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261021-ayudaaccesos">
+<meta name="build-id" content="v20261024-sinfondo">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -8588,6 +8588,62 @@ function comprimirImagen(file, maxWidth, calidad) {
   });
 }
 
+// ---- Fotos de artículos: al subirlas se les quita el fondo claro y se guardan transparentes ----
+function leerImagen(fileODataUrl) {
+  return new Promise((resolve, reject) => {
+    const cargar = (src) => { const img = new Image(); img.onload = () => resolve(img); img.onerror = () => reject(new Error('No se pudo leer la imagen')); img.src = src; };
+    if (typeof fileODataUrl === 'string') { cargar(fileODataUrl); return; }
+    const r = new FileReader(); r.onload = () => cargar(r.result); r.onerror = () => reject(r.error); r.readAsDataURL(fileODataUrl);
+  });
+}
+async function fotoArticuloSinFondo(fileODataUrl) {
+  const img = await leerImagen(fileODataUrl);
+  const MAX = 700; let w = img.width, h = img.height;
+  if (Math.max(w, h) > MAX) { const k = MAX / Math.max(w, h); w = Math.round(w * k); h = Math.round(h * k); }
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const g = cv.getContext('2d'); g.drawImage(img, 0, 0, w, h);
+  let transparente = false;
+  try { const px = g.getImageData(0, 0, w, h).data; let tr = 0; for (let i = 3; i < px.length; i += 16) if (px[i] < 250) tr++; transparente = tr > (w * h / 4) * 0.02; } catch (e) { }
+  if (transparente) return { final: exportarTransparente(cv, 0.82), yaSinFondo: true };   // ya venía sin fondo: se respeta
+  const blanco = document.createElement('canvas'); blanco.width = w; blanco.height = h; const g2 = blanco.getContext('2d');
+  g2.fillStyle = '#FFFFFF'; g2.fillRect(0, 0, w, h); g2.drawImage(img, 0, 0, w, h);
+  const original = blanco.toDataURL('image/jpeg', 0.8);
+  const sinFondo = typeof tdoRecortarFondo === 'function' ? await tdoRecortarFondo(original, 'subida:' + Date.now() + Math.random(), { max: MAX, calidad: 0.82 }) : original;
+  if (!sinFondo || sinFondo === original) return { final: original, original, sinFondo: null };
+  return { final: sinFondo, original, sinFondo };
+}
+// Ventana con el antes y el después; resuelve con la foto elegida (o null si se cancela)
+function elegirFotoSinFondo(original, sinFondo) {
+  return new Promise((resolve) => {
+    const root = document.getElementById('tallerModalRoot'); if (!root) { resolve(sinFondo); return; }
+    const cuadros = 'background-color:#fff;background-image:linear-gradient(45deg,#e6e6e6 25%,transparent 25%,transparent 75%,#e6e6e6 75%),linear-gradient(45deg,#e6e6e6 25%,transparent 25%,transparent 75%,#e6e6e6 75%);background-size:16px 16px;background-position:0 0,8px 8px;';
+    const caja = (titulo, src, fondo) => el('div', { style: 'flex:1;min-width:140px;text-align:center;' },
+      el('div', { style: 'font-weight:700;margin-bottom:6px;' }, titulo),
+      el('div', { style: 'border-radius:12px;overflow:hidden;border:1px solid #ddd;' + (fondo === 'oscuro' ? 'background:#1d1d1f;' : fondo === 'blanco' ? 'background:#fff;' : cuadros) },
+        el('img', { src, style: 'width:100%;height:200px;object-fit:contain;display:block;' })));
+    const cerrar = (v) => { root.innerHTML = ''; resolve(v); };
+    root.innerHTML = '';
+    root.appendChild(el('div', { class: 'modal-bg', onclick: (e) => { if (e.target.classList.contains('modal-bg')) cerrar(null); } },
+      el('div', { class: 'modal', style: 'max-width:640px;' },
+        el('h3', {}, '✂️ Foto sin fondo'),
+        el('div', { class: 'sub', style: 'margin-bottom:10px;' }, 'He quitado el fondo claro de la foto. Mira cómo queda (los cuadros grises son la parte transparente) y elige cuál guardar.'),
+        el('div', { style: 'display:flex;gap:10px;flex-wrap:wrap;' }, caja('Original', original, 'blanco'), caja('Sin fondo', sinFondo), caja('Sin fondo, en la tienda', sinFondo, 'oscuro')),
+        el('div', { class: 'row', style: 'gap:8px;margin-top:14px;flex-wrap:wrap;' },
+          el('button', { class: 'btn btn-gold', onclick: () => cerrar(sinFondo) }, '✓ Usar sin fondo'),
+          el('button', { class: 'btn btn-ghost', onclick: () => cerrar(original) }, 'Dejar la original'),
+          el('button', { class: 'btn btn-ghost', onclick: () => cerrar(null) }, 'Cancelar')))));
+  });
+}
+async function ponerFotoArticulo(a, origen) {
+  const r = await fotoArticuloSinFondo(origen);
+  let elegida = r.final;
+  if (r.sinFondo) { elegida = await elegirFotoSinFondo(r.original, r.sinFondo); if (!elegida) return false; }
+  else if (typeof origen === 'string' && !r.yaSinFondo) { alert('No he encontrado un fondo claro y liso que quitar en esta foto. Se queda como está.'); return false; }
+  a.foto = elegida;
+  if (window.guardarFotoArticuloTallerEnNube) window.guardarFotoArticuloTallerEnNube(a.id, a.foto);
+  return true;
+}
+function fotoEsTransparente(src) { return /^data:image\/(webp|png)/.test(String(src || '')); }
+
 function siguienteNumeroCliente() {
   let maxNum = 4300000;
   state.clientes.forEach(c => {
@@ -10550,6 +10606,7 @@ function fotoFondoNegroABlanco(dataUrl) {
       const ctx = c.getContext('2d'); ctx.drawImage(img, 0, 0);
       let d; try { d = ctx.getImageData(0, 0, w, h); } catch (e) { resolve(null); return; }
       const px = d.data, n = w * h, marca = new Uint8Array(n), cola = new Int32Array(n);
+      { let tr = 0; for (let i = 3; i < px.length; i += 16) if (px[i] < 250) tr++; if (tr > n / 4 * 0.02) { resolve(null); return; } } // ya sin fondo (transparente): no se toca
       const oscuro = (i, lim) => px[i * 4] <= lim && px[i * 4 + 1] <= lim && px[i * 4 + 2] <= lim;
       // Fondo «de cuadros» pintado en la foto (falso transparente): grises claros y blancos sin color
       const cuadro = (i) => { const r = px[i * 4], g = px[i * 4 + 1], b = px[i * 4 + 2]; return Math.min(r, g, b) >= 188 && Math.max(r, g, b) - Math.min(r, g, b) <= 16; };
@@ -10734,19 +10791,19 @@ function articuloCard(a) {
     ),
     el('div', { style: 'margin-top:10px;' },
       el('h4', { style: 'margin:0 0 6px;' }, '📷 Foto del artículo'),
-      a.foto ? el('img', { src: a.foto, style: 'max-width:160px;border-radius:8px;display:block;margin-bottom:6px;' }) : null,
+      a.foto ? el('img', { src: a.foto, style: 'max-width:160px;border-radius:8px;display:block;margin-bottom:6px;' + (fotoEsTransparente(a.foto) ? 'background-color:#fff;background-image:linear-gradient(45deg,#e6e6e6 25%,transparent 25%,transparent 75%,#e6e6e6 75%),linear-gradient(45deg,#e6e6e6 25%,transparent 25%,transparent 75%,#e6e6e6 75%);background-size:14px 14px;background-position:0 0,7px 7px;' : '') }) : null,
+      a.foto ? el('div', { class: 'sub', style: 'margin:-2px 0 6px;' }, fotoEsTransparente(a.foto) ? '✓ Sin fondo (transparente)' : 'Con fondo') : null,
       (() => {
         const fotoArticuloInput = el('input', { type: 'file', accept: 'image/*' });
         return el('div', { class: 'row', style: 'gap:8px;flex-wrap:wrap;align-items:center;' },
           fotoArticuloInput,
           el('button', { class: 'btn btn-gold btn-sm', onclick: async () => {
             if (!fotoArticuloInput.files[0]) { alert('Elige antes una foto.'); return; }
-            try {
-              a.foto = await comprimirImagen(fotoArticuloInput.files[0], 700, 0.65);
-              if (window.guardarFotoArticuloTallerEnNube) window.guardarFotoArticuloTallerEnNube(a.id, a.foto);
-              render();
-            } catch (e) { alert('No se pudo procesar la foto.'); }
+            try { if (await ponerFotoArticulo(a, fotoArticuloInput.files[0])) render(); } catch (e) { alert('No se pudo procesar la foto.'); }
           } }, a.foto ? 'Cambiar foto' : '+ Añadir foto'),
+          a.foto && !fotoEsTransparente(a.foto) ? el('button', { class: 'btn btn-ghost btn-sm', onclick: async () => {
+            try { if (await ponerFotoArticulo(a, a.foto)) render(); } catch (e) { alert('No se pudo procesar la foto.'); }
+          } }, '✂️ Quitar fondo') : null,
           a.foto ? el('button', { class: 'btn btn-danger btn-sm', onclick: () => {
             a.foto = null;
             if (window.guardarFotoArticuloTallerEnNube) window.guardarFotoArticuloTallerEnNube(a.id, null);
@@ -13312,15 +13369,21 @@ document.addEventListener('DOMContentLoaded', () => {
 // Portada en hero: es la definitiva (con ?hero=0 se ve la portada antigua)
 function esTiendaHeroPrueba() { try { return new URLSearchParams(location.search).get('hero') !== '0'; } catch (e) { return true; } }
 let tdoHeroInst = null;
+// Exporta un canvas conservando la transparencia: WebP si el navegador sabe hacerlo, si no PNG
+function exportarTransparente(cv, calidad) {
+  let u = ''; try { u = cv.toDataURL('image/webp', calidad || 0.82); } catch (e) { }
+  return /^data:image\/webp/.test(u) ? u : cv.toDataURL('image/png');
+}
 // Quita el fondo blanco (o casi blanco) que toca los bordes de la foto, para que se vea solo el artículo
 const tdoRecortes = new Map();
-function tdoRecortarFondo(src, clave) {
+function tdoRecortarFondo(src, clave, op) {
+  op = op || {};
   if (tdoRecortes.has(clave)) return tdoRecortes.get(clave);
   const pr = new Promise(res => {
     const im = new Image();
     im.onload = () => {
       try {
-        const M = 420, k = Math.min(1, M / Math.max(im.width, im.height)), w = Math.max(1, Math.round(im.width * k)), h = Math.max(1, Math.round(im.height * k));
+        const M = op.max || 420, k = Math.min(1, M / Math.max(im.width, im.height)), w = Math.max(1, Math.round(im.width * k)), h = Math.max(1, Math.round(im.height * k));
         const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const g = cv.getContext('2d'); g.drawImage(im, 0, 0, w, h);
         const dat = g.getImageData(0, 0, w, h), px = dat.data;
         const fondo = (i) => { const r = px[i], gg = px[i + 1], b = px[i + 2], a = px[i + 3]; if (a < 30) return true; const mx = Math.max(r, gg, b), mn = Math.min(r, gg, b); return mn >= 222 && mx - mn <= 26; };
@@ -13354,7 +13417,7 @@ function tdoRecortarFondo(src, clave) {
           if (junto) { const i = p * 4, l = (px[i] + px[i + 1] + px[i + 2]) / 3; px[i + 3] = Math.min(px[i + 3], l > 200 ? 110 : 210); }
         }
         if (quitados < w * h * 0.02) return res(src);   // la foto no tenía fondo blanco: se deja tal cual
-        g.putImageData(dat, 0, 0); res(cv.toDataURL('image/png'));
+        g.putImageData(dat, 0, 0); res(exportarTransparente(cv, op.calidad));
       } catch (e) { res(src); }
     };
     im.onerror = () => res(src);

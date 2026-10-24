@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261024-coloreseditar">
+<meta name="build-id" content="v20261024-variasfotos">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -97,6 +97,21 @@ tr.im-grupo-fila input[type=checkbox]{width:22px !important;height:22px;min-heig
 tr.im-grupo-fila td{background:#F3F6FB;border-top:2px solid #DCE3EE;}
 tr.im-hijo td.c-nom{padding-left:22px;}
 @media (max-width:640px){ body.im-taller table.im-tabla-art tr.im-grupo-fila{display:block;background:#F3F6FB;} body.im-taller table.im-tabla-art tr.im-grupo-fila td{background:none;border:0;} body.im-taller table.im-tabla-art tr.im-hijo{margin-left:14px;border-left:4px solid #DCE3EE;} }
+.im-galeria{display:flex;gap:10px;flex-wrap:wrap;}
+.im-gal-item{display:flex;flex-direction:column;gap:4px;width:112px;}
+.im-gal-foto{width:112px;height:112px;border:1px solid #DCE3EE;border-radius:12px;background:#fff;padding:4px;cursor:zoom-in;overflow:hidden;}
+.im-gal-foto img{width:100%;height:100%;object-fit:contain;display:block;}
+.im-gal-acc{display:flex;justify-content:space-between;gap:2px;}
+.im-gal-acc button{flex:1;min-height:30px;border:1px solid #DCE3EE;background:#fff;border-radius:8px;cursor:pointer;font-size:13px;padding:0;}
+.im-gal-acc button:disabled{opacity:.3;cursor:default;}.im-gal-acc button.peligro{border-color:#F3C3C9;}
+.tpv-visor-zona{position:relative;}
+.tpv-visor-flecha{position:absolute;top:50%;transform:translateY(-50%);width:42px;height:42px;border-radius:50%;border:0;background:rgba(20,33,58,.7);color:#fff;font-size:22px;cursor:pointer;z-index:2;}
+.tpv-visor-flecha.izq{left:10px;}.tpv-visor-flecha.der{right:10px;}
+.tpv-visor-tira{display:flex;gap:6px;padding:8px 12px;overflow-x:auto;border-top:1px solid #EEF1F5;}
+.tpv-visor-tira button{flex:none;width:52px;height:52px;border-radius:10px;border:2px solid transparent;background:#fff;padding:2px;cursor:pointer;box-shadow:inset 0 0 0 1px #DCE3EE;}
+.tpv-visor-tira button.on{border-color:#E0162B;}
+.tpv-visor-tira img{width:100%;height:100%;object-fit:contain;}
+.tdo-nfotos{position:absolute;left:10px;bottom:10px;font-style:normal;font-size:12px;font-weight:600;background:rgba(0,0,0,.55);color:#fff;border-radius:999px;padding:3px 8px;}
 .im-color-fila{padding-bottom:6px;border-bottom:1px solid #DCE3EE;}
 .im-color-fila.inactivo{opacity:.55;}
 .im-color-fila.actual input{border-color:#0B2D5B;}
@@ -8744,11 +8759,18 @@ function elegirFotoSinFondo(original, sinFondo) {
           el('button', { class: 'btn btn-ghost', onclick: () => cerrar(null) }, 'Cancelar')))));
   });
 }
-async function ponerFotoArticulo(a, origen) {
+async function procesarFotoNueva(origen) {
   const r = await fotoArticuloSinFondo(origen);
   let elegida = r.final;
-  if (r.sinFondo) { elegida = await elegirFotoSinFondo(r.original, r.sinFondo); if (!elegida) return false; }
-  else if (typeof origen === 'string' && !r.yaSinFondo) { alert('No he encontrado un fondo claro y liso que quitar en esta foto. Se queda como está.'); return false; }
+  if (r.sinFondo) { elegida = await elegirFotoSinFondo(r.original, r.sinFondo); if (!elegida) return null; }
+  else if (typeof origen === 'string' && !r.yaSinFondo) { alert('No he encontrado un fondo claro y liso que quitar en esta foto. Se queda como está.'); return null; }
+  return elegida;
+}
+const MAX_FOTOS_EXTRA = 6;
+function guardarExtras(a) { if (window.guardarFotosExtraArticuloEnNube) window.guardarFotosExtraArticuloEnNube(a.id, a.fotosExtra || []); }
+async function ponerFotoArticulo(a, origen) {
+  const elegida = await procesarFotoNueva(origen);
+  if (!elegida) return false;
   a.foto = elegida;
   if (window.guardarFotoArticuloTallerEnNube) window.guardarFotoArticuloTallerEnNube(a.id, a.foto);
   return true;
@@ -9628,8 +9650,26 @@ function tpvVerFoto(a, opc) {
   opc = opc || {};
   const viejo = document.getElementById('tpvVisor'); if (viejo) viejo.remove();
   let zoom = 1;
-  const img = el('img', { src: a.foto, alt: a.nombre, draggable: 'false' });
+  const fotos = [a.foto].concat(a.fotosExtra || []).filter(Boolean);
+  let idx = Math.min(Math.max(0, opc.inicio || 0), Math.max(0, fotos.length - 1));
+  const img = el('img', { src: fotos[idx] || a.foto, alt: a.nombre, draggable: 'false' });
   const zona = el('div', { class: 'tpv-visor-zona' }, img);
+  let tira = null;
+  const irFoto = (k) => {
+    if (fotos.length < 2) return;
+    idx = (k + fotos.length) % fotos.length; img.src = fotos[idx];
+    zoom = 1; img.style.width = '100%'; img.style.maxHeight = '100%'; zona.classList.remove('ampliada'); zona.scrollLeft = 0; zona.scrollTop = 0; if (nivel) nivel.textContent = '100%';
+    if (tira) Array.from(tira.children).forEach((b, j) => b.classList.toggle('on', j === idx));
+  };
+  if (fotos.length > 1) {
+    zona.appendChild(el('button', { type: 'button', class: 'tpv-visor-flecha izq', 'aria-label': 'Foto anterior', onclick: (e) => { e.stopPropagation(); irFoto(idx - 1); } }, '‹'));
+    zona.appendChild(el('button', { type: 'button', class: 'tpv-visor-flecha der', 'aria-label': 'Foto siguiente', onclick: (e) => { e.stopPropagation(); irFoto(idx + 1); } }, '›'));
+    tira = el('div', { class: 'tpv-visor-tira' }, fotos.map((f, j) => el('button', { type: 'button', class: j === idx ? 'on' : '', 'aria-label': 'Foto ' + (j + 1), onclick: () => irFoto(j) }, el('img', { src: f, alt: '' }))));
+    // deslizar con el dedo (sin ampliar) para pasar de foto
+    let x0 = null;
+    zona.addEventListener('touchstart', (e) => { if (e.touches.length === 1 && zoom === 1) x0 = e.touches[0].clientX; }, { passive: true });
+    zona.addEventListener('touchend', (e) => { if (x0 === null) return; const dx = (e.changedTouches[0] || {}).clientX - x0; x0 = null; if (Math.abs(dx) > 50) irFoto(idx + (dx < 0 ? 1 : -1)); });
+  }
   const nivel = el('span', { class: 'tpv-visor-nivel' }, '100%');
   const aplicar = (z, cx, cy) => {
     const ant = zoom; zoom = Math.max(1, Math.min(5, z));
@@ -9642,7 +9682,7 @@ function tpvVerFoto(a, opc) {
     nivel.textContent = Math.round(zoom * 100) + '%';
   };
   const cerrar = () => { capa.remove(); document.removeEventListener('keydown', teclas); };
-  const teclas = (e) => { if (e.key === 'Escape') cerrar(); };
+  const teclas = (e) => { if (e.key === 'Escape') cerrar(); else if (e.key === 'ArrowRight') irFoto(idx + 1); else if (e.key === 'ArrowLeft') irFoto(idx - 1); };
   document.addEventListener('keydown', teclas);
   // Doble toque / doble clic: alterna 1x ↔ 2,5x en el punto tocado
   let ultimo = 0;
@@ -9662,6 +9702,7 @@ function tpvVerFoto(a, opc) {
   const caja = el('div', { class: 'tpv-visor', role: 'dialog', 'aria-label': 'Foto de ' + a.nombre },
     el('div', { class: 'tpv-visor-cab' }, el('b', {}, a.nombre), el('button', { type: 'button', class: 'tpv-visor-x', 'aria-label': 'Cerrar', onclick: cerrar }, '✕')),
     zona,
+    tira,
     el('div', { class: 'tpv-visor-pie' },
       el('button', { type: 'button', 'aria-label': 'Alejar', onclick: () => aplicar(zoom / 1.5) }, '−'),
       nivel,
@@ -10991,13 +11032,46 @@ function articuloCard(a) {
             try { if (await ponerFotoArticulo(a, a.foto)) render(); } catch (e) { alert('No se pudo procesar la foto.'); }
           } }, '✂️ Quitar fondo') : null,
           a.foto ? el('button', { class: 'btn btn-danger btn-sm', onclick: () => {
-            a.foto = null;
-            if (window.guardarFotoArticuloTallerEnNube) window.guardarFotoArticuloTallerEnNube(a.id, null);
-            render();
+            const ex = (a.fotosExtra || []).slice();
+            a.foto = ex.length ? ex.shift() : null; a.fotosExtra = ex;   // si hay más fotos, la siguiente pasa a ser la principal
+            if (window.guardarFotoArticuloTallerEnNube) window.guardarFotoArticuloTallerEnNube(a.id, a.foto);
+            guardarExtras(a); render();
           } }, 'Quitar foto') : null,
         );
       })(),
     ),
+    a.foto ? (() => {
+      const extras = a.fotosExtra || [];
+      const cuadros = 'background-color:#fff;background-image:linear-gradient(45deg,#e6e6e6 25%,transparent 25%,transparent 75%,#e6e6e6 75%),linear-gradient(45deg,#e6e6e6 25%,transparent 25%,transparent 75%,#e6e6e6 75%);background-size:12px 12px;background-position:0 0,6px 6px;';
+      const box = el('div', { style: 'margin-top:12px;' },
+        el('h4', { style: 'margin:0 0 4px;' }, '🖼️ Más fotos (' + extras.length + ' de ' + MAX_FOTOS_EXTRA + ')'),
+        el('div', { class: 'sub', style: 'margin-bottom:8px;' }, 'Otras vistas del artículo (detrás, de lado, detalle…). Salen al ampliar la foto en la caja y en la tienda online. «⭐» la convierte en la foto principal.'));
+      const tira = el('div', { class: 'im-galeria' });
+      extras.forEach((f, k) => {
+        tira.appendChild(el('div', { class: 'im-gal-item' },
+          el('button', { type: 'button', class: 'im-gal-foto', style: fotoEsTransparente(f) ? cuadros : '', title: 'Ver', onclick: () => tpvVerFoto(a, { inicio: k + 1 }) }, el('img', { src: f, alt: 'Foto ' + (k + 2) })),
+          el('div', { class: 'im-gal-acc' },
+            el('button', { type: 'button', title: 'Mover a la izquierda', disabled: k === 0 ? true : null, onclick: () => { const e2 = extras.slice(); [e2[k - 1], e2[k]] = [e2[k], e2[k - 1]]; a.fotosExtra = e2; guardarExtras(a); render(); } }, '◀'),
+            el('button', { type: 'button', title: 'Hacerla la foto principal', onclick: () => { const e2 = extras.slice(); const nueva = e2[k]; e2[k] = a.foto; a.foto = nueva; a.fotosExtra = e2; if (window.guardarFotoArticuloTallerEnNube) window.guardarFotoArticuloTallerEnNube(a.id, a.foto); guardarExtras(a); render(); } }, '⭐'),
+            el('button', { type: 'button', title: 'Mover a la derecha', disabled: k === extras.length - 1 ? true : null, onclick: () => { const e2 = extras.slice(); [e2[k + 1], e2[k]] = [e2[k], e2[k + 1]]; a.fotosExtra = e2; guardarExtras(a); render(); } }, '▶'),
+            el('button', { type: 'button', title: 'Borrar esta foto', class: 'peligro', onclick: () => { if (!confirm('¿Borrar esta foto?')) return; a.fotosExtra = extras.filter((_, j) => j !== k); guardarExtras(a); render(); } }, '🗑️'))));
+      });
+      box.appendChild(tira);
+      if (extras.length < MAX_FOTOS_EXTRA) {
+        const inp = el('input', { type: 'file', accept: 'image/*', multiple: true, style: 'display:none;' });
+        inp.addEventListener('change', async () => {
+          const files = Array.from(inp.files || []).slice(0, MAX_FOTOS_EXTRA - extras.length);
+          if (!files.length) return;
+          const nuevas = [];
+          for (const f of files) { try { const r = await procesarFotoNueva(f); if (r) nuevas.push(r); } catch (e) { alert('No se pudo procesar una de las fotos.'); } }
+          if (nuevas.length) { a.fotosExtra = (a.fotosExtra || []).concat(nuevas).slice(0, MAX_FOTOS_EXTRA); guardarExtras(a); render(); }
+          if ((inp.files || []).length > files.length) alert('Solo caben ' + MAX_FOTOS_EXTRA + ' fotos más por artículo; las demás no se han añadido.');
+        });
+        box.appendChild(el('div', { class: 'row', style: 'gap:8px;margin-top:8px;' }, inp,
+          el('button', { class: 'btn btn-gold btn-sm', type: 'button', onclick: () => inp.click() }, '+ Añadir más fotos')));
+      }
+      return box;
+    })() : null,
     el('div', { class: 'field', style: 'margin-top:6px;' },
       el('label', {}, el('input', { type: 'checkbox', style: 'width:auto;margin-right:6px;', checked: a.esCordaje ? 'checked' : null,
         onchange: e => { a.esCordaje = e.target.checked; if (a.esCordaje && !a.tipo) a.tipo = 'Cordaje'; render(); } }),
@@ -14096,6 +14170,7 @@ function renderTiendaOnline() {
         a.foto ? (() => { const im = el('img', { src: a.foto, alt: a.nombre, loading: 'lazy' }); if (oscuro && typeof tdoRecortarFondo === 'function') tdoRecortarFondo(a.foto, a.id + ':' + a.foto.length).then(u => { im.src = u; }); return im; })() : el('span', {}, iconoTiendaTipo(a.tipo)),
         sinStock ? el('i', { class: 'tdo-badge agotado' }, 'Agotado') : (stock <= 3 && !a.esCordaje ? el('i', { class: 'tdo-badge ultimas' }, '¡Últimas ' + stock + '!') : null),
         carritoTienda[a.id] ? el('i', { class: 'tdo-cant' }, String(carritoTienda[a.id])) : null,
+        (a.fotosExtra || []).length ? el('i', { class: 'tdo-nfotos' }, '📷 ' + (1 + a.fotosExtra.length)) : null,
         a.foto ? (() => { const lb = el('button', { type: 'button', class: 'tdo-lupa', 'aria-label': 'Ver la foto de ' + a.nombre, onclick: (e) => { e.stopPropagation(); verFoto(); } }); lb.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4.6-4.6M10.5 7.5v6M7.5 10.5h6"/></svg>'; return lb; })() : null,
       );
       let accion;
@@ -17233,6 +17308,8 @@ function estadoCompletoParaNube() {
     tallerParaNube.articulos.forEach(a => {
       a.tieneFoto = !!a.foto;
       a.foto = null;
+      a.nFotosExtra = (a.fotosExtra || []).length;
+      delete a.fotosExtra;
     });
   }
   const datos = {
@@ -17264,6 +17341,7 @@ function guardarFotosTallerEnNube(pedidoId, fotoAntes, fotoDespues) {
 let tarjetaVisitaCache = null;
 let logoTallerCache = null;
 let fotosArticulosCache = {};
+let fotosExtraCache = {};
 let fotosPedidosCache = {};
 function cargarFotosTallerDeNube() {
   if (!firebaseDisponible) return Promise.resolve();
@@ -17305,6 +17383,10 @@ function cargarFotosTallerDeNube() {
           fotosArticulosCache[a.id] = mapa[a.id].fotoArticulo || null;
           a.foto = fotosArticulosCache[a.id];
         }
+        if (mapa[a.id + '__extra'] && Array.isArray(mapa[a.id + '__extra'].fotos)) {
+          fotosExtraCache[a.id] = mapa[a.id + '__extra'].fotos.slice();
+          a.fotosExtra = fotosExtraCache[a.id].slice();
+        }
       });
     }
   }).catch(err => { console.warn('No se pudieron cargar las fotos del taller:', err); });
@@ -17337,6 +17419,16 @@ window.guardarFotosTallerEnNube = guardarFotosTallerEnNube;
 window.guardarTarjetaVisitaTallerEnNube = guardarTarjetaVisitaTallerEnNube;
 window.guardarLogoTallerEnNube = guardarLogoTallerEnNube;
 window.guardarFotoArticuloTallerEnNube = guardarFotoArticuloTallerEnNube;
+// Fotos extra de un artículo: un documento aparte (id__extra) con la lista
+function guardarFotosExtraArticuloEnNube(articuloId, fotos) {
+  fotosExtraCache[articuloId] = (fotos || []).slice();
+  if (!firebaseDisponible || !sincronizacionInicialLista) return;
+  coleccionFotosTaller().doc(articuloId + '__extra').set({ fotos: (fotos || []).slice() }).catch(err => {
+    console.warn('Error guardando las fotos del artículo en la nube:', err);
+    marcarEstadoNube('⚠️ No se pudieron guardar las fotos del artículo: ' + (err && err.message ? err.message : 'error desconocido'));
+  });
+}
+window.guardarFotosExtraArticuloEnNube = guardarFotosExtraArticuloEnNube;
 function coleccionRecibos() {
   return docPrincipal().collection('recibos');
 }
@@ -17416,7 +17508,7 @@ function estadoPublicoParaNube() {
     })),
     clientes: (t.clientes || []).map(c => ({ id: c.id, nombre: c.nombre })),
     articulos: (t.articulos || []).map(a => {
-      const o = Object.assign({}, a, { foto: null, tieneFoto: !!a.foto });
+      const o = Object.assign({}, a, { foto: null, tieneFoto: !!a.foto, nFotosExtra: (a.fotosExtra || []).length }); delete o.fotosExtra;
       Object.keys(o).forEach(k => { if (/coste|costo|compra|proveedor|margen/i.test(k)) delete o[k]; });
       return o;
     }),
@@ -17964,7 +18056,7 @@ function aplicarDatosDeNube(dataOriginal) {
   if (tarjetaVisitaCache && TallerApp.getState().config) TallerApp.getState().config.tarjetaVisitaFoto = tarjetaVisitaCache;
   if (logoTallerCache && TallerApp.getState().config) TallerApp.getState().config.logoTaller = logoTallerCache;
   if (Array.isArray(TallerApp.getState().articulos)) {
-    TallerApp.getState().articulos.forEach(a => { if (fotosArticulosCache[a.id] !== undefined) a.foto = fotosArticulosCache[a.id]; });
+    TallerApp.getState().articulos.forEach(a => { if (fotosArticulosCache[a.id] !== undefined) a.foto = fotosArticulosCache[a.id]; if (fotosExtraCache[a.id]) a.fotosExtra = fotosExtraCache[a.id].slice(); });
   }
   if (Array.isArray(TallerApp.getState().pedidos)) {
     TallerApp.getState().pedidos.forEach(p => {

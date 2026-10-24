@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261024-colores">
+<meta name="build-id" content="v20261024-coloreseditar">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -97,6 +97,9 @@ tr.im-grupo-fila input[type=checkbox]{width:22px !important;height:22px;min-heig
 tr.im-grupo-fila td{background:#F3F6FB;border-top:2px solid #DCE3EE;}
 tr.im-hijo td.c-nom{padding-left:22px;}
 @media (max-width:640px){ body.im-taller table.im-tabla-art tr.im-grupo-fila{display:block;background:#F3F6FB;} body.im-taller table.im-tabla-art tr.im-grupo-fila td{background:none;border:0;} body.im-taller table.im-tabla-art tr.im-hijo{margin-left:14px;border-left:4px solid #DCE3EE;} }
+.im-color-fila{padding-bottom:6px;border-bottom:1px solid #DCE3EE;}
+.im-color-fila.inactivo{opacity:.55;}
+.im-color-fila.actual input{border-color:#0B2D5B;}
 .im-art-nom{display:flex;align-items:center;gap:10px;}
 .im-art-mini{flex:none;width:44px;height:44px;border-radius:10px;border:1px solid #DCE3EE;background:#fff;padding:0;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;cursor:zoom-in;font-size:20px;}
 .im-art-mini img{width:100%;height:100%;object-fit:contain;display:block;}
@@ -9342,7 +9345,7 @@ function tpvIcono(a) {
   if (t.includes('pulsera') || t.includes('collar')) return '📿';
   return '🛍️';
 }
-function tpvArticulos() { return state.articulos.filter(a => a.ventaTienda); }
+function tpvArticulos() { return state.articulos.filter(a => a.ventaTienda && !a.colorInactivo); }
 function tpvLineas() {
   return tpvTicket.map(l => { const a = state.articulos.find(x => x.id === l.articuloId); return a ? { a, cantidad: l.cantidad, precio: a.precio || 0, importe: (a.precio || 0) * l.cantidad } : null; }).filter(Boolean);
 }
@@ -10654,7 +10657,7 @@ function construirTablaArticulos(lista) {
       el('td', { class: 'c-nom' }, el('div', { class: 'im-art-nom' },
         a.foto ? el('button', { type: 'button', class: 'im-art-mini' + (fotoEsTransparente(a.foto) ? ' transp' : ''), title: 'Ver la foto', 'aria-label': 'Ver la foto de ' + a.nombre, onclick: (e) => { e.stopPropagation(); tpvVerFoto(a, {}); } }, el('img', { src: a.foto, alt: '', loading: 'lazy' }))
           : el('span', { class: 'im-art-mini vacia', title: 'Sin foto' }, a.esCordaje ? '🧵' : '📷'),
-        el('span', {}, (esHijo ? '🎨 ' + (a.color || a.nombre) : a.nombre) + (a.ventaOnline ? ' 🛒' : '') + (a.ventaTienda ? ' 🏪' : '')))),
+        el('span', {}, (esHijo ? '🎨 ' + (a.color || a.nombre) : a.nombre) + (a.colorInactivo ? ' ⏸️ sin vender' : (a.ventaOnline ? ' 🛒' : '') + (a.ventaTienda ? ' 🏪' : ''))))),
       el('td', { class: 'c-coste', 'data-et': 'Coste (€)' }, costeCelda),
       el('td', { class: 'c-venta', 'data-et': 'Venta (€)' }, ventaCelda),
       el('td', { class: 'c-stock', 'data-et': 'Stock (' + (a.unidad || 'unidades') + ')' }, el('div', { class: 'row', style: 'align-items:center;gap:4px;flex-wrap:nowrap;' }, stockCelda, el('span', { class: 'sub c-unidad' }, a.unidad || 'unidades'))),
@@ -10943,11 +10946,32 @@ function articuloCard(a) {
         box.appendChild(el('div', { class: 'sub', style: 'margin-bottom:6px;' }, '¿Tienes este mismo artículo en otros colores? Añádelos aquí: cada color tendrá su foto y su stock, y en la caja y la tienda online saldrá una sola vez.'));
         box.appendChild(el('button', { class: 'btn btn-ghost btn-sm', onclick: () => anadirColorA(a) }, '+ Añadir otro color'));
       } else {
-        box.appendChild(el('div', { class: 'row', style: 'gap:6px;flex-wrap:wrap;margin-bottom:8px;' }, her.map(h => el('button', { class: 'btn btn-sm ' + (h.id === a.id ? 'btn-primary' : 'btn-ghost'), onclick: () => { articuloAbiertoId = h.id; render(); } },
-          el('span', { style: 'display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:6px;vertical-align:-1px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.2);background:' + (colorCss(h.color) || '#ccc') }), (h.color || '?') + ' · ' + (h.stock || 0)))));
-        box.appendChild(el('div', { class: 'row', style: 'gap:6px;flex-wrap:wrap;' },
+        box.appendChild(el('div', { class: 'sub', style: 'margin-bottom:8px;' }, 'Cambia el nombre de un color, deja de venderlo (se queda guardado con su stock), quítalo del grupo o bórralo. Pulsa «Abrir» para ver su ficha (foto, precio y stock).'));
+        her.forEach(h => {
+          const inp = el('input', { type: 'text', value: h.color || '', 'aria-label': 'Nombre del color', style: 'flex:1;min-width:90px;' });
+          inp.addEventListener('change', () => { const v = inp.value.trim(); if (!v) { inp.value = h.color || ''; return; } if (her.some(x => x !== h && (x.color || '').toLowerCase() === v.toLowerCase())) { alert('Ya hay un color «' + v + '».'); inp.value = h.color || ''; return; } h.color = v; sincronizarNombresGrupo(h.grupoId, h.grupoNombre); render(); });
+          box.appendChild(el('div', { class: 'row im-color-fila' + (h.colorInactivo ? ' inactivo' : '') + (h.id === a.id ? ' actual' : ''), style: 'gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px;' },
+            el('span', { style: 'flex:none;display:inline-block;width:18px;height:18px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.2);background:' + (colorCss(h.color) || '#ccc') }),
+            inp,
+            el('span', { class: 'sub', style: 'flex:none;min-width:70px;' }, (h.stock || 0) + ' ' + (h.unidad || 'uds.') + (h.colorInactivo ? ' · sin vender' : '')),
+            h.id === a.id ? el('span', { class: 'sub', style: 'flex:none;font-weight:700;' }, '(abierto)') : el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { articuloAbiertoId = h.id; render(); } }, 'Abrir'),
+            el('button', { class: 'btn btn-ghost btn-sm', title: h.colorInactivo ? 'Volver a venderlo en la caja y la tienda online' : 'No sale en la caja ni en la tienda online, pero se guarda con su stock',
+              onclick: () => { if (!h.colorInactivo && !confirm('¿Dejar de vender el color «' + h.color + '»? No saldrá en la caja ni en la tienda online. Lo puedes volver a activar cuando quieras.')) return; h.colorInactivo = !h.colorInactivo; render(); } }, h.colorInactivo ? '▶️ Volver a vender' : '⏸️ No vender'),
+            el('button', { class: 'btn btn-ghost btn-sm', title: 'Pasa a ser un artículo independiente', onclick: () => {
+              if (!confirm('¿Quitar «' + h.color + '» de este grupo? Seguirá existiendo como artículo suelto con su foto y su stock.')) return;
+              const gid = h.grupoId; delete h.grupoId; delete h.grupoNombre; delete h.color; delete h.colorInactivo;
+              const quedan = state.articulos.filter(x => x.grupoId === gid); if (quedan.length === 1) { delete quedan[0].grupoId; delete quedan[0].grupoNombre; delete quedan[0].color; delete quedan[0].colorInactivo; }
+              render(); } }, 'Quitar del grupo'),
+            el('button', { class: 'btn btn-danger btn-sm', onclick: () => {
+              if (!confirm('¿Borrar el color «' + h.color + '»' + ((h.stock || 0) > 0 ? ' (tiene ' + h.stock + ' en stock)' : '') + '? Se elimina su ficha, foto y stock. No se puede deshacer.')) return;
+              const gid = h.grupoId; removeArticulo(h.id); if (window.guardarFotoArticuloTallerEnNube) window.guardarFotoArticuloTallerEnNube(h.id, null);
+              const quedan = state.articulos.filter(x => x.grupoId === gid); if (quedan.length === 1) { delete quedan[0].grupoId; delete quedan[0].grupoNombre; delete quedan[0].color; delete quedan[0].colorInactivo; }
+              if (articuloAbiertoId === h.id) articuloAbiertoId = quedan.length ? quedan[0].id : null;
+              render(); } }, '🗑️')));
+        });
+        box.appendChild(el('div', { class: 'row', style: 'gap:6px;flex-wrap:wrap;margin-top:4px;' },
           el('button', { class: 'btn btn-ghost btn-sm', onclick: () => anadirColorA(a) }, '+ Añadir color'),
-          el('button', { class: 'btn btn-ghost btn-sm', onclick: () => separarColores(a.grupoId) }, 'Separar colores')));
+          el('button', { class: 'btn btn-ghost btn-sm', onclick: () => separarColores(a.grupoId) }, 'Separar todos los colores')));
       }
       return box;
     })(),
@@ -13976,7 +14000,7 @@ function renderTiendaOnline() {
   const enlaceWa = (texto) => 'https://wa.me/' + tel + '?text=' + encodeURIComponent(texto);
   // Los cordajes no se venden en la tienda online (son para encordar en el taller)
   const esCordajeTienda = (a) => !!a.esCordaje || /cordaje/i.test(String(a.tipo || ''));
-  const articulos = (taller.articulos || []).filter(a => a.ventaOnline && !esCordajeTienda(a));
+  const articulos = (taller.articulos || []).filter(a => a.ventaOnline && !esCordajeTienda(a) && !a.colorInactivo);
   // Tienda en oscuro (con ?claro=1 se ve la versión clara)
   const oscuro = (() => { try { return new URLSearchParams(location.search).get('claro') !== '1'; } catch (e) { return true; } })();
   root.classList.toggle('ap-oscuro', oscuro); document.body.classList.toggle('tienda-oscura', oscuro);

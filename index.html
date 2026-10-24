@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261024-sinfondo">
+<meta name="build-id" content="v20261024-miniaturas">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -63,6 +63,13 @@ P.getItem=function(x){return g.call(this,k(this,x));};P.setItem=function(x,v){re
   #introClubs .ic-logos.tres .ic-nombre{letter-spacing:.18em;font-size:11px;}
   #introClubs.ic-principal .ic-titulo h1{font-size:clamp(24px,8vw,40px);padding:0 10px;}}
 @media (prefers-reduced-motion:reduce){#introClubs *{animation-duration:.01s !important;transition-duration:.01s !important;}}
+</style>
+<style>
+.im-art-nom{display:flex;align-items:center;gap:10px;}
+.im-art-mini{flex:none;width:44px;height:44px;border-radius:10px;border:1px solid #DCE3EE;background:#fff;padding:0;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;cursor:zoom-in;font-size:20px;}
+.im-art-mini img{width:100%;height:100%;object-fit:contain;display:block;}
+.im-art-mini.transp{background-color:#fff;background-image:linear-gradient(45deg,#eef0f3 25%,transparent 25%,transparent 75%,#eef0f3 75%),linear-gradient(45deg,#eef0f3 25%,transparent 25%,transparent 75%,#eef0f3 75%);background-size:10px 10px;background-position:0 0,5px 5px;}
+.im-art-mini.vacia{cursor:default;background:#F3F5F9;opacity:.7;}
 </style>
 <style>html.tienda-pre,html.tienda-pre body{background:#061C3B !important;}html.tienda-pre header.app-header,html.tienda-pre footer.hint,html.tienda-pre #introScreen,html.tienda-pre #shellMain>*:not(#tiendaOnlineScreen){display:none !important;}
 body.im-taller .im-raqueta .im-izq{grid-row:span 4;display:flex;flex-direction:column;align-items:center;gap:6px;}
@@ -1101,6 +1108,7 @@ body.im-taller .im-barra-pedido .im-otra{grid-column:1 / -1;background:none;bord
   body.im-taller table.im-tabla-art td{border:0;padding:0;}
   body.im-taller table.im-tabla-art td.c-sel{grid-row:1;grid-column:1;align-self:center;}
   body.im-taller table.im-tabla-art td.c-nom{grid-row:1;grid-column:2 / 4;font-weight:700;font-size:15px;align-self:center;}
+  body.im-taller .im-art-mini{width:56px;height:56px;}
   body.im-taller table.im-tabla-art td.c-ed{grid-row:1;grid-column:4;text-align:right;}
   body.im-taller table.im-tabla-art td.c-cod{display:none;}
   body.im-taller table.im-tabla-art td[data-et]::before{content:attr(data-et);display:block;font-size:11.5px;color:var(--im-muted);margin-bottom:3px;}
@@ -10526,7 +10534,10 @@ function construirTablaArticulos(lista) {
     tbody.appendChild(el('tr', {},
       el('td', { class: 'c-sel' }, checkFila),
       el('td', { class: 'c-cod' }, a.codigo || '—'),
-      el('td', { class: 'c-nom' }, a.nombre + (a.ventaOnline ? ' 🛒' : '') + (a.ventaTienda ? ' 🏪' : '')),
+      el('td', { class: 'c-nom' }, el('div', { class: 'im-art-nom' },
+        a.foto ? el('button', { type: 'button', class: 'im-art-mini' + (fotoEsTransparente(a.foto) ? ' transp' : ''), title: 'Ver la foto', 'aria-label': 'Ver la foto de ' + a.nombre, onclick: (e) => { e.stopPropagation(); tpvVerFoto(a, {}); } }, el('img', { src: a.foto, alt: '', loading: 'lazy' }))
+          : el('span', { class: 'im-art-mini vacia', title: 'Sin foto' }, a.esCordaje ? '🧵' : '📷'),
+        el('span', {}, a.nombre + (a.ventaOnline ? ' 🛒' : '') + (a.ventaTienda ? ' 🏪' : '')))),
       el('td', { class: 'c-coste', 'data-et': 'Coste (€)' }, costeCelda),
       el('td', { class: 'c-venta', 'data-et': 'Venta (€)' }, ventaCelda),
       el('td', { class: 'c-stock', 'data-et': 'Stock (' + (a.unidad || 'unidades') + ')' }, el('div', { class: 'row', style: 'align-items:center;gap:4px;flex-wrap:nowrap;' }, stockCelda, el('span', { class: 'sub c-unidad' }, a.unidad || 'unidades'))),

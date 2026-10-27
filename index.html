@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261024-variasfotos">
+<meta name="build-id" content="v20261027-variosgrupos">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -7099,16 +7099,45 @@ function abrirGrupo(id) {
   render();
 }
 
-function jugadoresClubDisponibles() {
+function jugadoresClubDisponibles(g) {
   const roster = window.JugadoresGlobal ? window.JugadoresGlobal.list() : [];
   const usados = new Set();
-  state.config.grupos.forEach(g => g.alumnos.forEach(a => { if (a.jugadorId) usados.add(a.jugadorId); }));
+  (g ? [g] : state.config.grupos).forEach(x => x.alumnos.forEach(a => { if (a.jugadorId) usados.add(a.jugadorId); }));
   return roster.filter(j => !usados.has(j.id));
 }
-function addAlumno(g, nombre, jugadorId) {
+// Un mismo jugador puede estar en varios grupos: cada grupo tiene su propia entrada (con su asistencia),
+// y la ficha común (documentos, matrícula, teléfono, datos médicos) se mantiene igual en todas.
+function clavePersona(a) { return a ? (a.jugadorId || a.personaId || null) : null; }
+function entradasPersona(a) {
+  const k = clavePersona(a); const out = [];
+  if (!k) return out;
+  state.config.grupos.forEach(g => g.alumnos.forEach(x => { if (x !== a && clavePersona(x) === k) out.push({ g: g, a: x }); }));
+  return out;
+}
+function gruposDePersona(a) { const k = clavePersona(a); return k ? state.config.grupos.filter(g => g.alumnos.some(x => clavePersona(x) === k)) : []; }
+function sincronizarFicha(a) {
+  entradasPersona(a).forEach(({ a: x }) => {
+    x.docs = Object.assign({}, a.docs || {});
+    x.telefonoEmergencia = a.telefonoEmergencia || '';
+    if (sensibles[a.id]) sensibles[x.id] = Object.assign({}, sensibles[a.id]); else delete sensibles[x.id];
+  });
+}
+function addAlumno(g, nombre, jugadorId, personaId) {
   const a = { id: uid('alu'), nombre: nombre, jugadorId: jugadorId || null, docs: {}, telefonoEmergencia: '', historialGrupos: [] };
+  if (!jugadorId && personaId) a.personaId = personaId;
+  const previa = entradasPersona(a)[0];
+  if (previa) {
+    a.docs = Object.assign({}, previa.a.docs || {});
+    a.telefonoEmergencia = previa.a.telefonoEmergencia || '';
+    if (sensibles[previa.a.id]) { sensibles[a.id] = Object.assign({}, sensibles[previa.a.id]); guardarSensibles(); }
+  }
   g.alumnos.push(a);
   return a;
+}
+function anadirAlumnoAOtroGrupo(a, destino) {
+  if (!a.jugadorId && !a.personaId) a.personaId = a.id;
+  if (gruposDePersona(a).indexOf(destino) >= 0) return null;
+  return addAlumno(destino, a.nombre, a.jugadorId, a.personaId);
 }
 function quitarAlumno(g, alumnoId) { g.alumnos = g.alumnos.filter(a => a.id !== alumnoId); delete sensibles[alumnoId]; guardarSensibles(); }
 function moverAlumno(alumnoId, desdeId, haciaId) {
@@ -7117,6 +7146,8 @@ function moverAlumno(alumnoId, desdeId, haciaId) {
   if (!desde || !hacia || desde === hacia) return false;
   const i = desde.alumnos.findIndex(a => a.id === alumnoId);
   if (i < 0) return false;
+  const k = clavePersona(desde.alumnos[i]);
+  if (k && hacia.alumnos.some(x => clavePersona(x) === k)) return false;
   const al = desde.alumnos.splice(i, 1)[0];
   if (!Array.isArray(al.historialGrupos)) al.historialGrupos = [];
   al.historialGrupos.push({ fecha: Date.now(), desde: desde.nombre, hacia: hacia.nombre });
@@ -7288,12 +7319,13 @@ function viewGrupoAlumnos(g) {
 
   const add = el('div', { class: 'panel' },
     el('h2', {}, 'Alumnos del grupo'),
-    el('div', { class: 'sub' }, 'Añade a los jugadores del club o escribe un nombre a mano. Un jugador solo puede estar en un grupo a la vez: para cambiarlo de grupo usa "Mover" en su ficha.'),
+    el('div', { class: 'sub' }, 'Añade a los jugadores del club o escribe un nombre a mano. Un jugador puede estar en varios grupos a la vez: su ficha (documentos, matrícula, teléfono) es la misma en todos y la asistencia se lleva en cada grupo.'),
   );
-  const disponibles = jugadoresClubDisponibles();
+  const disponibles = jugadoresClubDisponibles(g);
+  const enGrupos = (jid) => state.config.grupos.filter(x => x !== g && x.alumnos.some(a => a.jugadorId === jid)).map(x => x.nombre);
   const selJug = el('select', { style: 'flex:1;min-width:200px;' },
-    [el('option', { value: '' }, disponibles.length ? '— Elegir jugador del club —' : '(no quedan jugadores del club sin grupo)')]
-      .concat(disponibles.map(j => el('option', { value: j.id }, nombreCompletoPlan(j)))));
+    [el('option', { value: '' }, disponibles.length ? '— Elegir jugador del club —' : '(todos los jugadores del club ya están en este grupo)')]
+      .concat(disponibles.map(j => { const o = enGrupos(j.id); return el('option', { value: j.id }, nombreCompletoPlan(j) + (o.length ? '  (también en ' + o.join(', ') + ')' : '')); })));
   add.appendChild(el('div', { class: 'row', style: 'margin:8px 0;' },
     selJug,
     el('button', { class: 'btn btn-gold btn-sm', onclick: () => {
@@ -7367,6 +7399,7 @@ function cardAlumno(g, a) {
       (() => { const n = CONFIRMACIONES_ALUMNO.filter(d => a.docs[d.key]).length; return el('span', { class: n === CONFIRMACIONES_ALUMNO.length ? 'chip chip-gold' : 'chip chip-muted' }, `🎫 Matrícula ${n}/${CONFIRMACIONES_ALUMNO.length}`); })(),
       el('span', { class: 'chip chip-muted' }, res.ses ? `Asistencia ${res.pres}/${res.ses} (${res.pct}%)` : 'Sin asistencia registrada'),
       a.telefonoEmergencia ? el('span', { class: 'chip chip-muted' }, '☎ ' + a.telefonoEmergencia) : el('span', { class: 'chip chip-muted' }, '⚠️ Sin teléfono de emergencia'),
+      (() => { const o = entradasPersona(a).map(e => e.g.nombre); return o.length ? el('span', { class: 'chip chip-muted pl-otros-grupos' }, '👥 También en: ' + o.join(', ')) : null; })(),
     ),
   );
   if (!abierto) return card;
@@ -7381,7 +7414,7 @@ function cardAlumno(g, a) {
       : el('button', { class: 'btn btn-ghost btn-sm', onclick: () => descargarDocumento(d.key, a, g) }, '⬇ Descargar');
     card.appendChild(el('div', { class: 'row', style: 'align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;' },
       el('label', { style: 'display:flex;align-items:center;gap:8px;text-transform:none;flex:1;min-width:220px;cursor:pointer;' },
-        el('input', { type: 'checkbox', style: 'width:auto;', checked: hecho ? 'checked' : null, onchange: (e) => { a.docs[d.key] = e.target.checked ? Date.now() : null; render(); } }),
+        el('input', { type: 'checkbox', style: 'width:auto;', checked: hecho ? 'checked' : null, onchange: (e) => { a.docs[d.key] = e.target.checked ? Date.now() : null; sincronizarFicha(a); render(); } }),
         el('span', {}, d.titulo + (hecho ? '  ✓ ' + fmtFechaMs(hecho) : ''))),
       descarga,
     ));
@@ -7392,7 +7425,7 @@ function cardAlumno(g, a) {
     const hecho = a.docs[d.key];
     card.appendChild(el('div', { class: 'row', style: 'align-items:center;gap:8px;margin-bottom:6px;' },
       el('label', { style: 'display:flex;align-items:center;gap:8px;text-transform:none;cursor:pointer;' },
-        el('input', { type: 'checkbox', style: 'width:auto;', checked: hecho ? 'checked' : null, onchange: (e) => { a.docs[d.key] = e.target.checked ? Date.now() : null; render(); } }),
+        el('input', { type: 'checkbox', style: 'width:auto;', checked: hecho ? 'checked' : null, onchange: (e) => { a.docs[d.key] = e.target.checked ? Date.now() : null; sincronizarFicha(a); render(); } }),
         el('span', {}, d.titulo + (hecho ? '  ✓ ' + fmtFechaMs(hecho) : '')))));
   });
   card.appendChild(el('div', { class: 'row', style: 'align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0 6px;' },
@@ -7403,10 +7436,26 @@ function cardAlumno(g, a) {
     el('span', { style: 'flex:1;min-width:220px;' }, '🩺 Datos médicos relevantes: ' + (tieneMed ? 'anotados' : 'sin datos')),
     el('button', { class: 'btn btn-ghost btn-sm', onclick: () => abrirModalMedicos(a) }, tieneMed ? 'Ver / editar' : 'Añadir')));
 
-  const otros = state.config.grupos.filter(x => x.id !== g.id);
+  const susGrupos = gruposDePersona(a);
+  const otros = state.config.grupos.filter(x => x.id !== g.id && susGrupos.indexOf(x) < 0);
+  card.appendChild(el('h4', { style: 'margin:14px 0 6px;' }, '👥 Grupos'));
+  card.appendChild(el('div', { class: 'sub pl-grupos-alumno', style: 'margin-bottom:6px;' },
+    'Está en: ' + (susGrupos.length ? susGrupos : [g]).map(x => x.nombre).join(', ')));
+  if (otros.length) {
+    const selOtro = el('select', { class: 'pl-sel-otro', style: 'flex:1;min-width:180px;' }, otros.map(x => el('option', { value: x.id }, x.nombre)));
+    card.appendChild(el('div', { class: 'row', style: 'gap:8px;margin-bottom:6px;' },
+      selOtro,
+      el('button', { class: 'btn btn-gold btn-sm pl-btn-otro', onclick: () => {
+        const destino = state.config.grupos.find(x => x.id === selOtro.value);
+        if (!destino) return;
+        if (anadirAlumnoAOtroGrupo(a, destino)) render();
+      } }, '➕ Añadir también a este grupo')));
+  } else if (state.config.grupos.length > 1) {
+    card.appendChild(el('div', { class: 'sub', style: 'margin-bottom:6px;' }, 'Ya está en todos los grupos.'));
+  }
   if (otros.length) {
     const selMover = el('select', { style: 'flex:1;min-width:180px;' }, otros.map(x => el('option', { value: x.id }, x.nombre)));
-    card.appendChild(el('h4', { style: 'margin:14px 0 6px;' }, '🔀 Cambiar de grupo'));
+    card.appendChild(el('h4', { style: 'margin:14px 0 6px;' }, '🔀 Cambiar de grupo (sale de este)'));
     card.appendChild(el('div', { class: 'row', style: 'gap:8px;' },
       selMover,
       el('button', { class: 'btn btn-gold btn-sm', onclick: () => {
@@ -7425,7 +7474,8 @@ function cardAlumno(g, a) {
   }
   card.appendChild(el('div', { class: 'toolbar', style: 'margin-top:12px;' },
     el('button', { class: 'btn btn-danger btn-sm', onclick: () => {
-      if (confirm('¿Quitar a ' + a.nombre + ' de este grupo? Se borrarán sus documentos y datos de la ficha.')) { quitarAlumno(g, a.id); alumnoAbiertoId = null; render(); }
+      const sigue = entradasPersona(a).map(e => e.g.nombre);
+      if (confirm('¿Quitar a ' + a.nombre + ' de este grupo? ' + (sigue.length ? 'Seguirá en: ' + sigue.join(', ') + ' con su ficha.' : 'Se borrarán sus documentos y datos de la ficha.'))) { quitarAlumno(g, a.id); alumnoAbiertoId = null; render(); }
     } }, 'Quitar del grupo')));
   return card;
 }
@@ -7450,7 +7500,7 @@ function abrirModalTelefono(a) {
     el('div', { class: 'sub', style: 'margin-bottom:10px;' }, a.nombre),
     field('Número', input),
     el('div', { class: 'row', style: 'margin-top:16px;' },
-      el('button', { class: 'btn btn-primary', onclick: () => { a.telefonoEmergencia = input.value.trim(); document.getElementById('torneoModalRoot').innerHTML = ''; render(); } }, 'Guardar'),
+      el('button', { class: 'btn btn-primary', onclick: () => { a.telefonoEmergencia = input.value.trim(); sincronizarFicha(a); document.getElementById('torneoModalRoot').innerHTML = ''; render(); } }, 'Guardar'),
       el('button', { class: 'btn btn-ghost', onclick: () => { document.getElementById('torneoModalRoot').innerHTML = ''; } }, 'Cancelar')),
   ]);
   if (root) input.focus();
@@ -7466,6 +7516,7 @@ function abrirModalMedicos(a) {
       el('button', { class: 'btn btn-primary', onclick: () => {
         const t = area.value.trim();
         if (t) sensibles[a.id] = { datosMedicos: t }; else delete sensibles[a.id];
+        sincronizarFicha(a);
         guardarSensibles();
         document.getElementById('torneoModalRoot').innerHTML = '';
         render();
@@ -15230,6 +15281,7 @@ const AYUDA_INDICE = [
   { pregunta: 'Pasar lista (asistencia diaria) de un grupo', ruta: 'Menú → Planificación Anual → Grupos de trabajo → (el grupo) → Alumnos y asistencia', palabras: 'asistencia lista alumnos presentes faltas dia' },
   { pregunta: 'Documentos que firman los alumnos (derechos de imagen, Juegos Escolares, permiso de salida) y teléfono de emergencia', ruta: 'Menú → Planificación Anual → Grupos de trabajo → (el grupo) → Alumnos y asistencia → Ficha del alumno', palabras: 'documentos firmar derechos imagen juegos escolares permiso salida emergencia medicos alumno ficha' },
   { pregunta: 'Cambiar a un alumno de grupo', ruta: 'Menú → Planificación Anual → Grupos de trabajo → (el grupo) → Alumnos y asistencia → Ficha del alumno → Cambiar de grupo', palabras: 'mover cambiar alumno grupo pasar' },
+  { pregunta: 'Poner a un jugador en varios grupos a la vez', ruta: 'Menú → Planificación Anual → Grupos de trabajo → (el grupo) → Alumnos y asistencia → Añadir jugador (aunque ya esté en otro grupo) · o en su Ficha → Grupos → Añadir también a este grupo', palabras: 'varios grupos dos grupos alumno jugador también añadir otro grupo' },
   { pregunta: 'Generar el macrociclo o microciclo de un grupo', ruta: 'Menú → Planificación Anual → Grupos de trabajo → (el grupo) → Macrociclo / Microciclo tipo', palabras: 'macrociclo microciclo temporada planificar entrenamiento competiciones evaluacion entreno individual' },
   { pregunta: 'Ver el reglamento oficial de bádminton', ruta: 'Menú → Planificación Anual → Reglamento', palabras: 'reglamento normas reglas puntuacion saque' },
   { pregunta: 'Configurar quién puede entrar en la app y qué puede ver', ruta: 'Icono ⚙️ (arriba a la derecha de la cabecera) → Control de acceso', palabras: 'acceso contraseña permiso usuario rol administrador engranaje control de acceso' },

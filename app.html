@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261027-webfotos">
+<meta name="build-id" content="v20261027-fichausuario">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -16501,7 +16501,7 @@ function renderPanelClub(root, gruposClub, onclickClub) {
   }
   // Personal
   if (esAdmin() && !esOtroClub()) {
-    const nTrab = (accessControl.usuarios || []).filter(u => u.rol === 'trabajador').length;
+    const nTrab = (accessControl.usuarios || []).filter(fichaUsuario).length;
     const pPers = dgPieza('', ir(() => goToClubGestion('horario')),
       `<span class="dg-fl">${dgI('flecha')}</span><div class="dg-et">${dgI('reloj')}Personal</div><div class="dg-pers"><div class="dg-sub">Comprobando fichajes…</div></div>`);
     bento.appendChild(pPers);
@@ -16562,11 +16562,12 @@ function renderPanelClub(root, gruposClub, onclickClub) {
   if (tienePermiso('jugadores') && !esSoloLectura()) accion('altaJugador', 'Nuevo jugador', () => { goToClubGestion('jugadores'); setTimeout(() => { const d = Array.from(document.querySelectorAll('#clubGestionScreen details')).find(x => /Nuevo jugador/.test(x.textContent)); if (d) { d.open = true; d.scrollIntoView({ block: 'start' }); const i = d.querySelector('input'); if (i) i.focus(); } }, 60); });
   if (tienePermiso('pagos') && !esSoloLectura()) accion('gasto', 'Apuntar gasto', () => { goToClubGestion('pagos'); if (PagosApp.irATab) PagosApp.irATab('contabilidad'); });
   if (tienePermiso('torneo')) accion('copa', 'Torneos', () => showSection('torneo'));
+  if (!esTrabajador() && !esAdmin() && yoFicho()) accion('reloj', 'Fichar', () => showSection('fichar'));
   if (acc.children.length) bento.appendChild(acc);
   // Todas las secciones (lo que había antes, para no perder nada)
-  const iconoDe = (t) => /Torneo/i.test(t) ? 'copa' : /Planific/i.test(t) ? 'calendario' : /Gesti/i.test(t) ? 'edificio' : /Trabajador/i.test(t) ? 'maletin' : /N[oó]mina/i.test(t) ? 'documento' : /horario/i.test(t) ? 'reloj' : 'mas';
+  const iconoDe = (t) => /Torneo/i.test(t) ? 'copa' : /Planific/i.test(t) ? 'calendario' : /Gesti/i.test(t) ? 'edificio' : /Trabajador/i.test(t) ? 'maletin' : /N[oó]mina/i.test(t) ? 'documento' : /horario|Fichar/i.test(t) ? 'reloj' : 'mas';
   const lista = el('nav', { class: 'dg-lista', 'aria-label': 'Todas las secciones del club' }, el('div', { class: 'dg-et' }, 'Todas las secciones'));
-  gruposClub.filter(c => c.permiso ? tienePermiso(c.permiso) : (c.tab ? esAdmin() : (tienePermiso('club') || tienePermiso('jugadores') || tienePermiso('pagos')))).forEach(c => {
+  gruposClub.filter(c => c.siempre || c.permiso ? (c.siempre || tienePermiso(c.permiso)) : (c.tab ? esAdmin() : (tienePermiso('club') || tienePermiso('jugadores') || tienePermiso('pagos')))).forEach(c => {
     const b = el('button', { type: 'button', html: dgI(iconoDe(c.title), 'ic') + '<span><b>' + dgEsc(c.title) + '</b><small>' + dgEsc(String(c.desc || '').replace(/[\u{1F300}-\u{1FAFF}☀-➿]️?/gu, '')) + '</small></span>' + dgI('mas', 'ch') });
     b.addEventListener('click', ir(() => onclickClub(c))); lista.appendChild(b);
   });
@@ -16998,6 +16999,13 @@ function renderControlAcceso() {
         el('div', { class: 'acc-fila' }, field('Nombre' + (esYo ? ' (tú)' : ''), nombreInp)),
         zonaEmail,
         el('div', { class: 'acc-fila acc-dos' }, field(u.rol === 'admin' ? 'PIN (ya no se usa)' : 'PIN', pinInp), field('Rol', rolSel)),
+        (u.rol === 'usuario' || u.rol === 'lectura') ? el('label', { class: 'acc-ficha', style: 'display:flex;gap:8px;align-items:center;text-transform:none;margin:4px 0 8px;cursor:pointer;' },
+          el('input', { type: 'checkbox', style: 'width:auto;', checked: u.ficha ? 'checked' : null, onchange: (e) => {
+            u.ficha = e.target.checked; saveAccessControl();
+            if (sesionActual && sesionActual.id === u.id) { sesionActual.ficha = u.ficha; saveSesion(); }
+            if (u.ficha && typeof publicarHorariosTrabajadores === 'function') publicarHorariosTrabajadores();
+          } }),
+          el('span', {}, '⏱️ También ficha (entra en Control horario y Nóminas, y tiene el botón «Fichar» en su menú)')) : null,
         el('div', { style: 'text-align:right;' }, el('button', { class: 'btn btn-danger btn-sm', onclick: () => {
           if (!confirm('¿Eliminar a ' + u.nombre + '? Dejará de poder entrar en la app.')) return;
           accessControl.usuarios = accessControl.usuarios.filter(x => x.id !== u.id);
@@ -17098,7 +17106,7 @@ function renderHome() {
   function construirGrid(cards, onclickBase) {
     const grid = el('div', { class: 'home-grid' });
     cards.forEach(c => {
-      const visible = c.permiso ? tienePermiso(c.permiso) : (tienePermiso('club') || tienePermiso('jugadores') || tienePermiso('pagos'));
+      const visible = c.siempre || (c.permiso ? tienePermiso(c.permiso) : (tienePermiso('club') || tienePermiso('jugadores') || tienePermiso('pagos')));
       if (!visible) return;
       grid.appendChild(el('div', { class: 'home-card', onclick: () => onclickBase(c) },
         el('div', { class: 'icon' }, c.icon),
@@ -17112,6 +17120,7 @@ function renderHome() {
     { icon: '📅', title: 'Planificación Anual', desc: 'De la iniciación a la tecnificación: macrociclo, microciclo y evaluación.', sec: 'planificacion', permiso: 'planificacion' },
     { icon: '🏛️', title: 'Gestión de Club', desc: esAdmin() ? 'Datos del club, jugadores, y pagos y cuotas.' : ([tienePermiso('club') ? 'datos del club' : '', tienePermiso('jugadores') ? 'jugadores' : '', tienePermiso('pagos') ? 'pagos y cuotas' : ''].filter(Boolean).join(', ').replace(/^./, c => c.toUpperCase()) + '.'), sec: 'clubgestion', permiso: null },
   ];
+  if (!esAdmin() && !esTrabajador() && !esOtroClub() && yoFicho()) gruposClub.unshift({ icon: '⏱️', title: 'Fichar', desc: 'Entrada y salida con tu ubicación, tu semana y tus solicitudes.', sec: 'fichar', siempre: true });
   if (esAdmin() && !esOtroClub()) gruposClub.push({ icon: '👔', title: 'Trabajadores', desc: 'Fichas del personal (datos personales y de nómina) y su acceso para fichar.', sec: 'clubgestion', tab: 'trabajadores', permiso: null });
   if (esAdmin() && !esOtroClub()) gruposClub.push({ icon: '💶', title: 'Nóminas', desc: 'Nóminas por horas trabajadas, recibos en PDF y Excel para la gestoría.', sec: 'clubgestion', tab: 'nominas', permiso: null });
   if (esAdmin() && !esOtroClub()) gruposClub.push({ icon: '⏱️', title: 'Control horario', desc: 'Fichajes, solicitudes de ausencia, calendario, plantillas y festivos.' + (chPendientesSolicitudes ? ' 📨 ' + chPendientesSolicitudes + ' solicitud(es) pendiente(s).' : ''), sec: 'clubgestion', tab: 'horario', permiso: null });
@@ -18123,7 +18132,7 @@ function subirAccesoPublico() {
 // Horario de cada trabajador en su propio documento: así su móvil no necesita leer la configuración de todos.
 function publicarHorariosTrabajadores() {
   if (!firebaseDisponible || !chConfig || !esAdmin()) return;
-  accessControl.usuarios.filter(u => u.rol === 'trabajador').forEach(u => {
+  accessControl.usuarios.filter(fichaUsuario).forEach(u => {
     const pl = chPlantillaDe(u.id);
     const datos = {
       plantillas: pl ? [pl] : [], asignaciones: pl ? { [u.id]: pl.id } : {},
@@ -18331,6 +18340,14 @@ const OPCIONES_ROL = [
   { value: 'trabajador', label: 'Trabajador (solo fichar)' },
 ];
 function esTrabajador() { return rolActual() === 'trabajador'; }
+// Personas que fichan: los trabajadores (solo fichar) y los usuarios a los que se les activa «También ficha».
+function fichaUsuario(u) { return !!u && (u.rol === 'trabajador' || (u.ficha === true && u.rol !== 'admin')); }
+function yoFicho() {
+  if (!sesionActual) return false;
+  if (sesionActual.rol === 'trabajador') return true;
+  const u = (accessControl.usuarios || []).find(x => x.id === sesionActual.id);
+  return fichaUsuario(u) || (sesionActual.ficha === true && sesionActual.rol !== 'admin');
+}
 function coleccionFichajes() { return docPrincipal().collection('ch_fichajes'); }
 function chMesDe(ts) { const d = new Date(ts); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
 function chFechaDe(ts) { const d = new Date(ts); return chMesDe(ts) + '-' + String(d.getDate()).padStart(2, '0'); }
@@ -18827,7 +18844,7 @@ function chRenderPlantillasRefrescar(root) { root.innerHTML = ''; chRenderPlanti
 function chRenderAsignaciones(zona, estado) {
   zona.innerHTML = '';
   zona.appendChild(el('h2', {}, '👥 Horario de cada empleado'));
-  const trabajadores = accessControl.usuarios.filter(u => u.rol === 'trabajador');
+  const trabajadores = accessControl.usuarios.filter(fichaUsuario);
   if (!trabajadores.length) { zona.appendChild(el('div', { class: 'msg msg-info' }, 'No hay empleados todavía. Créalos en Gestión de Club → 👔 Trabajadores.')); return; }
   if (!chConfig.plantillas.length) { zona.appendChild(el('div', { class: 'sub' }, 'Crea primero una plantilla para poder asignarla.')); return; }
   const tb = el('tbody');
@@ -18945,7 +18962,7 @@ let chCalAnio = null;
 let chCalUsuario = null;
 function chRenderCalendario(root) {
   if (!chCalAnio) chCalAnio = new Date().getFullYear();
-  const trabajadores = accessControl.usuarios.filter(u => u.rol === 'trabajador');
+  const trabajadores = accessControl.usuarios.filter(fichaUsuario);
   if (chCalUsuario && !trabajadores.some(u => u.id === chCalUsuario)) chCalUsuario = null;
   if (!chCalUsuario && trabajadores.length) chCalUsuario = trabajadores[0].id;
   const estado = el('span', { class: 'sub', style: 'margin-left:8px;' });
@@ -19472,7 +19489,7 @@ function chRenderListaEmpleados(root) {
       el('div', { class: 'sub' }, [e.puesto, e.dni, e.telefono].filter(Boolean).join(' · ') || 'Ficha incompleta')));
   });
   // Usuarios "Trabajador" creados antes de existir esta ficha
-  const sinFicha = accessControl.usuarios.filter(u => u.rol === 'trabajador' && !chEmpleadosCache.some(e => e.usuarioId === u.id));
+  const sinFicha = accessControl.usuarios.filter(u => fichaUsuario(u) && !chEmpleadosCache.some(e => e.usuarioId === u.id));
   if (sinFicha.length) {
     panel.appendChild(el('h3', { style: 'margin:16px 0 6px;' }, 'Usuarios de fichaje sin ficha'));
     panel.appendChild(el('div', { class: 'sub' }, 'Se crearon desde Control de acceso. Completa su ficha para tener sus datos.'));
@@ -20094,7 +20111,7 @@ let chMesVista = null;
 let chFiltroUsuario = '';
 function chRenderFichajesAdmin(root) {
   if (!chMesVista) chMesVista = chMesDe(Date.now());
-  const trabajadores = accessControl.usuarios.filter(u => u.rol === 'trabajador');
+  const trabajadores = accessControl.usuarios.filter(fichaUsuario);
 
   const panel = el('div', { class: 'panel' },
     el('h2', {}, '⏱️ Control horario'),

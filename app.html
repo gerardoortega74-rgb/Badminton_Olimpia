@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261027-fichausuario">
+<meta name="build-id" content="v20261028-fichajecabecera">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -15443,7 +15443,7 @@ function showSection(sec) {
   if (sec !== 'taller') document.body.classList.remove('taller-sidebar-on');
   const cuentaCorreo = sec === 'correo' && typeof CorreoApp !== 'undefined' ? CorreoApp.cuentaActiva() : null;
   document.body.classList.toggle('im-taller', sec === 'taller' || cuentaCorreo === 'idermay');
-  document.body.classList.toggle('ol-club', ['home', 'torneo', 'planificacion', 'clubgestion'].includes(sec) || (!!cuentaCorreo && cuentaCorreo !== 'idermay'));
+  document.body.classList.toggle('ol-club', ['home', 'torneo', 'planificacion', 'clubgestion', 'fichar'].includes(sec) || (!!cuentaCorreo && cuentaCorreo !== 'idermay'));
   if (typeof olCerrarHoja === 'function') olCerrarHoja();
   if (sec !== 'home') document.body.classList.remove('dg-panel');
   if (sec !== 'taller') { const ms = document.getElementById('imMasSheet'); if (ms) ms.classList.remove('abierto'); }

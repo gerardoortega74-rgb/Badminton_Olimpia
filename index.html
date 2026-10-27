@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="build-id" content="v20261027-web">
+<meta name="build-id" content="v20261027-webfotos">
 <script>
 // Los enlaces de la app (?club=, ?tiendaonline=, ?tallerpublico=, ?publico=, ?fichar=…) siguen funcionando:
 // cualquier dirección con parámetros va a la app. Y si se abre desde el icono de la pantalla de inicio, también.
@@ -17,7 +17,7 @@
 </script>
 <title>Club Bádminton Olimpia Torrelavega</title>
 <meta name="description" content="Club de bádminton en Torrelavega: escuela, entrenamientos por niveles, horarios, cuotas, torneos y contacto.">
-<meta name="theme-color" content="#0d4f4a">
+<meta name="theme-color" content="#15191c">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta property="og:title" content="Club Bádminton Olimpia Torrelavega">
@@ -27,7 +27,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;700&family=Big+Shoulders+Display:wght@700;900&display=swap">
 <style>
 :root{
-  --pista:#0d4f4a; --pista-osc:#083a36; --linea:#f3d23a; --papel:#f2f5f1; --tinta:#17201e; --suave:#55625f; --turq:#3dd6c3;
+  --noche:#15191c; --grafito:#262d33; --papel:#f5f6f4; --gris:#e9ecea; --tinta:#15191b; --suave:#5b6468; --turq:#3dd6c3; --turq-osc:#0f7f72;
   --disp:'Big Shoulders Display', 'Arial Narrow', sans-serif; --txt:'Archivo', system-ui, sans-serif;
   --ancho:1180px; --g:16px;
 }
@@ -37,113 +37,117 @@ html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--papel);color:var(--tinta);font-family:var(--txt);font-size:17px;line-height:1.55}
 img{max-width:100%;display:block}
 a{color:inherit}
-:focus-visible{outline:3px solid var(--linea);outline-offset:3px;border-radius:4px}
+:focus-visible{outline:3px solid var(--turq);outline-offset:3px;border-radius:4px}
 .envoltura{width:min(var(--ancho),100% - 2*var(--g));margin-inline:auto}
 h1,h2,h3{font-family:var(--disp);font-weight:900;line-height:.92;margin:0;letter-spacing:.005em}
 
 /* ---------- barra ---------- */
 .barra{position:fixed;inset:0 0 auto 0;z-index:30;color:#fff;transition:background .25s}
-.barra.solida{background:var(--pista-osc)}
+.barra.solida{background:rgba(21,25,28,.96);backdrop-filter:blur(8px)}
 .barra .envoltura{display:flex;align-items:center;gap:20px;height:68px}
 .marca{display:flex;align-items:center;gap:10px;text-decoration:none;flex-shrink:0}
 .marca img{height:44px;width:auto}
 .marca span{font-family:var(--disp);font-weight:700;font-size:21px;line-height:1;letter-spacing:.01em}
 .nav{display:flex;gap:22px;margin-left:auto;align-items:center}
-.nav a{text-decoration:none;font-weight:500;font-size:15px;opacity:.85}
+.nav a{text-decoration:none;font-weight:500;font-size:15px;opacity:.88}
 .nav a:hover{opacity:1}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:0 20px;border-radius:999px;font:700 15px var(--txt);text-decoration:none;border:0;cursor:pointer}
-.btn-acceso{background:var(--turq);color:#06302c}
-.btn-linea{background:var(--linea);color:#2a2400}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:0 22px;border-radius:999px;font:700 15px var(--txt);text-decoration:none;border:0;cursor:pointer}
+.btn-acceso,.btn-linea{background:var(--turq);color:#052b27}
 .btn-hueco{background:transparent;color:inherit;box-shadow:inset 0 0 0 2px currentColor}
 .nav .btn{opacity:1;min-height:40px;padding:0 16px}
 .menu-btn{display:none;margin-left:auto;background:none;border:0;color:#fff;font:700 15px var(--txt);min-height:44px;padding:0 4px;cursor:pointer}
 @media (max-width:860px){
-  .nav{display:none;position:fixed;inset:68px 0 auto 0;background:var(--pista-osc);flex-direction:column;align-items:stretch;gap:0;padding:8px var(--g) 20px}
+  .nav{display:none;position:fixed;inset:68px 0 auto 0;background:var(--noche);flex-direction:column;align-items:stretch;gap:0;padding:8px var(--g) 20px}
   .nav.abierto{display:flex}
   .nav a{padding:14px 0;border-bottom:1px solid rgba(255,255,255,.12);font-size:18px}
   .nav .btn{margin-top:14px;border:0}
   .menu-btn{display:block}
 }
 
-/* ---------- portada ---------- */
-.portada{position:relative;min-height:100svh;color:#fff;background:var(--pista);overflow:hidden;display:flex;align-items:flex-end}
-.portada-foto{position:absolute;inset:0;background-size:cover;background-position:center;background-color:#16766d;background-blend-mode:luminosity}
-.portada-sombra{position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,58,54,.6) 0%,rgba(8,58,54,0) 28%,rgba(8,58,54,0) 45%,rgba(8,58,54,.92) 100%),linear-gradient(90deg,rgba(8,58,54,.7) 0%,rgba(8,58,54,.25) 60%,rgba(8,58,54,0) 100%)}
-.pista-dibujo{position:absolute;inset:0;width:100%;height:100%}
-.vuelo{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+/* ---------- portada: fotos reales a toda pantalla ---------- */
+.portada{position:relative;min-height:100svh;color:#fff;background:var(--noche);overflow:hidden;display:flex;align-items:flex-end}
+.diapo{position:absolute;inset:0;background-size:cover;background-position:center 35%;opacity:0;transition:opacity 1.6s ease;transform:scale(1.02)}
+.diapo.activa{opacity:1;animation:acercar 9s ease-out forwards}
+@keyframes acercar{from{transform:scale(1.02)}to{transform:scale(1.1)}}
+@media (prefers-reduced-motion:reduce){.diapo{transition:none}.diapo.activa{animation:none}}
+.portada-sombra{position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,13,15,.55) 0%,rgba(10,13,15,0) 26%,rgba(10,13,15,.1) 50%,rgba(10,13,15,.88) 100%),linear-gradient(90deg,rgba(10,13,15,.55) 0%,rgba(10,13,15,0) 65%)}
 .portada-txt{position:relative;padding:0 0 clamp(36px,7vh,80px)}
-.portada-club{font-weight:500;font-size:clamp(15px,1.6vw,18px);margin:0 0 14px;opacity:.9}
-.portada h1{font-size:clamp(54px,9vw,132px);max-width:13ch;text-transform:uppercase;line-height:.86}
+.portada-club{font-weight:500;font-size:clamp(15px,1.6vw,18px);margin:0 0 14px;opacity:.92}
+.portada h1{font-size:clamp(54px,9vw,132px);max-width:13ch;text-transform:uppercase;line-height:.86;text-shadow:0 2px 30px rgba(0,0,0,.35)}
 .portada-acciones{display:flex;flex-wrap:wrap;gap:12px;margin-top:30px}
+.puntos{position:absolute;right:max(var(--g),calc((100% - var(--ancho))/2));bottom:clamp(36px,7vh,80px);display:flex;gap:8px;z-index:2}
+.puntos button{width:34px;height:4px;border:0;border-radius:2px;background:rgba(255,255,255,.4);padding:0;cursor:pointer}
+.puntos button[aria-current="true"]{background:#fff}
+@media (max-width:640px){.puntos{display:none}}
 
 /* ---------- secciones ---------- */
 section.bloque{padding:clamp(64px,10vw,120px) 0}
-.titulo{display:flex;align-items:flex-end;gap:18px;margin-bottom:clamp(28px,4vw,48px)}
-.titulo h2{font-size:clamp(46px,7vw,92px);text-transform:uppercase}
-.titulo::after{content:"";flex:1;height:14px;border-bottom:3px solid var(--linea);border-right:3px solid var(--linea);margin-bottom:10px;min-width:40px}
-.oscuro{background:var(--pista);color:#fff}
-.oscuro .sub{color:rgba(255,255,255,.75)}
+.titulo{margin-bottom:clamp(28px,4vw,48px)}
+.titulo h2{font-size:clamp(48px,7.5vw,100px);text-transform:uppercase}
+.oscuro{background:var(--noche);color:#fff}
+.oscuro .sub{color:rgba(255,255,255,.72)}
 .sub{color:var(--suave)}
-.texto{max-width:62ch;white-space:pre-line}
+.texto{max-width:62ch;white-space:pre-line;font-size:18px}
 
-.club-rejilla{display:grid;grid-template-columns:1.3fr 1fr;gap:clamp(28px,5vw,72px);align-items:start}
-.datos-club{display:grid;grid-template-columns:1fr 1fr;border:3px solid var(--pista)}
-.datos-club div{padding:18px 18px 16px;border-right:3px solid var(--pista);border-bottom:3px solid var(--pista)}
-.datos-club div:nth-child(2n){border-right:0}
-.datos-club div:nth-last-child(-n+2){border-bottom:0}
-.datos-club b{display:block;font-family:var(--disp);font-weight:900;font-size:44px;line-height:1;color:var(--pista)}
+.club-rejilla{display:grid;grid-template-columns:1fr 1fr;gap:clamp(28px,5vw,72px);align-items:center}
+.club-foto{width:100%;aspect-ratio:4/5;object-fit:cover;border-radius:4px}
+.datos-club{display:grid;grid-template-columns:1fr 1fr;gap:28px 24px;margin-top:36px}
+.datos-club b{display:block;font-family:var(--disp);font-weight:900;font-size:56px;line-height:.9}
 .datos-club span{font-size:14px;color:var(--suave)}
-.datos-club .ancho{grid-column:1/-1;border-right:0}
-.datos-club .ancho b{font-size:28px}
-@media (max-width:760px){.club-rejilla{grid-template-columns:1fr}}
+.datos-club .ancho{grid-column:1/-1}
+.datos-club .ancho b{font-size:32px}
+@media (max-width:760px){.club-rejilla{grid-template-columns:1fr}.club-foto{aspect-ratio:3/2}}
 
 /* horario */
-.cuadrante{position:relative;display:grid;gap:0;background:var(--pista-osc);border:3px solid var(--linea);overflow:hidden}
-.cuadrante .dia{position:relative;border-left:2px solid rgba(243,210,58,.35)}
-.cuadrante .dia:first-of-type{border-left:0}
-.cuadrante .cab{height:44px;display:flex;align-items:center;justify-content:center;font-family:var(--disp);font-weight:700;font-size:22px;border-bottom:2px solid rgba(243,210,58,.35)}
+.cuadrante{position:relative;display:grid;background:var(--grafito);border-radius:6px;overflow:hidden}
+.cuadrante .dia{position:relative;border-left:1px solid rgba(255,255,255,.1)}
+.cuadrante .cab{height:46px;display:flex;align-items:center;justify-content:center;font-family:var(--disp);font-weight:700;font-size:22px;border-bottom:1px solid rgba(255,255,255,.12)}
 .cuadrante .franja{position:relative}
-.horas{position:relative;width:52px;border-right:2px solid rgba(243,210,58,.35)}
-.horas span{position:absolute;right:8px;font-size:12px;color:rgba(255,255,255,.6);transform:translateY(3px)}
-.linea-hora{position:absolute;left:0;right:0;border-top:1px dashed rgba(255,255,255,.12)}
-.sesion{position:absolute;left:4px;right:4px;border-radius:6px;padding:6px 8px;color:#10201d;overflow:hidden;font-size:13px;line-height:1.25}
+.horas{position:relative;width:52px}
+.horas span{position:absolute;right:8px;font-size:12px;color:rgba(255,255,255,.55);transform:translateY(3px)}
+.linea-hora{position:absolute;left:0;right:0;border-top:1px solid rgba(255,255,255,.06)}
+.sesion{position:absolute;left:4px;right:4px;border-radius:4px;padding:6px 8px;color:#121619;overflow:hidden;font-size:13px;line-height:1.25}
 .sesion b{display:block;font-size:14px}
 .leyenda{display:flex;flex-wrap:wrap;gap:10px 22px;margin-top:20px}
 .leyenda div{display:flex;gap:10px;align-items:center}
-.leyenda i{width:16px;height:16px;border-radius:4px;flex-shrink:0}
+.leyenda i{width:14px;height:14px;border-radius:50%;flex-shrink:0}
 .lista-dias{display:none}
 @media (max-width:760px){
   .cuadrante{display:none}
-  .lista-dias{display:grid;gap:14px}
-  .lista-dias .d{border-top:3px solid var(--linea);padding-top:10px}
+  .lista-dias{display:grid;gap:18px}
+  .lista-dias .d{border-top:1px solid rgba(255,255,255,.2);padding-top:12px}
   .lista-dias h3{font-size:30px;margin-bottom:8px}
   .lista-dias .s{display:flex;gap:12px;align-items:baseline;padding:6px 0}
-  .lista-dias .s i{width:12px;height:12px;border-radius:3px;flex-shrink:0;transform:translateY(1px)}
+  .lista-dias .s i{width:10px;height:10px;border-radius:50%;flex-shrink:0;transform:translateY(-1px)}
   .lista-dias .s time{font-weight:700;min-width:98px}
 }
 
-/* inscripción y marcador */
+/* inscripción sobre foto */
+.foto-fondo{position:relative;color:#fff;background:#0e1214 center/cover no-repeat}
+.foto-fondo::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(10,13,15,.9) 0%,rgba(10,13,15,.72) 55%,rgba(10,13,15,.45) 100%)}
+.foto-fondo>.envoltura{position:relative}
+.foto-fondo .sub{color:rgba(255,255,255,.75)}
 .ins-rejilla{display:grid;grid-template-columns:1fr 1fr;gap:clamp(28px,5vw,72px);align-items:start}
-.marcador{background:#101614;color:#fff;border-radius:14px;padding:10px 22px;box-shadow:inset 0 0 0 3px #26302d}
-.marcador .fila{display:flex;align-items:baseline;gap:14px;padding:16px 0;border-bottom:1px solid #26302d}
+.marcador{background:rgba(0,0,0,.55);backdrop-filter:blur(6px);color:#fff;border-radius:10px;padding:8px 24px;border:1px solid rgba(255,255,255,.14)}
+.marcador .fila{display:flex;align-items:baseline;gap:14px;padding:16px 0;border-bottom:1px solid rgba(255,255,255,.12)}
 .marcador .fila:last-child{border-bottom:0}
 .marcador .nom{flex:1;font-weight:500}
-.marcador .per{font-size:13px;color:#9fb0ab}
-.marcador .eur{font-family:var(--disp);font-weight:900;font-size:52px;line-height:.9;color:var(--linea);font-variant-numeric:tabular-nums}
+.marcador .per{font-size:13px;color:rgba(255,255,255,.65)}
+.marcador .eur{font-family:var(--disp);font-weight:900;font-size:54px;line-height:.9;color:var(--turq);font-variant-numeric:tabular-nums}
 .marcador .eur small{font-size:26px;margin-left:2px}
 .ins-acciones{display:flex;flex-wrap:wrap;gap:12px;margin-top:24px}
 @media (max-width:760px){.ins-rejilla{grid-template-columns:1fr}.marcador .eur{font-size:42px}}
 
 /* noticias y torneos */
-.en-directo{display:flex;flex-wrap:wrap;align-items:center;gap:14px 20px;background:var(--linea);color:#2a2400;padding:16px 20px;border-radius:12px;margin-bottom:36px}
+.en-directo{display:flex;flex-wrap:wrap;align-items:center;gap:14px 20px;background:var(--noche);color:#fff;padding:16px 20px;border-radius:8px;margin-bottom:40px}
 .en-directo b{font-family:var(--disp);font-size:30px;line-height:1}
-.punto{width:12px;height:12px;border-radius:50%;background:#d0261d;box-shadow:0 0 0 0 rgba(208,38,29,.6);animation:latido 1.6s infinite}
-@keyframes latido{70%{box-shadow:0 0 0 12px rgba(208,38,29,0)}100%{box-shadow:0 0 0 0 rgba(208,38,29,0)}}
+.punto{width:12px;height:12px;border-radius:50%;background:#ff4d3d;box-shadow:0 0 0 0 rgba(255,77,61,.6);animation:latido 1.6s infinite}
+@keyframes latido{70%{box-shadow:0 0 0 12px rgba(255,77,61,0)}100%{box-shadow:0 0 0 0 rgba(255,77,61,0)}}
 @media (prefers-reduced-motion:reduce){.punto{animation:none}}
-.noticias{display:grid;grid-template-columns:repeat(12,1fr);gap:28px 24px;margin-bottom:56px}
+.noticias{display:grid;grid-template-columns:repeat(12,1fr);gap:32px 24px;margin-bottom:64px}
 .noticia{grid-column:span 4}
-.noticia:first-child{grid-column:span 12;display:grid;grid-template-columns:1.4fr 1fr;gap:28px;align-items:end}
-.noticia img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:10px;background:#d8dfdc}
+.noticia:first-child{grid-column:span 12;display:grid;grid-template-columns:1.4fr 1fr;gap:32px;align-items:end}
+.noticia img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:4px;background:#d8dddb}
 .noticia:first-child img{aspect-ratio:16/10}
 .noticia time{display:block;font-size:14px;color:var(--suave);margin:12px 0 4px}
 .noticia h3{font-size:32px;text-transform:uppercase}
@@ -154,45 +158,55 @@ section.bloque{padding:clamp(64px,10vw,120px) 0}
 .torneo-cab{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 18px;margin-bottom:22px}
 .torneo-cab h3{font-size:clamp(34px,4.5vw,54px);text-transform:uppercase}
 .podios{display:flex;gap:18px;overflow-x:auto;padding-bottom:12px;scroll-snap-type:x mandatory}
-.podio{flex:0 0 min(340px,82vw);scroll-snap-align:start;background:#fff;border-radius:12px;padding:18px 18px 0;box-shadow:inset 0 0 0 2px #dfe6e3}
+.podio{flex:0 0 min(340px,82vw);scroll-snap-align:start;background:#fff;border-radius:8px;padding:18px 18px 0}
 .podio h4{margin:0 0 16px;font-size:16px}
 .escalones{display:grid;grid-template-columns:1fr 1fr 1fr;align-items:end;gap:6px}
 .esc{text-align:center}
 .esc .n{font-size:13px;line-height:1.25;min-height:2.5em;display:flex;align-items:flex-end;justify-content:center;padding:0 2px 6px;font-weight:500}
-.esc .caja{background:var(--pista);color:var(--linea);font-family:var(--disp);font-weight:900;font-size:34px;line-height:1;display:flex;align-items:flex-start;justify-content:center;padding-top:6px;border-radius:6px 6px 0 0}
-.esc.p1 .caja{height:100px}.esc.p2 .caja{height:72px}.esc.p3 .caja{height:52px}
+.esc .caja{background:var(--grafito);color:#fff;font-family:var(--disp);font-weight:900;font-size:34px;line-height:1;display:flex;align-items:flex-start;justify-content:center;padding-top:8px;border-radius:4px 4px 0 0}
+.esc.p1 .caja{height:100px;background:var(--turq);color:#052b27}.esc.p2 .caja{height:72px}.esc.p3 .caja{height:52px}
 .otros-torneos{margin-top:26px;display:flex;flex-wrap:wrap;gap:8px 26px;color:var(--suave);font-size:15px}
 
 /* galería */
 .galeria{columns:3 260px;column-gap:14px}
-.galeria img{width:100%;margin:0 0 14px;border-radius:10px;break-inside:avoid}
+.galeria img{width:100%;margin:0 0 14px;border-radius:4px;break-inside:avoid}
 
 /* contacto */
 .contacto-rejilla{display:grid;grid-template-columns:1fr 1.2fr;gap:clamp(28px,5vw,64px);align-items:stretch}
 .vias{display:grid;gap:4px;align-content:start}
-.vias a,.vias div{display:flex;justify-content:space-between;gap:16px;align-items:baseline;padding:16px 0;border-bottom:2px solid rgba(255,255,255,.18);text-decoration:none;font-size:19px}
-.vias span{font-size:14px;color:rgba(255,255,255,.7)}
-.vias a:hover b{color:var(--linea)}
-.mapa{min-height:360px;border:3px solid var(--linea);border-radius:12px;overflow:hidden;background:var(--pista-osc)}
+.vias a,.vias div{display:flex;justify-content:space-between;gap:16px;align-items:baseline;padding:16px 0;border-bottom:1px solid rgba(255,255,255,.16);text-decoration:none;font-size:19px}
+.vias span{font-size:14px;color:rgba(255,255,255,.65)}
+.vias a:hover b{color:var(--turq)}
+.mapa{min-height:360px;border-radius:6px;overflow:hidden;background:var(--grafito)}
 .mapa iframe{width:100%;height:100%;min-height:360px;border:0;display:block}
 @media (max-width:760px){.contacto-rejilla{grid-template-columns:1fr}.vias a,.vias div{flex-direction:column;gap:2px}}
 
-/* zona del club: las cuatro áreas de saque */
-.zona{background:var(--pista-osc);color:#fff}
-.areas{display:grid;grid-template-columns:1fr 1fr;border:3px solid #fff;position:relative}
-.areas::before{content:"";position:absolute;left:0;right:0;top:50%;border-top:3px solid #fff;pointer-events:none}
-.areas::after{content:"";position:absolute;top:0;bottom:0;left:50%;border-left:3px solid #fff;pointer-events:none}
-.area{display:flex;flex-direction:column;gap:6px;padding:clamp(22px,3.5vw,40px);min-height:200px;text-decoration:none;transition:background .2s}
-.area:hover{background:rgba(255,255,255,.06)}
-.area h3{font-size:clamp(32px,3.6vw,46px);text-transform:uppercase}
-.area p{margin:0;color:rgba(255,255,255,.75);max-width:34ch}
-.area .ir{margin-top:auto;padding-top:16px;font-weight:700;color:var(--turq)}
+/* zona del club */
+.zona{background:var(--gris)}
+.areas{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.area{position:relative;display:flex;flex-direction:column;gap:6px;padding:clamp(22px,3vw,34px);min-height:260px;text-decoration:none;border-radius:6px;background:#fff;overflow:hidden}
+.area h3{font-size:clamp(30px,3.2vw,42px);text-transform:uppercase}
+.area p{margin:0;color:var(--suave);max-width:34ch}
+.area .ir{margin-top:auto;padding-top:16px;font-weight:700;color:var(--turq-osc)}
 .area img{height:46px;width:auto;margin-bottom:8px;align-self:flex-start;object-fit:contain}
-@media (max-width:640px){.areas{grid-template-columns:1fr}.areas::after{display:none}.areas::before{display:none}.area{border-bottom:3px solid #fff}.area:last-child{border-bottom:0}}
+.area-app{grid-column:1/-1;min-height:340px;color:#fff;background:#111 center/cover no-repeat}
+.area-app::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,13,15,.15),rgba(10,13,15,.85))}
+.area-app>*{position:relative}
+.area-app p{color:rgba(255,255,255,.8)}
+.area-app .ir{color:var(--turq)}
+.area-app h3{font-size:clamp(38px,4.4vw,58px);margin-top:auto}
+.areas.sin-torneo{grid-template-columns:1fr 1fr}
+.area-tienda{background:#0b2a5b;color:#fff}.area-tienda p{color:rgba(255,255,255,.75)}.area-tienda .ir{color:#fff;text-decoration:underline;text-underline-offset:4px}
+.area-oscura{background:var(--grafito);color:#fff}
+.area-oscura p{color:rgba(255,255,255,.72)}
+.area-oscura .ir{color:var(--turq)}
+@media (max-width:860px){.areas,.areas.sin-torneo{grid-template-columns:1fr}.area{min-height:200px}.area-app{min-height:300px}}
 
-footer{background:#0a2522;color:rgba(255,255,255,.7);padding:34px 0 calc(34px + env(safe-area-inset-bottom));font-size:14px}
+footer{background:var(--noche);color:rgba(255,255,255,.7);padding:34px 0 calc(34px + env(safe-area-inset-bottom));font-size:14px}
 footer .envoltura{display:flex;flex-wrap:wrap;gap:12px 28px;align-items:center;justify-content:space-between}
 footer img{height:38px;width:auto}
+.creditos{flex-basis:100%;font-size:12px;color:rgba(255,255,255,.5)}
+.creditos a{color:inherit}
 .oculto{display:none!important}
 </style>
 </head>
@@ -214,35 +228,8 @@ footer img{height:38px;width:auto}
 
 <main>
 <section class="portada" id="inicio">
-  <div class="portada-foto oculto" id="portadaFoto" role="img" aria-label="Foto del club"></div>
-  <svg class="pista-dibujo" id="pistaDibujo" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-    <defs><linearGradient id="suelo" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0b4541"/><stop offset="1" stop-color="#0f5953"/></linearGradient></defs>
-    <rect width="1600" height="1000" fill="url(#suelo)"/>
-    <!-- pista en perspectiva -->
-    <g fill="none" stroke="#f3d23a" stroke-width="5" opacity=".55" stroke-linejoin="round">
-      <polygon points="560,250 1240,250 1560,1000 240,1000"/>
-      <line x1="590" y1="250" x2="300" y2="1000"/><line x1="1210" y1="250" x2="1500" y2="1000"/>
-      <line x1="900" y1="250" x2="900" y2="1000"/>
-      <line x1="520" y1="345" x2="1280" y2="345"/>
-      <line x1="430" y1="560" x2="1370" y2="560"/>
-    </g>
-    <g stroke="#fff" opacity=".8"><line x1="400" y1="560" x2="1400" y2="560" stroke-width="3"/><line x1="400" y1="560" x2="400" y2="470" stroke-width="6"/><line x1="1400" y1="560" x2="1400" y2="470" stroke-width="6"/>
-      <line x1="400" y1="472" x2="1400" y2="472" stroke-width="5"/></g>
-    <g stroke="#fff" opacity=".22" stroke-width="1.2">
-      <line x1="400" y1="482" x2="1400" y2="482"/><line x1="400" y1="492" x2="1400" y2="492"/><line x1="400" y1="502" x2="1400" y2="502"/><line x1="400" y1="512" x2="1400" y2="512"/><line x1="400" y1="522" x2="1400" y2="522"/><line x1="400" y1="532" x2="1400" y2="532"/><line x1="400" y1="542" x2="1400" y2="542"/>
-    </g>
-  </svg>
+  <div id="diapos" aria-hidden="true"></div>
   <div class="portada-sombra"></div>
-  <svg class="vuelo" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-    <path id="trayectoria" d="M -60 900 C 380 -120, 1020 -140, 1680 560" fill="none" stroke="#f3d23a" stroke-width="4" stroke-linecap="round" stroke-dasharray="2 16"/>
-    <g id="volante" transform="translate(-200,-200)">
-      <g transform="rotate(180)">
-        <path d="M0 -9 L46 -26 L52 -6 L52 6 L46 26 L0 9 Z" fill="#fff"/>
-        <path d="M12 -13 L50 -16 M12 0 L52 0 M12 13 L50 16" stroke="#cfd8d5" stroke-width="2"/>
-        <circle cx="-4" cy="0" r="12" fill="#fff"/>
-      </g>
-    </g>
-  </svg>
   <div class="portada-txt envoltura">
     <p class="portada-club">Club Bádminton Olimpia Torrelavega</p>
     <h1 id="eslogan">El deporte de raqueta más rápido, en Torrelavega</h1>
@@ -251,12 +238,14 @@ footer img{height:38px;width:auto}
       <a class="btn btn-hueco" href="#horarios" data-sec="horarios">Ver horarios</a>
     </div>
   </div>
+  <div class="puntos" id="puntos"></div>
 </section>
 
 <section class="bloque" id="club">
-  <div class="envoltura">
-    <div class="titulo"><h2>El club</h2></div>
-    <div class="club-rejilla">
+  <div class="envoltura club-rejilla">
+    <img class="club-foto" id="clubFoto" alt="Raqueta y volantes de bádminton" loading="lazy">
+    <div>
+      <div class="titulo"><h2>El club</h2></div>
       <p class="texto" id="quienes">Club de bádminton de Torrelavega. Escuela para niños y adultos, entrenamientos por niveles y torneos a lo largo de toda la temporada.</p>
       <div class="datos-club" id="datosClub"></div>
     </div>
@@ -273,7 +262,7 @@ footer img{height:38px;width:auto}
   </div>
 </section>
 
-<section class="bloque" id="inscripcion">
+<section class="bloque foto-fondo" id="inscripcion">
   <div class="envoltura">
     <div class="titulo"><h2>Inscripción</h2></div>
     <div class="ins-rejilla">
@@ -289,7 +278,7 @@ footer img{height:38px;width:auto}
   </div>
 </section>
 
-<section class="bloque" id="noticias" style="background:#e6ece9">
+<section class="bloque" id="noticias">
   <div class="envoltura">
     <div class="titulo"><h2>Noticias y torneos</h2></div>
     <div id="enDirecto"></div>
@@ -298,7 +287,7 @@ footer img{height:38px;width:auto}
   </div>
 </section>
 
-<section class="bloque oculto" id="galeria">
+<section class="bloque oculto" id="galeria" style="padding-top:0">
   <div class="envoltura">
     <div class="titulo"><h2>En la pista</h2></div>
     <div class="galeria" id="fotosGaleria"></div>
@@ -319,23 +308,23 @@ footer img{height:38px;width:auto}
   <div class="envoltura">
     <div class="titulo"><h2>Zona del club</h2></div>
     <div class="areas" id="areas">
-      <a class="area" href="app.html">
+      <a class="area area-app" id="areaApp" href="app.html">
         <h3>Socios y entrenadores</h3>
         <p>Jugadores, cuotas, grupos, asistencia y planificación. Entra con tu nombre y tu PIN.</p>
         <span class="ir">Entrar en la app</span>
       </a>
-      <a class="area" id="areaTorneo" href="app.html?publico=1">
+      <a class="area area-oscura" id="areaTorneo" href="app.html?publico=1">
         <h3>Torneo en directo</h3>
         <p id="areaTorneoTxt">Cuadros, horarios y resultados del torneo en marcha.</p>
         <span class="ir">Ver el torneo</span>
       </a>
-      <a class="area" href="app.html?tiendaonline=1">
-        <img src="logo_idermay.svg" alt="" width="80" height="46">
+      <a class="area area-tienda" href="app.html?tiendaonline=1">
+        <img src="logo_idermay.svg" alt="" width="80" height="46" style="height:52px;width:90px">
         <h3>Tienda IDERMAY</h3>
         <p>Raquetas, volantes, mochilas y encordado. Pide por WhatsApp.</p>
         <span class="ir">Abrir la tienda</span>
       </a>
-      <a class="area" href="app.html?club=c2">
+      <a class="area area-oscura" href="app.html?club=c2">
         <img src="logo_valles.png" alt="" width="50" height="46">
         <h3>Valles Cántabros</h3>
         <p>Acceso a la app del CDE Bádminton Valles Cántabros.</p>
@@ -351,6 +340,7 @@ footer img{height:38px;width:auto}
     <img src="logo_olimpia.svg" alt="Club Bádminton Olimpia Torrelavega" width="45" height="38">
     <span>© <span id="anio"></span> Club Bádminton Olimpia Torrelavega</span>
     <a href="app.html">Acceso a la app</a>
+    <p class="creditos" id="creditos"></p>
   </div>
 </footer>
 
@@ -371,31 +361,58 @@ footer img{height:38px;width:auto}
   });
   nav.addEventListener('click', function (e) { if (e.target.tagName === 'A' && nav.classList.contains('abierto')) menuBtn.click(); });
 
-  // ---------- el vuelo del volante (la única animación de la página) ----------
-  (function vuelo() {
-    var path = $('trayectoria'), vol = $('volante');
-    var L = path.getTotalLength();
-    var quieto = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (quieto) { vol.setAttribute('transform', 'translate(-200,-200)'); return; }
-    var ns = 'http://www.w3.org/2000/svg';
-    var svg = path.ownerSVGElement, defs = document.createElementNS(ns, 'defs'), cp = document.createElementNS(ns, 'clipPath');
-    cp.setAttribute('id', 'rastro');
-    var recorte = document.createElementNS(ns, 'rect');
-    recorte.setAttribute('x', '-100'); recorte.setAttribute('y', '-200'); recorte.setAttribute('height', '1400'); recorte.setAttribute('width', '0');
-    cp.appendChild(recorte); defs.appendChild(cp); svg.insertBefore(defs, svg.firstChild);
-    path.setAttribute('clip-path', 'url(#rastro)'); // el rastro punteado aparece detrás del volante
-    var t0 = null, dur = 1900;
-    function paso(ts) {
-      if (t0 === null) t0 = ts;
-      var k = Math.min(1, (ts - t0) / dur);
-      var e = 1 - Math.pow(1 - k, 2.2);
-      var d = e * L, p = path.getPointAtLength(d), q = path.getPointAtLength(Math.min(L, d + 2));
-      var ang = Math.atan2(q.y - p.y, q.x - p.x) * 180 / Math.PI;
-      vol.setAttribute('transform', 'translate(' + p.x.toFixed(1) + ',' + p.y.toFixed(1) + ') rotate(' + ang.toFixed(1) + ')');
-      recorte.setAttribute('width', (p.x + 100).toFixed(0));
-      if (k < 1) requestAnimationFrame(paso);
-    }
-    setTimeout(function () { requestAnimationFrame(paso); }, 350);
+  // ---------- fotos reales (Unsplash, licencia libre) ----------
+  // Si el club sube su propia foto de portada desde la app, va la primera.
+  var FOTOS = {
+    portada: [
+      { id: '1626224583764-f87db24ac4ea', autor: 'Muktasim Azlan', pag: 'https://unsplash.com/photos/badminton-player-jumping-on-indoor-court-rjWfNR_AC5g' },
+      { id: '1722087642932-9b070e9a066e', autor: 'Irish83', pag: 'https://unsplash.com/photos/badminton-player-jumping-in-indoor-court-sxwRpLJTuXc' }
+    ],
+    club: { id: '1708312604109-16c0be9326cd', autor: 'Allison Saeng', pag: 'https://unsplash.com/photos/a-badminton-racket-and-two-shuttles-on-a-green-surface-VRqmHMYMq1c' },
+    inscripcion: { id: '1626721105368-a69248e93b32', autor: 'Stephan Rothe', pag: 'https://unsplash.com/photos/shuttlecock-on-badminton-net-VePgmkq3hHI' },
+    app: { id: '1564226803380-91139fdcb4d0', autor: 'Siora Photography', pag: 'https://unsplash.com/photos/white-badminton-shuttlecock-hVeOZslMjGA' }
+  };
+  function urlFoto(f, w) { return 'https://images.unsplash.com/photo-' + f.id + '?auto=format&fit=crop&w=' + w + '&q=72'; }
+  var anchoPortada = Math.min(2400, Math.round(Math.max(window.innerWidth, window.innerHeight * 1.4) * Math.min(2, window.devicePixelRatio || 1)));
+
+  // pase de fotos de la portada: fundido lento, una foto cada 7 s
+  var diapos = [], actual = -1, temporizador = null;
+  var quieto = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function mostrarDiapo(i) {
+    if (!diapos.length) return;
+    actual = (i + diapos.length) % diapos.length;
+    diapos.forEach(function (d, k) { d.el.classList.toggle('activa', k === actual); });
+    var pts = document.querySelectorAll('#puntos button');
+    pts.forEach(function (b, k) { b.setAttribute('aria-current', k === actual ? 'true' : 'false'); });
+  }
+  function pintarPuntos() {
+    var cont = $('puntos'); cont.innerHTML = '';
+    if (diapos.length < 2) return;
+    diapos.forEach(function (d, k) { var b = document.createElement('button'); b.type = 'button'; b.setAttribute('aria-label', 'Foto ' + (k + 1)); b.onclick = function () { mostrarDiapo(k); reiniciar(); }; cont.appendChild(b); });
+    mostrarDiapo(actual);
+  }
+  function reiniciar() { clearInterval(temporizador); if (!quieto && diapos.length > 1) temporizador = setInterval(function () { mostrarDiapo(actual + 1); }, 7000); }
+  function anadirDiapo(src, primera) {
+    var im = new Image();
+    im.onload = function () {
+      var el = document.createElement('div'); el.className = 'diapo'; el.style.backgroundImage = 'url("' + src + '")';
+      var caja = $('diapos');
+      if (primera) { caja.insertBefore(el, caja.firstChild); diapos.unshift({ el: el, src: src }); actual = -1; }
+      else { caja.appendChild(el); diapos.push({ el: el, src: src }); }
+      if (actual < 0 || primera) mostrarDiapo(0);
+      pintarPuntos(); reiniciar();
+    };
+    im.src = src;
+  }
+  FOTOS.portada.forEach(function (f) { anadirDiapo(urlFoto(f, anchoPortada), false); });
+  (function () {
+    var cf = $('clubFoto'); cf.src = urlFoto(FOTOS.club, 1100); cf.onerror = function () { cf.classList.add('oculto'); };
+    var probar = function (f, alCargar) { var im = new Image(); im.onload = function () { alCargar(im.src); }; im.src = urlFoto(f, 1800); };
+    probar(FOTOS.inscripcion, function (u) { $('inscripcion').style.backgroundImage = 'url("' + u + '")'; });
+    probar(FOTOS.app, function (u) { $('areaApp').style.backgroundImage = 'url("' + u + '")'; });
+    var cr = $('creditos'); cr.appendChild(document.createTextNode('Fotos: '));
+    var lista = FOTOS.portada.concat([FOTOS.club, FOTOS.inscripcion, FOTOS.app]);
+    lista.forEach(function (f, i) { var a = document.createElement('a'); a.href = f.pag; a.target = '_blank'; a.rel = 'noopener'; a.textContent = f.autor; cr.appendChild(a); cr.appendChild(document.createTextNode(i < lista.length - 2 ? ', ' : i === lista.length - 2 ? ' y ' : ' en Unsplash.')); });
   })();
 
   // ---------- utilidades ----------
@@ -416,7 +433,7 @@ footer img{height:38px;width:auto}
   }
   var DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
   var CORTO = { 'Lunes': 'Lun', 'Martes': 'Mar', 'Miércoles': 'Mié', 'Jueves': 'Jue', 'Viernes': 'Vie', 'Sábado': 'Sáb', 'Domingo': 'Dom' };
-  var COLORES = ['#f3d23a', '#3dd6c3', '#ff9a6b', '#c4b5ff', '#a6e86f', '#ffffff', '#ffc2d6', '#8fd3ff'];
+  var COLORES = ['#3dd6c3', '#ff8a65', '#ffc94d', '#b9a5ff', '#7cc8ff', '#a6e86f', '#ffffff', '#ff9fc4'];
   function minutos(h) { var m = /^(\d{1,2}):(\d{2})/.exec(h || ''); return m ? (+m[1]) * 60 + (+m[2]) : null; }
   function fechaLarga(iso) {
     if (!iso) return '';
@@ -534,9 +551,9 @@ footer img{height:38px;width:auto}
     var enlaceT = 'app.html?publico=1&torneo=' + encodeURIComponent((pub && pub.torneoActivoId) || '');
     if (activo && nombreActivo && w.mostrarTorneos !== false) {
       ed.appendChild(el('div', { class: 'en-directo' }, el('i', { class: 'punto', 'aria-hidden': 'true' }), el('b', { text: nombreActivo }), el('span', { text: 'Cuadros, horarios y resultados en directo' }), el('a', { class: 'btn btn-hueco', href: enlaceT, style: 'margin-left:auto', text: 'Seguir el torneo' })));
-      $('areaTorneo').href = enlaceT; $('areaTorneo').classList.remove('oculto'); $('areaTorneoTxt').textContent = nombreActivo + ': cuadros, horarios y resultados.';
+      $('areaTorneo').href = enlaceT; $('areaTorneo').classList.remove('oculto'); $('areas').classList.remove('sin-torneo'); $('areaTorneoTxt').textContent = nombreActivo + ': cuadros, horarios y resultados.';
     } else {
-      $('areaTorneo').classList.add('oculto');
+      $('areaTorneo').classList.add('oculto'); $('areas').classList.add('sin-torneo');
     }
     // podios del último torneo
     var tz = $('torneos'); tz.innerHTML = '';
@@ -588,8 +605,7 @@ footer img{height:38px;width:auto}
     var col = db.collection('club').doc('datos').collection('taller_fotos');
     if (w.tienePortada) col.doc('web_portada').get().then(function (d) {
       var f = d.exists && d.data().foto;
-      if (!f) return;
-      var pf = $('portadaFoto'); pf.style.backgroundImage = 'url("' + f + '")'; pf.classList.remove('oculto'); $('pistaDibujo').classList.add('oculto');
+      if (f) anadirDiapo(f, true);
     }).catch(function () {});
     if (w.nGaleria) col.doc('web_galeria').get().then(function (d) {
       var fotos = (d.exists && d.data().fotos) || [];

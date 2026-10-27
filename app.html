@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261027-paginaweb">
+<meta name="build-id" content="v20261027-webfotos">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -17696,7 +17696,7 @@ function renderWebClub() {
       cargarFotosWeb().then(f => {
         caja.innerHTML = '';
         if (f.portada) caja.appendChild(el('img', { src: f.portada, alt: 'Foto de portada', style: 'width:100%;max-width:520px;border-radius:10px;display:block;margin-bottom:8px;' }));
-        else caja.appendChild(el('div', { class: 'sub', style: 'margin-bottom:8px;' }, 'Sin foto: la portada muestra la pista dibujada. Una foto horizontal de un partido o del pabellón queda mejor.'));
+        else caja.appendChild(el('div', { class: 'sub', style: 'margin-bottom:8px;' }, 'Sin foto propia: la portada pasa fotos de bádminton de stock. Una foto horizontal de vuestros partidos o del pabellón va la primera.'));
         caja.appendChild(el('div', { class: 'toolbar' },
           el('button', { class: 'btn btn-gold btn-sm web-subir-portada', type: 'button', onclick: () => elegirArchivoImagen(file => comprimirFotoWeb(file, 1800, 0.8).then(foto => guardarFotoWebNube('web_portada', { foto }).then(() => { f.portada = foto; w.tienePortada = true; guardar(); renderWebClub(); })).catch(e => alert(e.message))) }, f.portada ? 'Cambiar foto' : 'Subir foto de portada'),
           f.portada ? el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => { if (!confirm('¿Quitar la foto de portada?')) return; borrarFotoWebNube('web_portada').then(() => { f.portada = null; w.tienePortada = false; guardar(); renderWebClub(); }); } }, 'Quitar') : null));

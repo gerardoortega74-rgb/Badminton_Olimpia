@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="build-id" content="v20261027-webfotos">
+<meta name="build-id" content="v20261028-webclub">
 <script>
 // Los enlaces de la app (?club=, ?tiendaonline=, ?tallerpublico=, ?publico=, ?fichar=…) siguen funcionando:
 // cualquier dirección con parámetros va a la app. Y si se abre desde el icono de la pantalla de inicio, también.
@@ -89,14 +89,15 @@ section.bloque{padding:clamp(64px,10vw,120px) 0}
 .sub{color:var(--suave)}
 .texto{max-width:62ch;white-space:pre-line;font-size:18px}
 
-.club-rejilla{display:grid;grid-template-columns:1fr 1fr;gap:clamp(28px,5vw,72px);align-items:center}
-.club-foto{width:100%;aspect-ratio:4/5;object-fit:cover;border-radius:4px}
+.club{display:grid;grid-template-columns:1.15fr 1fr;min-height:min(100svh,920px);background:var(--papel)}
+.club-foto{width:100%;height:100%;min-height:520px;object-fit:cover;display:block}
+.club-txt{display:flex;flex-direction:column;justify-content:center;padding:clamp(48px,7vw,110px) clamp(20px,6vw,96px)}
 .datos-club{display:grid;grid-template-columns:1fr 1fr;gap:28px 24px;margin-top:36px}
 .datos-club b{display:block;font-family:var(--disp);font-weight:900;font-size:56px;line-height:.9}
 .datos-club span{font-size:14px;color:var(--suave)}
 .datos-club .ancho{grid-column:1/-1}
 .datos-club .ancho b{font-size:32px}
-@media (max-width:760px){.club-rejilla{grid-template-columns:1fr}.club-foto{aspect-ratio:3/2}}
+@media (max-width:760px){.club{grid-template-columns:1fr;min-height:0}.club-foto{min-height:0;height:auto;aspect-ratio:4/5}.club-txt{padding:40px var(--g) 64px}}
 
 /* horario */
 .cuadrante{position:relative;display:grid;background:var(--grafito);border-radius:6px;overflow:hidden}
@@ -241,15 +242,13 @@ footer img{height:38px;width:auto}
   <div class="puntos" id="puntos"></div>
 </section>
 
-<section class="bloque" id="club">
-  <div class="envoltura club-rejilla">
-    <img class="club-foto" id="clubFoto" alt="Raqueta y volantes de bádminton" loading="lazy">
-    <div>
+<section class="club" id="club">
+    <img class="club-foto" id="clubFoto" alt="Volante sobre una raqueta de bádminton" loading="lazy">
+    <div class="club-txt">
       <div class="titulo"><h2>El club</h2></div>
       <p class="texto" id="quienes">Club de bádminton de Torrelavega. Escuela para niños y adultos, entrenamientos por niveles y torneos a lo largo de toda la temporada.</p>
       <div class="datos-club" id="datosClub"></div>
     </div>
-  </div>
 </section>
 
 <section class="bloque oscuro" id="horarios">
@@ -368,7 +367,7 @@ footer img{height:38px;width:auto}
       { id: '1626224583764-f87db24ac4ea', autor: 'Muktasim Azlan', pag: 'https://unsplash.com/photos/badminton-player-jumping-on-indoor-court-rjWfNR_AC5g' },
       { id: '1722087642932-9b070e9a066e', autor: 'Irish83', pag: 'https://unsplash.com/photos/badminton-player-jumping-in-indoor-court-sxwRpLJTuXc' }
     ],
-    club: { id: '1708312604109-16c0be9326cd', autor: 'Allison Saeng', pag: 'https://unsplash.com/photos/a-badminton-racket-and-two-shuttles-on-a-green-surface-VRqmHMYMq1c' },
+    club: { id: '1521537634581-0dced2fee2ef', autor: 'frame harirak', pag: 'https://unsplash.com/photos/white-shuttlecock-on-brown-and-black-badminton-racket-placed-on-floor-UR_mNYmpwco' },
     inscripcion: { id: '1626721105368-a69248e93b32', autor: 'Stephan Rothe', pag: 'https://unsplash.com/photos/shuttlecock-on-badminton-net-VePgmkq3hHI' },
     app: { id: '1564226803380-91139fdcb4d0', autor: 'Siora Photography', pag: 'https://unsplash.com/photos/white-badminton-shuttlecock-hVeOZslMjGA' }
   };
@@ -406,7 +405,7 @@ footer img{height:38px;width:auto}
   }
   FOTOS.portada.forEach(function (f) { anadirDiapo(urlFoto(f, anchoPortada), false); });
   (function () {
-    var cf = $('clubFoto'); cf.src = urlFoto(FOTOS.club, 1100); cf.onerror = function () { cf.classList.add('oculto'); };
+    var cf = $('clubFoto'); cf.src = urlFoto(FOTOS.club, Math.min(2000, Math.round(window.innerWidth * (window.innerWidth > 760 ? 0.6 : 1) * Math.min(2, window.devicePixelRatio || 1)))); cf.onerror = function () { cf.classList.add('oculto'); };
     var probar = function (f, alCargar) { var im = new Image(); im.onload = function () { alCargar(im.src); }; im.src = urlFoto(f, 1800); };
     probar(FOTOS.inscripcion, function (u) { $('inscripcion').style.backgroundImage = 'url("' + u + '")'; });
     probar(FOTOS.app, function (u) { $('areaApp').style.backgroundImage = 'url("' + u + '")'; });

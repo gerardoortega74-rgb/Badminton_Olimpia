@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261028-fichajecabecera">
+<meta name="build-id" content="v20261028-enlacefichar">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -15237,10 +15237,17 @@ function seleccionarUsuarioLogin(id) {
   root.appendChild(card);
   pinInput.focus();
 }
+function irAFicharSiEnlace() {
+  let urlFichar = false; try { urlFichar = new URLSearchParams(location.search).has('fichar'); } catch (e) {}
+  if (urlFichar && sesionActual && !esTrabajador() && !esOtroClub() && yoFicho()) { showSection('fichar'); return true; }
+  return false;
+}
 function iniciarAppTrasLogin() {
   document.getElementById('loginScreen').style.display = 'none';
   if (typeof marcarDispositivoFichaje === 'function') marcarDispositivoFichaje(esTrabajador());
   if (esTrabajador()) { showSection('fichar'); return; }
+  // Enlace directo de fichaje (…/app.html?fichar=1): quien ficha entra directo a la pantalla de fichar.
+  if (irAFicharSiEnlace()) return;
   const hadClub = !!clubGlobal.nombre;
   if (!hadClub) {
     currentSection = 'onboarding';
@@ -20238,7 +20245,7 @@ function arrancarAppLocal() {
     renderOnboarding();
     document.getElementById('onboardingScreen').style.display = 'block';
     renderShellHeader();
-  } else {
+  } else if (!irAFicharSiEnlace()) {
     showSection('home');
   }
 }

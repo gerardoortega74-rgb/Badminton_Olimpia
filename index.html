@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="build-id" content="v20261028-webclub">
+<meta name="build-id" content="v20261028-google">
 <script>
 // Los enlaces de la app (?club=, ?tiendaonline=, ?tallerpublico=, ?publico=, ?fichar=…) siguen funcionando:
 // cualquier dirección con parámetros va a la app. Y si se abre desde el icono de la pantalla de inicio, también.
@@ -15,14 +15,22 @@
   if (standalone) location.replace('app.html');
 })();
 </script>
-<title>Club Bádminton Olimpia Torrelavega</title>
-<meta name="description" content="Club de bádminton en Torrelavega: escuela, entrenamientos por niveles, horarios, cuotas, torneos y contacto.">
+<title>Club Bádminton Olimpia Torrelavega · Escuela de bádminton en Torrelavega</title>
+<meta name="description" content="Club de bádminton en Torrelavega (Cantabria): escuela para niños y adultos, entrenamientos por niveles, horarios, cuotas, torneos y contacto. Ven a probar una clase.">
+<link rel="canonical" href="https://badmintonolimpia.es/">
+<meta name="robots" content="index,follow">
+<script type="application/ld+json" id="datosEstructurados">{"@context": "https://schema.org", "@type": "SportsClub", "@id": "https://badmintonolimpia.es/#club", "name": "Club Bádminton Olimpia Torrelavega", "alternateName": "Bádminton Olimpia", "url": "https://badmintonolimpia.es/", "logo": "https://badmintonolimpia.es/icono-512.png", "image": "https://badmintonolimpia.es/icono-512.png", "sport": "Bádminton", "description": "Club de bádminton en Torrelavega (Cantabria): escuela para niños y adultos, entrenamientos por niveles y torneos.", "address": {"@type": "PostalAddress", "addressLocality": "Torrelavega", "addressRegion": "Cantabria", "addressCountry": "ES"}, "areaServed": "Torrelavega"}</script>
 <meta name="theme-color" content="#15191c">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="es_ES">
+<meta property="og:url" content="https://badmintonolimpia.es/">
+<meta property="og:site_name" content="Club Bádminton Olimpia Torrelavega">
 <meta property="og:title" content="Club Bádminton Olimpia Torrelavega">
-<meta property="og:description" content="Escuela, horarios, cuotas, torneos y contacto del club.">
-<meta property="og:image" content="icono-512.png">
+<meta property="og:description" content="Escuela de bádminton en Torrelavega: horarios, cuotas, torneos y contacto.">
+<meta property="og:image" content="https://badmintonolimpia.es/icono-512.png">
+<meta name="twitter:card" content="summary">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;700&family=Big+Shoulders+Display:wght@700;900&display=swap">
 <style>
@@ -445,8 +453,24 @@ footer img{height:38px;width:auto}
   function soloDigitos(t) { return String(t || '').replace(/[^0-9+]/g, ''); }
 
   // ---------- pintar ----------
+  function datosParaGoogle(w) {
+    try {
+      var n = $('datosEstructurados'); var d = JSON.parse(n.textContent);
+      if (w.telefono) d.telephone = w.telefono;
+      if (w.email) d.email = w.email;
+      if (w.direccion) d.address.streetAddress = w.direccion;
+      if (w.pabellon) d.location = { '@type': 'Place', name: w.pabellon, address: w.direccion || 'Torrelavega' };
+      var redes = [];
+      if (w.instagram) redes.push('https://instagram.com/' + w.instagram);
+      if (w.facebook) redes.push(/^https?:/.test(w.facebook) ? w.facebook : 'https://' + w.facebook);
+      if (redes.length) d.sameAs = redes;
+      if (w.quienesSomos) { d.description = w.quienesSomos.slice(0, 300); var md = document.querySelector('meta[name="description"]'); if (md) md.setAttribute('content', w.quienesSomos.replace(/\s+/g, ' ').slice(0, 158)); }
+      n.textContent = JSON.stringify(d);
+    } catch (e) {}
+  }
   function pintar(pub) {
     var w = (pub && pub.web) || {};
+    if (pub) datosParaGoogle(w);
     if (w.eslogan) $('eslogan').textContent = w.eslogan;
     if (w.quienesSomos) $('quienes').textContent = w.quienesSomos;
     if (w.inscripcion) $('insTexto').textContent = w.inscripcion;

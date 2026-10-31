@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261031-cronometro">
+<meta name="build-id" content="v20261031-deshacer">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -9186,6 +9186,11 @@ function removePedido(id) {
 }
 function empezarPedido(p) { p.estado = 'en_proceso'; p.horaInicio = Date.now(); }
 function terminarPedido(p) { p.estado = 'terminado'; p.horaFin = Date.now(); }
+// Deshacer «terminada»: vuelve a la cola como pendiente, en el puesto que tenía (se borra la foto de terminada).
+function volverACola(p) {
+  p.estado = 'pendiente'; delete p.horaFin; delete p.horaInicio;
+  if (p.fotoDespues) { p.fotoDespues = null; if (window.guardarFotosTallerEnNube) window.guardarFotosTallerEnNube(p.id, p.fotoAntes, null); }
+}
 function entregarPedido(p) { p.estado = 'entregado'; if (!p.fechaEntrega) p.fechaEntrega = Date.now(); }
 function hoyISO() { return new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10); }
 function tsDeFechaISO(iso) {
@@ -9255,6 +9260,11 @@ function construirPanelPorRecoger() {
         el('button', { class: 'btn btn-primary', onclick: () => abrirEntregaPedido(p) }, 'Entregar'),
         el('button', { class: 'btn btn-ghost', onclick: () => abrirAvisoWhatsapp(p) }, 'Avisar por WhatsApp'),
         menuMasOpciones([
+          el('button', { class: 'btn btn-ghost btn-sm im-deshacer', onclick: () => {
+            const n = cli ? cli.nombre : 'este cliente';
+            if (!confirm('¿La raqueta de ' + n + ' (' + (p.marcaModelo || 'raqueta') + ') NO está encordada?\n\nVolverá a la cola de trabajo como pendiente, en el puesto que tenía.' + (p.fotoDespues ? '\nSe quitará la foto de terminada.' : ''))) return;
+            volverACola(p); render();
+          } }, '↩️ No está encordada: volver a la cola'),
           el('button', { class: 'btn btn-ghost btn-sm', onclick: () => abrirInformeCoste(p) }, 'Informe de coste'),
           el('button', { class: 'btn btn-danger btn-sm', onclick: () => { if (confirm('¿Quitar este pedido? No se puede deshacer.')) { removePedido(p.id); render(); } } }, 'Quitar'),
         ]),
@@ -10104,7 +10114,13 @@ function viewCola() {
         el('div', { class: 'im-det' }, el('strong', {}, p.marcaModelo || 'Raqueta sin especificar'), ` · ${nombreCordajeDe(p)} · ${fmtTension(p)} · ${euros(p.precio)}`),
         el('div', { class: 'im-acc' },
           el('button', { class: 'btn btn-primary', onclick: () => { reanudarPedido(p); render(); } }, 'Volver a la cola hoy'),
-          menuMasOpciones([el('button', { class: 'btn btn-danger btn-sm', onclick: () => { if (confirm('¿Quitar este pedido?')) { removePedido(p.id); render(); } } }, 'Quitar')]),
+          menuMasOpciones([
+            el('button', { class: 'btn btn-ghost btn-sm im-aplazada-terminar', onclick: () => {
+              const c = clienteDe(p.clienteId);
+              if (!confirm('¿La raqueta de ' + (c ? c.nombre : 'este cliente') + ' (' + (p.marcaModelo || 'raqueta') + ') YA está encordada?\n\nPasará a «Listas para recoger».')) return;
+              p.aplazado = false; if (!p.horaInicio) p.horaInicio = Date.now(); terminarPedido(p); render(); abrirAvisoWhatsapp(p);
+            } }, '✅ Ya está encordada: marcar terminada'),
+            el('button', { class: 'btn btn-danger btn-sm', onclick: () => { if (confirm('¿Quitar este pedido?')) { removePedido(p.id); render(); } } }, 'Quitar')]),
         ),
       ));
     });

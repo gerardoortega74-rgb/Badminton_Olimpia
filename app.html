@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261031-ticketimagen">
+<meta name="build-id" content="v20261031-registradora">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -208,6 +208,30 @@ body.tpub-on main#shellMain{max-width:none !important;margin:0 !important;paddin
 body.im-taller .tpv{display:grid;grid-template-columns:1fr;gap:14px;align-items:start;}
 @media (min-width:1000px){body.im-taller .tpv{grid-template-columns:minmax(0,1fr) 340px;}body.im-taller .tpv-der{position:sticky;top:12px;}body.im-taller .tpv-barra{display:none !important;}}
 @media (max-width:999px){body.im-taller .tpv-der{display:none;}body.im-taller .tpv-ventas{margin-bottom:70px;}}
+/* Caja registradora con el último ticket saliendo del rollo de papel */
+body.im-taller .tpv-reg{margin-top:18px;display:flex;flex-direction:column;align-items:center;user-select:none;}
+body.im-taller .tpv-reg-papel{position:relative;width:86%;max-height:330px;overflow:hidden;cursor:pointer;margin-bottom:-6px;z-index:1;filter:drop-shadow(0 6px 10px rgba(0,0,0,.18));}
+body.im-taller .tpv-reg-papel .tpv-reg-hoja{background:#FFFEF8;padding:18px 14px 26px;transform-origin:bottom;}
+body.im-taller .tpv-reg-papel .tpv-reg-hoja{mask:conic-gradient(from 135deg at top,#0000,#000 1deg 89deg,#0000 90deg) top/12px 8px repeat-x, linear-gradient(#000,#000) bottom/100% calc(100% - 8px) no-repeat;-webkit-mask:conic-gradient(from 135deg at top,#0000,#000 1deg 89deg,#0000 90deg) top/12px 8px repeat-x, linear-gradient(#000,#000) bottom/100% calc(100% - 8px) no-repeat;}
+body.im-taller .tpv-reg-papel .tk{font-size:11.5px;max-width:none;}
+body.im-taller .tpv-reg-papel .tk-c b{font-size:13px;}
+body.im-taller .tpv-reg-papel::after{content:"";position:absolute;left:0;right:0;bottom:0;height:34px;background:linear-gradient(rgba(0,0,0,0),rgba(0,0,0,.28));pointer-events:none;}
+body.im-taller .tpv-reg-papel.imprimiendo .tpv-reg-hoja{animation:tpvImprime 1.6s steps(14,end) both;}
+@keyframes tpvImprime{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@media (prefers-reduced-motion:reduce){body.im-taller .tpv-reg-papel.imprimiendo .tpv-reg-hoja{animation:none;}}
+body.im-taller .tpv-reg-cuerpo{position:relative;width:100%;background:linear-gradient(180deg,#1c3f7a 0%,#0b2a5b 55%,#08204a 100%);border-radius:18px 18px 10px 10px;padding:16px 16px 0;box-shadow:0 10px 24px rgba(8,32,74,.35),inset 0 2px 0 rgba(255,255,255,.12);z-index:2;}
+body.im-taller .tpv-reg-ranura{height:10px;margin:0 6% 12px;background:#050c18;border-radius:6px;box-shadow:inset 0 2px 4px rgba(0,0,0,.8),0 1px 0 rgba(255,255,255,.15);}
+body.im-taller .tpv-reg-visor{background:#0b1a10;border-radius:8px;padding:8px 12px;display:flex;justify-content:space-between;align-items:baseline;box-shadow:inset 0 2px 6px rgba(0,0,0,.7);font-family:ui-monospace,Menlo,Consolas,monospace;color:#7CFF9B;text-shadow:0 0 6px rgba(124,255,155,.6);}
+body.im-taller .tpv-reg-visor small{font-size:11px;opacity:.8;}
+body.im-taller .tpv-reg-visor b{font-size:24px;letter-spacing:.04em;}
+body.im-taller .tpv-reg-teclas{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:14px 0 14px;}
+body.im-taller .tpv-reg-teclas i{display:block;height:22px;border-radius:5px;background:linear-gradient(#f4f6fa,#cfd6e2);box-shadow:0 2px 0 #7d8aa3;font-style:normal;font:700 11px/22px ui-monospace,Menlo,monospace;text-align:center;color:#24324d;}
+body.im-taller .tpv-reg-teclas i.r{background:linear-gradient(#ff5a64,#e0162b);color:#fff;box-shadow:0 2px 0 #8a0d1a;}
+body.im-taller .tpv-reg-marca{text-align:center;font:800 italic 13px/1 'Barlow Condensed','Inter',sans-serif;letter-spacing:.12em;color:rgba(255,255,255,.75);padding-bottom:10px;}
+body.im-taller .tpv-reg-cajon{height:30px;margin:0 -16px;background:linear-gradient(#0a2350,#061633);border-radius:0 0 10px 10px;border-top:2px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;}
+body.im-taller .tpv-reg-cajon::before{content:"";width:60px;height:6px;border-radius:3px;background:#c9d2e3;box-shadow:0 1px 0 rgba(0,0,0,.4);}
+body.im-taller .tpv-reg-pie{font-size:12px;color:var(--muted,#667);margin-top:8px;text-align:center;}
+
 body.im-taller .tpv-cab{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
 body.im-taller .tpv-cab h2{margin:0;}
 body.im-taller .tpv-buscar input{width:100%;min-height:46px;font-size:16px;border-radius:12px;}
@@ -9870,12 +9894,36 @@ function viewTiendaFisica() {
   if (todas.length > deHoy.length || tpvVerAnteriores) ventas.appendChild(el('button', { class: 'btn btn-ghost btn-sm', style: 'margin-top:8px;', onclick: () => { tpvVerAnteriores = !tpvVerAnteriores; render(); } }, tpvVerAnteriores ? 'Ver solo las de hoy' : 'Ver ventas anteriores'));
   izq.appendChild(ventas);
   // Ticket: columna derecha (PC) + barra flotante (móvil)
-  cont.appendChild(el('div', { class: 'tpv-der' }, tpvPanelTicket(false)));
+  cont.appendChild(el('div', { class: 'tpv-der' }, tpvPanelTicket(false), tpvCajaRegistradora(todas[0] || null)));
   wrap.appendChild(cont);
   const n = tpvLineas().reduce((s, l) => s + l.cantidad, 0);
   if (n) wrap.appendChild(el('button', { type: 'button', class: 'tpv-barra', onclick: () => tpvAbrirVentanaTicket() },
     el('span', {}, '🧾 ' + n + (n === 1 ? ' artículo' : ' artículos')), el('b', {}, euros(tpvTotal())), el('span', { class: 'tpv-barra-ir' }, 'Cobrar →')));
   return wrap;
+}
+// Caja registradora: el último ticket sale del rollo de papel (se «imprime» cuando hay uno nuevo).
+let tpvUltimoImpreso = null, tpvRegVista = false;
+function tpvCajaRegistradora(v) {
+  const yaVista = tpvRegVista; tpvRegVista = true;
+  const caja = el('div', { class: 'tpv-reg', 'aria-label': 'Último ticket' });
+  if (v) {
+    const papel = el('div', { class: 'tpv-reg-papel', title: 'Abrir el ticket ' + tpvNumTxt(v), role: 'button', tabindex: '0', onclick: () => tpvAbrirTicket(v), onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tpvAbrirTicket(v); } } });
+    const hoja = el('div', { class: 'tpv-reg-hoja' }); hoja.innerHTML = '<style>' + TPV_CSS_TICKET + '</style>' + tpvHtmlTicket(v);
+    papel.appendChild(hoja);
+    if (yaVista && tpvUltimoImpreso !== v.id) papel.classList.add('imprimiendo');
+    tpvUltimoImpreso = v.id;
+    caja.appendChild(papel);
+  }
+  const teclas = el('div', { class: 'tpv-reg-teclas', 'aria-hidden': 'true' });
+  ['7', '8', '9', 'C', '4', '5', '6', '×', '1', '2', '3', '+', '0', '00', ',', '='].forEach(t => teclas.appendChild(el('i', { class: t === '=' ? 'r' : '' }, t)));
+  caja.appendChild(el('div', { class: 'tpv-reg-cuerpo' },
+    el('div', { class: 'tpv-reg-ranura' }),
+    el('div', { class: 'tpv-reg-visor' }, el('small', {}, v ? (v.anulada ? 'ANULADO ' : 'TOTAL ') + tpvNumTxt(v) : 'CAJA'), el('b', {}, v ? euros(v.total).replace(' €', '') : '0,00')),
+    teclas,
+    el('div', { class: 'tpv-reg-marca' }, (state.config.nombreTaller || 'IDERMAY CANTABRIA').toUpperCase()),
+    el('div', { class: 'tpv-reg-cajon' })));
+  caja.appendChild(el('div', { class: 'tpv-reg-pie' }, v ? 'Último ticket · pincha el papel para abrirlo' : 'Aquí saldrá el último ticket'));
+  return caja;
 }
 // ===== Cobro de raquetas con ticket (misma numeración que la tienda) =====
 function ventaDePedido(p) { return (state.ventasTienda || []).find(v => v.pedidoId === p.id && !v.anulada) || null; }

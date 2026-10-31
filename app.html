@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261031-telcliente">
+<meta name="build-id" content="v20261031-ticketimagen">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -9555,23 +9555,40 @@ function tpvImprimir(v) {
 // Enviar el ticket por WhatsApp: con el teléfono del cliente o el que escribas; sin teléfono, WhatsApp deja elegir el contacto.
 function tpvBloqueWhatsapp(v, cli, textoWa) {
   const inTel = el('input', { type: 'tel', inputmode: 'tel', placeholder: 'Teléfono (o déjalo vacío y eliges el contacto)', value: cli && cli.telefono ? cli.telefono : '', 'aria-label': 'Teléfono para WhatsApp' });
-  const enviar = el('a', { class: 'btn tpv-wa', href: '#', target: '_blank', rel: 'noopener' }, '💬 Enviar por WhatsApp');
-  const actualizar = () => { const n = telefonoParaWhatsapp(inTel.value); enviar.href = 'https://wa.me/' + (n || '') + '?text=' + encodeURIComponent(textoWa); };
-  inTel.addEventListener('input', actualizar); actualizar();
-  enviar.addEventListener('click', () => {
-    // Si el cliente del ticket no tenía teléfono y lo acabas de escribir, se le guarda.
-    if (cli && !cli.telefono && inTel.value.trim()) { cli.telefono = inTel.value.trim(); saveLocal(); }
-  });
-  const caja = el('div', { class: 'tpv-wa-caja' }, el('div', { class: 'tpv-wa-fila' }, inTel, enviar));
-  const puedeCompartir = typeof navigator !== 'undefined' && navigator.canShare && typeof File !== 'undefined' && navigator.canShare({ files: [new File(['x'], 't.png', { type: 'image/png' })] });
-  if (puedeCompartir) caja.appendChild(el('button', { type: 'button', class: 'btn btn-ghost tpv-compartir', onclick: async () => {
+  const aviso = el('div', { class: 'tpv-wa-aviso', style: 'font-size:13px;margin-top:8px;' });
+  const decir = (txt, ok) => { aviso.innerHTML = ''; aviso.appendChild(el('div', { class: 'msg ' + (ok ? 'msg-ok' : 'msg-warn') }, txt)); };
+  const guardarTel = () => { if (cli && !cli.telefono && inTel.value.trim()) { cli.telefono = inTel.value.trim(); saveLocal(); } };
+  const nombreArchivo = 'ticket-' + tpvNumTxt(v) + '.png';
+  // Envía el TICKET como imagen. En el móvil: menú Compartir (eliges WhatsApp). En el ordenador: la imagen se copia
+  // y se abre el chat; allí se pega con Ctrl+V (WhatsApp no deja adjuntar archivos desde una web).
+  const enviar = el('button', { type: 'button', class: 'btn tpv-wa' }, '💬 Enviar ticket por WhatsApp');
+  enviar.addEventListener('click', async () => {
+    guardarTel();
+    const n = telefonoParaWhatsapp(inTel.value);
+    enviar.disabled = true;
     try {
       const blob = await tpvTicketImagen(v);
-      const file = new File([blob], 'ticket-' + tpvNumTxt(v) + '.png', { type: 'image/png' });
-      await navigator.share({ files: [file], text: 'Ticket ' + tpvNumTxt(v) + ' · ' + euros(v.total) });
-    } catch (e) { if (!e || e.name !== 'AbortError') alert('No se pudo compartir la imagen: ' + (e && e.message ? e.message : 'error')); }
-  } }, '📤 Compartir ticket como imagen'));
-  return caja;
+      const file = new File([blob], nombreArchivo, { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] }) && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '')) {
+        try { await navigator.share({ files: [file] }); decir('✅ Elige WhatsApp y el contacto para enviar el ticket.', true); }
+        catch (e) { if (!e || e.name !== 'AbortError') throw e; }
+        return;
+      }
+      let copiado = false;
+      try { if (navigator.clipboard && window.ClipboardItem) { await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); copiado = true; } } catch (e) { copiado = false; }
+      if (!copiado) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nombreArchivo; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 8000); }
+      window.open('https://wa.me/' + (n || ''), '_blank', 'noopener');
+      decir(copiado
+        ? '✅ Imagen del ticket copiada. En el chat de WhatsApp pulsa Ctrl+V (o clic derecho → Pegar) y luego Enviar.'
+        : '✅ Ticket descargado como imagen (' + nombreArchivo + '). En el chat de WhatsApp pulsa el clip 📎 y elígelo, o arrástralo al chat.', true);
+    } catch (e) { decir('No se pudo preparar la imagen del ticket: ' + (e && e.message ? e.message : 'error'), false); }
+    finally { enviar.disabled = false; }
+  });
+  const soloTexto = el('a', { href: '#', class: 'tpv-wa-texto', style: 'font-size:12px;display:inline-block;margin-top:6px;', onclick: (e) => {
+    e.preventDefault(); guardarTel(); const n = telefonoParaWhatsapp(inTel.value);
+    window.open('https://wa.me/' + (n || '') + '?text=' + encodeURIComponent(textoWa), '_blank', 'noopener');
+  } }, 'Enviar solo el texto');
+  return el('div', { class: 'tpv-wa-caja' }, el('div', { class: 'tpv-wa-fila' }, inTel, enviar), soloTexto, aviso);
 }
 // Dibuja el ticket como imagen PNG (para compartirlo por WhatsApp como foto).
 function tpvTicketImagen(v) {

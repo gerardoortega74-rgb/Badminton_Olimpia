@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261031-deuda">
+<meta name="build-id" content="v20261031-ticketraquetas">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -9642,7 +9642,7 @@ async function enviarImagenPorWhatsapp(blob, nombreArchivo, numero, que) {
     ? '✅ Imagen copiada. En el chat de WhatsApp pulsa Ctrl+V (o clic derecho → Pegar) y luego Enviar.'
     : '✅ Imagen descargada (' + nombreArchivo + '). En el chat de WhatsApp pulsa el clip 📎 y elígela, o arrástrala al chat.';
 }
-// ===== Lo que debe un cliente: resumen de sus raquetas sin pagar, como imagen para WhatsApp =====
+// ===== Ticket de las raquetas sin pagar de un cliente, como imagen para WhatsApp =====
 function pendientesDeCliente(clienteId) { return pedidosPendientesDeCobro().filter(p => p.clienteId === clienteId).sort((a, b) => (a.horaLlegada || 0) - (b.horaLlegada || 0)); }
 function imagenDeuda(cli, lista) {
   let em = { nombreComercial: state.config.nombreTaller || '' };
@@ -9655,7 +9655,8 @@ function imagenDeuda(cli, lista) {
   t(em.nombreComercial || em.razonSocial || 'IDERMAY CANTABRIA', { size: 32, bold: true, align: 'center' });
   if (em.telefono || state.config.telefonoTienda) t('Tel. ' + (em.telefono || state.config.telefonoTienda), { align: 'center', size: 20 });
   filas.push({ esp: 12 });
-  t('PENDIENTE DE PAGO', { size: 30, bold: true, align: 'center', color: '#B3261E' });
+  t('TICKET', { size: 30, bold: true, align: 'center' });
+  t('Pendiente de pago', { size: 20, align: 'center', color: '#B3261E' });
   filas.push({ esp: 6 });
   dosCol('Cliente', cli ? cli.nombre : '', { size: 21 });
   dosCol('Fecha', fch(Date.now()), { size: 21 });
@@ -9699,10 +9700,10 @@ function abrirDeudaCliente(clienteId) {
   const root = document.getElementById('tallerModalRoot');
   const cli = clienteDe(clienteId);
   const todas = pendientesDeCliente(clienteId);
-  if (!root || !todas.length) { alert('Este cliente no tiene raquetas pendientes de pago.'); return; }
+  if (!root || !todas.length) { alert('Este cliente no tiene raquetas sin pagar.'); return; }
   const marcadas = new Set(todas.map(p => p.id));
   const lista = () => todas.filter(p => marcadas.has(p.id));
-  const vista = el('img', { class: 'im-deuda-img', alt: 'Resumen de lo pendiente', style: 'width:100%;max-width:300px;display:block;margin:8px auto;border-radius:6px;box-shadow:0 2px 10px rgba(0,0,0,.15);' });
+  const vista = el('img', { class: 'im-deuda-img', alt: 'Ticket', style: 'width:100%;max-width:300px;display:block;margin:8px auto;border-radius:6px;box-shadow:0 2px 10px rgba(0,0,0,.15);' });
   const totalEl = el('b');
   const pintar = () => {
     totalEl.textContent = euros(lista().reduce((s2, p) => s2 + (p.precio || 0), 0));
@@ -9716,12 +9717,12 @@ function abrirDeudaCliente(clienteId) {
   const inTel = el('input', { type: 'tel', inputmode: 'tel', placeholder: 'Teléfono (o vacío para elegir el contacto)', value: cli && cli.telefono ? cli.telefono : '' });
   const aviso = el('div', { class: 'im-deuda-aviso', style: 'font-size:13px;margin-top:8px;' });
   const decir = (txt, ok) => { aviso.innerHTML = ''; if (txt) aviso.appendChild(el('div', { class: 'msg ' + (ok ? 'msg-ok' : 'msg-warn') }, txt)); };
-  const textoDeuda = () => 'Hola' + (cli ? ' ' + cli.nombre : '') + ', te paso lo pendiente de pago:\n' + lista().map(p => '- ' + fmtFechaTs(p.horaFin || p.horaLlegada) + ' ' + (p.marcaModelo || 'Raqueta') + ': ' + euros(p.precio || 0)).join('\n') + '\nTotal: ' + euros(lista().reduce((s2, p) => s2 + (p.precio || 0), 0)) + '. ¡Gracias!';
+  const textoDeuda = () => 'Hola' + (cli ? ' ' + cli.nombre : '') + ', te paso el ticket de tus raquetas:\n' + lista().map(p => '- ' + fmtFechaTs(p.horaFin || p.horaLlegada) + ' ' + (p.marcaModelo || 'Raqueta') + ': ' + euros(p.precio || 0)).join('\n') + '\nTotal: ' + euros(lista().reduce((s2, p) => s2 + (p.precio || 0), 0)) + '. ¡Gracias!';
   const btnEnviar = el('button', { type: 'button', class: 'btn tpv-wa im-deuda-enviar', onclick: async () => {
     if (!lista().length) { decir('Marca al menos una raqueta.', false); return; }
     if (cli && !cli.telefono && inTel.value.trim()) { cli.telefono = inTel.value.trim(); saveLocal(); }
     btnEnviar.disabled = true;
-    try { const r = await enviarImagenPorWhatsapp(await imagenDeuda(cli, lista()), 'pendiente-' + (cli ? cli.nombre.replace(/\s+/g, '-') : 'cliente') + '.png', telefonoParaWhatsapp(inTel.value), 'el resumen'); if (r) decir(r, true); }
+    try { const r = await enviarImagenPorWhatsapp(await imagenDeuda(cli, lista()), 'ticket-' + (cli ? cli.nombre.replace(/\s+/g, '-') : 'cliente') + '.png', telefonoParaWhatsapp(inTel.value), 'el ticket'); if (r) decir(r, true); }
     catch (e) { decir('No se pudo preparar la imagen: ' + (e && e.message ? e.message : 'error'), false); }
     finally { btnEnviar.disabled = false; }
   } }, '💬 Enviar por WhatsApp');
@@ -9729,8 +9730,8 @@ function abrirDeudaCliente(clienteId) {
   root.appendChild(el('div', { class: 'modal-bg', onclick: (e) => { if (e.target.classList.contains('modal-bg')) root.innerHTML = ''; } },
     el('div', { class: 'modal im-deuda', style: 'max-height:90vh;overflow-y:auto;' },
       el('button', { type: 'button', class: 'tpv-cerrar-x', 'aria-label': 'Cerrar', onclick: () => { root.innerHTML = ''; } }, '✕'),
-      el('h3', {}, '🧾 Lo que debe ' + (cli ? cli.nombre : '')),
-      el('div', { class: 'sub' }, 'Raquetas sin pagar. Quita la marca de las que no quieras incluir.'),
+      el('h3', {}, '🧾 Ticket de ' + (cli ? cli.nombre : '')),
+      el('div', { class: 'sub' }, 'Sus raquetas sin pagar. Quita la marca de las que no quieras incluir en el ticket.'),
       filas,
       el('div', { style: 'display:flex;justify-content:space-between;align-items:baseline;margin:8px 0;font-size:18px;' }, el('span', {}, 'Total'), totalEl),
       vista,
@@ -12235,7 +12236,7 @@ function viewHistorial() {
           p.facturaId ? el('button', { class: 'btn btn-ghost btn-sm', onclick: () => facAbrirPorId(p.facturaId) }, '🧾 Factura ' + p.facturaId)
             : p.pagado ? el('button', { class: 'btn btn-ghost btn-sm', onclick: () => facFacturarPedido(p) }, '🧾 Hacer factura') : null,
           p.pagado ? el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { if (confirm('¿Marcar esta raqueta como NO pagada? Su ticket de cobro quedará anulado.')) { anularCobroPedido(p); render(); } } }, 'Marcar como no pagada') : null,
-          !p.pagado && cli ? (() => { const deb = pendientesDeCliente(cli.id); return el('button', { class: 'btn btn-ghost btn-sm im-deuda-btn', onclick: () => abrirDeudaCliente(cli.id) }, '🧾 Enviarle lo que debe (' + deb.length + (deb.length === 1 ? ' raqueta · ' : ' raquetas · ') + euros(deb.reduce((s2, x) => s2 + (x.precio || 0), 0)) + ')'); })() : null,
+          !p.pagado && cli ? (() => { const deb = pendientesDeCliente(cli.id); return el('button', { class: 'btn btn-ghost btn-sm im-deuda-btn', onclick: () => abrirDeudaCliente(cli.id) }, '🧾 Enviar ticket (' + deb.length + (deb.length === 1 ? ' raqueta · ' : ' raquetas · ') + euros(deb.reduce((s2, x) => s2 + (x.precio || 0), 0)) + ')'); })() : null,
           el('button', { class: 'btn btn-ghost btn-sm', onclick: () => abrirInformeCoste(p) }, '📊 Informe de coste'),
           el('button', { class: 'btn btn-danger btn-sm', onclick: () => { if (confirm('¿Eliminar esta raqueta del historial? No se puede deshacer.')) { removePedido(p.id); render(); } } }, 'Eliminar del historial'),
         ])));

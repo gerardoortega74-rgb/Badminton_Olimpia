@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261031-maxx">
+<meta name="build-id" content="v20261031-telcliente">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -10253,20 +10253,20 @@ function viewNuevoPedido() {
     encontrados.slice(0, 6).forEach(c => {
       resultadosDiv.appendChild(el('div', {
         class: 'chip', style: 'cursor:pointer;margin:2px;display:inline-block;',
-        onclick: () => { clienteElegidoId = c.id; buscadorInput.value = c.nombre; resultadosDiv.innerHTML = ''; marcarCliente(c.nombre); },
+        onclick: () => { clienteElegidoId = c.id; buscadorInput.value = c.nombre; resultadosDiv.innerHTML = ''; telNuevoInput.value = c.telefono || ''; marcarCliente(c.nombre + (c.telefono ? ' · ' + c.telefono : '')); },
       }, c.nombre + (c.telefono ? ' · ' + c.telefono : '')));
     });
   }
   buscadorInput.addEventListener('input', pintarBusqueda);
   const clienteChipDiv = el('div', {});
   function marcarCliente(nombre) { clienteChipDiv.className = nombre ? 'im-cliente-ok' : 'im-cliente-no'; clienteChipDiv.textContent = nombre ? '✓ ' + nombre : 'Busca por nombre o teléfono, o créalo nuevo.'; }
-  marcarCliente(clientePre ? clientePre.nombre : '');
+  marcarCliente(clientePre ? clientePre.nombre + (clientePre.telefono ? ' · ' + clientePre.telefono : '') : '');
   pasoCliente.appendChild(field('Buscar cliente', buscadorInput));
   pasoCliente.appendChild(resultadosDiv);
   pasoCliente.appendChild(clienteChipDiv);
-  const telNuevoInput = el('input', { type: 'tel', inputmode: 'tel', placeholder: 'Ej: 600 123 456', autocomplete: 'off' });
+  const telNuevoInput = el('input', { type: 'tel', inputmode: 'tel', placeholder: 'Ej: 600 123 456', autocomplete: 'off', value: clientePre ? (clientePre.telefono || '') : '' });
   pasoCliente.appendChild(el('div', { class: 'im-cliente-nuevo' },
-    field('Teléfono (cliente nuevo)', telNuevoInput),
+    field('Teléfono', telNuevoInput),
     el('button', { class: 'btn btn-ghost btn-sm', onclick: () => {
       let nombre = buscadorInput.value.trim();
       let telefono = telNuevoInput.value.trim();
@@ -10528,6 +10528,8 @@ function viewNuevoPedido() {
 
   async function guardarPedido(irACola) {
     if (!clienteElegidoId) { alert('Elige o crea primero un cliente.'); buscadorInput.focus(); return; }
+    // Si el cliente no tenía teléfono (o se ha corregido aquí), se guarda en su ficha.
+    { const cli = clienteDe(clienteElegidoId), tel = telNuevoInput.value.trim(); if (cli && tel && tel !== (cli.telefono || '')) cli.telefono = tel; }
     let fotoAntes = null;
     if (fotoInput.files[0]) {
       try { fotoAntes = await comprimirImagen(fotoInput.files[0], 1100, 0.65); } catch (e) {}

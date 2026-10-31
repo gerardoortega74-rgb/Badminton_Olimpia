@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261028-google">
+<meta name="build-id" content="v20261031-redes">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -17683,6 +17683,231 @@ function elegirArchivoImagen(alElegir) {
   inp.onchange = () => { if (inp.files && inp.files[0]) alElegir(inp.files[0]); };
   inp.click();
 }
+// ===== PUBLICAR NOTICIAS EN REDES (Facebook, Instagram, TikTok) =====
+// Facebook e Instagram: Graph API de Meta, llamada desde el navegador del administrador con el token de la PÁGINA,
+// que se guarda solo en este dispositivo (nunca en la nube ni en la web pública).
+// Instagram necesita una imagen en una dirección pública: se publica primero la foto en Facebook y se usa esa imagen.
+// TikTok: semiautomático. La app prepara una imagen vertical y el texto, y abre «Compartir» del móvil.
+const META_API = 'https://graph.facebook.com/';
+const CLAVE_TOKEN_META = 'badmintonTokenMeta';
+function fechaCortaRedes(ts) { const d = new Date(ts); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear(); }
+function redesCfg() { const w = webCfg(); if (!w.redes || typeof w.redes !== 'object') w.redes = {}; return w.redes; }
+function tokenMeta() { try { return localStorage.getItem(CLAVE_TOKEN_META) || ''; } catch (e) { return ''; } }
+function guardarTokenMeta(t) { try { if (t) localStorage.setItem(CLAVE_TOKEN_META, t); else localStorage.removeItem(CLAVE_TOKEN_META); } catch (e) {} }
+function metaLlamar(ruta, params, metodo, cuerpo) {
+  const qs = new URLSearchParams(Object.assign({}, params || {}));
+  const url = META_API + ruta + (qs.toString() ? '?' + qs.toString() : '');
+  return fetch(url, { method: metodo || 'GET', body: cuerpo || undefined }).then(r => r.json().catch(() => ({})).then(j => {
+    if (!r.ok || j.error) {
+      const e = j.error || {};
+      const msg = e.code === 190 ? 'El permiso de Facebook ha caducado o no es válido. Vuelve a conectarlo en «Redes sociales».'
+        : e.code === 10 || e.code === 200 ? 'Falta un permiso en la app de Meta (' + (e.message || 'permisos') + ').'
+        : (e.message || ('Error ' + r.status));
+      throw new Error(msg);
+    }
+    return j;
+  }));
+}
+// Texto que acompaña a la publicación
+function textoRedes(n) {
+  const partes = [String(n.titulo || '').trim(), String(n.texto || '').trim()].filter(Boolean);
+  partes.push('Más en ' + urlWebClub().replace(/^https?:\/\//, '').replace(/\/$/, ''));
+  const tags = String(redesCfg().hashtags || '#bádminton #Torrelavega #Cantabria #ClubOlimpia').trim();
+  if (tags) partes.push(tags);
+  return partes.join('\n\n');
+}
+// Imagen de la noticia: foto (si hay) + título + logo, en JPEG. formato 'cuadro' (1080x1350) o 'vertical' (1080x1920)
+function cargarImagen(src) { return new Promise((ok, mal) => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => mal(new Error('No se pudo cargar la imagen')); im.src = src; }); }
+function partirLineas(ctx, texto, ancho, maxLineas) {
+  const palabras = String(texto || '').split(/\s+/).filter(Boolean); const lineas = []; let actual = '';
+  palabras.forEach(p => { const prueba = actual ? actual + ' ' + p : p; if (ctx.measureText(prueba).width > ancho && actual) { lineas.push(actual); actual = p; } else actual = prueba; });
+  if (actual) lineas.push(actual);
+  if (lineas.length > maxLineas) { const r = lineas.slice(0, maxLineas); r[maxLineas - 1] = r[maxLineas - 1].replace(/\s*\S*$/, '') + '…'; return r; }
+  return lineas;
+}
+function imagenNoticia(n, foto, formato) {
+  const W = 1080, H = formato === 'vertical' ? 1920 : 1350;
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  return Promise.all([foto ? cargarImagen(foto).catch(() => null) : Promise.resolve(null), cargarImagen('logo_olimpia.svg').catch(() => null)]).then(([im, logo]) => {
+    ctx.fillStyle = '#15191c'; ctx.fillRect(0, 0, W, H);
+    if (im) {
+      const k = Math.max(W / im.width, H / im.height); const w = im.width * k, h = im.height * k;
+      ctx.drawImage(im, (W - w) / 2, (H - h) / 2, w, h);
+    } else {
+      ctx.strokeStyle = 'rgba(61,214,195,.18)'; ctx.lineWidth = 3;
+      for (let i = -H; i < W; i += 90) { ctx.beginPath(); ctx.moveTo(i, H); ctx.lineTo(i + H, 0); ctx.stroke(); }
+    }
+    const g = ctx.createLinearGradient(0, H * 0.35, 0, H); g.addColorStop(0, 'rgba(10,13,15,0)'); g.addColorStop(1, 'rgba(10,13,15,.92)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = 'rgba(10,13,15,.55)'; ctx.fillRect(0, 0, W, 150);
+    if (logo) { const lh = 104, lw = logo.width && logo.height ? lh * logo.width / logo.height : lh * 1.2; ctx.drawImage(logo, 54, 24, lw, lh); }
+    ctx.fillStyle = '#fff'; ctx.font = '600 34px Inter, Arial, sans-serif'; ctx.textBaseline = 'middle';
+    ctx.fillText('Club Bádminton Olimpia', 54 + 140, 62); ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.fillText('Torrelavega', 54 + 140, 104);
+    // título
+    ctx.textBaseline = 'alphabetic';
+    let tam = 96; ctx.font = '800 ' + tam + 'px Inter, Arial, sans-serif';
+    let lineas = partirLineas(ctx, String(n.titulo || '').toUpperCase(), W - 108, 4);
+    while (lineas.length > 3 && tam > 64) { tam -= 8; ctx.font = '800 ' + tam + 'px Inter, Arial, sans-serif'; lineas = partirLineas(ctx, String(n.titulo || '').toUpperCase(), W - 108, 4); }
+    const pie = formato === 'vertical' ? 260 : 150;
+    let y = H - pie - (lineas.length - 1) * tam * 1.02;
+    ctx.fillStyle = '#3dd6c3'; ctx.fillRect(54, y - tam - 34, 120, 10);
+    ctx.fillStyle = '#fff';
+    lineas.forEach(l => { ctx.fillText(l, 54, y); y += tam * 1.02; });
+    ctx.font = '500 32px Inter, Arial, sans-serif'; ctx.fillStyle = 'rgba(255,255,255,.8)';
+    ctx.fillText(urlWebClub().replace(/^https?:\/\//, '').replace(/\/$/, ''), 54, H - pie + 70);
+    return new Promise(ok => cv.toBlob(b => ok(b), 'image/jpeg', 0.9));
+  });
+}
+function fotoDeNoticia(n) { return cargarFotosWeb().then(f => f.noticias[n.id] || null); }
+// Facebook: foto + texto en la página. Devuelve { postId, imagenUrl }
+function publicarEnFacebook(n, blob) {
+  const r = redesCfg(), tk = tokenMeta();
+  if (!r.paginaId || !tk) return Promise.reject(new Error('Facebook no está conectado en este dispositivo.'));
+  const fd = new FormData();
+  fd.append('source', blob, 'noticia.jpg'); fd.append('message', textoRedes(n)); fd.append('access_token', tk);
+  return metaLlamar(r.paginaId + '/photos', {}, 'POST', fd).then(j => {
+    return metaLlamar(j.id, { fields: 'images', access_token: tk }).then(im => {
+      const imgs = (im.images || []).slice().sort((a, b) => (b.width || 0) - (a.width || 0));
+      return { postId: j.post_id || j.id, fotoId: j.id, imagenUrl: imgs[0] && imgs[0].source };
+    });
+  });
+}
+function publicarEnInstagram(n, imagenUrl) {
+  const r = redesCfg(), tk = tokenMeta();
+  if (!r.instagramId) return Promise.reject(new Error('Instagram no está vinculado a la página de Facebook.'));
+  if (!imagenUrl) return Promise.reject(new Error('Facebook no devolvió la imagen para Instagram.'));
+  return metaLlamar(r.instagramId + '/media', { image_url: imagenUrl, caption: textoRedes(n), access_token: tk }, 'POST')
+    .then(c => esperarContenedorIG(c.id, tk, 0))
+    .then(cid => metaLlamar(r.instagramId + '/media_publish', { creation_id: cid, access_token: tk }, 'POST'))
+    .then(p => ({ mediaId: p.id }));
+}
+function esperarContenedorIG(id, tk, intento) {
+  return metaLlamar(id, { fields: 'status_code', access_token: tk }).then(s => {
+    if (!s.status_code || s.status_code === 'FINISHED') return id;
+    if (s.status_code === 'ERROR' || s.status_code === 'EXPIRED') throw new Error('Instagram no pudo procesar la imagen.');
+    if (intento >= 10) throw new Error('Instagram tarda demasiado en procesar la imagen. Prueba otra vez en un minuto.');
+    return new Promise(ok => setTimeout(ok, 1500)).then(() => esperarContenedorIG(id, tk, intento + 1));
+  }).catch(e => { if (intento === 0 && /status_code/.test(e.message)) return id; throw e; });
+}
+// TikTok (semiautomático): imagen vertical + texto copiado → menú Compartir del móvil
+function compartirEnTikTok(n) {
+  return fotoDeNoticia(n).then(foto => imagenNoticia(n, foto, 'vertical')).then(blob => {
+    const texto = textoRedes(n);
+    const archivo = new File([blob], 'noticia-olimpia.jpg', { type: 'image/jpeg' });
+    const copiar = () => (navigator.clipboard ? navigator.clipboard.writeText(texto).catch(() => {}) : Promise.resolve());
+    return copiar().then(() => {
+      if (navigator.canShare && navigator.canShare({ files: [archivo] })) {
+        return navigator.share({ files: [archivo], text: texto }).then(() => 'compartido', e => { if (e && e.name === 'AbortError') return 'cancelado'; throw e; });
+      }
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'noticia-olimpia.jpg'; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      window.open('https://www.tiktok.com/upload', '_blank', 'noopener');
+      return 'descargado';
+    });
+  });
+}
+// Ventana de confirmación «Publicar en redes»
+function abrirPublicarRedes(n, alTerminar) {
+  const r = redesCfg(); const conectado = !!(r.paginaId && tokenMeta());
+  if (!String(n.titulo || '').trim() || n.titulo === 'Nueva noticia') { alert('Ponle un título a la noticia antes de publicarla.'); return; }
+  const fondo = el('div', { class: 'modal-bg rd-modal' });
+  const caja = el('div', { class: 'modal', style: 'max-width:520px;' });
+  fondo.appendChild(caja); document.body.appendChild(fondo);
+  const cerrar = () => { fondo.remove(); if (alTerminar) alTerminar(); };
+  fondo.addEventListener('click', e => { if (e.target === fondo) cerrar(); });
+  const vista = el('img', { alt: 'Vista previa', style: 'width:100%;max-width:300px;border-radius:10px;display:block;margin:0 auto 10px;background:#222;aspect-ratio:4/5;object-fit:cover;' });
+  fotoDeNoticia(n).then(foto => imagenNoticia(n, foto, 'cuadro')).then(b => { vista.src = URL.createObjectURL(b); });
+  const yaFb = n.redes && n.redes.fb, yaIg = n.redes && n.redes.ig;
+  const chkFb = el('input', { type: 'checkbox', style: 'width:auto;', checked: conectado && !yaFb ? 'checked' : null, disabled: conectado ? null : 'disabled' });
+  const chkIg = el('input', { type: 'checkbox', style: 'width:auto;', checked: conectado && r.instagramId && !yaIg ? 'checked' : null, disabled: conectado && r.instagramId ? null : 'disabled' });
+  const linea = (chk, txt, nota) => el('label', { style: 'display:flex;gap:10px;align-items:flex-start;text-transform:none;margin:8px 0;cursor:pointer;' }, chk, el('span', {}, el('b', {}, txt), nota ? el('div', { class: 'sub', style: 'font-size:12px;' }, nota) : null));
+  const estado = el('div', { class: 'rd-estado', style: 'margin-top:10px;' });
+  caja.appendChild(el('h3', {}, '📣 Publicar en redes'));
+  caja.appendChild(vista);
+  caja.appendChild(el('pre', { class: 'sub', style: 'white-space:pre-wrap;font-family:inherit;max-height:120px;overflow:auto;background:rgba(0,0,0,.04);padding:8px;border-radius:6px;' }, textoRedes(n)));
+  caja.appendChild(linea(chkFb, 'Facebook', !conectado ? 'Sin conectar en este dispositivo: configúralo en «Redes sociales».' : yaFb ? 'Ya publicada el ' + fechaCortaRedes(n.redes.fb.fecha) + '. Márcala para publicarla otra vez.' : 'Se publica en la página ' + (r.paginaNombre || '') + '.'));
+  caja.appendChild(linea(chkIg, 'Instagram', !conectado ? 'Sin conectar.' : !r.instagramId ? 'La página no tiene un Instagram profesional vinculado.' : yaIg ? 'Ya publicada el ' + fechaCortaRedes(n.redes.ig.fecha) + '.' : 'Se publica en @' + (r.instagramUsuario || 'instagram') + ' (necesita Facebook marcado).'));
+  caja.appendChild(el('div', { class: 'sub', style: 'margin:8px 0 0;' }, '🎵 TikTok: con «Compartir en TikTok» se prepara la imagen vertical y se copia el texto; en el móvil eliges TikTok y pulsas publicar.'));
+  caja.appendChild(estado);
+  const btnPub = el('button', { class: 'btn btn-primary rd-publicar', type: 'button' }, 'Publicar');
+  const btnTk = el('button', { class: 'btn btn-ghost rd-tiktok', type: 'button' }, '🎵 Compartir en TikTok');
+  caja.appendChild(el('div', { class: 'row', style: 'margin-top:14px;gap:8px;flex-wrap:wrap;' }, btnPub, btnTk, el('button', { class: 'btn btn-ghost', type: 'button', onclick: cerrar }, 'Cerrar')));
+  const decir = (txt, tipo) => { estado.innerHTML = ''; estado.appendChild(el('div', { class: 'msg ' + (tipo === 'mal' ? 'msg-warn' : tipo === 'ok' ? 'msg-ok' : 'msg-info') }, txt)); };
+  btnTk.onclick = () => {
+    btnTk.disabled = true;
+    compartirEnTikTok(n).then(res => {
+      if (res === 'cancelado') { decir('No se compartió.', 'info'); return; }
+      n.redes = Object.assign({}, n.redes, { tiktok: { fecha: Date.now() } }); saveClubGlobal();
+      decir(res === 'compartido' ? '✅ Enviada a Compartir. El texto está copiado: pégalo en TikTok si no aparece.' : '✅ Imagen descargada y texto copiado. Se ha abierto TikTok para subirla.', 'ok');
+    }).catch(e => decir('No se pudo preparar para TikTok: ' + e.message, 'mal')).then(() => { btnTk.disabled = false; });
+  };
+  btnPub.onclick = () => {
+    if (!chkFb.checked && !chkIg.checked) { decir('Marca Facebook o Instagram.', 'mal'); return; }
+    if (chkIg.checked && !chkFb.checked && !(n.redes && n.redes.fb && n.redes.fb.imagenUrl)) { decir('Para Instagram hay que publicar también en Facebook (de ahí sale la imagen).', 'mal'); return; }
+    btnPub.disabled = true; decir('Publicando…', 'info');
+    let resFb = null;
+    fotoDeNoticia(n).then(foto => imagenNoticia(n, foto, 'cuadro')).then(blob => chkFb.checked ? publicarEnFacebook(n, blob) : null).then(fb => {
+      if (fb) { resFb = fb; n.redes = Object.assign({}, n.redes, { fb: { fecha: Date.now(), postId: fb.postId, imagenUrl: fb.imagenUrl || null } }); saveClubGlobal(); }
+      if (!chkIg.checked) return null;
+      return publicarEnInstagram(n, (fb && fb.imagenUrl) || (n.redes && n.redes.fb && n.redes.fb.imagenUrl));
+    }).then(ig => {
+      if (ig) { n.redes = Object.assign({}, n.redes, { ig: { fecha: Date.now(), mediaId: ig.mediaId } }); saveClubGlobal(); }
+      decir('✅ Publicada' + (resFb ? ' en Facebook' : '') + (ig ? (resFb ? ' e' : ' en') + ' Instagram' : '') + '.', 'ok');
+      btnPub.textContent = 'Hecho';
+    }).catch(e => {
+      decir('⚠️ ' + (resFb ? 'Facebook ✓, pero Instagram falló: ' : '') + e.message, 'mal');
+      btnPub.disabled = false;
+    });
+  };
+}
+// Panel de configuración «Redes sociales»
+function panelRedesSociales(volver) {
+  const r = redesCfg(); const tk = tokenMeta();
+  const p = el('div', { class: 'panel rd-config' }, el('h3', {}, '📣 Redes sociales'));
+  if (r.paginaId && tk) {
+    p.appendChild(el('div', { class: 'msg msg-ok' }, '✅ Conectado en este dispositivo a la página «' + (r.paginaNombre || r.paginaId) + '»' + (r.instagramId ? ' e Instagram @' + (r.instagramUsuario || '') : ' (sin Instagram profesional vinculado)') + '.'));
+    p.appendChild(el('div', { class: 'toolbar', style: 'margin-top:8px;' },
+      el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => { guardarTokenMeta(''); volver(); } }, 'Desconectar este dispositivo')));
+  } else if (r.paginaId) {
+    p.appendChild(el('div', { class: 'msg msg-info' }, 'La página «' + (r.paginaNombre || r.paginaId) + '» está configurada, pero este dispositivo no tiene el permiso. Pega el código de acceso para usarlo también aquí.'));
+  }
+  if (!(r.paginaId && tk)) {
+    p.appendChild(el('ol', { class: 'sub', style: 'padding-left:18px;margin:8px 0;' },
+      el('li', {}, 'Pasa el Instagram del club a cuenta profesional y vincúlalo a la página de Facebook.'),
+      el('li', {}, 'En developers.facebook.com crea una app (tipo «Empresa») con la cuenta que administra la página.'),
+      el('li', {}, 'En el «Explorador de la API Graph» elige esa app y pide los permisos pages_show_list, pages_manage_posts, pages_read_engagement, instagram_basic, instagram_content_publish y business_management. Pulsa «Generate Access Token».'),
+      el('li', {}, 'Copia el código, ábrelo en el «Depurador de tokens de acceso» y pulsa «Ampliar token de acceso». Pega aquí el código ampliado.')));
+    const inp = el('input', { type: 'text', placeholder: 'Código de acceso (empieza por EAA…)', autocomplete: 'off', class: 'rd-token' });
+    const msg = el('div');
+    const btn = el('button', { class: 'btn btn-primary btn-sm rd-conectar', type: 'button' }, 'Conectar');
+    btn.onclick = () => {
+      const t = inp.value.trim(); if (!t) return;
+      btn.disabled = true; msg.innerHTML = ''; msg.appendChild(el('div', { class: 'sub' }, 'Comprobando…'));
+      metaLlamar('me/accounts', { fields: 'id,name,access_token,instagram_business_account{id,username}', access_token: t }).then(j => {
+        const paginas = j.data || [];
+        if (!paginas.length) throw new Error('Esa cuenta no administra ninguna página de Facebook, o falta el permiso pages_show_list.');
+        const elegir = (pg) => {
+          r.paginaId = pg.id; r.paginaNombre = pg.name;
+          r.instagramId = pg.instagram_business_account ? pg.instagram_business_account.id : null;
+          r.instagramUsuario = pg.instagram_business_account ? pg.instagram_business_account.username : null;
+          guardarTokenMeta(pg.access_token); saveClubGlobal(); volver();
+        };
+        if (paginas.length === 1) { elegir(paginas[0]); return; }
+        msg.innerHTML = ''; msg.appendChild(el('div', { class: 'sub' }, '¿Qué página es la del club?'));
+        paginas.forEach(pg => msg.appendChild(el('button', { class: 'btn btn-ghost btn-sm', type: 'button', style: 'margin:4px 4px 0 0;', onclick: () => elegir(pg) }, pg.name)));
+      }).catch(e => { msg.innerHTML = ''; msg.appendChild(el('div', { class: 'msg msg-warn' }, e.message)); }).then(() => { btn.disabled = false; });
+    };
+    p.appendChild(el('div', { class: 'row', style: 'gap:8px;' }, el('div', { style: 'flex:1;min-width:200px;' }, inp), btn));
+    p.appendChild(msg);
+    p.appendChild(el('div', { class: 'sub', style: 'margin-top:6px;font-size:12px;' }, '🔒 El permiso se guarda solo en este dispositivo: no va a la nube ni a la web.'));
+  }
+  const tags = el('input', { type: 'text', value: r.hashtags !== undefined ? r.hashtags : '#bádminton #Torrelavega #Cantabria #ClubOlimpia' });
+  tags.addEventListener('change', () => { r.hashtags = tags.value.trim(); saveClubGlobal(); });
+  p.appendChild(el('div', { class: 'field', style: 'margin-top:10px;' }, el('label', {}, 'Etiquetas al final de cada publicación'), tags));
+  return p;
+}
+
 function renderWebClub() {
   const root = document.getElementById('webScreen');
   if (!root) return;
@@ -17766,6 +17991,11 @@ function renderWebClub() {
       if (ft) fotoCaja.appendChild(el('img', { src: ft, alt: '', style: 'height:64px;border-radius:6px;' }));
       fotoCaja.appendChild(el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => elegirArchivoImagen(file => comprimirFotoWeb(file, 1400, 0.78).then(foto => guardarFotoWebNube('web_noticia_' + n.id, { foto }).then(() => { f.noticias[n.id] = foto; n.tieneFoto = true; guardar(); renderWebClub(); })).catch(e => alert(e.message))) }, ft ? 'Cambiar foto' : 'Añadir foto'));
       if (ft) fotoCaja.appendChild(el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => borrarFotoWebNube('web_noticia_' + n.id).then(() => { delete f.noticias[n.id]; n.tieneFoto = false; guardar(); renderWebClub(); }) }, 'Quitar foto'));
+      const rd = n.redes || {};
+      const publicada = rd.fb || rd.ig || rd.tiktok;
+      fotoCaja.appendChild(el('button', { class: 'btn ' + (publicada ? 'btn-ghost' : 'btn-primary') + ' btn-sm web-redes', type: 'button', onclick: () => abrirPublicarRedes(n, () => renderWebClub()) }, '📣 Publicar en redes…'));
+      if (publicada) fotoCaja.appendChild(el('span', { class: 'sub web-redes-estado', style: 'font-size:12px;' },
+        [rd.fb ? 'Facebook ✓' : '', rd.ig ? 'Instagram ✓' : '', rd.tiktok ? 'TikTok ✓' : ''].filter(Boolean).join(' · ')));
       fotoCaja.appendChild(el('button', { class: 'btn btn-danger btn-sm', type: 'button', onclick: () => {
         if (!confirm('¿Borrar la noticia «' + n.titulo + '»?')) return;
         w.noticias = w.noticias.filter(x => x !== n); if (n.tieneFoto) borrarFotoWebNube('web_noticia_' + n.id); guardar(); renderWebClub();
@@ -17775,6 +18005,7 @@ function renderWebClub() {
     pn.appendChild(card);
   });
   root.appendChild(pn);
+  root.appendChild(panelRedesSociales(() => renderWebClub()));
 
   // Galería
   const pg = el('div', { class: 'panel' }, el('h3', {}, 'Fotos del club'), el('div', { class: 'sub', style: 'margin-bottom:8px;' }, 'Hasta 8 fotos para la galería de la web.'));

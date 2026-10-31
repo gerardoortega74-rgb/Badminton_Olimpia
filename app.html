@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261031-redes">
+<meta name="build-id" content="v20261031-reel">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -17658,17 +17658,20 @@ function comprimirFotoWeb(file, max, calidad) {
   });
 }
 let fotosWebCache = null;
+let fotosWebPromesa = null;
 function cargarFotosWeb() {
-  if (fotosWebCache) return Promise.resolve(fotosWebCache);
-  fotosWebCache = { portada: null, galeria: [], noticias: {} };
-  if (!firebaseDisponible) return Promise.resolve(fotosWebCache);
+  if (fotosWebPromesa) return fotosWebPromesa;
+  fotosWebCache = { portada: null, galeria: [], noticias: {}, noticiasExtra: {} };
+  if (!firebaseDisponible) return (fotosWebPromesa = Promise.resolve(fotosWebCache));
   const col = coleccionFotosTaller();
   const w = webCfg();
-  return Promise.all([
+  fotosWebPromesa = Promise.all([
     col.doc('web_portada').get().then(d => { if (d.exists) fotosWebCache.portada = d.data().foto || null; }).catch(() => {}),
     col.doc('web_galeria').get().then(d => { if (d.exists && Array.isArray(d.data().fotos)) fotosWebCache.galeria = d.data().fotos.slice(); }).catch(() => {}),
-  ].concat(w.noticias.filter(n => n.tieneFoto).map(n => col.doc('web_noticia_' + n.id).get().then(d => { if (d.exists) fotosWebCache.noticias[n.id] = d.data().foto || null; }).catch(() => {}))))
+  ].concat(w.noticias.filter(n => n.tieneFoto).map(n => col.doc('web_noticia_' + n.id).get().then(d => { if (d.exists) fotosWebCache.noticias[n.id] = d.data().foto || null; }).catch(() => {})))
+   .concat(w.noticias.filter(n => Array.isArray(n.extras) && n.extras.length).map(n => Promise.all(n.extras.map(k => col.doc('web_noticia_' + n.id + '_' + k).get().then(d => (d.exists && d.data().foto) ? { k, foto: d.data().foto } : null).catch(() => null))).then(l => { fotosWebCache.noticiasExtra[n.id] = l.filter(Boolean); }))))
     .then(() => fotosWebCache);
+  return fotosWebPromesa;
 }
 function guardarFotoWebNube(docId, datos) {
   if (!firebaseDisponible) return Promise.resolve();
@@ -17791,6 +17794,14 @@ function esperarContenedorIG(id, tk, intento) {
   }).catch(e => { if (intento === 0 && /status_code/.test(e.message)) return id; throw e; });
 }
 // TikTok (semiautomático): imagen vertical + texto copiado → menú Compartir del móvil
+function compartirArchivoRedes(n, blob, nombre, tipo) {
+  const texto = textoRedes(n);
+  const archivo = new File([blob], nombre, { type: tipo });
+  return (navigator.clipboard ? navigator.clipboard.writeText(texto).catch(() => {}) : Promise.resolve()).then(() => {
+    if (navigator.canShare && navigator.canShare({ files: [archivo] })) return navigator.share({ files: [archivo], text: texto }).then(() => 'compartido', e => { if (e && e.name === 'AbortError') return 'cancelado'; throw e; });
+    descargarArchivo(blob, nombre); window.open('https://www.tiktok.com/upload', '_blank', 'noopener'); return 'descargado';
+  });
+}
 function compartirEnTikTok(n) {
   return fotoDeNoticia(n).then(foto => imagenNoticia(n, foto, 'vertical')).then(blob => {
     const texto = textoRedes(n);
@@ -17814,7 +17825,7 @@ function abrirPublicarRedes(n, alTerminar) {
   const fondo = el('div', { class: 'modal-bg rd-modal' });
   const caja = el('div', { class: 'modal', style: 'max-width:520px;' });
   fondo.appendChild(caja); document.body.appendChild(fondo);
-  const cerrar = () => { fondo.remove(); if (alTerminar) alTerminar(); };
+  const cerrar = () => { pararMusica(); fondo.remove(); if (alTerminar) alTerminar(); };
   fondo.addEventListener('click', e => { if (e.target === fondo) cerrar(); });
   const vista = el('img', { alt: 'Vista previa', style: 'width:100%;max-width:300px;border-radius:10px;display:block;margin:0 auto 10px;background:#222;aspect-ratio:4/5;object-fit:cover;' });
   fotoDeNoticia(n).then(foto => imagenNoticia(n, foto, 'cuadro')).then(b => { vista.src = URL.createObjectURL(b); });
@@ -17828,7 +17839,56 @@ function abrirPublicarRedes(n, alTerminar) {
   caja.appendChild(el('pre', { class: 'sub', style: 'white-space:pre-wrap;font-family:inherit;max-height:120px;overflow:auto;background:rgba(0,0,0,.04);padding:8px;border-radius:6px;' }, textoRedes(n)));
   caja.appendChild(linea(chkFb, 'Facebook', !conectado ? 'Sin conectar en este dispositivo: configúralo en «Redes sociales».' : yaFb ? 'Ya publicada el ' + fechaCortaRedes(n.redes.fb.fecha) + '. Márcala para publicarla otra vez.' : 'Se publica en la página ' + (r.paginaNombre || '') + '.'));
   caja.appendChild(linea(chkIg, 'Instagram', !conectado ? 'Sin conectar.' : !r.instagramId ? 'La página no tiene un Instagram profesional vinculado.' : yaIg ? 'Ya publicada el ' + fechaCortaRedes(n.redes.ig.fecha) + '.' : 'Se publica en @' + (r.instagramUsuario || 'instagram') + ' (necesita Facebook marcado).'));
-  caja.appendChild(el('div', { class: 'sub', style: 'margin:8px 0 0;' }, '🎵 TikTok: con «Compartir en TikTok» se prepara la imagen vertical y se copia el texto; en el móvil eliges TikTok y pulsas publicar.'));
+  caja.appendChild(el('div', { class: 'sub', style: 'margin:8px 0 0;' }, '🎵 TikTok: con «Compartir en TikTok» se prepara la imagen vertical (o el reel, si hay varias fotos) y se copia el texto; en el móvil eliges TikTok y pulsas publicar.'));
+  // Reel (si la noticia tiene 2 fotos o más)
+  const reelZona = el('div', { class: 'rd-reel' });
+  caja.appendChild(reelZona);
+  const reelEstado = { fotos: [], eleccion: { id: sugerirMusica(n) }, blob: null, chk: null };
+  const pintarReel = () => {
+    reelZona.innerHTML = '';
+    if (reelEstado.fotos.length < 2) return;
+    reelZona.appendChild(el('h4', { style: 'margin:14px 0 4px;' }, '🎬 Reel para Instagram (' + Math.min(reelEstado.fotos.length, REEL.maxFotos) + ' fotos, ' + Math.round(duracionReel(reelEstado.fotos.length)) + ' s)'));
+    reelEstado.chk = el('input', { type: 'checkbox', class: 'rd-chk-reel', style: 'width:auto;', checked: 'checked' });
+    reelZona.appendChild(el('label', { style: 'display:flex;gap:10px;align-items:center;text-transform:none;margin:4px 0;cursor:pointer;' }, reelEstado.chk, el('span', {}, 'Publicar en Instagram como reel (vídeo con música) en vez de foto')));
+    reelZona.appendChild(el('div', { class: 'sub', style: 'margin:6px 0 4px;' }, '¿Qué música le ponemos? Te sugiero la marcada según la noticia:'));
+    const chips = el('div', { class: 'rd-musicas', style: 'display:flex;flex-wrap:wrap;gap:6px;' });
+    MUSICAS_REEL.forEach(m => chips.appendChild(el('button', { type: 'button', class: 'btn btn-sm ' + (reelEstado.eleccion.id === m.id ? 'btn-primary' : 'btn-ghost') + ' rd-musica', 'data-id': m.id, title: m.desc, onclick: () => {
+      pararMusica();
+      if (m.id === 'propia') {
+        const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'audio/*';
+        inp.onchange = () => { if (inp.files && inp.files[0]) { reelEstado.eleccion = { id: 'propia', archivo: inp.files[0] }; reelEstado.blob = null; pintarReel(); } };
+        inp.click(); return;
+      }
+      reelEstado.eleccion = { id: m.id }; reelEstado.blob = null; pintarReel();
+    } }, m.nombre)));
+    reelZona.appendChild(chips);
+    const actual = MUSICAS_REEL.find(m => m.id === reelEstado.eleccion.id);
+    reelZona.appendChild(el('div', { class: 'sub', style: 'font-size:12px;margin-top:4px;' }, (actual ? actual.desc : '') + (reelEstado.eleccion.archivo ? ' · ' + reelEstado.eleccion.archivo.name : '')));
+    const zonaVideo = el('div', { style: 'margin-top:8px;' });
+    const progreso = el('div', { class: 'sub rd-progreso' });
+    const btnEsc = el('button', { type: 'button', class: 'btn btn-ghost btn-sm rd-escuchar', onclick: () => {
+      if (audioPrevia) { pararMusica(); btnEsc.textContent = '▶ Escuchar'; return; }
+      btnEsc.textContent = '⏹ Parar'; escucharMusica(reelEstado.eleccion, duracionReel(reelEstado.fotos.length)).catch(e => { progreso.textContent = e.message; btnEsc.textContent = '▶ Escuchar'; });
+    } }, '▶ Escuchar');
+    if (reelEstado.eleccion.id === 'ninguna') btnEsc.disabled = true;
+    const btnCrear = el('button', { type: 'button', class: 'btn btn-gold btn-sm rd-crear-reel', onclick: () => crearYVer().catch(() => {}) }, reelEstado.blob ? '↻ Volver a crear' : '🎬 Ver el reel');
+    const crearYVer = () => {
+      btnCrear.disabled = true; pararMusica(); progreso.textContent = 'Creando el reel… 0 %';
+      return crearReel(n, reelEstado.fotos, reelEstado.eleccion, p => { progreso.textContent = 'Creando el reel… ' + Math.round(p * 100) + ' %'; }).then(r => {
+        reelEstado.blob = r.blob;
+        zonaVideo.innerHTML = '';
+        zonaVideo.appendChild(el('video', { src: URL.createObjectURL(r.blob), controls: 'controls', playsinline: 'playsinline', class: 'rd-video', style: 'width:100%;max-width:240px;border-radius:10px;display:block;background:#000;aspect-ratio:9/16;' }));
+        zonaVideo.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-sm', style: 'margin-top:6px;', onclick: () => descargarArchivo(r.blob, 'reel-olimpia.mp4') }, '⬇ Descargar reel'));
+        progreso.textContent = '✅ Reel listo (' + Math.round(r.duracion) + ' s' + (r.conMusica ? ', con música' : ', sin música') + ', ' + (r.blob.size / 1048576).toFixed(1) + ' MB).';
+        btnCrear.textContent = '↻ Volver a crear';
+        return r.blob;
+      }).catch(e => { progreso.textContent = '⚠️ ' + e.message; throw e; }).finally(() => { btnCrear.disabled = false; });
+    };
+    reelEstado.crear = () => reelEstado.blob ? Promise.resolve(reelEstado.blob) : crearYVer();
+    reelZona.appendChild(el('div', { class: 'row', style: 'gap:6px;margin-top:8px;flex-wrap:wrap;' }, btnEsc, btnCrear));
+    reelZona.appendChild(progreso); reelZona.appendChild(zonaVideo);
+  };
+  fotosDeNoticia(n).then(l => { reelEstado.fotos = l; pintarReel(); });
   caja.appendChild(estado);
   const btnPub = el('button', { class: 'btn btn-primary rd-publicar', type: 'button' }, 'Publicar');
   const btnTk = el('button', { class: 'btn btn-ghost rd-tiktok', type: 'button' }, '🎵 Compartir en TikTok');
@@ -17836,7 +17896,8 @@ function abrirPublicarRedes(n, alTerminar) {
   const decir = (txt, tipo) => { estado.innerHTML = ''; estado.appendChild(el('div', { class: 'msg ' + (tipo === 'mal' ? 'msg-warn' : tipo === 'ok' ? 'msg-ok' : 'msg-info') }, txt)); };
   btnTk.onclick = () => {
     btnTk.disabled = true;
-    compartirEnTikTok(n).then(res => {
+    const usarReel = reelEstado.fotos.length >= 2 && reelEstado.crear;
+    (usarReel ? reelEstado.crear().then(b => compartirArchivoRedes(n, b, 'reel-olimpia.mp4', 'video/mp4')) : compartirEnTikTok(n)).then(res => {
       if (res === 'cancelado') { decir('No se compartió.', 'info'); return; }
       n.redes = Object.assign({}, n.redes, { tiktok: { fecha: Date.now() } }); saveClubGlobal();
       decir(res === 'compartido' ? '✅ Enviada a Compartir. El texto está copiado: pégalo en TikTok si no aparece.' : '✅ Imagen descargada y texto copiado. Se ha abierto TikTok para subirla.', 'ok');
@@ -17850,13 +17911,20 @@ function abrirPublicarRedes(n, alTerminar) {
     fotoDeNoticia(n).then(foto => imagenNoticia(n, foto, 'cuadro')).then(blob => chkFb.checked ? publicarEnFacebook(n, blob) : null).then(fb => {
       if (fb) { resFb = fb; n.redes = Object.assign({}, n.redes, { fb: { fecha: Date.now(), postId: fb.postId, imagenUrl: fb.imagenUrl || null } }); saveClubGlobal(); }
       if (!chkIg.checked) return null;
+      if (reelEstado.chk && reelEstado.chk.checked && reelEstado.crear) {
+        decir('Preparando el reel…', 'info');
+        return reelEstado.crear().then(b => publicarReelInstagram(n, b, t => decir(t, 'info'))).catch(e => {
+          e.reel = true; throw e;
+        });
+      }
       return publicarEnInstagram(n, (fb && fb.imagenUrl) || (n.redes && n.redes.fb && n.redes.fb.imagenUrl));
     }).then(ig => {
       if (ig) { n.redes = Object.assign({}, n.redes, { ig: { fecha: Date.now(), mediaId: ig.mediaId } }); saveClubGlobal(); }
       decir('✅ Publicada' + (resFb ? ' en Facebook' : '') + (ig ? (resFb ? ' e' : ' en') + ' Instagram' : '') + '.', 'ok');
       btnPub.textContent = 'Hecho';
     }).catch(e => {
-      decir('⚠️ ' + (resFb ? 'Facebook ✓, pero Instagram falló: ' : '') + e.message, 'mal');
+      decir('⚠️ ' + (resFb ? 'Facebook ✓, pero Instagram falló: ' : '') + e.message + (e.reel && reelEstado.blob ? ' Puedes descargar el reel y subirlo tú desde Instagram.' : ''), 'mal');
+      if (e.reel && reelEstado.blob) estado.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-sm', style: 'margin-top:6px;', onclick: () => { descargarArchivo(reelEstado.blob, 'reel-olimpia.mp4'); if (navigator.clipboard) navigator.clipboard.writeText(textoRedes(n)).catch(() => {}); } }, '⬇ Descargar reel y copiar texto'));
       btnPub.disabled = false;
     });
   };
@@ -17907,6 +17975,260 @@ function panelRedesSociales(volver) {
   p.appendChild(el('div', { class: 'field', style: 'margin-top:10px;' }, el('label', {}, 'Etiquetas al final de cada publicación'), tags));
   return p;
 }
+
+// ===== REEL DE INSTAGRAM (varias fotos → vídeo vertical 1080x1920 con música) =====
+// El vídeo se crea en el propio navegador (WebCodecs + mp4-muxer): H.264 + AAC en MP4 con «moov» al principio,
+// que es lo que pide Instagram. La música se genera aquí mismo (sin derechos de autor) o la sube el usuario.
+const REEL = { ancho: 1080, alto: 1920, fps: 30, porFoto: 2.6, fundido: 0.5, intro: 0.0, final: 1.8, maxFotos: 10 };
+const MUSICAS_REEL = [
+  { id: 'energetica', nombre: '⚡ Energética', desc: 'Ritmo rápido, para torneos y partidos' },
+  { id: 'epica', nombre: '🏆 Épica', desc: 'Para podios, campeones y grandes noticias' },
+  { id: 'tranquila', nombre: '🌤️ Tranquila', desc: 'Para escuela, avisos y noticias del club' },
+  { id: 'propia', nombre: '🎵 Mi canción', desc: 'Sube un MP3 (mejor sin derechos de autor)' },
+  { id: 'ninguna', nombre: '🔇 Sin música', desc: '' },
+];
+function sugerirMusica(n) {
+  const t = ((n.titulo || '') + ' ' + (n.texto || '')).toLowerCase();
+  if (/campe|podio|oro|medalla|gana|ganador|final|título|subcampe/.test(t)) return 'epica';
+  if (/torneo|partido|liga|open|competici|jornada|victoria/.test(t)) return 'energetica';
+  return 'tranquila';
+}
+function cargarScript(src) {
+  return new Promise((ok, mal) => {
+    if (document.querySelector('script[data-src="' + src + '"]')) { ok(); return; }
+    const s = document.createElement('script'); s.src = src; s.dataset.src = src; s.onload = () => ok(); s.onerror = () => mal(new Error('No se pudo cargar ' + src)); document.head.appendChild(s);
+  });
+}
+function duracionReel(nFotos) { return Math.min(nFotos, REEL.maxFotos) * REEL.porFoto + REEL.final; }
+
+// ---------- música sintetizada ----------
+function generarMusica(estilo, dur) {
+  const sr = 48000, ctx = new OfflineAudioContext(2, Math.ceil(dur * sr), sr);
+  const master = ctx.createGain(); master.gain.value = 0.9;
+  const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4;
+  master.connect(comp); comp.connect(ctx.destination);
+  master.gain.setValueAtTime(0.0001, 0); master.gain.exponentialRampToValueAtTime(0.9, 0.08);
+  master.gain.setValueAtTime(0.9, Math.max(0.1, dur - 1.6)); master.gain.linearRampToValueAtTime(0.0001, dur);
+  const ruido = ctx.createBuffer(1, sr, sr); const d = ruido.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  const nota = m => 440 * Math.pow(2, (m - 69) / 12);
+  const env = (g, t, a, dec, pico) => { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(pico, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + dec); };
+  const bombo = (t, v) => { const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.12); env(g, t, 0.003, 0.32, v || 0.9); o.connect(g); g.connect(master); o.start(t); o.stop(t + 0.4); };
+  const ruidoGolpe = (t, tipo, frec, dec, v) => { const s = ctx.createBufferSource(); s.buffer = ruido; const f = ctx.createBiquadFilter(); f.type = tipo; f.frequency.value = frec; const g = ctx.createGain(); env(g, t, 0.002, dec, v); s.connect(f); f.connect(g); g.connect(master); s.start(t, Math.random() * 0.5); s.stop(t + dec + 0.05); };
+  const tono = (t, m, durN, tipo, v, corte, a) => { const o = ctx.createOscillator(); o.type = tipo; o.frequency.value = nota(m); const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = corte || 2400; const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(v, t + (a || 0.01)); g.gain.setValueAtTime(v, Math.max(t + (a || 0.01), t + durN * 0.6)); g.gain.exponentialRampToValueAtTime(0.0001, t + durN); o.connect(f); f.connect(g); g.connect(master); o.start(t); o.stop(t + durN + 0.05); };
+  const pad = (t, acorde, durN, v) => acorde.forEach(m => [-6, 6].forEach(det => { const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = nota(m); o.detune.value = det; const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 1100; const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(v, t + durN * 0.35); g.gain.linearRampToValueAtTime(0.0001, t + durN + 0.3); o.connect(f); f.connect(g); g.connect(master); o.start(t); o.stop(t + durN + 0.4); }));
+  // progresiones (notas MIDI)
+  const menor = [[57, 60, 64], [53, 57, 60], [48, 52, 55], [55, 59, 62]]; // Am F C G
+  const mayor = [[48, 52, 55], [55, 59, 62], [57, 60, 64], [53, 57, 60]]; // C G Am F
+  if (estilo === 'energetica') {
+    const bpm = 124, b = 60 / bpm;
+    for (let i = 0, t = 0; t < dur; i++, t = i * b) {
+      bombo(t, 0.95);
+      if (i % 2 === 1) ruidoGolpe(t, 'bandpass', 1900, 0.16, 0.5);
+      ruidoGolpe(t + b / 2, 'highpass', 8000, 0.05, 0.22);
+      const ac = menor[Math.floor(i / 4) % 4];
+      tono(t, ac[0] - 24, b * 0.45, 'sawtooth', 0.32, 420); tono(t + b / 2, ac[0] - 12, b * 0.4, 'sawtooth', 0.26, 520);
+      if (i % 4 === 0) ac.forEach(m => tono(t, m + 12, b * 0.35, 'square', 0.05, 2600));
+      if (i % 4 === 2) ac.forEach(m => tono(t + b / 2, m + 12, b * 0.3, 'square', 0.04, 2600));
+    }
+  } else if (estilo === 'epica') {
+    const bpm = 88, b = 60 / bpm;
+    for (let c = 0, t = 0; t < dur; c++, t = c * 4 * b) {
+      const ac = menor[c % 4];
+      pad(t, ac.map(m => m), 4 * b, 0.05);
+      tono(t, ac[0] - 24, 4 * b, 'sine', 0.35, 300, 0.05);
+      [0, 2].forEach(k => { bombo(t + k * b, 1); ruidoGolpe(t + k * b, 'lowpass', 600, 0.4, 0.35); });
+      ruidoGolpe(t + 3 * b, 'bandpass', 1500, 0.3, 0.35);
+      if (c >= 1) for (let s = 0; s < 16; s++) tono(t + s * b / 4, ac[s % 3] + 12 + (s >= 8 ? 12 : 0), b / 4 * 0.9, 'triangle', 0.06, 3000);
+    }
+    ruidoGolpe(0, 'highpass', 5000, 1.6, 0.25);
+  } else if (estilo === 'tranquila') {
+    const bpm = 96, b = 60 / bpm;
+    for (let c = 0, t = 0; t < dur; c++, t = c * 4 * b) {
+      const ac = mayor[c % 4];
+      pad(t, ac, 4 * b, 0.035);
+      tono(t, ac[0] - 12, 4 * b, 'sine', 0.22, 400, 0.08);
+      const arp = [ac[0], ac[1], ac[2], ac[1] + 12, ac[2], ac[1], ac[0] + 12, ac[2]];
+      arp.forEach((m, k) => tono(t + k * b / 2, m + 12, b * 0.9, 'triangle', 0.09, 2200, 0.005));
+      for (let s = 0; s < 16; s++) ruidoGolpe(t + s * b / 4, 'highpass', 7000, 0.035, s % 4 === 2 ? 0.08 : 0.04);
+      [0, 2].forEach(k => bombo(t + k * b, 0.45));
+    }
+  }
+  return ctx.startRendering();
+}
+function musicaPropiaABuffer(file, dur) {
+  return file.arrayBuffer().then(ab => new (window.AudioContext || window.webkitAudioContext)().decodeAudioData(ab)).then(buf => {
+    const sr = 48000, ctx = new OfflineAudioContext(2, Math.ceil(dur * sr), sr);
+    const s = ctx.createBufferSource(); s.buffer = buf; const g = ctx.createGain();
+    g.gain.setValueAtTime(1, 0); g.gain.setValueAtTime(1, Math.max(0.1, dur - 1.6)); g.gain.linearRampToValueAtTime(0.0001, dur);
+    s.connect(g); g.connect(ctx.destination); s.start(0); return ctx.startRendering();
+  });
+}
+function bufferMusica(eleccion, dur) {
+  if (!eleccion || eleccion.id === 'ninguna') return Promise.resolve(null);
+  if (eleccion.id === 'propia') return eleccion.archivo ? musicaPropiaABuffer(eleccion.archivo, dur) : Promise.reject(new Error('Elige primero el archivo de música.'));
+  return generarMusica(eleccion.id, dur);
+}
+let audioPrevia = null;
+function escucharMusica(eleccion, dur) {
+  pararMusica();
+  return bufferMusica(eleccion, Math.min(dur, 12)).then(buf => {
+    if (!buf) return;
+    const ac = new (window.AudioContext || window.webkitAudioContext)();
+    const s = ac.createBufferSource(); s.buffer = buf; s.connect(ac.destination); s.start();
+    audioPrevia = { ac, s }; s.onended = () => pararMusica();
+  });
+}
+function pararMusica() { if (audioPrevia) { try { audioPrevia.s.stop(); audioPrevia.ac.close(); } catch (e) {} audioPrevia = null; } }
+
+// ---------- dibujo de los fotogramas ----------
+function dibujarFotoReel(ctx, im, t, dur, k) {
+  const W = REEL.ancho, H = REEL.alto;
+  const p = Math.min(1, Math.max(0, t / dur));
+  const zoom = 1.04 + 0.12 * (k % 2 ? 1 - p : p);
+  const s = Math.max(W / im.width, H / im.height) * zoom;
+  const w = im.width * s, h = im.height * s;
+  const dx = (k % 3 - 1) * 40 * (p - 0.5);
+  ctx.drawImage(im, (W - w) / 2 + dx, (H - h) / 2, w, h);
+}
+function dibujarFotogramaReel(ctx, fotos, logo, n, t, total) {
+  const W = REEL.ancho, H = REEL.alto, pf = REEL.porFoto;
+  ctx.fillStyle = '#15191c'; ctx.fillRect(0, 0, W, H);
+  const tFotos = fotos.length * pf;
+  if (t < tFotos) {
+    const i = Math.min(fotos.length - 1, Math.floor(t / pf)), tl = t - i * pf;
+    dibujarFotoReel(ctx, fotos[i], tl + REEL.fundido, pf + REEL.fundido, i);
+    if (i + 1 < fotos.length && tl > pf - REEL.fundido) { ctx.globalAlpha = (tl - (pf - REEL.fundido)) / REEL.fundido; dibujarFotoReel(ctx, fotos[i + 1], tl - (pf - REEL.fundido), pf + REEL.fundido, i + 1); ctx.globalAlpha = 1; }
+    // degradado y textos
+    const g = ctx.createLinearGradient(0, H * 0.45, 0, H); g.addColorStop(0, 'rgba(10,13,15,0)'); g.addColorStop(1, 'rgba(10,13,15,.88)'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    const gt = ctx.createLinearGradient(0, 0, 0, 260); gt.addColorStop(0, 'rgba(10,13,15,.6)'); gt.addColorStop(1, 'rgba(10,13,15,0)'); ctx.fillStyle = gt; ctx.fillRect(0, 0, W, 260);
+    if (logo) { const lh = 110, lw = logo.width && logo.height ? lh * logo.width / logo.height : lh * 1.2; ctx.drawImage(logo, 60, 70, lw, lh); }
+    const ap = Math.min(1, t / 0.6); // el título entra al principio
+    ctx.globalAlpha = ap;
+    ctx.textBaseline = 'alphabetic'; let tam = 104; ctx.font = '800 ' + tam + 'px Inter, Arial, sans-serif';
+    let lineas = partirLineas(ctx, String(n.titulo || '').toUpperCase(), W - 120, 4);
+    while (lineas.length > 3 && tam > 70) { tam -= 8; ctx.font = '800 ' + tam + 'px Inter, Arial, sans-serif'; lineas = partirLineas(ctx, String(n.titulo || '').toUpperCase(), W - 120, 4); }
+    let y = H - 330 - (lineas.length - 1) * tam * 1.02 + (1 - ap) * 40;
+    ctx.fillStyle = '#3dd6c3'; ctx.fillRect(60, y - tam - 36, 130, 12);
+    ctx.fillStyle = '#fff'; lineas.forEach(l => { ctx.fillText(l, 60, y); y += tam * 1.02; });
+    ctx.globalAlpha = 1;
+    // barra de progreso de fotos
+    for (let k = 0; k < fotos.length; k++) { ctx.fillStyle = k <= i ? 'rgba(255,255,255,.9)' : 'rgba(255,255,255,.3)'; const bw = (W - 120 - (fotos.length - 1) * 8) / fotos.length; ctx.fillRect(60 + k * (bw + 8), 40, bw, 6); }
+  } else {
+    // cierre: logo y web
+    const p = Math.min(1, (t - tFotos) / 0.5);
+    ctx.globalAlpha = p;
+    if (logo) { const lh = 420, lw = logo.width && logo.height ? lh * logo.width / logo.height : lh * 1.2; ctx.drawImage(logo, (W - lw) / 2, H / 2 - 360, lw, lh); }
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.font = '800 64px Inter, Arial, sans-serif';
+    ctx.fillText('CLUB BÁDMINTON OLIMPIA', W / 2, H / 2 + 160);
+    ctx.font = '500 46px Inter, Arial, sans-serif'; ctx.fillStyle = '#3dd6c3';
+    ctx.fillText(urlWebClub().replace(/^https?:\/\//, '').replace(/\/$/, ''), W / 2, H / 2 + 240);
+    ctx.textAlign = 'left'; ctx.globalAlpha = 1;
+  }
+}
+
+// ---------- codificación ----------
+const CODECS_REEL = { video: ['avc1.640028', 'avc1.4d0028', 'avc1.420028'], audio: 'mp4a.40.2' };
+function codecsReelDisponibles() {
+  if (typeof VideoEncoder === 'undefined') return Promise.resolve(null);
+  const cfgV = c => ({ codec: c, width: REEL.ancho, height: REEL.alto, bitrate: 7000000, framerate: REEL.fps });
+  const probar = lista => lista.reduce((p, c) => p.then(ya => ya || VideoEncoder.isConfigSupported(cfgV(c)).then(r => r.supported ? c : null).catch(() => null)), Promise.resolve(null));
+  return probar(window.__reelCodecsPrueba ? window.__reelCodecsPrueba.video : CODECS_REEL.video).then(v => {
+    if (!v) return null;
+    const ac = window.__reelCodecsPrueba ? window.__reelCodecsPrueba.audio : CODECS_REEL.audio;
+    const p = typeof AudioEncoder === 'undefined' ? Promise.resolve(false)
+      : AudioEncoder.isConfigSupported({ codec: ac, sampleRate: 48000, numberOfChannels: 2, bitrate: 160000 }).then(r => r.supported).catch(() => false);
+    return p.then(a => ({ video: v, audio: a ? ac : null }));
+  });
+}
+function crearReel(n, fotosSrc, eleccion, alProgreso) {
+  const fotosOk = fotosSrc.slice(0, REEL.maxFotos);
+  const dur = duracionReel(fotosOk.length), totalFrames = Math.round(dur * REEL.fps);
+  let codecs;
+  return codecsReelDisponibles().then(c => {
+    if (!c) throw new Error('Este navegador no puede crear vídeo MP4. Usa Chrome (ordenador o Android) o Safari actualizado.');
+    if (eleccion && eleccion.id !== 'ninguna' && !c.audio) throw new Error('Este navegador no puede poner música al vídeo. Prueba en Chrome en el ordenador o elige «Sin música».');
+    codecs = c;
+    return Promise.all([cargarScript('mp4-muxer.js'), Promise.all(fotosOk.map(cargarImagen)), cargarImagen('logo_olimpia.svg').catch(() => null), bufferMusica(eleccion, dur)]);
+  }).then(([, imgs, logo, musica]) => {
+    const M = window.Mp4Muxer;
+    const conAudio = !!(musica && codecs.audio);
+    const muxer = new M.Muxer({
+      target: new M.ArrayBufferTarget(),
+      video: { codec: codecs.video.startsWith('avc') ? 'avc' : codecs.video.startsWith('vp09') ? 'vp9' : 'avc', width: REEL.ancho, height: REEL.alto, frameRate: REEL.fps },
+      audio: conAudio ? { codec: codecs.audio.startsWith('mp4a') ? 'aac' : 'opus', numberOfChannels: 2, sampleRate: 48000 } : undefined,
+      fastStart: 'in-memory',
+    });
+    let fallo = null;
+    const ve = new VideoEncoder({ output: (ch, meta) => muxer.addVideoChunk(ch, meta), error: e => { fallo = e; } });
+    ve.configure({ codec: codecs.video, width: REEL.ancho, height: REEL.alto, bitrate: 7000000, framerate: REEL.fps, avc: codecs.video.startsWith('avc') ? { format: 'avc' } : undefined });
+    const cv = document.createElement('canvas'); cv.width = REEL.ancho; cv.height = REEL.alto; const ctx = cv.getContext('2d');
+    let i = 0;
+    const paso = () => new Promise((ok, mal) => {
+      const lote = () => {
+        if (fallo) { mal(fallo); return; }
+        const fin = Math.min(totalFrames, i + 6);
+        for (; i < fin; i++) {
+          dibujarFotogramaReel(ctx, imgs, logo, n, i / REEL.fps, dur);
+          const vf = new VideoFrame(cv, { timestamp: Math.round(i * 1e6 / REEL.fps), duration: Math.round(1e6 / REEL.fps) });
+          ve.encode(vf, { keyFrame: i % (REEL.fps * 2) === 0 }); vf.close();
+        }
+        if (alProgreso) alProgreso(i / totalFrames);
+        if (i >= totalFrames) { ok(); return; }
+        const esperar = () => (ve.encodeQueueSize > 12 ? setTimeout(esperar, 5) : setTimeout(lote, 0));
+        esperar();
+      };
+      lote();
+    });
+    return paso().then(() => ve.flush()).then(() => {
+      if (!conAudio) return;
+      const ae = new AudioEncoder({ output: (ch, meta) => muxer.addAudioChunk(ch, meta), error: e => { fallo = e; } });
+      ae.configure({ codec: codecs.audio, sampleRate: 48000, numberOfChannels: 2, bitrate: 160000 });
+      const L = musica.getChannelData(0), Rc = musica.numberOfChannels > 1 ? musica.getChannelData(1) : L;
+      const bloque = 1024;
+      for (let o = 0; o < musica.length; o += bloque) {
+        const nF = Math.min(bloque, musica.length - o); const datos = new Float32Array(nF * 2);
+        datos.set(L.subarray(o, o + nF), 0); datos.set(Rc.subarray(o, o + nF), nF);
+        const ad = new AudioData({ format: 'f32-planar', sampleRate: 48000, numberOfFrames: nF, numberOfChannels: 2, timestamp: Math.round(o * 1e6 / 48000), data: datos });
+        ae.encode(ad); ad.close();
+      }
+      return ae.flush();
+    }).then(() => {
+      if (fallo) throw fallo;
+      muxer.finalize();
+      return { blob: new Blob([muxer.target.buffer], { type: 'video/mp4' }), duracion: dur, conMusica: conAudio };
+    });
+  });
+}
+// Fotos de una noticia (principal + extra)
+function fotosDeNoticia(n) {
+  return cargarFotosWeb().then(f => {
+    const lista = [];
+    if (f.noticias[n.id]) lista.push(f.noticias[n.id]);
+    (f.noticiasExtra[n.id] || []).forEach(x => { if (x && x.foto) lista.push(x.foto); });
+    return lista;
+  });
+}
+// Instagram: subir el reel (subida reanudable de Meta) y publicarlo
+function publicarReelInstagram(n, blob, alEstado) {
+  const r = redesCfg(), tk = tokenMeta();
+  if (!r.instagramId || !tk) return Promise.reject(new Error('Instagram no está conectado.'));
+  return metaLlamar(r.instagramId + '/media', { media_type: 'REELS', upload_type: 'resumable', caption: textoRedes(n), share_to_feed: 'true', access_token: tk }, 'POST').then(c => {
+    if (alEstado) alEstado('Subiendo el vídeo a Instagram…');
+    const destino = c.uri || ('https://rupload.facebook.com/ig-api-upload/' + (r.versionApi || 'v21.0') + '/' + c.id);
+    return fetch(destino, { method: 'POST', headers: { Authorization: 'OAuth ' + tk, offset: '0', file_size: String(blob.size) }, body: blob })
+      .then(x => x.json().catch(() => ({})).then(j => { if (!x.ok || j.error || j.success === false) throw new Error((j.error && j.error.message) || j.debug_info && j.debug_info.message || 'Instagram no aceptó el vídeo.'); return c.id; }));
+  }).then(id => {
+    if (alEstado) alEstado('Instagram está procesando el vídeo (puede tardar 1–2 minutos)…');
+    const mirar = (k) => metaLlamar(id, { fields: 'status_code,status', access_token: tk }).then(s => {
+      if (s.status_code === 'FINISHED') return id;
+      if (s.status_code === 'ERROR' || s.status_code === 'EXPIRED') throw new Error('Instagram no pudo procesar el vídeo' + (s.status ? ': ' + s.status : '.'));
+      if (k >= 40) throw new Error('Instagram sigue procesando el vídeo. Revisa Instagram en unos minutos.');
+      return new Promise(ok => setTimeout(ok, window.__reelEsperaMs || 6000)).then(() => mirar(k + 1));
+    });
+    return mirar(0);
+  }).then(id => metaLlamar(r.instagramId + '/media_publish', { creation_id: id, access_token: tk }, 'POST')).then(p => ({ mediaId: p.id }));
+}
+function descargarArchivo(blob, nombre) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nombre; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 8000); }
 
 function renderWebClub() {
   const root = document.getElementById('webScreen');
@@ -17991,6 +18313,33 @@ function renderWebClub() {
       if (ft) fotoCaja.appendChild(el('img', { src: ft, alt: '', style: 'height:64px;border-radius:6px;' }));
       fotoCaja.appendChild(el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => elegirArchivoImagen(file => comprimirFotoWeb(file, 1400, 0.78).then(foto => guardarFotoWebNube('web_noticia_' + n.id, { foto }).then(() => { f.noticias[n.id] = foto; n.tieneFoto = true; guardar(); renderWebClub(); })).catch(e => alert(e.message))) }, ft ? 'Cambiar foto' : 'Añadir foto'));
       if (ft) fotoCaja.appendChild(el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => borrarFotoWebNube('web_noticia_' + n.id).then(() => { delete f.noticias[n.id]; n.tieneFoto = false; guardar(); renderWebClub(); }) }, 'Quitar foto'));
+      // más fotos (para el reel de Instagram)
+      const extras = f.noticiasExtra[n.id] || [];
+      const total = (ft ? 1 : 0) + extras.length;
+      if (ft) {
+        const tira = el('div', { class: 'web-extras', style: 'display:flex;flex-wrap:wrap;gap:6px;align-items:center;width:100%;' });
+        extras.forEach(x => tira.appendChild(el('div', { style: 'position:relative;' },
+          el('img', { src: x.foto, alt: '', style: 'height:56px;width:56px;object-fit:cover;border-radius:6px;display:block;' }),
+          el('button', { class: 'btn btn-danger btn-sm', type: 'button', title: 'Quitar', style: 'position:absolute;top:-6px;right:-6px;padding:0 6px;min-height:0;line-height:18px;', onclick: () => {
+            borrarFotoWebNube('web_noticia_' + n.id + '_' + x.k).then(() => { f.noticiasExtra[n.id] = extras.filter(y => y !== x); n.extras = (n.extras || []).filter(k => k !== x.k); guardar(); renderWebClub(); });
+          } }, '✕'))));
+        if (total < REEL.maxFotos) tira.appendChild(el('button', { class: 'btn btn-ghost btn-sm web-mas-fotos', type: 'button', onclick: () => {
+          const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.multiple = true;
+          inp.onchange = () => {
+            const files = Array.from(inp.files || []).slice(0, REEL.maxFotos - total);
+            files.reduce((pr, file) => pr.then(() => comprimirFotoWeb(file, 1400, 0.76).then(foto => {
+              const k = 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+              return guardarFotoWebNube('web_noticia_' + n.id + '_' + k, { foto }).then(() => {
+                f.noticiasExtra[n.id] = (f.noticiasExtra[n.id] || []).concat([{ k, foto }]);
+                n.extras = (n.extras || []).concat([k]);
+              });
+            })), Promise.resolve()).then(() => { guardar(); renderWebClub(); }).catch(e => alert(e.message));
+          };
+          inp.click();
+        } }, '+ Más fotos (' + total + '/' + REEL.maxFotos + ')'));
+        if (total >= 2) tira.appendChild(el('span', { class: 'sub', style: 'font-size:12px;' }, '🎬 Con ' + total + ' fotos se hace un reel para Instagram'));
+        fotoCaja.appendChild(tira);
+      }
       const rd = n.redes || {};
       const publicada = rd.fb || rd.ig || rd.tiktok;
       fotoCaja.appendChild(el('button', { class: 'btn ' + (publicada ? 'btn-ghost' : 'btn-primary') + ' btn-sm web-redes', type: 'button', onclick: () => abrirPublicarRedes(n, () => renderWebClub()) }, '📣 Publicar en redes…'));
@@ -17998,7 +18347,8 @@ function renderWebClub() {
         [rd.fb ? 'Facebook ✓' : '', rd.ig ? 'Instagram ✓' : '', rd.tiktok ? 'TikTok ✓' : ''].filter(Boolean).join(' · ')));
       fotoCaja.appendChild(el('button', { class: 'btn btn-danger btn-sm', type: 'button', onclick: () => {
         if (!confirm('¿Borrar la noticia «' + n.titulo + '»?')) return;
-        w.noticias = w.noticias.filter(x => x !== n); if (n.tieneFoto) borrarFotoWebNube('web_noticia_' + n.id); guardar(); renderWebClub();
+        w.noticias = w.noticias.filter(x => x !== n); if (n.tieneFoto) borrarFotoWebNube('web_noticia_' + n.id);
+        (n.extras || []).forEach(k => borrarFotoWebNube('web_noticia_' + n.id + '_' + k)); guardar(); renderWebClub();
       } }, 'Borrar noticia'));
     });
     card.appendChild(fotoCaja);

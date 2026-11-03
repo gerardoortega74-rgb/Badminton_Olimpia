@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261103-videoidermay">
+<meta name="build-id" content="v20261103-botonestienda">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -14166,6 +14166,8 @@ function tdoHeroCarrusel(articulos, op) {
 .th-svg path{fill:none;stroke:#FF5A6A;stroke-linecap:round;stroke-linejoin:round;}
 .th-fila{position:absolute;left:0;top:0;width:100%;height:100%;cursor:grab;touch-action:pan-y;user-select:none;-webkit-user-select:none;}
 .th-fila.agarrando{cursor:grabbing;}
+/* La zona de arrastre del carrusel ocupa todo el marco: la barra de arriba debe quedar por encima para poder pulsarse */
+.th-nav,.th-pill,.th-logo{z-index:6;}
 .th-card{position:absolute;left:0;top:0;will-change:transform;cursor:pointer;transform-origin:50% 60%;}
 .th-card img{position:absolute;left:0;right:0;top:4%;width:100%;height:70%;object-fit:contain;pointer-events:none;-webkit-user-drag:none;opacity:0;transition:opacity .5s ease;filter:drop-shadow(0 16px 14px rgba(0,0,0,.45)) drop-shadow(0 0 22px rgba(120,170,255,.18));}
 .th-card img.listo{opacity:1;}
@@ -14219,14 +14221,15 @@ function tdoHeroCarrusel(articulos, op) {
   const n = articulos.length;
   const nombreTienda = op.nombreTienda || 'IDERMAY CANTABRIA';
   const logoSvg = typeof OL_LOGO_IDERMAY_BLANCO !== 'undefined' ? OL_LOGO_IDERMAY_BLANCO : '';
-  const tipos = Array.from(new Set(articulos.map(a => a.tipo || 'Otros'))).slice(0, 4);
+  // Arriba solo categorías con nombre propio («Otro» no dice nada al cliente); sin ninguna, no se pone la barra.
+  const tipos = Array.from(new Set(articulos.map(a => a.tipo || 'Otros'))).filter(t => !/^otros?$/i.test(String(t).trim())).slice(0, 4);
   const raiz = document.createElement('section'); raiz.className = 'th-hero'; raiz.setAttribute('aria-label', 'Portada de la tienda');
   const subHTML = 'Grips, volantes, mochilas y accesorios de ' + nombreTienda.replace(/</g, '') + '. <br>Toca un artículo y se añade a tu pedido: <br>te lo preparamos para recoger en el taller.';
   const esc = (t) => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   raiz.innerHTML = `
 <div class="th-frame">
   <div class="th-abs th-logo">${logoSvg}</div>
-  <nav class="th-abs th-nav" aria-label="Categorías">${tipos.map(t => '<button type="button" data-tipo="' + esc(t) + '">' + esc(t) + '</button>').join('')}<button type="button" data-ir="catalogo">Todo</button></nav>
+  <nav class="th-abs th-nav" aria-label="Categorías">${tipos.length ? tipos.map(t => '<button type="button" data-tipo="' + esc(t) + '">' + esc(t) + '</button>').join('') + '<button type="button" data-ir="catalogo">Todo</button>' : ''}</nav>
   <button class="th-abs th-pill th-pedido" type="button" data-ir="pedido">🛍️ <span data-k="nped">Tu pedido</span></button>
   ${op.tel ? '<a class="th-abs th-pill th-wa" href="' + esc(op.enlaceWa('Hola, tengo una consulta sobre la tienda.')) + '" target="_blank" rel="noopener">WhatsApp</a>' : ''}
   <div class="th-abs th-badge"><i></i>${n} artículos listos en la tienda online</div>

@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261031-ticketraquetas">
+<meta name="build-id" content="v20261103-permisonube">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -19052,6 +19052,12 @@ function programarSyncNube() {
   clearTimeout(nubeSyncTimer);
   nubeSyncTimer = setTimeout(subirNube, 700);
 }
+let reintentoPermisoNube = false;
+// Explica en claro por qué la nube no deja guardar: sin cuenta conectada o cuenta sin permiso.
+function textoPermisoNube(u) {
+  if (!u) return '⚠️ Nube: no estás conectado con tu cuenta y no se guarda. Pulsa Salir y entra con «🔐 Administrador» (email y contraseña) o con tu nombre y PIN.';
+  return '⚠️ Nube: la cuenta ' + (u.email || 'actual') + ' no tiene permiso para guardar. Pulsa Salir y vuelve a entrar; si sigue igual, avisa a Gerardo.';
+}
 function subirNube() {
   nubeSyncTimer = null;
   if (subiendoNube) { nubeSyncTimer = setTimeout(subirNube, 400); return; }
@@ -19081,6 +19087,7 @@ function subirNube() {
     revNube = rev;
     baseNube = datos;
     if (fusionado) { aplicarDatosDeNube(datos); refrescarPantallaActual(); }
+    reintentoPermisoNube = false;
     marcarEstadoNube('☁️ Sincronizado');
     subirCopiaPublica();
     // Por si hubo cambios mientras se subía
@@ -19088,6 +19095,18 @@ function subirNube() {
   }).catch(err => {
     subiendoNube = false;
     console.warn('Error subiendo a la nube:', err);
+    if (/permission-denied/.test(String((err && (err.code || err.message)) || ''))) {
+      let u = null; try { u = authDisponible ? authFb().currentUser : null; } catch (e) { u = null; }
+      // Primer rechazo: renovar la credencial de la cuenta (puede haber caducado) y reintentar enseguida.
+      if (u && typeof u.getIdToken === 'function' && !reintentoPermisoNube) {
+        reintentoPermisoNube = true;
+        u.getIdToken(true).then(() => subirNube(), () => { marcarEstadoNube(textoPermisoNube(u)); nubeSyncTimer = setTimeout(subirNube, 15000); });
+        return;
+      }
+      marcarEstadoNube(textoPermisoNube(u));
+      nubeSyncTimer = setTimeout(subirNube, 15000);
+      return;
+    }
     marcarEstadoNube('⚠️ Nube: ' + (err && err.code ? err.code : (err && err.message) || 'error desconocido') + (err && err.message ? ' - ' + err.message : ''));
     nubeSyncTimer = setTimeout(subirNube, 5000);
   });

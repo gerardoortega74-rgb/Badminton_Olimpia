@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261103-entrarcuenta">
+<meta name="build-id" content="v20261103-videoidermay">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -2002,6 +2002,12 @@ body.tienda-on.tienda-oscura,html.tienda-pre body.tienda-on.tienda-oscura{backgr
 #tiendaOnlineScreen.ap-oscuro .tdo-card.agotado .tdo-foto{opacity:.55;}
 /* Intro animada de la tienda */
 body.tdo-intro-on{overflow:hidden;}
+.idv-intro{position:fixed;inset:0;z-index:10050;background:#0b0d10;display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;transition:opacity .5s ease;}
+.idv-intro.sale{opacity:0;pointer-events:none;}
+.idv-fondo{position:absolute;inset:-8%;width:116%;height:116%;object-fit:cover;filter:blur(28px) brightness(.85);transform:scale(1.05);}
+.idv-video{position:relative;width:100%;height:100%;object-fit:contain;}
+@media (min-aspect-ratio:16/10){.idv-video{object-fit:cover;}}
+.idv-saltar{position:absolute;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:2;background:rgba(0,0,0,.45);color:#fff;border:1px solid rgba(255,255,255,.5);border-radius:999px;padding:8px 18px;font:600 14px system-ui,sans-serif;cursor:pointer;backdrop-filter:blur(4px);}
 body.tdo-intro-on #tiendaOnlineScreen .tdo-hero .tdo-logo,body.tdo-intro-on #tiendaOnlineScreen .th-hero .th-logo{visibility:hidden;}
 .tdo-intro{position:fixed;inset:0;z-index:100000;overflow:hidden;cursor:pointer;background:radial-gradient(90% 70% at 50% 42%,#173F78 0%,#0B2D5B 45%,#030F22 100%);}
 .tdo-intro::before{content:"";position:absolute;inset:-20%;background:repeating-conic-gradient(from 0deg at 50% 44.3%,rgba(255,255,255,.045) 0 6deg,transparent 6deg 18deg);transform-origin:50% 44.3%;opacity:.35;animation:tdoRayos 14s linear infinite;transition:opacity .5s ease;}
@@ -13861,8 +13867,44 @@ function tdoLogoMontable() {
   set(0);
   return { svg, set, duracion: 2.75 };
 }
+// ===== Vídeo de IDERMAY al abrir las páginas públicas del taller (tienda online y seguimiento de raquetas) =====
+// Se ve una vez por visita de cada página; se puede saltar tocando. Si el vídeo no puede reproducirse, se sigue sin esperar.
+let idermayVideoHecho = false;
+function idermayVideoIntro(alTerminar) {
+  if (idermayVideoHecho) return false;
+  idermayVideoHecho = true;
+  try { if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return false; } catch (e) {}
+  const SRC = 'intro_idermay.mp4';
+  const mk = (cls) => { const v = document.createElement('video'); v.className = cls; v.muted = true; v.defaultMuted = true; v.playsInline = true; v.setAttribute('playsinline', ''); v.setAttribute('muted', ''); v.preload = 'auto'; v.src = SRC; return v; };
+  const fondo = mk('idv-fondo'), video = mk('idv-video');
+  const saltar = el('button', { type: 'button', class: 'idv-saltar' }, 'Saltar');
+  const ov = el('div', { class: 'idv-intro', role: 'presentation' }, fondo, video, saltar);
+  document.body.appendChild(ov);
+  let terminado = false, guardia = null;
+  const fin = (rapido) => {
+    if (terminado) return; terminado = true;
+    clearTimeout(guardia);
+    ov.classList.add('sale');
+    setTimeout(() => { try { video.pause(); fondo.pause(); } catch (e) {} ov.remove(); if (alTerminar) alTerminar(); }, rapido ? 220 : 520);
+  };
+  ov.addEventListener('click', () => fin(true));
+  video.addEventListener('ended', () => fin(false));
+  video.addEventListener('error', () => fin(true));
+  video.addEventListener('timeupdate', () => { if (!fondo.paused && Math.abs(fondo.currentTime - video.currentTime) > .4) fondo.currentTime = video.currentTime; });
+  guardia = setTimeout(() => fin(false), 14000); // por si el vídeo se queda colgado cargando
+  const pp = video.play();
+  if (pp && pp.catch) pp.catch(() => fin(true));
+  const pf = fondo.play(); if (pf && pf.catch) pf.catch(() => {});
+  return true;
+}
 function tdoIntroTienda(nombreTienda) {
   tdoIntroHecha = true;
+  // Primero el vídeo de IDERMAY; al acabar, la tienda entra directamente (sin la animación del logo).
+  if (!idermayVideoHecho) {
+    document.body.classList.add('tdo-intro-on');
+    if (idermayVideoIntro(() => { document.body.classList.remove('tdo-intro-on'); tdoCascada(); })) return;
+    document.body.classList.remove('tdo-intro-on');
+  }
   try { if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) { tdoCascada(); return; } } catch (e) {}
   window.scrollTo(0, 0);
   document.body.classList.add('tdo-intro-on');
@@ -13965,6 +14007,7 @@ function tdoIntroTienda(nombreTienda) {
 }
 document.addEventListener('DOMContentLoaded', () => {
   if (typeof esVistaTiendaOnline === 'function' && esVistaTiendaOnline() && !tdoIntroHecha) tdoIntroTienda('IDERMAY CANTABRIA');
+  else if (typeof esVistaPublicaTaller === 'function' && esVistaPublicaTaller()) idermayVideoIntro();
 });
 // ===== Tienda online · portada de prueba en «hero» (?tiendaonline=1&hero=1) =====
 // Mismo esquema que la portada Reelmark (marco 1440×1080, titular grande, carrusel curvo que gira solo y se

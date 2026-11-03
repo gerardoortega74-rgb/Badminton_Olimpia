@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261103-permisonube">
+<meta name="build-id" content="v20261103-entrarcuenta">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -13578,6 +13578,7 @@ function cerrarSesion() {
   sesionActual = null;
   saveSesion();
   if (typeof modoAuth !== 'undefined' && modoAuth) { if (sesionUnicaCancelar) { sesionUnicaCancelar(); sesionUnicaCancelar = null; } authFb().signOut().finally(() => location.reload()); return; }
+  if (typeof entrarConCuentasSinLista === 'function' && entrarConCuentasSinLista()) return;
   mostrarLogin();
 }
 function esVistaPublicaTaller() {
@@ -18682,6 +18683,17 @@ function mensajeErrorAuth(e) {
 function adminEnAccessControl() { return accessControl.usuarios.find(u => u.rol === 'admin') || null; }
 
 // ---------- Arranque con cuentas ----------
+// El acceso seguro ya está activo (se vio la lista de accesos alguna vez): nunca volver al modo antiguo con PIN local,
+// que no tiene cuenta en la nube y no deja guardar. Se pide entrar con la cuenta.
+function accesoPublicoGuardado() { try { const l = JSON.parse(localStorage.getItem('badmintonAccesoPublico') || 'null'); return Array.isArray(l) ? l : null; } catch (e) { return null; } }
+function entrarConCuentasSinLista(forzar) {
+  if (!authDisponible) return false;
+  const l = accesoPublicoGuardado();
+  if (!l && !forzar) return false;
+  modoAuth = true; accesoPublico = l || []; sesionActual = null; saveSesion();
+  marcarEstadoNube(''); mostrarLogin();
+  return true;
+}
 function arranqueConCuentas(arranqueLegado) {
   marcarEstadoNube('☁️ Conectando…');
   let primera = true;
@@ -18692,10 +18704,11 @@ function arranqueConCuentas(arranqueLegado) {
     docAccesoPublico().get().then(d => {
       const lista = d.exists ? desenvolverArraysAnidados(d.data()).usuarios : null;
       if (Array.isArray(lista)) {
+        try { localStorage.setItem('badmintonAccesoPublico', JSON.stringify(lista)); } catch (e) {}
         modoAuth = true; accesoPublico = lista; sesionActual = null; saveSesion();
         cargarClubPublico().then(() => { marcarEstadoNube(''); mostrarLogin(); });
       } else arranqueLegado();
-    }).catch(() => arranqueLegado());
+    }).catch(() => { if (!entrarConCuentasSinLista()) arranqueLegado(); });
   });
 }
 // En el móvil de un trabajador no debe quedar ninguna copia de los datos del club (por ejemplo, de cuando se usó la app antigua).
@@ -18714,14 +18727,19 @@ function activarSesionUnica(usuarioId) {
   if (sesionUnicaCancelar) { sesionUnicaCancelar(); sesionUnicaCancelar = null; }
   const sid = 's_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
   const ref = coleccionEstadoCuentas().doc(usuarioId);
-  ref.set({ sesionActiva: sid, sesionDesde: Date.now(), sesionDispositivo: (navigator.userAgent || '').slice(0, 120) }, { merge: true }).then(() => {
+  // Una sesión por tipo de dispositivo: se puede estar a la vez en el móvil y en el PC; abrir en otro PC (u otro móvil)
+  // cierra la anterior del mismo tipo. Los trabajadores (fichaje) siguen con una sola sesión en total.
+  const tipo = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '') || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent || '')) ? 'movil' : 'pc';
+  const campo = (sesionActual && sesionActual.rol === 'trabajador') ? 'sesionActiva' : 'sesionActiva_' + tipo;
+  ref.set({ [campo]: sid, sesionDesde: Date.now(), sesionDispositivo: (navigator.userAgent || '').slice(0, 120) }, { merge: true }).then(() => {
     sesionUnicaCancelar = ref.onSnapshot(snap => {
       const d = snap.exists ? snap.data() : null;
-      if (d && d.sesionActiva && d.sesionActiva !== sid) expulsarPorOtraSesion();
+      if (d && d[campo] && d[campo] !== sid) expulsarPorOtraSesion();
     }, () => {});
   }).catch(e => console.warn('No se pudo registrar la sesión:', e));
 }
 function expulsarPorOtraSesion() {
+  const eraTrabajador = !!(sesionActual && sesionActual.rol === 'trabajador');
   if (sesionUnicaCancelar) { sesionUnicaCancelar(); sesionUnicaCancelar = null; }
   if (typeof fxPararGPS === 'function') fxPararGPS();
   document.querySelectorAll('.fx-velo').forEach(n => n.remove());
@@ -18732,7 +18750,7 @@ function expulsarPorOtraSesion() {
   ['btnMenu', 'btnLogout', 'btnAcceso', 'sesionIndicador'].forEach(id => { const e = document.getElementById(id); if (e) e.style.display = 'none'; });
   root.style.display = 'block'; root.innerHTML = '';
   root.appendChild(el('div', { class: 'login-card' }, el('h2', {}, 'Sesión cerrada'),
-    el('div', { class: 'msg msg-warn' }, 'Tu sesión se ha abierto en otro dispositivo y aquí se ha cerrado. Solo puede haber una sesión abierta a la vez.'),
+    el('div', { class: 'msg msg-warn' }, eraTrabajador ? 'Tu sesión se ha abierto en otro dispositivo y aquí se ha cerrado. Solo puede haber una sesión abierta a la vez.' : 'Tu sesión se ha abierto en otro dispositivo del mismo tipo y aquí se ha cerrado. Puedes tener una abierta en el móvil y otra en el ordenador.'),
     el('div', { class: 'toolbar' }, el('button', { class: 'btn btn-primary', onclick: () => location.reload() }, 'Entrar de nuevo'))));
 }
 function cargarClubPublico() {
@@ -21423,6 +21441,8 @@ function arranqueLegado() {
     }
   }).catch(err => {
     console.warn('No se pudo conectar a la nube, usando datos guardados en este dispositivo:', err);
+    // La nube pide cuenta: en vez de abrir la app con una sesión local que no puede guardar, pedir entrar con la cuenta.
+    if (!esVistaPublica() && /permission-denied/.test(String((err && (err.code || err.message)) || '')) && entrarConCuentasSinLista(true)) return;
     marcarEstadoNube('⚠️ Nube: ' + (err && err.code ? err.code : (err && err.message) || 'error desconocido'));
     sincronizacionInicialLista = true;
     arrancarAppLocal();

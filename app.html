@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261105-formraqueta">
+<meta name="build-id" content="v20261105-dostensiones">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -236,6 +236,16 @@ body.tpub-on main#shellMain{max-width:none !important;margin:0 !important;paddin
 .tpf-ten{display:flex;flex-direction:column;align-items:center;gap:1px;padding:10px 4px;}
 .tpf-ten b{font-size:15px;}.tpf-ten small{font-size:11.5px;color:#6B7A90;}
 .tpf-ten-c{grid-column:span 2;}
+.tpf-modos{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.tpf-modo{font:inherit;cursor:pointer;border:1.5px solid #D5DDE9;background:#fff;border-radius:14px;color:#14213A;display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:12px 14px;text-align:left;}
+.tpf-modo b{font-size:15px;}.tpf-modo small{color:#6B7A90;font-size:12.5px;}
+.tpf-modo.on{border-color:var(--tn);background:#EEF3FA;box-shadow:0 0 0 2px var(--tn) inset;}
+.tpf-selector{display:flex;flex-direction:column;gap:10px;}
+.tpf-selector+.tpf-selector{border-top:1px dashed #D5DDE9;padding-top:12px;}
+.tpf-lado{font-size:15px;color:var(--tn);}
+.tpf-select{font:inherit;font-weight:600;font-size:16px;padding:12px 13px;border:1.5px solid #D5DDE9;border-radius:12px;background:#F9FBFD;color:#14213A;width:100%;}
+.tpf-select:focus{outline:none;border-color:var(--tn);box-shadow:0 0 0 3px rgba(11,45,91,.12);}
+.tpf-nota{color:#6B7A90;font-size:12.5px;}
 .tpf-check{display:flex;gap:10px;align-items:flex-start;font-size:14px;color:#33415A;line-height:1.45;cursor:pointer;}
 .tpf-check input{width:22px;height:22px;flex:none;margin:0;accent-color:var(--tn);}
 .tpf-error:empty{display:none;}
@@ -10194,13 +10204,17 @@ function aceptarSolicitudRaqueta(sol) {
   if (!cli) cli = addCliente({ nombre: nombreCompleto, telefono: sol.telefono || '' });
   else if (!cli.telefono && sol.telefono) cli.telefono = sol.telefono;
   const cor = sol.cordajeId ? cordajeDe(sol.cordajeId) : null;
+  const corH = sol.cordajeIdH ? cordajeDe(sol.cordajeIdH) : null;
   const ten = Number(sol.tension) || null;
+  // Solicitudes antiguas (una sola tensión): la horizontal es la misma
+  const tenH = sol.tensionH === undefined ? ten : (Number(sol.tensionH) || null);
   let precio = state.config.precioSinCordaje || 0;
-  if (cor) precio = (state.config.precioBaseEncordado || 0) + (cor.precio || 0);
+  if (cor || corH) precio = (state.config.precioBaseEncordado || 0) + (cor ? cor.precio || 0 : 0) + (corH ? corH.precio || 0 : 0);
   const notas = ['📝 Rellenado por el cliente',
     !sol.cordajeId ? 'Cordaje: que se lo aconseje' : (!cor ? 'Cordaje pedido: ' + (sol.cordajeNombre || '') + (sol.color ? ' · ' + sol.color : '') + ' (ya no está en stock)' : ''),
-    !ten ? 'Tensión: que se la aconseje' : '', sol.comentarios || ''].filter(Boolean).join(' · ');
-  const nuevo = addPedido({ clienteId: cli.id, marcaModelo: sol.raqueta || '', cordajeId: cor ? cor.id : null, tensionVertical: ten, tensionHorizontal: ten, precio, pagoPrevisto: 'alRecoger', notas });
+    sol.cordajeIdH && !corH ? 'Cordaje horizontales pedido: ' + (sol.cordajeNombreH || '') + (sol.colorH ? ' · ' + sol.colorH : '') + ' (ya no está en stock)' : '',
+    !ten ? 'Tensión verticales: que se la aconseje' : '', !tenH ? 'Tensión horizontales: que se la aconseje' : '', sol.comentarios || ''].filter(Boolean).join(' · ');
+  const nuevo = addPedido({ clienteId: cli.id, marcaModelo: sol.raqueta || '', cordajeId: cor ? cor.id : null, cordajeIdH: corH ? corH.id : null, tensionVertical: ten, tensionHorizontal: tenH, precio, pagoPrevisto: 'alRecoger', notas });
   // En la cola entra en su turno: por la hora a la que la dejó, no por la hora a la que se acepta.
   if (sol.creadoEn && sol.creadoEn < nuevo.horaLlegada) nuevo.horaLlegada = sol.creadoEn;
   solicitudesRaq = solicitudesRaq.filter(x => x._id !== sol._id);
@@ -10220,14 +10234,19 @@ function panelSolicitudesRaqueta() {
     el('div', { class: 'im-solic-tit' }, '📥 Raquetas enviadas por clientes', solicitudesRaq.length ? el('span', { class: 'im-solic-n' }, String(solicitudesRaq.length)) : null));
   if (solicitudesRaqError) caja.appendChild(el('div', { class: 'msg msg-warn' }, solicitudesRaqError));
   solicitudesRaq.forEach(sol => {
-    const cor = sol.cordajeId ? cordajeDe(sol.cordajeId) : null;
-    const tCordaje = !sol.cordajeId ? 'Que se lo aconseje' : (cor ? cor.nombre : (sol.cordajeNombre || '') + (sol.color ? ' · ' + sol.color : '') + ' ⚠️ sin stock');
+    const nomCor = (id, n, c) => { const k = id ? cordajeDe(id) : null; return k ? k.nombre : (n || '') + (c ? ' · ' + c : '') + ' ⚠️ sin stock'; };
+    const tCordaje = !sol.cordajeId ? 'Que se lo aconseje' : sol.cordajeIdH
+      ? 'V: ' + nomCor(sol.cordajeId, sol.cordajeNombre, sol.color) + ' · H: ' + nomCor(sol.cordajeIdH, sol.cordajeNombreH, sol.colorH)
+      : nomCor(sol.cordajeId, sol.cordajeNombre, sol.color);
+    const tx = t => Number(t) ? String(t).replace('.', ',') + ' kg' : 'que se la aconseje';
+    const tH = sol.tensionH === undefined ? sol.tension : sol.tensionH;
+    const tTension = (Number(sol.tension) || 0) === (Number(tH) || 0) ? (Number(sol.tension) ? tx(sol.tension) + ' (V y H)' : 'Que se la aconseje') : 'V ' + tx(sol.tension) + ' · H ' + tx(tH);
     caja.appendChild(el('div', { class: 'im-solic-card' },
       el('div', { class: 'im-solic-cab' }, el('b', {}, [sol.nombre, sol.apellidos].filter(Boolean).join(' ')), el('span', {}, (sol.creadoEn ? fmtHora(sol.creadoEn) + ' · ' : '') + (sol.telefono || ''))),
       el('div', { class: 'im-solic-datos' },
         sol.raqueta ? el('span', {}, '🏸 ' + sol.raqueta) : null,
         el('span', {}, '🧵 ' + tCordaje),
-        el('span', {}, '⚖️ ' + (Number(sol.tension) ? String(sol.tension).replace('.', ',') + ' kg' : 'Que se la aconseje'))),
+        el('span', {}, '⚖️ ' + tTension)),
       sol.comentarios ? el('div', { class: 'sub' }, '💬 ' + sol.comentarios) : null,
       el('div', { class: 'toolbar', style: 'margin:8px 0 0;' },
         el('button', { class: 'btn btn-gold btn-sm', onclick: () => aceptarSolicitudRaqueta(sol) }, '✅ Aceptar y poner en la cola'),
@@ -13875,7 +13894,7 @@ function esVistaFormRaqueta() {
   try { return new URLSearchParams(location.search).get('raqueta') === '1'; } catch (e) { return false; }
 }
 const TENSIONES_FORM = [8, 8.5, 9, 9.5, 10, 10.5, 11, 11.5, 12, 12.5, 13, 13.5, 14];
-let frmRaq = { nombre: '', apellidos: '', telefono: '', raqueta: '', grupo: '', cordajeId: '', tension: null, comentarios: '', consentimiento: false, web: '' };
+let frmRaq = { nombre: '', apellidos: '', telefono: '', raqueta: '', hibrido: false, grupo: '', cordajeId: '', grupoH: '', cordajeIdH: '', tension: null, tensionH: null, comentarios: '', consentimiento: false, web: '' };
 let frmRaqEnviando = false, frmRaqExito = null, frmRaqError = '';
 // Cordajes con stock, agrupados por modelo; cada modelo con sus colores disponibles.
 function cordajesFormRaqueta() {
@@ -13912,7 +13931,9 @@ function renderFormRaqueta() {
     const e = frmRaqExito;
     cuerpo.appendChild(el('section', { class: 'tpb-card tpb-estado lista' },
       el('div', { class: 'tpb-est-ico' }, '✅'), el('h2', {}, 'Gracias, ' + e.nombre),
-      el('p', {}, 'Cordaje: ' + (e.cordajeNombre || 'el que te aconsejemos') + (e.color ? ' · ' + e.color : '') + ' · Tensión: ' + (e.tension ? fmtTensionForm(e.tension) : 'la que te aconsejemos') + '.'),
+      el('p', {}, e.cordajeIdH
+        ? 'Verticales: ' + e.cordajeNombre + (e.color ? ' · ' + e.color : '') + ' a ' + (e.tension ? fmtTensionForm(e.tension) : 'la tensión que te aconsejemos') + '. Horizontales: ' + e.cordajeNombreH + (e.colorH ? ' · ' + e.colorH : '') + ' a ' + (e.tensionH ? fmtTensionForm(e.tensionH) : 'la tensión que te aconsejemos') + '.'
+        : 'Cordaje: ' + (e.cordajeNombre || 'el que te aconsejemos') + (e.color ? ' · ' + e.color : '') + ' · Tensión: ' + tensionesTexto(e.tension, e.tensionH) + '.'),
       el('p', { style: 'margin-top:8px;' }, 'Cuando la aceptemos te avisamos por WhatsApp con el enlace para seguirla en directo.')));
     cuerpo.appendChild(el('button', { type: 'button', class: 'tpf-otra', onclick: () => {
       frmRaqExito = null; Object.assign(frmRaq, { raqueta: '', comentarios: '' }); renderFormRaqueta(); window.scrollTo(0, 0);
@@ -13935,35 +13956,66 @@ function renderFormRaqueta() {
 
     const lista = cordajesFormRaqueta();
     const secCordaje = el('section', { class: 'tpb-card tpf' }, el('h2', { class: 'tpf-tit' }, el('i', {}, '2'), 'Cordaje'));
-    const opcion = (clave, titulo, sub) => el('button', { type: 'button', class: 'tpf-opc' + (f.grupo === clave ? ' on' : ''), 'aria-pressed': f.grupo === clave ? 'true' : 'false', 'data-grupo': clave, onclick: () => {
-      f.grupo = clave; frmRaqError = '';
-      const g = lista.find(x => x.clave === clave);
-      f.cordajeId = g && g.colores.length === 1 ? g.colores[0].id : '';
+    // ¿Un cordaje o dos (híbrido: uno en verticales y otro en horizontales)?
+    const modo = (val, titulo, sub) => el('button', { type: 'button', class: 'tpf-modo' + (!!f.hibrido === val ? ' on' : ''), 'aria-pressed': !!f.hibrido === val ? 'true' : 'false', 'data-hibrido': val ? '1' : '0', onclick: () => {
+      f.hibrido = val; frmRaqError = '';
+      if (!val) { f.grupoH = ''; f.cordajeIdH = ''; } else if (f.grupo === 'consejo') { f.grupo = ''; f.cordajeId = ''; }
       renderFormRaqueta();
-    } }, el('b', {}, titulo), sub ? el('small', {}, sub) : null);
-    const opciones = el('div', { class: 'tpf-opciones' });
-    lista.forEach(g => opciones.appendChild(opcion(g.clave, g.nombre, [g.codigo, g.colores.length > 1 ? g.colores.length + ' colores' : (g.colores[0].color || '')].filter(Boolean).join(' · '))));
-    opciones.appendChild(opcion('consejo', 'Aconséjame tú', 'Elijo contigo en el taller'));
-    secCordaje.appendChild(opciones);
-    const g = lista.find(x => x.clave === f.grupo);
-    if (g && g.colores.length > 1) {
-      secCordaje.appendChild(el('div', { class: 'tpf-sub' }, 'Elige el color'));
-      const cols = el('div', { class: 'tpf-colores' });
-      g.colores.forEach(c => {
-        const css = colorCss(c.color);
-        cols.appendChild(el('button', { type: 'button', class: 'tpf-color' + (f.cordajeId === c.id ? ' on' : ''), 'aria-pressed': f.cordajeId === c.id ? 'true' : 'false', 'data-color': c.color, onclick: () => { f.cordajeId = c.id; frmRaqError = ''; renderFormRaqueta(); } },
-          el('i', { style: css ? 'background:' + css : 'background:repeating-linear-gradient(45deg,#ddd 0 4px,#fff 4px 8px)' }), c.color));
-      });
-      secCordaje.appendChild(cols);
-    }
+    } }, el('b', {}, titulo), el('small', {}, sub));
+    secCordaje.appendChild(el('div', { class: 'tpf-modos' }, modo(false, 'Un cordaje', 'El mismo en toda la raqueta'), modo(true, 'Dos cordajes', 'Uno en verticales y otro en horizontales')));
+    // Selector de modelo + color; sufijo '' = verticales (o único), 'H' = horizontales
+    const selector = (suf, titulo) => {
+      const kG = 'grupo' + suf, kC = 'cordajeId' + suf;
+      const caja = el('div', { class: 'tpf-selector', 'data-lado': suf || 'V' });
+      if (titulo) caja.appendChild(el('div', { class: 'tpf-sub tpf-lado' }, titulo));
+      const opcion = (clave, tit, sub) => el('button', { type: 'button', class: 'tpf-opc' + (f[kG] === clave ? ' on' : ''), 'aria-pressed': f[kG] === clave ? 'true' : 'false', 'data-grupo': clave, onclick: () => {
+        f[kG] = clave; frmRaqError = '';
+        const g = lista.find(x => x.clave === clave);
+        f[kC] = g && g.colores.length === 1 ? g.colores[0].id : '';
+        renderFormRaqueta();
+      } }, el('b', {}, tit), sub ? el('small', {}, sub) : null);
+      const opciones = el('div', { class: 'tpf-opciones' });
+      lista.forEach(g => opciones.appendChild(opcion(g.clave, g.nombre, [g.codigo, g.colores.length > 1 ? g.colores.length + ' colores' : (g.colores[0].color || '')].filter(Boolean).join(' · '))));
+      if (!f.hibrido) opciones.appendChild(opcion('consejo', 'Aconséjame tú', 'Elijo contigo en el taller'));
+      caja.appendChild(opciones);
+      const g = lista.find(x => x.clave === f[kG]);
+      if (g && g.colores.length > 1) {
+        caja.appendChild(el('div', { class: 'tpf-sub' }, 'Elige el color'));
+        const cols = el('div', { class: 'tpf-colores' });
+        g.colores.forEach(c => {
+          const css = colorCss(c.color);
+          cols.appendChild(el('button', { type: 'button', class: 'tpf-color' + (f[kC] === c.id ? ' on' : ''), 'aria-pressed': f[kC] === c.id ? 'true' : 'false', 'data-color': c.color, onclick: () => { f[kC] = c.id; frmRaqError = ''; renderFormRaqueta(); } },
+            el('i', { style: css ? 'background:' + css : 'background:repeating-linear-gradient(45deg,#ddd 0 4px,#fff 4px 8px)' }), c.color));
+        });
+        caja.appendChild(cols);
+      }
+      return caja;
+    };
+    secCordaje.appendChild(selector('', f.hibrido ? '↕️ Verticales' : ''));
+    if (f.hibrido) secCordaje.appendChild(selector('H', '↔️ Horizontales'));
     cuerpo.appendChild(secCordaje);
 
+    // Dos tensiones: verticales y horizontales (al elegir la vertical, la horizontal se pone igual si aún no tiene)
     const secTension = el('section', { class: 'tpb-card tpf' }, el('h2', { class: 'tpf-tit' }, el('i', {}, '3'), 'Tensión'));
-    const tens = el('div', { class: 'tpf-tensiones' });
-    TENSIONES_FORM.forEach(t => tens.appendChild(el('button', { type: 'button', class: 'tpf-ten' + (f.tension === t ? ' on' : ''), 'aria-pressed': f.tension === t ? 'true' : 'false', 'data-tension': String(t), onclick: () => { f.tension = t; frmRaqError = ''; renderFormRaqueta(); } },
-      el('b', {}, String(t).replace('.', ',') + ' kg'), el('small', {}, Math.round(t * 2.2046) + ' lb'))));
-    tens.appendChild(el('button', { type: 'button', class: 'tpf-ten tpf-ten-c' + (f.tension === 0 ? ' on' : ''), 'aria-pressed': f.tension === 0 ? 'true' : 'false', 'data-tension': '0', onclick: () => { f.tension = 0; frmRaqError = ''; renderFormRaqueta(); } }, el('b', {}, 'Aconséjame'), el('small', {}, 'No lo sé')));
-    secTension.appendChild(tens);
+    const selTension = (k, etiqueta, id) => {
+      const sel = el('select', { id, class: 'tpf-select' });
+      sel.appendChild(el('option', { value: '' }, 'Elige…'));
+      TENSIONES_FORM.forEach(t => sel.appendChild(el('option', { value: String(t) }, String(t).replace('.', ',') + ' kg · ' + Math.round(t * 2.2046) + ' lb')));
+      sel.appendChild(el('option', { value: '0' }, 'Aconséjame (no lo sé)'));
+      sel.value = f[k] === null || f[k] === undefined ? '' : String(f[k]);
+      sel.addEventListener('change', () => {
+        f[k] = sel.value === '' ? null : Number(sel.value); frmRaqError = '';
+        if (k === 'tension' && (f.tensionH === null || f.tensionH === undefined) && f[k] !== null) {
+          f.tensionH = f[k] === 0 ? 0 : f[k];
+          const h = document.getElementById('frmTensionH'); if (h) h.value = String(f.tensionH);
+        }
+      });
+      return campo(etiqueta, sel);
+    };
+    secTension.appendChild(el('div', { class: 'tpf-fila' },
+      selTension('tension', '↕️ Verticales', 'frmTensionV'),
+      selTension('tensionH', '↔️ Horizontales', 'frmTensionH')));
+    secTension.appendChild(el('small', { class: 'tpf-nota' }, 'Si no lo sabes, elige «Aconséjame». Lo normal es la misma o medio kilo más en horizontales.'));
     const coment = el('textarea', { rows: '2', maxlength: '300', placeholder: 'Opcional · p. ej. la necesito para el sábado', id: 'frmComentarios' }); coment.value = f.comentarios || '';
     coment.addEventListener('input', () => { f.comentarios = coment.value; });
     secTension.appendChild(campo('Comentarios', coment));
@@ -13981,6 +14033,11 @@ function renderFormRaqueta() {
   root.appendChild(el('footer', { class: 'tpb-pie' }, logo(), el('div', {}, el('b', {}, nombreTaller), el('span', {}, tel ? 'WhatsApp ' + cfg.telefonoTienda : 'Encordado de raquetas'))));
 }
 function fmtTensionForm(t) { return String(t).replace('.', ',') + ' kg'; }
+function tensionesTexto(v, h) {
+  const tx = t => t ? fmtTensionForm(t) : 'que te la aconsejemos';
+  if (!v && !h) return 'la que te aconsejemos';
+  return (Number(v) || 0) === (Number(h) || 0) ? fmtTensionForm(v) + ' en verticales y horizontales' : 'verticales ' + tx(v) + ' · horizontales ' + tx(h);
+}
 function enviarFormRaqueta(lista) {
   const f = frmRaq;
   const limpiar = v => String(v || '').replace(/\s+/g, ' ').trim();
@@ -13990,23 +14047,29 @@ function enviarFormRaqueta(lista) {
   if (nombre.length < 2) return fallo('Escribe tu nombre.');
   if (apellidos.length < 2) return fallo('Escribe tus apellidos.');
   if (tel.replace(/\D/g, '').length < 9) return fallo('Escribe un teléfono válido (9 cifras).');
-  if (!f.grupo) return fallo('Elige un cordaje (o «Aconséjame tú»).');
+  if (!f.grupo) return fallo(f.hibrido ? 'Elige el cordaje de las verticales.' : 'Elige un cordaje (o «Aconséjame tú»).');
   const g = lista.find(x => x.clave === f.grupo);
   if (f.grupo !== 'consejo' && !g) return fallo('Ese cordaje ya no está disponible. Elige otro.');
-  if (g && !f.cordajeId) return fallo('Elige el color del cordaje.');
-  if (f.tension === null || f.tension === undefined) return fallo('Elige la tensión (o «Aconséjame»).');
+  if (g && !f.cordajeId) return fallo(f.hibrido ? 'Elige el color del cordaje de las verticales.' : 'Elige el color del cordaje.');
+  const gH = f.hibrido ? lista.find(x => x.clave === f.grupoH) : null;
+  if (f.hibrido && !gH) return fallo('Elige el cordaje de las horizontales.');
+  if (gH && !f.cordajeIdH) return fallo('Elige el color del cordaje de las horizontales.');
+  if (f.tension === null || f.tension === undefined) return fallo('Elige la tensión de las verticales (o «Aconséjame»).');
+  if (f.tensionH === null || f.tensionH === undefined) return fallo('Elige la tensión de las horizontales (o «Aconséjame»).');
   if (!f.consentimiento) return fallo('Marca la casilla de aceptación para poder enviarlo.');
   if (typeof firebaseDb === 'undefined' || !firebaseDb) return fallo('No hay conexión. Inténtalo de nuevo en un momento.');
   const color = g ? ((g.colores.find(c => c.id === f.cordajeId) || {}).color || '') : '';
   const datos = {
     nombre: nombre.slice(0, 60), apellidos: apellidos.slice(0, 80), telefono: tel.slice(0, 20), raqueta: limpiar(f.raqueta).slice(0, 80),
     cordajeId: g ? String(f.cordajeId).slice(0, 60) : '', cordajeNombre: g ? String(g.nombre).slice(0, 120) : '', color: color.slice(0, 40),
-    tension: Number(f.tension) || 0, comentarios: limpiar(f.comentarios).slice(0, 300), consentimiento: true, creadoEn: Date.now(),
+    cordajeIdH: gH ? String(f.cordajeIdH).slice(0, 60) : '', cordajeNombreH: gH ? String(gH.nombre).slice(0, 120) : '',
+    colorH: gH ? ((gH.colores.find(c => c.id === f.cordajeIdH) || {}).color || '').slice(0, 40) : '',
+    tension: Number(f.tension) || 0, tensionH: Number(f.tensionH) || 0, comentarios: limpiar(f.comentarios).slice(0, 300), consentimiento: true, creadoEn: Date.now(),
   };
   frmRaqEnviando = true; frmRaqError = ''; renderFormRaqueta();
   firebaseDb.collection('solicitudes_raqueta').add(datos).then(() => {
     frmRaqEnviando = false; frmRaqExito = datos;
-    Object.assign(frmRaq, { grupo: '', cordajeId: '', tension: null, comentarios: '', raqueta: '' });
+    Object.assign(frmRaq, { hibrido: false, grupo: '', cordajeId: '', grupoH: '', cordajeIdH: '', tension: null, tensionH: null, comentarios: '', raqueta: '' });
     renderFormRaqueta(); window.scrollTo(0, 0);
   }).catch(err => {
     frmRaqEnviando = false;

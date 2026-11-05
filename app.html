@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261105-dostensiones">
+<meta name="build-id" content="v20261105-fotopretensado">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -246,6 +246,18 @@ body.tpub-on main#shellMain{max-width:none !important;margin:0 !important;paddin
 .tpf-select{font:inherit;font-weight:600;font-size:16px;padding:12px 13px;border:1.5px solid #D5DDE9;border-radius:12px;background:#F9FBFD;color:#14213A;width:100%;}
 .tpf-select:focus{outline:none;border-color:var(--tn);box-shadow:0 0 0 3px rgba(11,45,91,.12);}
 .tpf-nota{color:#6B7A90;font-size:12.5px;}
+.tpf-oculto{display:none;}
+.tpf-pre{background:#F4F7FB;border:1.5px solid #D5DDE9;border-radius:12px;padding:12px;}
+.tpf-pre span{display:flex;flex-direction:column;gap:2px;}.tpf-pre b{font-size:15px;color:#14213A;}.tpf-pre small{color:#6B7A90;font-size:12.5px;}
+.tpf-foto{display:flex;flex-direction:column;gap:8px;}
+.tpf-foto-tit{font-size:14px;font-weight:700;color:#33415A;}.tpf-foto-tit small{font-weight:500;color:#6B7A90;}
+.tpf-foto-acc{display:flex;gap:10px;flex-wrap:wrap;}
+.tpf-foto-btn{font:inherit;font-weight:700;font-size:15px;flex:1 1 140px;padding:12px 14px;border-radius:12px;border:1.5px dashed #9CB3D3;background:#F4F7FB;color:var(--tn);cursor:pointer;}
+.tpf-foto-btn:hover{background:#EAF0F8;}
+.tpf-foto-prev{display:flex;flex-direction:column;gap:8px;}
+.tpf-foto-prev img{width:100%;max-height:320px;object-fit:contain;border-radius:12px;background:#F4F7FB;border:1px solid #D5DDE9;}
+.tpf-foto-carga{padding:14px;border-radius:12px;background:#F4F7FB;color:#33415A;font-weight:700;text-align:center;}
+.im-solic-foto{margin-top:8px;max-width:160px;max-height:160px;border-radius:10px;object-fit:cover;cursor:zoom-in;border:1px solid #E5E7EB;}
 .tpf-check{display:flex;gap:10px;align-items:flex-start;font-size:14px;color:#33415A;line-height:1.45;cursor:pointer;}
 .tpf-check input{width:22px;height:22px;flex:none;margin:0;accent-color:var(--tn);}
 .tpf-error:empty{display:none;}
@@ -10214,7 +10226,8 @@ function aceptarSolicitudRaqueta(sol) {
     !sol.cordajeId ? 'Cordaje: que se lo aconseje' : (!cor ? 'Cordaje pedido: ' + (sol.cordajeNombre || '') + (sol.color ? ' · ' + sol.color : '') + ' (ya no está en stock)' : ''),
     sol.cordajeIdH && !corH ? 'Cordaje horizontales pedido: ' + (sol.cordajeNombreH || '') + (sol.colorH ? ' · ' + sol.colorH : '') + ' (ya no está en stock)' : '',
     !ten ? 'Tensión verticales: que se la aconseje' : '', !tenH ? 'Tensión horizontales: que se la aconseje' : '', sol.comentarios || ''].filter(Boolean).join(' · ');
-  const nuevo = addPedido({ clienteId: cli.id, marcaModelo: sol.raqueta || '', cordajeId: cor ? cor.id : null, cordajeIdH: corH ? corH.id : null, tensionVertical: ten, tensionHorizontal: tenH, precio, pagoPrevisto: 'alRecoger', notas });
+  const nuevo = addPedido({ clienteId: cli.id, marcaModelo: sol.raqueta || '', cordajeId: cor ? cor.id : null, cordajeIdH: corH ? corH.id : null, tensionVertical: ten, tensionHorizontal: tenH, precio, pagoPrevisto: 'alRecoger', notas, pretensado: !!sol.pretensado, fotoAntes: (typeof sol.foto === 'string' && sol.foto.indexOf('data:image/') === 0) ? sol.foto : null });
+  if (nuevo.fotoAntes && window.guardarFotosTallerEnNube) window.guardarFotosTallerEnNube(nuevo.id, nuevo.fotoAntes, null);
   // En la cola entra en su turno: por la hora a la que la dejó, no por la hora a la que se acepta.
   if (sol.creadoEn && sol.creadoEn < nuevo.horaLlegada) nuevo.horaLlegada = sol.creadoEn;
   solicitudesRaq = solicitudesRaq.filter(x => x._id !== sol._id);
@@ -10246,8 +10259,9 @@ function panelSolicitudesRaqueta() {
       el('div', { class: 'im-solic-datos' },
         sol.raqueta ? el('span', {}, '🏸 ' + sol.raqueta) : null,
         el('span', {}, '🧵 ' + tCordaje),
-        el('span', {}, '⚖️ ' + tTension)),
+        el('span', {}, '⚖️ ' + tTension + (sol.pretensado ? ' · pretensado' : ''))),
       sol.comentarios ? el('div', { class: 'sub' }, '💬 ' + sol.comentarios) : null,
+      (typeof sol.foto === 'string' && sol.foto.indexOf('data:image/') === 0) ? el('img', { class: 'im-solic-foto', src: sol.foto, alt: 'Foto de la raqueta', onclick: () => window.open(sol.foto, '_blank') }) : null,
       el('div', { class: 'toolbar', style: 'margin:8px 0 0;' },
         el('button', { class: 'btn btn-gold btn-sm', onclick: () => aceptarSolicitudRaqueta(sol) }, '✅ Aceptar y poner en la cola'),
         el('button', { class: 'btn btn-ghost btn-sm', onclick: () => descartarSolicitudRaqueta(sol) }, 'Descartar'))));
@@ -13894,15 +13908,50 @@ function esVistaFormRaqueta() {
   try { return new URLSearchParams(location.search).get('raqueta') === '1'; } catch (e) { return false; }
 }
 const TENSIONES_FORM = [8, 8.5, 9, 9.5, 10, 10.5, 11, 11.5, 12, 12.5, 13, 13.5, 14];
-let frmRaq = { nombre: '', apellidos: '', telefono: '', raqueta: '', hibrido: false, grupo: '', cordajeId: '', grupoH: '', cordajeIdH: '', tension: null, tensionH: null, comentarios: '', consentimiento: false, web: '' };
+let frmRaq = { nombre: '', apellidos: '', telefono: '', raqueta: '', hibrido: false, grupo: '', cordajeId: '', grupoH: '', cordajeIdH: '', tension: null, tensionH: null, comentarios: '', foto: '', pretensado: false, consentimiento: false, web: '' };
 let frmRaqEnviando = false, frmRaqExito = null, frmRaqError = '';
 // Cordajes con stock, agrupados por modelo; cada modelo con sus colores disponibles.
+// Separa «modelo» y «color» de un nombre como «Cordaje Topo PA2055 (0,68mm) · ROJO» o «… (0,68mm) Morado».
+const COLORES_NOMBRE = ['blanco','blanca','negro','negra','rojo','roja','rosa','azul','verde','amarillo','amarilla','morado','morada','lila','violeta','naranja','gris','fucsia','turquesa','celeste','marino','dorado','dorada','plata','plateado','granate','burdeos','beige','marron','marrón','lima','fluor','flúor','multicolor','transparente','cian','coral','menta','oro'];
+function separarColorNombre(nombre) {
+  const n = String(nombre || '').trim();
+  const pt = n.lastIndexOf(' · ');
+  if (pt > 0) return { base: n.slice(0, pt).trim(), color: n.slice(pt + 3).trim() };
+  const palabras = n.split(/\s+/);
+  let k = palabras.length;
+  const esColor = w => w.split(/[-\/]/).every(x => COLORES_NOMBRE.includes(x.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')) || COLORES_NOMBRE.includes(x.toLowerCase()));
+  while (k > 1 && esColor(palabras[k - 1])) k--;
+  if (k < palabras.length) return { base: palabras.slice(0, k).join(' '), color: palabras.slice(k).join(' ') };
+  return { base: n, color: '' };
+}
+function bonitoColor(c) { return String(c || '').toLowerCase().replace(/(^|[\s\-\/])(\p{L})/gu, (m, a, b) => a + b.toUpperCase()); }
+// Cordajes con stock, agrupados por modelo; cada modelo con sus colores disponibles.
+// También junta los que están dados de alta como artículos sueltos por color (mismo nombre + color al final).
 function cordajesFormRaqueta() {
   const arts = ((TallerApp.getState() || {}).articulos || []).filter(a => a && a.esCordaje && !a.colorInactivo && (Number(a.stock) || 0) > 0);
-  return agruparPorColor(arts.sort((x, y) => String(x.grupoNombre || x.nombre).localeCompare(String(y.grupoNombre || y.nombre), 'es')))
-    .map(g => g.grupo ? { clave: g.id, nombre: g.nombre, codigo: (g.hijos.find(h => h.codigo) || {}).codigo || '', colores: g.hijos.map(h => ({ id: h.id, color: h.color || 'Sin color' })) }
-                      : { clave: g.a.id, nombre: g.a.nombre, codigo: g.a.codigo || '', colores: [{ id: g.a.id, color: g.a.color || '' }] });
+  const grupos = [], porClave = {};
+  const meter = (clave, nombre, codigo, color, id) => {
+    let g = porClave[clave];
+    if (!g) { g = porClave[clave] = { clave, nombre, codigo: codigo || '', colores: [] }; grupos.push(g); }
+    if (!g.codigo && codigo) g.codigo = codigo;
+    g.colores.push({ id, color });
+  };
+  arts.forEach(a => {
+    if (a.grupoId) { meter('g:' + a.grupoId, a.grupoNombre || separarColorNombre(a.nombre).base, a.codigo, a.color || separarColorNombre(a.nombre).color || 'Sin color', a.id); return; }
+    const sc = separarColorNombre(a.nombre);
+    const color = a.color || sc.color;
+    const base = a.color ? (separarColorNombre(a.nombre).base || a.nombre) : sc.base;
+    meter('n:' + imNormalPublico(base), base, a.codigo, color ? bonitoColor(color) : '', a.id);
+  });
+  grupos.forEach(g => {
+    // un modelo con un solo artículo suelto conserva su nombre completo
+    if (g.clave.indexOf('n:') === 0 && g.colores.length === 1) { const a = arts.find(x => x.id === g.colores[0].id); g.nombre = a.nombre; g.colores[0].color = a.color || ''; g.unico = true; }
+    if (g.colores.length > 1) g.codigo = '';
+    g.clave = g.colores.length === 1 && !g.clave.startsWith('g:') ? g.colores[0].id : g.clave;
+  });
+  return grupos.sort((x, y) => String(x.nombre).localeCompare(String(y.nombre), 'es'));
 }
+function imNormalPublico(t) { return String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim(); }
 function renderFormRaqueta() {
   const headerActions = document.getElementById('headerActions');
   if (headerActions) headerActions.style.display = 'none';
@@ -13934,9 +13983,10 @@ function renderFormRaqueta() {
       el('p', {}, e.cordajeIdH
         ? 'Verticales: ' + e.cordajeNombre + (e.color ? ' · ' + e.color : '') + ' a ' + (e.tension ? fmtTensionForm(e.tension) : 'la tensión que te aconsejemos') + '. Horizontales: ' + e.cordajeNombreH + (e.colorH ? ' · ' + e.colorH : '') + ' a ' + (e.tensionH ? fmtTensionForm(e.tensionH) : 'la tensión que te aconsejemos') + '.'
         : 'Cordaje: ' + (e.cordajeNombre || 'el que te aconsejemos') + (e.color ? ' · ' + e.color : '') + ' · Tensión: ' + tensionesTexto(e.tension, e.tensionH) + '.'),
+      e.pretensado ? el('p', {}, 'Con pretensado.') : null,
       el('p', { style: 'margin-top:8px;' }, 'Cuando la aceptemos te avisamos por WhatsApp con el enlace para seguirla en directo.')));
     cuerpo.appendChild(el('button', { type: 'button', class: 'tpf-otra', onclick: () => {
-      frmRaqExito = null; Object.assign(frmRaq, { raqueta: '', comentarios: '' }); renderFormRaqueta(); window.scrollTo(0, 0);
+      frmRaqExito = null; Object.assign(frmRaq, { raqueta: '', comentarios: '', foto: '' }); renderFormRaqueta(); window.scrollTo(0, 0);
     } }, '+ Dejar otra raqueta'));
   } else {
     const f = frmRaq;
@@ -13947,7 +13997,8 @@ function renderFormRaqueta() {
         campo('Nombre', entrada('nombre', { type: 'text', autocomplete: 'given-name', maxlength: '60', id: 'frmNombre' })),
         campo('Apellidos', entrada('apellidos', { type: 'text', autocomplete: 'family-name', maxlength: '80', id: 'frmApellidos' }))),
       campo('Teléfono', entrada('telefono', { type: 'tel', inputmode: 'tel', autocomplete: 'tel', maxlength: '20', id: 'frmTelefono' }), 'Te avisamos por WhatsApp cuando esté lista.'),
-      campo('Raqueta (marca y modelo)', entrada('raqueta', { type: 'text', maxlength: '80', placeholder: 'Opcional · p. ej. Yonex Astrox 88D', id: 'frmRaqueta' })));
+      campo('Raqueta (marca y modelo)', entrada('raqueta', { type: 'text', maxlength: '80', placeholder: 'Opcional · p. ej. Yonex Astrox 88D', id: 'frmRaqueta' })),
+      bloqueFotoFormRaqueta());
     // Honeypot invisible contra robots
     const trampa = el('input', { type: 'text', name: 'web', tabindex: '-1', autocomplete: 'off', class: 'tpf-trampa', 'aria-hidden': 'true' });
     trampa.addEventListener('input', () => { f.web = trampa.value; });
@@ -14016,6 +14067,9 @@ function renderFormRaqueta() {
       selTension('tension', '↕️ Verticales', 'frmTensionV'),
       selTension('tensionH', '↔️ Horizontales', 'frmTensionH')));
     secTension.appendChild(el('small', { class: 'tpf-nota' }, 'Si no lo sabes, elige «Aconséjame». Lo normal es la misma o medio kilo más en horizontales.'));
+    const chkPre = el('input', { type: 'checkbox', id: 'frmPretensado', checked: f.pretensado ? 'checked' : null });
+    chkPre.addEventListener('change', () => { f.pretensado = chkPre.checked; });
+    secTension.appendChild(el('label', { class: 'tpf-check tpf-pre' }, chkPre, el('span', {}, el('b', {}, 'Pretensado'), el('small', {}, 'Se estira el cordaje antes de tensarlo para que aguante mejor la tensión.'))));
     const coment = el('textarea', { rows: '2', maxlength: '300', placeholder: 'Opcional · p. ej. la necesito para el sábado', id: 'frmComentarios' }); coment.value = f.comentarios || '';
     coment.addEventListener('input', () => { f.comentarios = coment.value; });
     secTension.appendChild(campo('Comentarios', coment));
@@ -14032,6 +14086,56 @@ function renderFormRaqueta() {
   const tel = typeof telefonoParaWhatsappTienda === 'function' ? telefonoParaWhatsappTienda(cfg.telefonoTienda) : '';
   root.appendChild(el('footer', { class: 'tpb-pie' }, logo(), el('div', {}, el('b', {}, nombreTaller), el('span', {}, tel ? 'WhatsApp ' + cfg.telefonoTienda : 'Encordado de raquetas'))));
 }
+// Foto de la raqueta en el formulario del cliente: hacerla con la cámara, elegirla de la galería o pegarla (Ctrl+V en el PC)
+let frmRaqFotoCargando = false;
+function fotoFormComprimir(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('imagen')); };
+    img.onload = () => {
+      const max = 1100; let w = img.naturalWidth, h = img.naturalHeight;
+      if (Math.max(w, h) > max) { const k = max / Math.max(w, h); w = Math.round(w * k); h = Math.round(h * k); }
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h); ctx.drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      let q = 0.72, d = c.toDataURL('image/jpeg', q);
+      while (d.length > 600000 && q > 0.35) { q -= 0.1; d = c.toDataURL('image/jpeg', q); }
+      resolve(d);
+    };
+    img.src = url;
+  });
+}
+function ponerFotoFormRaqueta(file) {
+  if (!file || !/^image\//.test(file.type || '')) { frmRaqError = 'Eso no es una foto. Elige una imagen.'; renderFormRaqueta(); return; }
+  frmRaqFotoCargando = true; frmRaqError = ''; renderFormRaqueta();
+  fotoFormComprimir(file).then(d => { frmRaq.foto = d; }).catch(() => { frmRaqError = 'No se ha podido leer la foto. Prueba con otra.'; })
+    .finally(() => { frmRaqFotoCargando = false; renderFormRaqueta(); });
+}
+function bloqueFotoFormRaqueta() {
+  const inCam = el('input', { type: 'file', accept: 'image/*', capture: 'environment', class: 'tpf-oculto', id: 'frmFotoCamara' });
+  const inGal = el('input', { type: 'file', accept: 'image/*', class: 'tpf-oculto', id: 'frmFotoGaleria' });
+  [inCam, inGal].forEach(i => i.addEventListener('change', () => { if (i.files && i.files[0]) ponerFotoFormRaqueta(i.files[0]); }));
+  const caja = el('div', { class: 'tpf-foto' }, el('span', { class: 'tpf-foto-tit' }, 'Foto de la raqueta ', el('small', {}, '(opcional)')), inCam, inGal);
+  if (frmRaqFotoCargando) caja.appendChild(el('div', { class: 'tpf-foto-carga' }, 'Preparando la foto…'));
+  else if (frmRaq.foto) {
+    caja.appendChild(el('div', { class: 'tpf-foto-prev' }, el('img', { src: frmRaq.foto, alt: 'Foto de tu raqueta', id: 'frmFotoPrev' }),
+      el('div', { class: 'tpf-foto-acc' },
+        el('button', { type: 'button', class: 'tpf-foto-btn', onclick: () => inCam.click() }, '📷 Repetir'),
+        el('button', { type: 'button', class: 'tpf-foto-btn', id: 'frmFotoQuitar', onclick: () => { frmRaq.foto = ''; renderFormRaqueta(); } }, '✕ Quitar'))));
+  } else {
+    caja.appendChild(el('div', { class: 'tpf-foto-acc' },
+      el('button', { type: 'button', class: 'tpf-foto-btn', id: 'frmFotoBtnCamara', onclick: () => inCam.click() }, '📷 Hacer foto'),
+      el('button', { type: 'button', class: 'tpf-foto-btn', id: 'frmFotoBtnGaleria', onclick: () => inGal.click() }, '🖼️ Elegir foto')));
+    caja.appendChild(el('small', { class: 'tpf-nota' }, 'En el ordenador también puedes pegar una foto copiada con Ctrl+V.'));
+  }
+  return caja;
+}
+document.addEventListener('paste', ev => {
+  if (typeof esVistaFormRaqueta !== 'function' || !esVistaFormRaqueta() || frmRaqExito) return;
+  const items = (ev.clipboardData && ev.clipboardData.items) || [];
+  for (const it of items) { if (it.kind === 'file' && /^image\//.test(it.type)) { ev.preventDefault(); ponerFotoFormRaqueta(it.getAsFile()); return; } }
+});
 function fmtTensionForm(t) { return String(t).replace('.', ',') + ' kg'; }
 function tensionesTexto(v, h) {
   const tx = t => t ? fmtTensionForm(t) : 'que te la aconsejemos';
@@ -14064,12 +14168,14 @@ function enviarFormRaqueta(lista) {
     cordajeId: g ? String(f.cordajeId).slice(0, 60) : '', cordajeNombre: g ? String(g.nombre).slice(0, 120) : '', color: color.slice(0, 40),
     cordajeIdH: gH ? String(f.cordajeIdH).slice(0, 60) : '', cordajeNombreH: gH ? String(gH.nombre).slice(0, 120) : '',
     colorH: gH ? ((gH.colores.find(c => c.id === f.cordajeIdH) || {}).color || '').slice(0, 40) : '',
-    tension: Number(f.tension) || 0, tensionH: Number(f.tensionH) || 0, comentarios: limpiar(f.comentarios).slice(0, 300), consentimiento: true, creadoEn: Date.now(),
+    tension: Number(f.tension) || 0, tensionH: Number(f.tensionH) || 0, pretensado: !!f.pretensado, comentarios: limpiar(f.comentarios).slice(0, 300), consentimiento: true, creadoEn: Date.now(),
   };
+  if (frmRaqFotoCargando) return fallo('Espera un momento, se está preparando la foto.');
+  if (f.foto) datos.foto = f.foto;
   frmRaqEnviando = true; frmRaqError = ''; renderFormRaqueta();
   firebaseDb.collection('solicitudes_raqueta').add(datos).then(() => {
     frmRaqEnviando = false; frmRaqExito = datos;
-    Object.assign(frmRaq, { hibrido: false, grupo: '', cordajeId: '', grupoH: '', cordajeIdH: '', tension: null, tensionH: null, comentarios: '', raqueta: '' });
+    Object.assign(frmRaq, { hibrido: false, grupo: '', cordajeId: '', grupoH: '', cordajeIdH: '', tension: null, tensionH: null, comentarios: '', raqueta: '', foto: '', pretensado: false });
     renderFormRaqueta(); window.scrollTo(0, 0);
   }).catch(err => {
     frmRaqEnviando = false;

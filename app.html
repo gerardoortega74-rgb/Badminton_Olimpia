@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261105-carruselraqueta">
+<meta name="build-id" content="v20261105-tensionexacta">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -214,7 +214,7 @@ body.tpub-on main#shellMain{max-width:none !important;margin:0 !important;paddin
 .tpf{display:flex;flex-direction:column;gap:12px;}
 .tpf-tit{display:flex;align-items:center;gap:10px;margin:0;font-size:19px;color:var(--tn);}
 .tpf-tit i{font-style:normal;width:28px;height:28px;border-radius:50%;background:var(--tn);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;flex:none;}
-.tpf-fila{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.tpf-fila{display:grid;grid-template-columns:1fr 1fr;gap:12px 12px;row-gap:22px;}
 @media (max-width:420px){.tpf-fila{grid-template-columns:1fr;}}
 .tpf-campo{display:flex;flex-direction:column;gap:5px;font-size:14px;font-weight:700;color:#33415A;}
 .tpf-campo input,.tpf-campo textarea{font:inherit;font-weight:500;font-size:16px;padding:12px 13px;border:1.5px solid #D5DDE9;border-radius:12px;background:#F9FBFD;color:#14213A;width:100%;}
@@ -247,6 +247,11 @@ body.tpub-on main#shellMain{max-width:none !important;margin:0 !important;paddin
 .tpf-select:focus{outline:none;border-color:var(--tn);box-shadow:0 0 0 3px rgba(11,45,91,.12);}
 .tpf-nota{color:#6B7A90;font-size:12.5px;}
 .tpf-oculto{display:none;}
+.tpf-kg-caja{position:relative;display:flex;align-items:center;}
+.tpf-kg{padding-right:44px !important;font-variant-numeric:tabular-nums;}
+.tpf-kg:disabled{opacity:.5;}
+.tpf-kg-ud{position:absolute;right:14px;color:#6B7A90;font-size:15px;pointer-events:none;}
+.tpf-lb{position:absolute;right:14px;bottom:-19px;font-size:12px;color:#6B7A90;font-weight:600;}
 .tpf-carr{display:flex;flex-direction:column;gap:6px;}
 .tpf-carr-pista{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;border-radius:12px;scrollbar-width:none;cursor:grab;touch-action:pan-x pan-y;}
 .tpf-carr-pista::-webkit-scrollbar{display:none;}
@@ -14073,26 +14078,42 @@ function renderFormRaqueta() {
 
     // Dos tensiones: verticales y horizontales (al elegir la vertical, la horizontal se pone igual si aún no tiene)
     const secTension = el('section', { class: 'tpb-card tpf' }, el('h2', { class: 'tpf-tit' }, el('i', {}, '3'), 'Tensión'));
+    // Tensión exacta en kg (con decimales: 11,1 · 12,00); se puede escribir con coma o con punto
+    const refrescarDibujo = () => setTimeout(() => { const d = document.getElementById('frmRaquetaDibujo'); if (d) d.replaceWith(bloqueRaquetaForm(lista)); }, 0);
+    const aconsejar = f.tension === 0 && f.tensionH === 0;
+    const leerKg = t => { const x = parseFloat(String(t || '').replace(',', '.').replace(/[^\d.]/g, '')); return isFinite(x) ? Math.round(x * 100) / 100 : null; };
+    const fmtKg = x => (x === null || x === undefined || x === 0) ? '' : String(x).replace('.', ',');
     const selTension = (k, etiqueta, id) => {
-      const sel = el('select', { id, class: 'tpf-select' });
-      sel.appendChild(el('option', { value: '' }, 'Elige…'));
-      TENSIONES_FORM.forEach(t => sel.appendChild(el('option', { value: String(t) }, String(t).replace('.', ',') + ' kg · ' + Math.round(t * 2.2046) + ' lb')));
-      sel.appendChild(el('option', { value: '0' }, 'Aconséjame (no lo sé)'));
-      sel.value = f[k] === null || f[k] === undefined ? '' : String(f[k]);
-      sel.addEventListener('change', () => {
-        f[k] = sel.value === '' ? null : Number(sel.value); frmRaqError = '';
-        setTimeout(() => { const d = document.getElementById('frmRaquetaDibujo'); if (d) d.replaceWith(bloqueRaquetaForm(lista)); }, 0);
-        if (k === 'tension' && (f.tensionH === null || f.tensionH === undefined) && f[k] !== null) {
-          f.tensionH = f[k] === 0 ? 0 : f[k];
-          const h = document.getElementById('frmTensionH'); if (h) h.value = String(f.tensionH);
-        }
+      const inp = el('input', { type: 'text', inputmode: 'decimal', id, class: 'tpf-select tpf-kg', placeholder: 'p. ej. 11,5', maxlength: '5', autocomplete: 'off', value: fmtKg(f[k]), disabled: aconsejar ? 'disabled' : null });
+      const lb = el('span', { class: 'tpf-lb', id: id + 'Lb' }, f[k] ? Math.round(f[k] * 2.2046 * 10) / 10 + ' lb' : '');
+      const pintarLb = () => { const x = leerKg(inp.value); lb.textContent = x && x >= 6 && x <= 16 ? String(Math.round(x * 2.2046 * 10) / 10).replace('.', ',') + ' lb' : ''; };
+      pintarLb();
+      inp.addEventListener('input', () => {
+        inp.value = inp.value.replace(/[^\d.,]/g, '');
+        const x = leerKg(inp.value);
+        f[k] = x && x > 0 ? x : null; frmRaqError = ''; pintarLb();
       });
-      return campo(etiqueta, sel);
+      inp.addEventListener('blur', () => {
+        const x = leerKg(inp.value);
+        if (x) inp.value = inp.value.replace('.', ',');
+        // la horizontal se rellena igual que la vertical si aún está vacía
+        if (k === 'tension' && x && (f.tensionH === null || f.tensionH === undefined)) {
+          f.tensionH = x; const h = document.getElementById('frmTensionH'); if (h) { h.value = fmtKg(x); h.dispatchEvent(new Event('input')); }
+        }
+        refrescarDibujo();
+      });
+      return el('label', { class: 'tpf-campo' }, el('span', {}, etiqueta), el('div', { class: 'tpf-kg-caja' }, inp, el('b', { class: 'tpf-kg-ud' }, 'kg'), lb));
     };
     secTension.appendChild(el('div', { class: 'tpf-fila' },
       selTension('tension', '↕️ Verticales', 'frmTensionV'),
       selTension('tensionH', '↔️ Horizontales', 'frmTensionH')));
-    secTension.appendChild(el('small', { class: 'tpf-nota' }, 'Si no lo sabes, elige «Aconséjame». Lo normal es la misma o medio kilo más en horizontales.'));
+    const chkCons = el('input', { type: 'checkbox', id: 'frmTensionConsejo', checked: aconsejar ? 'checked' : null });
+    chkCons.addEventListener('change', () => {
+      if (chkCons.checked) { f.tension = 0; f.tensionH = 0; } else { f.tension = null; f.tensionH = null; }
+      frmRaqError = ''; renderFormRaqueta();
+    });
+    secTension.appendChild(el('label', { class: 'tpf-check' }, chkCons, el('span', {}, 'No sé la tensión: aconséjame')));
+    secTension.appendChild(el('small', { class: 'tpf-nota' }, 'Escribe la tensión exacta en kg, con decimales si quieres (por ejemplo 11,1 o 12,00). Lo normal es la misma o un poco más en horizontales.'));
     const chkPre = el('input', { type: 'checkbox', id: 'frmPretensado', checked: f.pretensado ? 'checked' : null });
     chkPre.addEventListener('change', () => { f.pretensado = chkPre.checked; const d = document.getElementById('frmRaquetaDibujo'); if (d) d.replaceWith(bloqueRaquetaForm(lista)); });
     secTension.appendChild(el('label', { class: 'tpf-check tpf-pre' }, chkPre, el('span', {}, el('b', {}, 'Pretensado'), el('small', {}, 'Se estira el cordaje antes de tensarlo para que aguante mejor la tensión.'))));
@@ -14284,8 +14305,9 @@ function enviarFormRaqueta(lista) {
   const gH = f.hibrido ? lista.find(x => x.clave === f.grupoH) : null;
   if (f.hibrido && !gH) return fallo('Elige el cordaje de las horizontales.');
   if (gH && !f.cordajeIdH) return fallo('Elige el color del cordaje de las horizontales.');
-  if (f.tension === null || f.tension === undefined) return fallo('Elige la tensión de las verticales (o «Aconséjame»).');
-  if (f.tensionH === null || f.tensionH === undefined) return fallo('Elige la tensión de las horizontales (o «Aconséjame»).');
+  if (f.tension === null || f.tension === undefined) return fallo('Escribe la tensión de las verticales (o marca «No sé la tensión»).');
+  if (f.tensionH === null || f.tensionH === undefined) return fallo('Escribe la tensión de las horizontales (o marca «No sé la tensión»).');
+  if ((f.tension && (f.tension < 6 || f.tension > 16)) || (f.tensionH && (f.tensionH < 6 || f.tensionH > 16))) return fallo('La tensión tiene que estar entre 6 y 16 kg.');
   if (!f.consentimiento) return fallo('Marca la casilla de aceptación para poder enviarlo.');
   if (typeof firebaseDb === 'undefined' || !firebaseDb) return fallo('No hay conexión. Inténtalo de nuevo en un momento.');
   const color = g ? ((g.colores.find(c => c.id === f.cordajeId) || {}).color || '') : '';

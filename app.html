@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261105-fotopretensado">
+<meta name="build-id" content="v20261105-videoidermay2">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -14324,7 +14324,7 @@ function idermayVideoIntro(alTerminar) {
   if (idermayVideoHecho) return false;
   idermayVideoHecho = true;
   try { if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return false; } catch (e) {}
-  const SRC = 'intro_idermay.mp4';
+  const SRC = 'intro_idermay.mp4?v=2';
   const mk = (cls) => { const v = document.createElement('video'); v.className = cls; v.muted = true; v.defaultMuted = true; v.playsInline = true; v.setAttribute('playsinline', ''); v.setAttribute('muted', ''); v.preload = 'auto'; v.src = SRC; return v; };
   const fondo = mk('idv-fondo'), video = mk('idv-video');
   const saltar = el('button', { type: 'button', class: 'idv-saltar' }, 'Saltar');

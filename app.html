@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261105-videoidermay2">
+<meta name="build-id" content="v20261105-coloresreales">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -13946,6 +13946,14 @@ function cordajesFormRaqueta() {
   grupos.forEach(g => {
     // un modelo con un solo artículo suelto conserva su nombre completo
     if (g.clave.indexOf('n:') === 0 && g.colores.length === 1) { const a = arts.find(x => x.id === g.colores[0].id); g.nombre = a.nombre; g.colores[0].color = a.color || ''; g.unico = true; }
+    // mismo color repetido (dos artículos «Blanco»): se enseña una vez, el que tiene más stock
+    const vistos = {};
+    g.colores = g.colores.filter(c => {
+      const k = imNormalPublico(c.color); if (!k) return true;
+      const st = id => Number((arts.find(a => a.id === id) || {}).stock) || 0;
+      if (vistos[k]) { if (st(c.id) > st(vistos[k].id)) vistos[k].id = c.id; return false; }
+      vistos[k] = c; return true;
+    });
     if (g.colores.length > 1) g.codigo = '';
     g.clave = g.colores.length === 1 && !g.clave.startsWith('g:') ? g.colores[0].id : g.clave;
   });
@@ -14220,7 +14228,7 @@ function tdoPuntosColor(g, actual) {
   g.hijos.forEach(h => {
     const css = colorCss(h.color);
     const b = el('button', { type: 'button', class: 'col-punto' + (h.id === actual.id ? ' on' : ''), title: (h.color || '') + ((h.stock || 0) <= 0 ? ' (agotado)' : ''), 'aria-label': h.color || 'Color', role: 'radio', 'aria-checked': h.id === actual.id ? 'true' : 'false',
-      style: css ? 'background-color:' + css : (h.foto ? 'background-image:url("' + h.foto + '");background-color:#fff' : 'background:#999'),
+      style: css ? 'background:' + css : (h.foto ? 'background-image:url("' + h.foto + '");background-color:#fff' : 'background:#999'),
       onclick: (e) => { e.stopPropagation(); tdoColorSel[g.id] = h.id; const rt = document.getElementById('tiendaOnlineScreen'); if (rt) rt.classList.remove('tdo-entrada'); const y = window.scrollY; renderTiendaOnline(); window.scrollTo(0, y); } });
     if ((h.stock || 0) <= 0) b.style.opacity = '.35';
     box.appendChild(b);
@@ -14479,11 +14487,34 @@ function agruparPorColor(lista) {
 const COLORES_CSS = { rojo: '#D62C2C', roja: '#D62C2C', azul: '#1F5FD1', 'azul marino': '#0B2D5B', marino: '#0B2D5B', celeste: '#6EC1F0', verde: '#2E9E5B', 'verde lima': '#A4D233', lima: '#A4D233', negro: '#111', negra: '#111', blanco: '#F5F5F5', blanca: '#F5F5F5',
   gris: '#8A8F98', amarillo: '#F5C518', amarilla: '#F5C518', naranja: '#F28C28', rosa: '#F06EA9', morado: '#7B4FD6', morada: '#7B4FD6', lila: '#B49BE8', violeta: '#7B4FD6', marron: '#7A4B2A', 'marrón': '#7A4B2A', beige: '#D8C3A5',
   dorado: '#C9A227', plata: '#C0C0C0', plateado: '#C0C0C0', turquesa: '#25B9B0', fucsia: '#E0218A', burdeos: '#7A1F2B', granate: '#7A1F2B', crema: '#F3E9D2' };
+// Fondo CSS con el color real: «Amarillo fosforito» → amarillo flúor; «Azul-Blanco» → círculo mitad azul y mitad blanco.
+const COLORES_FLUOR = { amarillo: '#E6FF00', amarilla: '#E6FF00', verde: '#39FF14', naranja: '#FF6A00', rosa: '#FF2D95', rojo: '#FF2A2A', azul: '#00B7FF', lima: '#C6FF00' };
+function colorUnoCss(parte) {
+  let n = String(parte || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
+  if (!n) return null;
+  const fluor = /\b(fosforit[oa]s?|fosforescente|fluor|fluorescente|neon|fluo)\b/.test(n);
+  const claro = /\bclar[oa]\b/.test(n), oscuro = /\boscur[oa]\b/.test(n);
+  n = n.replace(/\b(fosforit[oa]s?|fosforescente|fluor|fluorescente|neon|fluo|clar[oa]|oscur[oa])\b/g, '').replace(/\s+/g, ' ').trim();
+  const sin = t => t.normalize('NFD').replace(/[̀-ͯ]/g, '');
+  let clave = COLORES_CSS[n] ? n : Object.keys(COLORES_CSS).sort((a, b) => b.length - a.length).find(c => n.includes(sin(c)));
+  if (!clave && fluor) clave = 'amarillo';
+  if (!clave) return null;
+  if (fluor) { const base = clave.split(' ')[0]; return COLORES_FLUOR[base] || COLORES_FLUOR[clave] || COLORES_CSS[clave]; }
+  const hex = COLORES_CSS[clave];
+  if ((claro || oscuro) && /^#[0-9a-f]{6}$/i.test(hex)) {
+    const k = claro ? 0.45 : -0.35;
+    const c = [1, 3, 5].map(x => parseInt(hex.substr(x, 2), 16)).map(v => Math.round(k > 0 ? v + (255 - v) * k : v * (1 + k)));
+    return '#' + c.map(v => v.toString(16).padStart(2, '0')).join('');
+  }
+  return hex;
+}
 function colorCss(nombre) {
-  const n = String(nombre || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
-  if (COLORES_CSS[n]) return COLORES_CSS[n];
-  const k = Object.keys(COLORES_CSS).find(c => n.includes(c.normalize('NFD').replace(/[\u0300-\u036f]/g, '')));
-  return k ? COLORES_CSS[k] : null;
+  const partes = String(nombre || '').split(/\s*[-\/+]\s*|\s+y\s+|\s+e\s+|\s*,\s*/i).map(colorUnoCss).filter(Boolean);
+  if (!partes.length) return null;
+  if (partes.length === 1) return partes[0];
+  if (partes.length === 2) return 'linear-gradient(135deg,' + partes[0] + ' 0 50%,' + partes[1] + ' 50% 100%)';
+  const paso = 360 / partes.length;
+  return 'conic-gradient(' + partes.map((c, k) => c + ' ' + Math.round(k * paso) + 'deg ' + Math.round((k + 1) * paso) + 'deg').join(',') + ')';
 }
 // Ventana para elegir color (caja y tienda online). op: { cantidad(a), anadir(a), quitar(a), precio(a), alCerrar(), oscuro }
 function elegirColorVentana(g, op) {

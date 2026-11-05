@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261105-raquetareal">
+<meta name="build-id" content="v20261105-raquetafoto">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -247,13 +247,13 @@ body.tpub-on main#shellMain{max-width:none !important;margin:0 !important;paddin
 .tpf-select:focus{outline:none;border-color:var(--tn);box-shadow:0 0 0 3px rgba(11,45,91,.12);}
 .tpf-nota{color:#6B7A90;font-size:12.5px;}
 .tpf-oculto{display:none;}
-.tpf-raqueta{display:flex;align-items:center;gap:18px;background:linear-gradient(160deg,#F4F7FB,#E9EFF8);border:1px solid #D5DDE9;border-radius:16px;padding:14px 18px;}
-.tpf-raqueta-svg{flex:none;width:140px;}
-.tpf-raqueta-svg svg{width:100%;height:auto;display:block;filter:drop-shadow(0 6px 10px rgba(11,45,91,.18));}
+.tpf-raqueta{display:flex;align-items:center;gap:18px;background:#fff;border:1px solid #D5DDE9;border-radius:16px;padding:14px 18px;}
+.tpf-raqueta-svg{flex:none;width:min(260px,62vw);}
+.tpf-raqueta-svg svg{width:100%;height:auto;display:block;border-radius:12px;background:#fff;}
 .tpf-raqueta-txt{display:flex;flex-direction:column;gap:5px;font-size:14.5px;color:#14213A;}
 .tpf-raqueta-txt b{font-size:16px;color:var(--tn);}
 .tpf-raqueta-txt small{color:#6B7A90;font-size:13px;font-weight:700;}
-@media (min-width:700px){.tpf-raqueta-svg{width:170px;}}
+@media (max-width:520px){.tpf-raqueta{flex-direction:column;align-items:stretch;text-align:center;}.tpf-raqueta-svg{align-self:center;}}
 .tpf-pre{background:#F4F7FB;border:1.5px solid #D5DDE9;border-radius:12px;padding:12px;}
 .tpf-pre span{display:flex;flex-direction:column;gap:2px;}.tpf-pre b{font-size:15px;color:#14213A;}.tpf-pre small{color:#6B7A90;font-size:12.5px;}
 .tpf-foto{display:flex;flex-direction:column;gap:8px;}
@@ -14157,51 +14157,31 @@ document.addEventListener('paste', ev => {
 function coloresPartesCordaje(nombre) {
   return String(nombre || '').split(/\s*[-\/+]\s*|\s+y\s+|\s+e\s+|\s*,\s*/i).map(colorUnoCss).filter(Boolean);
 }
-// Raqueta actual (cabeza isométrica, garganta de una pieza, varilla fina) con cuerdas finas: 22 verticales y 22 horizontales.
+// Raqueta real (foto sin cordaje) con las cuerdas pintadas encima: 22 verticales (a lo largo de la raqueta) y 22 horizontales.
+const RAQ_FOTO = { src: 'raqueta_yonex.webp', cx: 320.2, cy: 302.7, ang: 42.34, largo: 259.6, ancho: 212.1, cama: '183.6,85.5 197.3,78.5 216.4,71.1 232.8,67.6 254.7,65.6 282.0,67.2 304.7,71.1 354.7,84.0 382.0,95.7 425.8,119.5 451.2,137.9 465.6,150.0 485.5,170.3 518.8,209.0 542.6,249.6 550.0,268.0 556.2,288.3 561.3,311.3 563.3,337.9 561.7,366.0 557.0,388.7 550.8,408.2 545.3,421.1 534.0,441.8 520.7,460.5 508.2,474.6 494.1,488.3 478.9,500.4 457.4,514.5 437.5,524.2 417.6,531.6 391.4,537.9 363.7,540.6 344.1,540.2 320.3,537.1 293.0,530.9 273.4,523.8 251.6,514.1 229.7,501.6 207.8,486.3 187.9,469.5 167.6,450.0 138.3,414.1 117.2,380.9 102.0,348.0 93.0,322.3 85.5,294.9 79.7,249.6 79.7,221.1 82.4,205.1 88.3,185.9 96.1,169.1 108.2,150.8 126.6,128.5 139.8,116.4 164.8,96.9' };
 function raquetaSvg(vCols, hCols) {
-  const V = vCols && vCols.length ? vCols : ['#C9CED6'], H = hCols && hCols.length ? hCols : ['#C9CED6'];
-  const cx = 110, cy = 104, a = 80, b = 96, nExp = 2.6;
-  // contorno isométrico: superelipse que se estrecha hacia la garganta
-  const forma = (escala) => {
-    const pts = [];
-    for (let k = 0; k <= 120; k++) {
-      const t = (k / 120) * Math.PI * 2, c = Math.cos(t), sn = Math.sin(t);
-      let x = Math.sign(c) * Math.pow(Math.abs(c), 2 / nExp), y = Math.sign(sn) * Math.pow(Math.abs(sn), 2 / nExp);
-      if (y > 0) x *= 1 - 0.34 * Math.pow(y, 2.4);
-      pts.push((cx + x * a * escala).toFixed(1) + ' ' + (cy + y * b * escala).toFixed(1));
-    }
-    return 'M' + pts.join(' L') + 'Z';
-  };
-  const id = 'rqc' + Math.random().toString(36).slice(2, 8);
-  const top = cy - b, bot = cy + b, izq = cx - a, der = cx + a;
-  let cuerdas = '';
-  for (let k = 0, n = 22; k < n; k++) { const x = izq + 6 + (2 * a - 12) * (k + 0.5) / n; cuerdas += '<line x1="' + x.toFixed(1) + '" y1="' + top + '" x2="' + x.toFixed(1) + '" y2="' + bot + '" stroke="' + V[k % V.length] + '" stroke-width="1.25"/>'; }
-  for (let k = 0, n = 22; k < n; k++) { const y = top + 6 + (2 * b - 14) * (k + 0.5) / n; cuerdas += '<line x1="' + izq + '" y1="' + y.toFixed(1) + '" x2="' + der + '" y2="' + y.toFixed(1) + '" stroke="' + H[k % H.length] + '" stroke-width="1.25"/>'; }
-  const gY = bot - 4;            // donde la cabeza se une a la garganta
-  const vY = gY + 54;            // fin de la garganta / empieza la varilla
-  const mY = vY + 128;           // empieza el mango
-  return '<svg viewBox="0 0 220 520" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Raqueta con el cordaje elegido">'
-    + '<defs><clipPath id="' + id + '"><path d="' + forma(0.955) + '"/></clipPath>'
-    + '<linearGradient id="' + id + 'm" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#0d1524"/><stop offset=".45" stop-color="#2a3550"/><stop offset=".55" stop-color="#1b2438"/><stop offset="1" stop-color="#05080f"/></linearGradient>'
-    + '<linearGradient id="' + id + 'v" x1="0" x2="1"><stop offset="0" stop-color="#1a2236"/><stop offset=".5" stop-color="#55607a"/><stop offset="1" stop-color="#0b1120"/></linearGradient>'
-    + '<linearGradient id="' + id + 'g" x1="0" x2="1"><stop offset="0" stop-color="#141414"/><stop offset=".5" stop-color="#3a3a3a"/><stop offset="1" stop-color="#0c0c0c"/></linearGradient></defs>'
-    + '<path d="' + forma(0.955) + '" fill="rgba(255,255,255,.35)"/>'
-    + '<g clip-path="url(#' + id + ')">' + cuerdas + '</g>'
-    // marco con franja de color
-    + '<path d="' + forma(1) + '" fill="none" stroke="url(#' + id + 'm)" stroke-width="7.5" stroke-linejoin="round"/>'
-    + '<path d="' + forma(1) + '" fill="none" stroke="#E0162B" stroke-width="1.6" stroke-dasharray="120 260" stroke-dashoffset="-30" opacity=".9"/>'
-    + '<path d="' + forma(1) + '" fill="none" stroke="#3B82F6" stroke-width="1.2" stroke-dasharray="60 320" stroke-dashoffset="-215" opacity=".8"/>'
-    // garganta de una pieza (dos brazos que se juntan en la varilla)
-    + '<path d="M' + (cx - 30) + ' ' + (gY - 6) + ' C' + (cx - 14) + ' ' + (gY + 18) + ' ' + (cx - 4) + ' ' + (gY + 38) + ' ' + (cx - 2.6) + ' ' + vY + ' L' + (cx + 2.6) + ' ' + vY + ' C' + (cx + 4) + ' ' + (gY + 38) + ' ' + (cx + 14) + ' ' + (gY + 18) + ' ' + (cx + 30) + ' ' + (gY - 6) + '" fill="none" stroke="url(#' + id + 'm)" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>'
-    // varilla fina
-    + '<rect x="' + (cx - 2.6) + '" y="' + vY + '" width="5.2" height="' + (mY - vY) + '" rx="2.6" fill="url(#' + id + 'v)"/>'
-    + '<rect x="' + (cx - 2.6) + '" y="' + (vY + 28) + '" width="5.2" height="22" fill="#E0162B" opacity=".9"/>'
-    // mango con grip enrollado y tapón
-    + '<path d="M' + (cx - 5) + ' ' + mY + ' L' + (cx + 5) + ' ' + mY + ' L' + (cx + 9.5) + ' ' + (mY + 14) + ' L' + (cx - 9.5) + ' ' + (mY + 14) + 'Z" fill="#1c1c1c"/>'
-    + '<rect x="' + (cx - 9.5) + '" y="' + (mY + 14) + '" width="19" height="132" rx="4" fill="url(#' + id + 'g)"/>'
-    + Array.from({ length: 15 }, (_, k) => '<path d="M' + (cx - 9.5) + ' ' + (mY + 18 + k * 8.4) + ' L' + (cx + 9.5) + ' ' + (mY + 24 + k * 8.4) + '" stroke="rgba(255,255,255,.14)" stroke-width="2.2"/>').join('')
-    + '<rect x="' + (cx - 10.5) + '" y="' + (mY + 144) + '" width="21" height="9" rx="3.5" fill="#E0162B"/>'
-    + '</svg>';
+  const V = vCols && vCols.length ? vCols : ['#D9DDE3'], H = hCols && hCols.length ? hCols : ['#D9DDE3'];
+  const R = RAQ_FOTO, id = 'rqc' + Math.random().toString(36).slice(2, 8);
+  const L = R.largo + 6, A = R.ancho + 6;
+  let sombra = '', cuerdas = '';
+  // verticales: van a lo largo de la raqueta (eje x girado)
+  for (let k = 0, n = 22; k < n; k++) {
+    const y = R.cy - A + (2 * A) * (k + 0.5) / n;
+    sombra += '<line x1="' + (R.cx - L) + '" y1="' + y.toFixed(1) + '" x2="' + (R.cx + L) + '" y2="' + y.toFixed(1) + '"/>';
+    cuerdas += '<line x1="' + (R.cx - L) + '" y1="' + y.toFixed(1) + '" x2="' + (R.cx + L) + '" y2="' + y.toFixed(1) + '" stroke="' + V[k % V.length] + '"/>';
+  }
+  for (let k = 0, n = 22; k < n; k++) {
+    const x = R.cx - L + (2 * L) * (k + 0.5) / n;
+    sombra += '<line x1="' + x.toFixed(1) + '" y1="' + (R.cy - A) + '" x2="' + x.toFixed(1) + '" y2="' + (R.cy + A) + '"/>';
+    cuerdas += '<line x1="' + x.toFixed(1) + '" y1="' + (R.cy - A) + '" x2="' + x.toFixed(1) + '" y2="' + (R.cy + A) + '" stroke="' + H[k % H.length] + '"/>';
+  }
+  return '<svg viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Raqueta con el cordaje elegido">'
+    + '<defs><clipPath id="' + id + '"><polygon points="' + R.cama + '"/></clipPath></defs>'
+    + '<image href="' + R.src + '" x="0" y="0" width="1000" height="1000"/>'
+    + '<g clip-path="url(#' + id + ')"><g transform="rotate(' + R.ang + ' ' + R.cx + ' ' + R.cy + ')">'
+    + '<g stroke="rgba(0,0,0,.28)" stroke-width="4.6">' + sombra + '</g>'
+    + '<g stroke-width="3.2">' + cuerdas + '</g>'
+    + '</g></g></svg>';
 }
 function bloqueRaquetaForm(lista) {
   const f = frmRaq;

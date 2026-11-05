@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261105-dosfotos">
+<meta name="build-id" content="v20261105-carruselraqueta">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -247,6 +247,16 @@ body.tpub-on main#shellMain{max-width:none !important;margin:0 !important;paddin
 .tpf-select:focus{outline:none;border-color:var(--tn);box-shadow:0 0 0 3px rgba(11,45,91,.12);}
 .tpf-nota{color:#6B7A90;font-size:12.5px;}
 .tpf-oculto{display:none;}
+.tpf-carr{display:flex;flex-direction:column;gap:6px;}
+.tpf-carr-pista{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;border-radius:12px;scrollbar-width:none;cursor:grab;touch-action:pan-x pan-y;}
+.tpf-carr-pista::-webkit-scrollbar{display:none;}
+.tpf-carr-pista.arrastra{cursor:grabbing;scroll-snap-type:none;}
+.tpf-carr-foto{flex:0 0 100%;scroll-snap-align:center;user-select:none;-webkit-user-drag:none;}
+.tpf-carr-foto svg{pointer-events:none;}
+.tpf-carr-puntos{display:flex;justify-content:center;gap:8px;}
+.tpf-carr-punto{width:9px;height:9px;border-radius:50%;border:0;padding:0;background:#C5CFDD;cursor:pointer;}
+.tpf-carr-punto.on{background:var(--tn);width:22px;border-radius:5px;}
+.tpf-carr-ayuda{font-size:12px;color:#6B7A90;text-align:center;}
 .tpf-raqueta{display:flex;align-items:center;gap:18px;background:#fff;border:1px solid #D5DDE9;border-radius:16px;padding:14px 18px;}
 .tpf-raqueta-svg{flex:none;width:min(260px,62vw);}
 .tpf-raqueta-svg svg{width:100%;height:auto;display:block;border-radius:12px;background:#fff;}
@@ -14206,6 +14216,31 @@ function raquetaSvgBlanca(vCols, hCols) {
     + '<g stroke-width="3.2">' + cuerdas + '</g>'
     + '</g></g></svg>';
 }
+// Las dos fotos de raqueta en un carrusel: se arrastra (dedo o ratón) o se tocan los puntos.
+// Empieza en la Nanoflare, salvo que el cordaje sea azul (entonces en la de fondo blanco), si el cliente no ha elegido otra.
+let frmRaqFotoManual = null;
+function carruselRaquetas(vCols, hCols) {
+  const azul = [].concat(vCols || [], hCols || []).some(esAzulCss);
+  const ini = frmRaqFotoManual !== null ? frmRaqFotoManual : (azul ? 1 : 0);
+  const pista = el('div', { class: 'tpf-carr-pista' },
+    el('div', { class: 'tpf-carr-foto', 'data-foto': 'nanoflare', html: raquetaSvgNanoflare(vCols, hCols) }),
+    el('div', { class: 'tpf-carr-foto', 'data-foto': 'blanca', html: raquetaSvgBlanca(vCols, hCols) }));
+  const puntos = el('div', { class: 'tpf-carr-puntos' });
+  let prog = false, tp = null;
+  const ir = (k, suave) => { prog = true; clearTimeout(tp); tp = setTimeout(() => { prog = false; }, 700); pista.scrollTo({ left: k * pista.clientWidth, behavior: suave ? 'smooth' : 'auto' }); };
+  [0, 1].forEach(k => puntos.appendChild(el('button', { type: 'button', class: 'tpf-carr-punto' + (k === ini ? ' on' : ''), 'aria-label': k ? 'Foto de fondo blanco' : 'Foto de fondo azul', onclick: () => { frmRaqFotoManual = k; ir(k, true); } })));
+  const marcar = () => { const k = Math.round(pista.scrollLeft / Math.max(1, pista.clientWidth)); [...puntos.children].forEach((b, i) => b.classList.toggle('on', i === k)); return k; };
+  let t = null;
+  pista.addEventListener('scroll', () => { const k = marcar(); clearTimeout(t); t = setTimeout(() => { if (!arrastrando && !prog) frmRaqFotoManual = k; }, 120); }, { passive: true });
+  // arrastrar con el ratón (en el móvil ya se desliza con el dedo)
+  let arrastrando = false, x0 = 0, s0 = 0;
+  pista.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse') return; arrastrando = true; x0 = e.clientX; s0 = pista.scrollLeft; pista.classList.add('arrastra'); pista.setPointerCapture(e.pointerId); });
+  pista.addEventListener('pointermove', e => { if (arrastrando) pista.scrollLeft = s0 - (e.clientX - x0); });
+  const soltar = e => { if (!arrastrando) return; arrastrando = false; pista.classList.remove('arrastra'); const dx = e.clientX - x0; let k = Math.round(s0 / Math.max(1, pista.clientWidth)); if (Math.abs(dx) > 40) k = dx < 0 ? 1 : 0; frmRaqFotoManual = k; ir(k, true); };
+  pista.addEventListener('pointerup', soltar); pista.addEventListener('pointercancel', soltar);
+  requestAnimationFrame(() => ir(ini, false));
+  return el('div', { class: 'tpf-raqueta-svg tpf-carr' }, pista, puntos, el('div', { class: 'tpf-carr-ayuda' }, '‹ Desliza para ver la otra raqueta ›'));
+}
 function bloqueRaquetaForm(lista) {
   const f = frmRaq;
   const color = (grupo, id) => { const g = lista.find(x => x.clave === grupo); const c = g && g.colores.find(x => x.id === id); return c ? c.color : ''; };
@@ -14224,7 +14259,7 @@ function bloqueRaquetaForm(lista) {
   } else texto = f.grupo === 'consejo' ? 'Elegiremos el cordaje contigo en el taller' : 'Elige el cordaje para verlo aquí';
   const tens = (f.tension || f.tensionH) ? 'V ' + (f.tension ? fmtTensionForm(f.tension) : '—') + ' · H ' + (f.tensionH ? fmtTensionForm(f.tensionH) : '—') + (f.pretensado ? ' · pretensado' : '') : '';
   return el('div', { class: 'tpf-raqueta', id: 'frmRaquetaDibujo' },
-    el('div', { class: 'tpf-raqueta-svg', html: raquetaSvg(vCols, hCols) }),
+    carruselRaquetas(vCols, hCols),
     el('div', { class: 'tpf-raqueta-txt' }, el('b', {}, 'Así quedará tu raqueta'), ...texto.split('\n').map(t => el('span', {}, t)), tens ? el('small', { id: 'frmRaquetaTens' }, tens) : null));
 }
 function fmtTensionForm(t) { return String(t).replace('.', ',') + ' kg'; }

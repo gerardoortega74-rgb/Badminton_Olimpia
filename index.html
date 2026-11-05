@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="build-id" content="v20261028-google">
+<meta name="build-id" content="v20261105-videoclub">
 <script>
 // Los enlaces de la app (?club=, ?tiendaonline=, ?tallerpublico=, ?publico=, ?fichar=…) siguen funcionando:
 // cualquier dirección con parámetros va a la app. Y si se abre desde el icono de la pantalla de inicio, también.
@@ -34,6 +34,16 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;700&family=Big+Shoulders+Display:wght@700;900&display=swap">
 <style>
+/* Vídeo de presentación al entrar en la web */
+.intro-club{position:fixed;inset:0;z-index:9999;background:#0b0d0f;display:flex;align-items:center;justify-content:center;overflow:hidden;transition:opacity .6s ease;}
+.intro-club.sale{opacity:0;pointer-events:none;}
+.intro-club .ic-fondo{position:absolute;inset:-8%;width:116%;height:116%;object-fit:cover;filter:blur(28px) brightness(.7);}
+.intro-club .ic-video{position:relative;width:100%;height:100%;object-fit:contain;}
+@media (min-aspect-ratio:16/10){.intro-club .ic-video{object-fit:cover;}}
+.intro-club .ic-botones{position:absolute;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));display:flex;gap:10px;z-index:2;}
+.intro-club button{background:rgba(0,0,0,.45);color:#fff;border:1px solid rgba(255,255,255,.55);border-radius:999px;padding:9px 18px;font:600 14px/1 Archivo,system-ui,sans-serif;cursor:pointer;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);}
+.intro-club button:hover{background:rgba(0,0,0,.65);}
+html.intro-on,html.intro-on body{overflow:hidden;}
 :root{
   --noche:#15191c; --grafito:#262d33; --papel:#f5f6f4; --gris:#e9ecea; --tinta:#15191b; --suave:#5b6468; --turq:#3dd6c3; --turq-osc:#0f7f72;
   --disp:'Big Shoulders Display', 'Arial Narrow', sans-serif; --txt:'Archivo', system-ui, sans-serif;
@@ -220,6 +230,41 @@ footer img{height:38px;width:auto}
 </style>
 </head>
 <body>
+<div class="intro-club" id="introClub" hidden>
+  <video class="ic-fondo" muted playsinline preload="auto" aria-hidden="true"></video>
+  <video class="ic-video" muted playsinline preload="auto" poster="intro_club.jpg" aria-label="Vídeo de presentación del club"></video>
+  <div class="ic-botones"><button type="button" id="introSonido">🔊 Sonido</button><button type="button" id="introSaltar">Saltar</button></div>
+</div>
+<script>
+// Vídeo de presentación: sale una vez por visita antes de ver la web. Se puede saltar; si no carga, la web se ve igual.
+(function () {
+  var ov = document.getElementById('introClub');
+  var visto = false, quieto = false;
+  try { visto = sessionStorage.getItem('introClubVisto') === '1'; } catch (e) {}
+  try { quieto = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+  if (visto || quieto || (location.search || '').length > 1) { ov.remove(); return; }
+  try { sessionStorage.setItem('introClubVisto', '1'); } catch (e) {}
+  var v = ov.querySelector('.ic-video'), f = ov.querySelector('.ic-fondo'), terminado = false;
+  v.src = f.src = 'intro_club.mp4';
+  ov.hidden = false; document.documentElement.classList.add('intro-on');
+  function fin(rapido) {
+    if (terminado) return; terminado = true;
+    ov.classList.add('sale'); document.documentElement.classList.remove('intro-on');
+    setTimeout(function () { try { v.pause(); f.pause(); } catch (e) {} ov.remove(); }, rapido ? 250 : 650);
+  }
+  document.getElementById('introSaltar').addEventListener('click', function () { fin(true); });
+  document.getElementById('introSonido').addEventListener('click', function (e) {
+    v.muted = !v.muted; e.currentTarget.textContent = v.muted ? '🔊 Sonido' : '🔇 Silenciar';
+    if (!v.muted && v.paused) v.play().catch(function () {});
+  });
+  v.addEventListener('ended', function () { fin(false); });
+  v.addEventListener('error', function () { fin(true); });
+  v.addEventListener('timeupdate', function () { if (Math.abs(f.currentTime - v.currentTime) > .4) f.currentTime = v.currentTime; });
+  setTimeout(function () { fin(false); }, 15000); // por si se queda cargando
+  var p = v.play(); if (p && p.catch) p.catch(function () { fin(true); });
+  var q = f.play(); if (q && q.catch) q.catch(function () {});
+})();
+</script>
 <header class="barra" id="barra">
   <div class="envoltura">
     <a class="marca" href="#inicio" aria-label="Club Bádminton Olimpia Torrelavega, inicio"><img src="logo_olimpia.svg" alt="" width="52" height="44"><span>Olimpia<br>Torrelavega</span></a>

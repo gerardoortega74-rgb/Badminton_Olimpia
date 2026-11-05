@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261105-raquetacolor">
+<meta name="build-id" content="v20261105-raquetareal">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -14157,25 +14157,50 @@ document.addEventListener('paste', ev => {
 function coloresPartesCordaje(nombre) {
   return String(nombre || '').split(/\s*[-\/+]\s*|\s+y\s+|\s+e\s+|\s*,\s*/i).map(colorUnoCss).filter(Boolean);
 }
+// Raqueta actual (cabeza isométrica, garganta de una pieza, varilla fina) con cuerdas finas: 22 verticales y 22 horizontales.
 function raquetaSvg(vCols, hCols) {
   const V = vCols && vCols.length ? vCols : ['#C9CED6'], H = hCols && hCols.length ? hCols : ['#C9CED6'];
-  const cx = 110, cy = 120, rx = 66, ry = 86;
-  let cuerdas = '';
-  for (let i = 0, n = 15; i < n; i++) { const x = cx - rx + (2 * rx) * (i + 0.5) / n; cuerdas += '<line x1="' + x.toFixed(1) + '" y1="' + (cy - ry - 2) + '" x2="' + x.toFixed(1) + '" y2="' + (cy + ry + 2) + '" stroke="' + V[i % V.length] + '" stroke-width="3.6"/>'; }
-  for (let i = 0, n = 18; i < n; i++) { const y = cy - ry + (2 * ry) * (i + 0.5) / n; cuerdas += '<line x1="' + (cx - rx - 2) + '" y1="' + y.toFixed(1) + '" x2="' + (cx + rx + 2) + '" y2="' + y.toFixed(1) + '" stroke="' + H[i % H.length] + '" stroke-width="3.6"/>'; }
+  const cx = 110, cy = 104, a = 80, b = 96, nExp = 2.6;
+  // contorno isométrico: superelipse que se estrecha hacia la garganta
+  const forma = (escala) => {
+    const pts = [];
+    for (let k = 0; k <= 120; k++) {
+      const t = (k / 120) * Math.PI * 2, c = Math.cos(t), sn = Math.sin(t);
+      let x = Math.sign(c) * Math.pow(Math.abs(c), 2 / nExp), y = Math.sign(sn) * Math.pow(Math.abs(sn), 2 / nExp);
+      if (y > 0) x *= 1 - 0.34 * Math.pow(y, 2.4);
+      pts.push((cx + x * a * escala).toFixed(1) + ' ' + (cy + y * b * escala).toFixed(1));
+    }
+    return 'M' + pts.join(' L') + 'Z';
+  };
   const id = 'rqc' + Math.random().toString(36).slice(2, 8);
-  return '<svg viewBox="0 0 220 440" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Raqueta con el cordaje elegido">'
-    + '<defs><clipPath id="' + id + '"><ellipse cx="' + cx + '" cy="' + cy + '" rx="' + rx + '" ry="' + ry + '"/></clipPath>'
-    + '<linearGradient id="' + id + 'g" x1="0" x2="1"><stop offset="0" stop-color="#16376A"/><stop offset=".5" stop-color="#0B2D5B"/><stop offset="1" stop-color="#061a38"/></linearGradient></defs>'
-    + '<ellipse cx="' + cx + '" cy="' + cy + '" rx="' + rx + '" ry="' + ry + '" fill="rgba(255,255,255,.55)"/>'
+  const top = cy - b, bot = cy + b, izq = cx - a, der = cx + a;
+  let cuerdas = '';
+  for (let k = 0, n = 22; k < n; k++) { const x = izq + 6 + (2 * a - 12) * (k + 0.5) / n; cuerdas += '<line x1="' + x.toFixed(1) + '" y1="' + top + '" x2="' + x.toFixed(1) + '" y2="' + bot + '" stroke="' + V[k % V.length] + '" stroke-width="1.25"/>'; }
+  for (let k = 0, n = 22; k < n; k++) { const y = top + 6 + (2 * b - 14) * (k + 0.5) / n; cuerdas += '<line x1="' + izq + '" y1="' + y.toFixed(1) + '" x2="' + der + '" y2="' + y.toFixed(1) + '" stroke="' + H[k % H.length] + '" stroke-width="1.25"/>'; }
+  const gY = bot - 4;            // donde la cabeza se une a la garganta
+  const vY = gY + 54;            // fin de la garganta / empieza la varilla
+  const mY = vY + 128;           // empieza el mango
+  return '<svg viewBox="0 0 220 520" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Raqueta con el cordaje elegido">'
+    + '<defs><clipPath id="' + id + '"><path d="' + forma(0.955) + '"/></clipPath>'
+    + '<linearGradient id="' + id + 'm" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#0d1524"/><stop offset=".45" stop-color="#2a3550"/><stop offset=".55" stop-color="#1b2438"/><stop offset="1" stop-color="#05080f"/></linearGradient>'
+    + '<linearGradient id="' + id + 'v" x1="0" x2="1"><stop offset="0" stop-color="#1a2236"/><stop offset=".5" stop-color="#55607a"/><stop offset="1" stop-color="#0b1120"/></linearGradient>'
+    + '<linearGradient id="' + id + 'g" x1="0" x2="1"><stop offset="0" stop-color="#141414"/><stop offset=".5" stop-color="#3a3a3a"/><stop offset="1" stop-color="#0c0c0c"/></linearGradient></defs>'
+    + '<path d="' + forma(0.955) + '" fill="rgba(255,255,255,.35)"/>'
     + '<g clip-path="url(#' + id + ')">' + cuerdas + '</g>'
-    + '<ellipse cx="' + cx + '" cy="' + cy + '" rx="' + (rx + 5) + '" ry="' + (ry + 5) + '" fill="none" stroke="url(#' + id + 'g)" stroke-width="10"/>'
-    + '<path d="M' + (cx - 20) + ' ' + (cy + ry + 3) + ' Q' + cx + ' ' + (cy + ry + 30) + ' ' + (cx - 4) + ' ' + (cy + ry + 48) + ' L' + (cx + 4) + ' ' + (cy + ry + 48) + ' Q' + cx + ' ' + (cy + ry + 30) + ' ' + (cx + 20) + ' ' + (cy + ry + 3) + '" fill="none" stroke="url(#' + id + 'g)" stroke-width="7" stroke-linejoin="round"/>'
-    + '<rect x="' + (cx - 3.5) + '" y="' + (cy + ry + 46) + '" width="7" height="120" rx="3" fill="#0B2D5B"/>'
-    + '<rect x="' + (cx - 3.5) + '" y="' + (cy + ry + 70) + '" width="7" height="18" fill="#E0162B"/>'
-    + '<rect x="' + (cx - 9) + '" y="' + (cy + ry + 164) + '" width="18" height="86" rx="7" fill="#14213A"/>'
-    + [0, 1, 2, 3, 4, 5].map(k => '<line x1="' + (cx - 9) + '" y1="' + (cy + ry + 172 + k * 13) + '" x2="' + (cx + 9) + '" y2="' + (cy + ry + 180 + k * 13) + '" stroke="#E0162B" stroke-width="2.4" opacity=".85"/>').join('')
-    + '<rect x="' + (cx - 10) + '" y="' + (cy + ry + 246) + '" width="20" height="8" rx="3" fill="#0B2D5B"/>'
+    // marco con franja de color
+    + '<path d="' + forma(1) + '" fill="none" stroke="url(#' + id + 'm)" stroke-width="7.5" stroke-linejoin="round"/>'
+    + '<path d="' + forma(1) + '" fill="none" stroke="#E0162B" stroke-width="1.6" stroke-dasharray="120 260" stroke-dashoffset="-30" opacity=".9"/>'
+    + '<path d="' + forma(1) + '" fill="none" stroke="#3B82F6" stroke-width="1.2" stroke-dasharray="60 320" stroke-dashoffset="-215" opacity=".8"/>'
+    // garganta de una pieza (dos brazos que se juntan en la varilla)
+    + '<path d="M' + (cx - 30) + ' ' + (gY - 6) + ' C' + (cx - 14) + ' ' + (gY + 18) + ' ' + (cx - 4) + ' ' + (gY + 38) + ' ' + (cx - 2.6) + ' ' + vY + ' L' + (cx + 2.6) + ' ' + vY + ' C' + (cx + 4) + ' ' + (gY + 38) + ' ' + (cx + 14) + ' ' + (gY + 18) + ' ' + (cx + 30) + ' ' + (gY - 6) + '" fill="none" stroke="url(#' + id + 'm)" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>'
+    // varilla fina
+    + '<rect x="' + (cx - 2.6) + '" y="' + vY + '" width="5.2" height="' + (mY - vY) + '" rx="2.6" fill="url(#' + id + 'v)"/>'
+    + '<rect x="' + (cx - 2.6) + '" y="' + (vY + 28) + '" width="5.2" height="22" fill="#E0162B" opacity=".9"/>'
+    // mango con grip enrollado y tapón
+    + '<path d="M' + (cx - 5) + ' ' + mY + ' L' + (cx + 5) + ' ' + mY + ' L' + (cx + 9.5) + ' ' + (mY + 14) + ' L' + (cx - 9.5) + ' ' + (mY + 14) + 'Z" fill="#1c1c1c"/>'
+    + '<rect x="' + (cx - 9.5) + '" y="' + (mY + 14) + '" width="19" height="132" rx="4" fill="url(#' + id + 'g)"/>'
+    + Array.from({ length: 15 }, (_, k) => '<path d="M' + (cx - 9.5) + ' ' + (mY + 18 + k * 8.4) + ' L' + (cx + 9.5) + ' ' + (mY + 24 + k * 8.4) + '" stroke="rgba(255,255,255,.14)" stroke-width="2.2"/>').join('')
+    + '<rect x="' + (cx - 10.5) + '" y="' + (mY + 144) + '" width="21" height="9" rx="3.5" fill="#E0162B"/>'
     + '</svg>';
 }
 function bloqueRaquetaForm(lista) {

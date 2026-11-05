@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261105-raquetafoto">
+<meta name="build-id" content="v20261105-dosfotos">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -14159,7 +14159,30 @@ function coloresPartesCordaje(nombre) {
 }
 // Raqueta real (foto sin cordaje) con las cuerdas pintadas encima: 22 verticales (a lo largo de la raqueta) y 22 horizontales.
 const RAQ_FOTO = { src: 'raqueta_yonex.webp', cx: 320.2, cy: 302.7, ang: 42.34, largo: 259.6, ancho: 212.1, cama: '183.6,85.5 197.3,78.5 216.4,71.1 232.8,67.6 254.7,65.6 282.0,67.2 304.7,71.1 354.7,84.0 382.0,95.7 425.8,119.5 451.2,137.9 465.6,150.0 485.5,170.3 518.8,209.0 542.6,249.6 550.0,268.0 556.2,288.3 561.3,311.3 563.3,337.9 561.7,366.0 557.0,388.7 550.8,408.2 545.3,421.1 534.0,441.8 520.7,460.5 508.2,474.6 494.1,488.3 478.9,500.4 457.4,514.5 437.5,524.2 417.6,531.6 391.4,537.9 363.7,540.6 344.1,540.2 320.3,537.1 293.0,530.9 273.4,523.8 251.6,514.1 229.7,501.6 207.8,486.3 187.9,469.5 167.6,450.0 138.3,414.1 117.2,380.9 102.0,348.0 93.0,322.3 85.5,294.9 79.7,249.6 79.7,221.1 82.4,205.1 88.3,185.9 96.1,169.1 108.2,150.8 126.6,128.5 139.8,116.4 164.8,96.9' };
+// Si alguna cuerda es azul, se usa la foto de fondo blanco (en la de fondo azul no se vería); si no, la Nanoflare.
+function esAzulCss(hex) {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return false;
+  const [r, g, b] = [0, 2, 4].map(k => parseInt(m[1].substr(k, 2), 16) / 255);
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn; if (d < 0.18 || mx < 0.25) return false;
+  let hh = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; hh = (hh * 60 + 360) % 360;
+  return hh >= 185 && hh <= 255;
+}
 function raquetaSvg(vCols, hCols) {
+  const todos = [].concat(vCols || [], hCols || []);
+  if (!todos.some(esAzulCss)) return raquetaSvgNanoflare(vCols, hCols);
+  return raquetaSvgBlanca(vCols, hCols);
+}
+function raquetaSvgNanoflare(vCols, hCols) {
+  const V = vCols && vCols.length ? vCols : ['#E4E7EC'], H = hCols && hCols.length ? hCols : ['#E4E7EC'];
+  const id = 'rqn' + Math.random().toString(36).slice(2, 8);
+  const capa = (k, color) => '<mask id="' + id + k + '" maskUnits="userSpaceOnUse" x="0" y="0" width="800" height="908"><image href="raqueta_nanoflare_' + k + '.png" x="0" y="0" width="800" height="908"/></mask>'
+    + '<rect x="0" y="0" width="800" height="908" fill="' + color + '" mask="url(#' + id + k + ')"/>';
+  return '<svg viewBox="0 0 800 908" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Raqueta con el cordaje elegido">'
+    + '<image href="raqueta_nanoflare.webp" x="0" y="0" width="800" height="908"/>'
+    + capa('h0', H[0]) + capa('h1', H[1 % H.length]) + capa('v0', V[0]) + capa('v1', V[1 % V.length])
+    + '</svg>';
+}
+function raquetaSvgBlanca(vCols, hCols) {
   const V = vCols && vCols.length ? vCols : ['#D9DDE3'], H = hCols && hCols.length ? hCols : ['#D9DDE3'];
   const R = RAQ_FOTO, id = 'rqc' + Math.random().toString(36).slice(2, 8);
   const L = R.largo + 6, A = R.ancho + 6;

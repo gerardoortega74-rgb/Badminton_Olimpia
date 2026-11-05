@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261103-botonestienda">
+<meta name="build-id" content="v20261105-formraqueta">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -14,7 +14,7 @@ var k=function(o,x){return (o===ls&&NS[x])?x+'@'+c:x;};
 P.getItem=function(x){return g.call(this,k(this,x));};P.setItem=function(x,v){return st.call(this,k(this,x),v);};P.removeItem=function(x){return rm.call(this,k(this,x));};
 }catch(e){window.CLUB_CTX='';}})();
 </script>
-<script>try{var q=new URLSearchParams(location.search);if(q.get('tiendaonline')==='1')document.documentElement.classList.add('tienda-pre');if(q.get('tallerpublico')==='1')document.documentElement.classList.add('tpub-pre');}catch(e){}</script>
+<script>try{var q=new URLSearchParams(location.search);if(q.get('tiendaonline')==='1')document.documentElement.classList.add('tienda-pre');if(q.get('tallerpublico')==='1'||q.get('raqueta')==='1')document.documentElement.classList.add('tpub-pre');}catch(e){}</script>
 <style>
 #introClubs{position:absolute;inset:0;overflow:hidden;background:radial-gradient(ellipse 70% 60% at 50% 42%,#26313A 0%,#14191D 60%,#0B0E10 100%);font-family:'Inter',-apple-system,system-ui,sans-serif;color:#fff;}
 #introClubs canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:3;}
@@ -203,6 +203,46 @@ body.tpub-on main#shellMain{max-width:none !important;margin:0 !important;paddin
 .tpb-pie .tpb-logo{width:86px;}
 .tpb-pie b{display:block;color:#fff;}
 .tpb-pie span{font-size:13px;}
+.im-solic{background:#FFF8E6;border:1.5px solid #F2C94C;border-radius:14px;padding:12px;margin:0 0 14px;display:flex;flex-direction:column;gap:10px;}
+.im-solic-tit{font-weight:800;font-size:16px;display:flex;align-items:center;gap:8px;color:#5A3E00;}
+.im-solic-n{background:#E0162B;color:#fff;border-radius:999px;font-size:12px;padding:2px 8px;}
+.im-solic-card{background:#fff;border-radius:12px;padding:10px 12px;border:1px solid #F0E2B6;}
+.im-solic-cab{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+.im-solic-cab b{font-size:15.5px;}.im-solic-cab span{color:#6B7A90;font-size:13px;}
+.im-solic-datos{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:4px;font-size:14px;}
+.im-formcli{margin:0 0 12px;}
+.tpf{display:flex;flex-direction:column;gap:12px;}
+.tpf-tit{display:flex;align-items:center;gap:10px;margin:0;font-size:19px;color:var(--tn);}
+.tpf-tit i{font-style:normal;width:28px;height:28px;border-radius:50%;background:var(--tn);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;flex:none;}
+.tpf-fila{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+@media (max-width:420px){.tpf-fila{grid-template-columns:1fr;}}
+.tpf-campo{display:flex;flex-direction:column;gap:5px;font-size:14px;font-weight:700;color:#33415A;}
+.tpf-campo input,.tpf-campo textarea{font:inherit;font-weight:500;font-size:16px;padding:12px 13px;border:1.5px solid #D5DDE9;border-radius:12px;background:#F9FBFD;color:#14213A;width:100%;}
+.tpf-campo input:focus,.tpf-campo textarea:focus{outline:none;border-color:var(--tn);background:#fff;box-shadow:0 0 0 3px rgba(11,45,91,.12);}
+.tpf-campo small{font-weight:500;color:#6B7A90;font-size:12.5px;}
+.tpf-trampa{position:absolute;left:-9999px;width:1px;height:1px;opacity:0;}
+.tpf-opciones{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;}
+.tpf-opc,.tpf-ten,.tpf-color{font:inherit;cursor:pointer;border:1.5px solid #D5DDE9;background:#fff;border-radius:14px;color:#14213A;transition:border-color .15s,background .15s,transform .1s;}
+.tpf-opc{display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:12px 14px;text-align:left;min-height:62px;}
+.tpf-opc b{font-size:15px;}.tpf-opc small{color:#6B7A90;font-size:12.5px;}
+.tpf-opc:hover,.tpf-ten:hover,.tpf-color:hover{border-color:#9CB3D3;}
+.tpf-opc.on,.tpf-ten.on,.tpf-color.on{border-color:var(--tr);background:#FFF3F4;box-shadow:0 0 0 2px var(--tr) inset;}
+.tpf-opc:active,.tpf-ten:active,.tpf-color:active{transform:scale(.98);}
+.tpf-sub{font-size:14px;font-weight:800;color:#33415A;margin-top:2px;}
+.tpf-colores{display:flex;flex-wrap:wrap;gap:8px;}
+.tpf-color{display:inline-flex;align-items:center;gap:8px;padding:9px 14px 9px 10px;font-weight:700;font-size:14.5px;border-radius:999px;}
+.tpf-color i{width:22px;height:22px;border-radius:50%;border:1px solid rgba(0,0,0,.18);flex:none;}
+.tpf-tensiones{display:grid;grid-template-columns:repeat(auto-fill,minmax(82px,1fr));gap:8px;}
+.tpf-ten{display:flex;flex-direction:column;align-items:center;gap:1px;padding:10px 4px;}
+.tpf-ten b{font-size:15px;}.tpf-ten small{font-size:11.5px;color:#6B7A90;}
+.tpf-ten-c{grid-column:span 2;}
+.tpf-check{display:flex;gap:10px;align-items:flex-start;font-size:14px;color:#33415A;line-height:1.45;cursor:pointer;}
+.tpf-check input{width:22px;height:22px;flex:none;margin:0;accent-color:var(--tn);}
+.tpf-error:empty{display:none;}
+.tpf-error{background:#FFF1F2;color:#A3111F;border:1px solid #F7C4CA;border-radius:12px;padding:10px 12px;font-weight:700;font-size:14px;}
+.tpf-enviar,.tpf-otra{font:inherit;font-weight:800;font-size:17px;border:0;border-radius:14px;padding:15px;cursor:pointer;background:var(--tr);color:#fff;box-shadow:0 6px 16px rgba(224,22,43,.28);}
+.tpf-enviar:disabled{opacity:.6;cursor:wait;}
+.tpf-otra{background:var(--tn);box-shadow:0 6px 16px rgba(11,45,91,.22);}
 @media (max-width:380px){.tpb-pasos b{font-size:11px;}.tpb-cifra b{font-size:22px;}}
 /* ===== Tienda física (caja) ===== */
 body.im-taller .tpv{display:grid;grid-template-columns:1fr;gap:14px;align-items:start;}
@@ -10123,6 +10163,100 @@ function abrirCobroPedido(p, titulo) {
         el('button', { class: 'btn btn-primary', onclick: () => { const v = registrarCobroPedido(p, pago); root.innerHTML = ''; render(); tpvAbrirTicket(v, true); } }, 'Cobrar y sacar ticket'),
         el('button', { class: 'btn btn-ghost', onclick: () => { root.innerHTML = ''; } }, 'Cancelar')))));
 }
+// ===== Raquetas que el cliente ha dejado rellenando el formulario (app.html?raqueta=1) =====
+let solicitudesRaq = [], solicitudesRaqError = '', solicitudesRaqCancelar = null;
+function enlaceFormRaqueta() { return location.origin + location.pathname + '?raqueta=1'; }
+function escucharSolicitudesRaqueta() {
+  if (solicitudesRaqCancelar || typeof firebaseDb === 'undefined' || !firebaseDb) return;
+  if (typeof rolActual === 'function' && !['admin', 'usuario'].includes(rolActual())) return;
+  try {
+    solicitudesRaqCancelar = firebaseDb.collection('solicitudes_raqueta').onSnapshot(snap => {
+      solicitudesRaqError = '';
+      solicitudesRaq = snap.docs.map(d => Object.assign({ _id: d.id }, d.data())).sort((a, b) => (a.creadoEn || 0) - (b.creadoEn || 0));
+      setTimeout(() => {
+        const a = document.activeElement;
+        const ocupado = a && (a.tagName === 'TEXTAREA' || a.tagName === 'SELECT' || (a.tagName === 'INPUT' && a.type !== 'checkbox'));
+        const vis = document.getElementById('tallerScreen');
+        if (!ocupado && activeTab === 'cola' && vis && vis.style.display !== 'none') render();
+      }, 0);
+    }, err => {
+      solicitudesRaqError = (err && /permission/.test(String(err.code || err.message))) ? 'Falta activar el formulario en las reglas de Firebase.' : 'No se pudieron leer las raquetas enviadas.';
+      solicitudesRaqCancelar = null;
+    });
+  } catch (e) { solicitudesRaqCancelar = null; }
+}
+function ultimos9(t) { return String(t || '').replace(/\D/g, '').slice(-9); }
+function aceptarSolicitudRaqueta(sol) {
+  const nombreCompleto = [sol.nombre, sol.apellidos].filter(Boolean).join(' ').trim();
+  const t9 = ultimos9(sol.telefono);
+  let cli = t9.length === 9 ? state.clientes.find(c => ultimos9(c.telefono) === t9) : null;
+  if (!cli) cli = state.clientes.find(c => imNormal(c.nombre).trim() === imNormal(nombreCompleto).trim() && !c.telefono);
+  if (!cli) cli = addCliente({ nombre: nombreCompleto, telefono: sol.telefono || '' });
+  else if (!cli.telefono && sol.telefono) cli.telefono = sol.telefono;
+  const cor = sol.cordajeId ? cordajeDe(sol.cordajeId) : null;
+  const ten = Number(sol.tension) || null;
+  let precio = state.config.precioSinCordaje || 0;
+  if (cor) precio = (state.config.precioBaseEncordado || 0) + (cor.precio || 0);
+  const notas = ['📝 Rellenado por el cliente',
+    !sol.cordajeId ? 'Cordaje: que se lo aconseje' : (!cor ? 'Cordaje pedido: ' + (sol.cordajeNombre || '') + (sol.color ? ' · ' + sol.color : '') + ' (ya no está en stock)' : ''),
+    !ten ? 'Tensión: que se la aconseje' : '', sol.comentarios || ''].filter(Boolean).join(' · ');
+  const nuevo = addPedido({ clienteId: cli.id, marcaModelo: sol.raqueta || '', cordajeId: cor ? cor.id : null, tensionVertical: ten, tensionHorizontal: ten, precio, pagoPrevisto: 'alRecoger', notas });
+  // En la cola entra en su turno: por la hora a la que la dejó, no por la hora a la que se acepta.
+  if (sol.creadoEn && sol.creadoEn < nuevo.horaLlegada) nuevo.horaLlegada = sol.creadoEn;
+  solicitudesRaq = solicitudesRaq.filter(x => x._id !== sol._id);
+  firebaseDb.collection('solicitudes_raqueta').doc(sol._id).delete().catch(e => console.warn('No se pudo borrar la solicitud:', e));
+  render();
+  if (typeof abrirEnviarEnlaceSeguimiento === 'function' && cli.telefono) setTimeout(() => abrirEnviarEnlaceSeguimiento(nuevo), 60);
+}
+function descartarSolicitudRaqueta(sol) {
+  if (!confirm('¿Descartar la raqueta enviada por ' + [sol.nombre, sol.apellidos].join(' ').trim() + '? Se borran sus datos.')) return;
+  solicitudesRaq = solicitudesRaq.filter(x => x._id !== sol._id);
+  firebaseDb.collection('solicitudes_raqueta').doc(sol._id).delete().catch(e => alert('No se pudo borrar: ' + (e && e.message ? e.message : e)));
+  render();
+}
+function panelSolicitudesRaqueta() {
+  if (!solicitudesRaq.length && !solicitudesRaqError) return null;
+  const caja = el('div', { class: 'im-solic', id: 'imSolicitudes' },
+    el('div', { class: 'im-solic-tit' }, '📥 Raquetas enviadas por clientes', solicitudesRaq.length ? el('span', { class: 'im-solic-n' }, String(solicitudesRaq.length)) : null));
+  if (solicitudesRaqError) caja.appendChild(el('div', { class: 'msg msg-warn' }, solicitudesRaqError));
+  solicitudesRaq.forEach(sol => {
+    const cor = sol.cordajeId ? cordajeDe(sol.cordajeId) : null;
+    const tCordaje = !sol.cordajeId ? 'Que se lo aconseje' : (cor ? cor.nombre : (sol.cordajeNombre || '') + (sol.color ? ' · ' + sol.color : '') + ' ⚠️ sin stock');
+    caja.appendChild(el('div', { class: 'im-solic-card' },
+      el('div', { class: 'im-solic-cab' }, el('b', {}, [sol.nombre, sol.apellidos].filter(Boolean).join(' ')), el('span', {}, (sol.creadoEn ? fmtHora(sol.creadoEn) + ' · ' : '') + (sol.telefono || ''))),
+      el('div', { class: 'im-solic-datos' },
+        sol.raqueta ? el('span', {}, '🏸 ' + sol.raqueta) : null,
+        el('span', {}, '🧵 ' + tCordaje),
+        el('span', {}, '⚖️ ' + (Number(sol.tension) ? String(sol.tension).replace('.', ',') + ' kg' : 'Que se la aconseje'))),
+      sol.comentarios ? el('div', { class: 'sub' }, '💬 ' + sol.comentarios) : null,
+      el('div', { class: 'toolbar', style: 'margin:8px 0 0;' },
+        el('button', { class: 'btn btn-gold btn-sm', onclick: () => aceptarSolicitudRaqueta(sol) }, '✅ Aceptar y poner en la cola'),
+        el('button', { class: 'btn btn-ghost btn-sm', onclick: () => descartarSolicitudRaqueta(sol) }, 'Descartar'))));
+  });
+  return caja;
+}
+function bloqueEnviarFormRaqueta() {
+  const tel = el('input', { type: 'tel', placeholder: 'Teléfono del cliente (opcional)', id: 'imFormTel' });
+  const enviar = () => {
+    const num = typeof telefonoParaWhatsappTienda === 'function' ? telefonoParaWhatsappTienda(tel.value) : '';
+    const nombre = (state.config && state.config.nombreTaller) || 'IDERMAY CANTABRIA';
+    const texto = '🏸 ' + nombre + '\nRellena aquí tus datos y cómo quieres el encordado de tu raqueta:\n' + enlaceFormRaqueta();
+    window.open('https://wa.me/' + (num || '') + '?text=' + encodeURIComponent(texto), '_blank', 'noopener');
+  };
+  const copiar = (b) => {
+    const ok = () => { const t = b.textContent; b.textContent = '✓ Copiado'; setTimeout(() => { b.textContent = t; }, 1600); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(enlaceFormRaqueta()).then(ok, () => prompt('Copia el enlace:', enlaceFormRaqueta()));
+    else prompt('Copia el enlace:', enlaceFormRaqueta());
+  };
+  return el('details', { class: 'im-plegable im-formcli' }, el('summary', {}, '📲 Que lo rellene el cliente'),
+    el('div', { class: 'im-plegable-cuerpo' },
+      el('div', { class: 'sub', style: 'margin-bottom:8px;' }, 'Le mandas un enlace y él pone su nombre, teléfono, cordaje, color y tensión. Te llega a la Cola de trabajo para aceptarla y entra en su turno.'),
+      field('Teléfono', tel),
+      el('div', { class: 'toolbar', style: 'margin:10px 0 0;' },
+        el('button', { class: 'btn btn-gold btn-sm', onclick: enviar }, '💬 Enviar por WhatsApp'),
+        el('button', { class: 'btn btn-ghost btn-sm', onclick: (e) => copiar(e.currentTarget) }, '🔗 Copiar enlace'),
+        el('a', { class: 'btn btn-ghost btn-sm', href: enlaceFormRaqueta(), target: '_blank', rel: 'noopener', style: 'text-decoration:none;' }, '📱 Abrir aquí'))));
+}
 function viewCola() {
   const wrap = document.createDocumentFragment();
   const cola = pedidosEnCola();
@@ -10132,6 +10266,8 @@ function viewCola() {
     el('h2', {}, 'Cola de trabajo'),
     el('div', { class: 'sub' }, 'Las raquetas, en el orden en que llegaron. Con ▲ ▼ puedes cambiar el orden.'),
   );
+  escucharSolicitudesRaqueta();
+  { const ps = panelSolicitudesRaqueta(); if (ps) panel.appendChild(ps); }
   panel.appendChild(el('div', { class: 'im-resumen' },
     el('div', { class: 'im-dato' }, el('b', {}, String(cola.length)), el('span', {}, cola.length === 1 ? 'raqueta en cola' : 'raquetas en cola')),
     el('div', { class: 'im-dato' }, el('b', {}, ultima ? fmtHora(ultima) : '—'), el('span', {}, 'todas listas hacia')),
@@ -10497,6 +10633,7 @@ function viewNuevoPedido() {
     el('h2', {}, 'Nuevo pedido'),
     el('div', { class: 'sub' }, 'Si el cliente trae varias raquetas, añádelas una a una sin volver a buscarlo.'),
   );
+  panel.appendChild(bloqueEnviarFormRaqueta());
   const paso = (n, titulo) => { const sec = el('section', { class: 'im-paso' }, el('div', { class: 'im-paso-tit' }, el('i', {}, String(n)), titulo)); panel.appendChild(sec); return sec; };
   const pasoCliente = paso(1, 'Cliente');
 
@@ -13594,7 +13731,7 @@ function esVistaTiendaOnline() {
   try { return new URLSearchParams(location.search).get('tiendaonline') === '1'; } catch (e) { return false; }
 }
 function esVistaPublica() {
-  try { return new URLSearchParams(location.search).get('publico') === '1' || esVistaPublicaTaller() || esVistaTiendaOnline(); } catch (e) { return false; }
+  try { return new URLSearchParams(location.search).get('publico') === '1' || esVistaPublicaTaller() || esVistaTiendaOnline() || esVistaFormRaqueta(); } catch (e) { return false; }
 }
 function fmtHoraShell(ts) {
   if (!ts) return '—';
@@ -13731,6 +13868,150 @@ function abrirFotoGrandePublica(src) {
     el('img', { src, style: 'max-width:100%;max-height:100%;border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,0.5);' }),
   );
   document.body.appendChild(capa);
+}
+// ===== FORMULARIO PARA EL CLIENTE: deja su raqueta y rellena él los datos (app.html?raqueta=1) =====
+// Lo que envía queda en «solicitudes_raqueta»; en el taller se acepta y entra en la cola en su turno (por la hora a la que lo envió).
+function esVistaFormRaqueta() {
+  try { return new URLSearchParams(location.search).get('raqueta') === '1'; } catch (e) { return false; }
+}
+const TENSIONES_FORM = [8, 8.5, 9, 9.5, 10, 10.5, 11, 11.5, 12, 12.5, 13, 13.5, 14];
+let frmRaq = { nombre: '', apellidos: '', telefono: '', raqueta: '', grupo: '', cordajeId: '', tension: null, comentarios: '', consentimiento: false, web: '' };
+let frmRaqEnviando = false, frmRaqExito = null, frmRaqError = '';
+// Cordajes con stock, agrupados por modelo; cada modelo con sus colores disponibles.
+function cordajesFormRaqueta() {
+  const arts = ((TallerApp.getState() || {}).articulos || []).filter(a => a && a.esCordaje && !a.colorInactivo && (Number(a.stock) || 0) > 0);
+  return agruparPorColor(arts.sort((x, y) => String(x.grupoNombre || x.nombre).localeCompare(String(y.grupoNombre || y.nombre), 'es')))
+    .map(g => g.grupo ? { clave: g.id, nombre: g.nombre, codigo: (g.hijos.find(h => h.codigo) || {}).codigo || '', colores: g.hijos.map(h => ({ id: h.id, color: h.color || 'Sin color' })) }
+                      : { clave: g.a.id, nombre: g.a.nombre, codigo: g.a.codigo || '', colores: [{ id: g.a.id, color: g.a.color || '' }] });
+}
+function renderFormRaqueta() {
+  const headerActions = document.getElementById('headerActions');
+  if (headerActions) headerActions.style.display = 'none';
+  ['loginScreen', 'onboardingScreen', 'homeScreen', 'clubGestionScreen', 'torneoScreen', 'planScreen', 'tallerScreen', 'publicoScreen', 'tiendaOnlineScreen'].forEach(id => {
+    const e = document.getElementById(id); if (e) e.style.display = 'none';
+  });
+  document.body.classList.add('tpub-on');
+  document.body.classList.remove('solo-lectura');
+  const nubeEl = document.getElementById('nubeIndicador'); if (nubeEl) nubeEl.style.display = 'none';
+  const root = document.getElementById('tallerPublicoScreen');
+  root.style.display = 'block';
+  root.innerHTML = '';
+  const cfg = (TallerApp.getState() || {}).config || {};
+  const nombreTaller = cfg.nombreTaller || 'IDERMAY CANTABRIA';
+  document.title = 'Deja tu raqueta · ' + nombreTaller;
+  const logo = () => el('div', { class: 'tpb-logo', html: typeof OL_LOGO_IDERMAY_BLANCO !== 'undefined' ? OL_LOGO_IDERMAY_BLANCO : '' });
+  root.appendChild(el('section', { class: 'tpb-hero' }, el('div', { class: 'tpb-hero-in' },
+    logo(),
+    el('div', { class: 'tpb-eyebrow' }, '🏸 Encordado'),
+    el('h1', {}, frmRaqExito ? '¡Recibido!' : 'Deja tu raqueta'),
+    el('p', {}, frmRaqExito ? 'Ya tenemos tus datos. Tu raqueta entra en la cola en su turno.' : 'Rellena tus datos y cómo quieres el encordado. Tardas un minuto.'))));
+  const cuerpo = el('div', { class: 'tpb-cuerpo' });
+  root.appendChild(cuerpo);
+
+  if (frmRaqExito) {
+    const e = frmRaqExito;
+    cuerpo.appendChild(el('section', { class: 'tpb-card tpb-estado lista' },
+      el('div', { class: 'tpb-est-ico' }, '✅'), el('h2', {}, 'Gracias, ' + e.nombre),
+      el('p', {}, 'Cordaje: ' + (e.cordajeNombre || 'el que te aconsejemos') + (e.color ? ' · ' + e.color : '') + ' · Tensión: ' + (e.tension ? fmtTensionForm(e.tension) : 'la que te aconsejemos') + '.'),
+      el('p', { style: 'margin-top:8px;' }, 'Cuando la aceptemos te avisamos por WhatsApp con el enlace para seguirla en directo.')));
+    cuerpo.appendChild(el('button', { type: 'button', class: 'tpf-otra', onclick: () => {
+      frmRaqExito = null; Object.assign(frmRaq, { raqueta: '', comentarios: '' }); renderFormRaqueta(); window.scrollTo(0, 0);
+    } }, '+ Dejar otra raqueta'));
+  } else {
+    const f = frmRaq;
+    const campo = (etiqueta, input, nota) => el('label', { class: 'tpf-campo' }, el('span', {}, etiqueta), input, nota ? el('small', {}, nota) : null);
+    const entrada = (k, attrs) => { const i = el('input', Object.assign({ value: f[k] || '' }, attrs)); i.addEventListener('input', () => { f[k] = i.value; }); return i; };
+    const datos = el('section', { class: 'tpb-card tpf' }, el('h2', { class: 'tpf-tit' }, el('i', {}, '1'), 'Tus datos'),
+      el('div', { class: 'tpf-fila' },
+        campo('Nombre', entrada('nombre', { type: 'text', autocomplete: 'given-name', maxlength: '60', id: 'frmNombre' })),
+        campo('Apellidos', entrada('apellidos', { type: 'text', autocomplete: 'family-name', maxlength: '80', id: 'frmApellidos' }))),
+      campo('Teléfono', entrada('telefono', { type: 'tel', inputmode: 'tel', autocomplete: 'tel', maxlength: '20', id: 'frmTelefono' }), 'Te avisamos por WhatsApp cuando esté lista.'),
+      campo('Raqueta (marca y modelo)', entrada('raqueta', { type: 'text', maxlength: '80', placeholder: 'Opcional · p. ej. Yonex Astrox 88D', id: 'frmRaqueta' })));
+    // Honeypot invisible contra robots
+    const trampa = el('input', { type: 'text', name: 'web', tabindex: '-1', autocomplete: 'off', class: 'tpf-trampa', 'aria-hidden': 'true' });
+    trampa.addEventListener('input', () => { f.web = trampa.value; });
+    datos.appendChild(trampa);
+    cuerpo.appendChild(datos);
+
+    const lista = cordajesFormRaqueta();
+    const secCordaje = el('section', { class: 'tpb-card tpf' }, el('h2', { class: 'tpf-tit' }, el('i', {}, '2'), 'Cordaje'));
+    const opcion = (clave, titulo, sub) => el('button', { type: 'button', class: 'tpf-opc' + (f.grupo === clave ? ' on' : ''), 'aria-pressed': f.grupo === clave ? 'true' : 'false', 'data-grupo': clave, onclick: () => {
+      f.grupo = clave; frmRaqError = '';
+      const g = lista.find(x => x.clave === clave);
+      f.cordajeId = g && g.colores.length === 1 ? g.colores[0].id : '';
+      renderFormRaqueta();
+    } }, el('b', {}, titulo), sub ? el('small', {}, sub) : null);
+    const opciones = el('div', { class: 'tpf-opciones' });
+    lista.forEach(g => opciones.appendChild(opcion(g.clave, g.nombre, [g.codigo, g.colores.length > 1 ? g.colores.length + ' colores' : (g.colores[0].color || '')].filter(Boolean).join(' · '))));
+    opciones.appendChild(opcion('consejo', 'Aconséjame tú', 'Elijo contigo en el taller'));
+    secCordaje.appendChild(opciones);
+    const g = lista.find(x => x.clave === f.grupo);
+    if (g && g.colores.length > 1) {
+      secCordaje.appendChild(el('div', { class: 'tpf-sub' }, 'Elige el color'));
+      const cols = el('div', { class: 'tpf-colores' });
+      g.colores.forEach(c => {
+        const css = colorCss(c.color);
+        cols.appendChild(el('button', { type: 'button', class: 'tpf-color' + (f.cordajeId === c.id ? ' on' : ''), 'aria-pressed': f.cordajeId === c.id ? 'true' : 'false', 'data-color': c.color, onclick: () => { f.cordajeId = c.id; frmRaqError = ''; renderFormRaqueta(); } },
+          el('i', { style: css ? 'background:' + css : 'background:repeating-linear-gradient(45deg,#ddd 0 4px,#fff 4px 8px)' }), c.color));
+      });
+      secCordaje.appendChild(cols);
+    }
+    cuerpo.appendChild(secCordaje);
+
+    const secTension = el('section', { class: 'tpb-card tpf' }, el('h2', { class: 'tpf-tit' }, el('i', {}, '3'), 'Tensión'));
+    const tens = el('div', { class: 'tpf-tensiones' });
+    TENSIONES_FORM.forEach(t => tens.appendChild(el('button', { type: 'button', class: 'tpf-ten' + (f.tension === t ? ' on' : ''), 'aria-pressed': f.tension === t ? 'true' : 'false', 'data-tension': String(t), onclick: () => { f.tension = t; frmRaqError = ''; renderFormRaqueta(); } },
+      el('b', {}, String(t).replace('.', ',') + ' kg'), el('small', {}, Math.round(t * 2.2046) + ' lb'))));
+    tens.appendChild(el('button', { type: 'button', class: 'tpf-ten tpf-ten-c' + (f.tension === 0 ? ' on' : ''), 'aria-pressed': f.tension === 0 ? 'true' : 'false', 'data-tension': '0', onclick: () => { f.tension = 0; frmRaqError = ''; renderFormRaqueta(); } }, el('b', {}, 'Aconséjame'), el('small', {}, 'No lo sé')));
+    secTension.appendChild(tens);
+    const coment = el('textarea', { rows: '2', maxlength: '300', placeholder: 'Opcional · p. ej. la necesito para el sábado', id: 'frmComentarios' }); coment.value = f.comentarios || '';
+    coment.addEventListener('input', () => { f.comentarios = coment.value; });
+    secTension.appendChild(campo('Comentarios', coment));
+    cuerpo.appendChild(secTension);
+
+    const chk = el('input', { type: 'checkbox', id: 'frmConsent', checked: f.consentimiento ? 'checked' : null });
+    chk.addEventListener('change', () => { f.consentimiento = chk.checked; if (chk.checked) { frmRaqError = ''; const m = document.querySelector('.tpf-error'); if (m) m.textContent = ''; } });
+    const msg = el('div', { class: 'tpf-error', role: 'alert' }, frmRaqError || '');
+    cuerpo.appendChild(el('section', { class: 'tpb-card tpf tpf-final' },
+      el('label', { class: 'tpf-check' }, chk, el('span', {}, 'Acepto que ' + nombreTaller + ' guarde mi nombre y teléfono para encordar mi raqueta y avisarme.')),
+      msg,
+      el('button', { type: 'button', class: 'tpf-enviar', id: 'frmEnviar', disabled: frmRaqEnviando ? 'disabled' : null, onclick: () => enviarFormRaqueta(lista) }, frmRaqEnviando ? 'Enviando…' : 'Enviar')));
+  }
+  const tel = typeof telefonoParaWhatsappTienda === 'function' ? telefonoParaWhatsappTienda(cfg.telefonoTienda) : '';
+  root.appendChild(el('footer', { class: 'tpb-pie' }, logo(), el('div', {}, el('b', {}, nombreTaller), el('span', {}, tel ? 'WhatsApp ' + cfg.telefonoTienda : 'Encordado de raquetas'))));
+}
+function fmtTensionForm(t) { return String(t).replace('.', ',') + ' kg'; }
+function enviarFormRaqueta(lista) {
+  const f = frmRaq;
+  const limpiar = v => String(v || '').replace(/\s+/g, ' ').trim();
+  const fallo = t => { frmRaqError = t; renderFormRaqueta(); const m = document.querySelector('.tpf-error'); if (m) m.scrollIntoView({ block: 'center', behavior: 'smooth' }); };
+  if (f.web) return;
+  const nombre = limpiar(f.nombre), apellidos = limpiar(f.apellidos), tel = limpiar(f.telefono);
+  if (nombre.length < 2) return fallo('Escribe tu nombre.');
+  if (apellidos.length < 2) return fallo('Escribe tus apellidos.');
+  if (tel.replace(/\D/g, '').length < 9) return fallo('Escribe un teléfono válido (9 cifras).');
+  if (!f.grupo) return fallo('Elige un cordaje (o «Aconséjame tú»).');
+  const g = lista.find(x => x.clave === f.grupo);
+  if (f.grupo !== 'consejo' && !g) return fallo('Ese cordaje ya no está disponible. Elige otro.');
+  if (g && !f.cordajeId) return fallo('Elige el color del cordaje.');
+  if (f.tension === null || f.tension === undefined) return fallo('Elige la tensión (o «Aconséjame»).');
+  if (!f.consentimiento) return fallo('Marca la casilla de aceptación para poder enviarlo.');
+  if (typeof firebaseDb === 'undefined' || !firebaseDb) return fallo('No hay conexión. Inténtalo de nuevo en un momento.');
+  const color = g ? ((g.colores.find(c => c.id === f.cordajeId) || {}).color || '') : '';
+  const datos = {
+    nombre: nombre.slice(0, 60), apellidos: apellidos.slice(0, 80), telefono: tel.slice(0, 20), raqueta: limpiar(f.raqueta).slice(0, 80),
+    cordajeId: g ? String(f.cordajeId).slice(0, 60) : '', cordajeNombre: g ? String(g.nombre).slice(0, 120) : '', color: color.slice(0, 40),
+    tension: Number(f.tension) || 0, comentarios: limpiar(f.comentarios).slice(0, 300), consentimiento: true, creadoEn: Date.now(),
+  };
+  frmRaqEnviando = true; frmRaqError = ''; renderFormRaqueta();
+  firebaseDb.collection('solicitudes_raqueta').add(datos).then(() => {
+    frmRaqEnviando = false; frmRaqExito = datos;
+    Object.assign(frmRaq, { grupo: '', cordajeId: '', tension: null, comentarios: '', raqueta: '' });
+    renderFormRaqueta(); window.scrollTo(0, 0);
+  }).catch(err => {
+    frmRaqEnviando = false;
+    fallo((err && /permission/.test(String(err.code || err.message))) ? 'El taller todavía no tiene activado este formulario. Avísanos por WhatsApp.' : 'No se ha podido enviar. Comprueba la conexión y vuelve a intentarlo.');
+  });
 }
 function telefonoParaWhatsappTienda(tel) {
   let digitos = String(tel || '').replace(/\D/g, '');
@@ -14007,7 +14288,7 @@ function tdoIntroTienda(nombreTienda) {
 }
 document.addEventListener('DOMContentLoaded', () => {
   if (typeof esVistaTiendaOnline === 'function' && esVistaTiendaOnline() && !tdoIntroHecha) tdoIntroTienda('IDERMAY CANTABRIA');
-  else if (typeof esVistaPublicaTaller === 'function' && esVistaPublicaTaller()) idermayVideoIntro();
+  else if ((typeof esVistaPublicaTaller === 'function' && esVistaPublicaTaller()) || (typeof esVistaFormRaqueta === 'function' && esVistaFormRaqueta())) idermayVideoIntro();
 });
 // ===== Tienda online · portada de prueba en «hero» (?tiendaonline=1&hero=1) =====
 // Mismo esquema que la portada Reelmark (marco 1440×1080, titular grande, carrusel curvo que gira solo y se
@@ -21152,6 +21433,10 @@ function arrancarAppLocal() {
     renderVistaPublicaTaller();
     return;
   }
+  if (esVistaFormRaqueta()) {
+    renderFormRaqueta();
+    return;
+  }
   if (esVistaPublica()) {
     renderVistaPublica();
     return;
@@ -21477,6 +21762,10 @@ function arranqueLegado() {
           const activo = document.activeElement;
           const ocupado = activo && (activo.tagName === 'SELECT' || activo.tagName === 'INPUT');
           if (ocupado) { timerVistaPublica = setTimeout(intentarActualizar, 1500); return; }
+          if (esVistaFormRaqueta()) {
+            // El cliente puede estar a mitad de rellenar: solo se actualiza la lista de cordajes, sin perder lo escrito.
+            aplicarDatosDeNube(snap.data()); if (!frmRaqEnviando) renderFormRaqueta(); return;
+          }
           aplicarDatosDeNube(snap.data());
           if (esVistaPublicaTaller()) renderVistaPublicaTaller();
           else if (esVistaTiendaOnline()) renderTiendaOnline();

@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261106-fotosportada">
+<meta name="build-id" content="v20261106-endirecto">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -18531,6 +18531,25 @@ function sanearPublico(v) {
   }
   return v;
 }
+// ¿Hay un torneo de verdad en marcha? (para el aviso «en directo» de la web)
+// Sí, si tiene sorteo hecho con partidos por jugar y además es su día (fecha del torneo hoy o ayer)
+// o, si no tiene fecha, ya ha empezado (algún partido jugado o en juego).
+function torneoEstaEnDirecto(st) {
+  if (!st || !Array.isArray(st.categories)) return false;
+  const todos = [];
+  st.categories.forEach(c => { if (!c || !c.enabled) return; (c.matches || []).forEach(m => todos.push(m)); if (c.knockout && Array.isArray(c.knockout.rounds)) c.knockout.rounds.forEach(r => (r || []).forEach(m => todos.push(m))); });
+  const reales = todos.filter(m => m && m.p1 && m.p2 && m.p1 !== 'BYE' && m.p2 !== 'BYE');
+  if (!reales.length) return false;
+  if (!reales.some(m => !m.winner)) return false;            // todo jugado
+  const fecha = st.meta && st.meta.date;
+  if (fecha && /^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+    const [y, mo, d] = fecha.split('-').map(Number); const dia = new Date(y, mo - 1, d);
+    const dif = Math.round((hoy - dia) / 86400000);
+    return dif >= 0 && dif <= 1;
+  }
+  return reales.some(m => m.winner || m.inicioReal);
+}
 function estadoPublicoParaNube() {
   const t = TallerApp.getState() || {};
   const cfg = t.config || {};
@@ -18563,6 +18582,7 @@ function estadoPublicoParaNube() {
           podios: TorneoApp.podiosDeEstado(h.id === TorneoApp.getTorneoActivoId() ? TorneoApp.getState() : h.snapshot) }
       : h)),
     torneoActivoId: TorneoApp.getTorneoActivoId(),
+    torneoEnDirecto: !activoFinalizado && torneoEstaEnDirecto(TorneoApp.getState()),
     taller,
     web: datosWebPublicos(),
     actualizadoEn: Date.now(),

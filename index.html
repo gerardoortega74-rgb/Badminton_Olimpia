@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="build-id" content="v20261106-fotosportada">
+<meta name="build-id" content="v20261106-endirecto">
 <script>
 // Los enlaces de la app (?club=, ?tiendaonline=, ?tallerpublico=, ?publico=, ?fichar=…) siguen funcionando:
 // cualquier dirección con parámetros va a la app. Y si se abre desde el icono de la pantalla de inicio, también.
@@ -619,7 +619,8 @@ footer img{height:38px;width:auto}
 
     // torneo en marcha
     var ed = $('enDirecto'); ed.innerHTML = '';
-    var activo = pub && pub.torneo && pub.torneoActivoId ? pub.torneo : null;
+    // solo si de verdad hay un torneo jugándose (lo decide la app: sorteo hecho, partidos por jugar y es su día)
+    var activo = pub && pub.torneo && pub.torneoActivoId && pub.torneoEnDirecto === true ? pub.torneo : null;
     var nombreActivo = activo && ((activo.meta && (activo.meta.title || activo.meta.nombre)) || activo.nombre || activo.title);
     var enlaceT = 'app.html?publico=1&torneo=' + encodeURIComponent((pub && pub.torneoActivoId) || '');
     if (activo && nombreActivo && w.mostrarTorneos !== false) {

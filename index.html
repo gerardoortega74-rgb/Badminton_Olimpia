@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="build-id" content="v20261106-endirecto">
+<meta name="build-id" content="v20261106-volanteplumas">
 <script>
 // Los enlaces de la app (?club=, ?tiendaonline=, ?tallerpublico=, ?publico=, ?fichar=…) siguen funcionando:
 // cualquier dirección con parámetros va a la app. Y si se abre desde el icono de la pantalla de inicio, también.
@@ -422,7 +422,7 @@ footer img{height:38px;width:auto}
     ],
     club: { id: '1521537634581-0dced2fee2ef', autor: 'frame harirak', pag: 'https://unsplash.com/photos/white-shuttlecock-on-brown-and-black-badminton-racket-placed-on-floor-UR_mNYmpwco' },
     inscripcion: { id: '1626721105368-a69248e93b32', autor: 'Stephan Rothe', pag: 'https://unsplash.com/photos/shuttlecock-on-badminton-net-VePgmkq3hHI' },
-    app: { id: '1564226803380-91139fdcb4d0', autor: 'Siora Photography', pag: 'https://unsplash.com/photos/white-badminton-shuttlecock-hVeOZslMjGA' }
+    app: { id: '1626721105368-a69248e93b32', autor: 'Stephan Rothe', pag: 'https://unsplash.com/photos/shuttlecock-on-badminton-net-VePgmkq3hHI' }
   };
   function urlFoto(f, w) { return 'https://images.unsplash.com/photo-' + f.id + '?auto=format&fit=crop&w=' + w + '&q=72'; }
   var anchoPortada = Math.min(2400, Math.round(Math.max(window.innerWidth, window.innerHeight * 1.4) * Math.min(2, window.devicePixelRatio || 1)));
@@ -468,7 +468,7 @@ footer img{height:38px;width:auto}
     probar(FOTOS.inscripcion, function (u) { $('inscripcion').style.backgroundImage = 'url("' + u + '")'; });
     probar(FOTOS.app, function (u) { $('areaApp').style.backgroundImage = 'url("' + u + '")'; });
     var cr = $('creditos'); cr.appendChild(document.createTextNode('Fotos: '));
-    var lista = FOTOS.portada.concat([FOTOS.club, FOTOS.inscripcion, FOTOS.app]);
+    var lista = FOTOS.portada.concat([FOTOS.club, FOTOS.inscripcion, FOTOS.app]).filter(function (f, i, a) { return a.findIndex(function (x) { return x.autor === f.autor; }) === i; });
     lista.forEach(function (f, i) { var a = document.createElement('a'); a.href = f.pag; a.target = '_blank'; a.rel = 'noopener'; a.textContent = f.autor; cr.appendChild(a); cr.appendChild(document.createTextNode(i < lista.length - 2 ? ', ' : i === lista.length - 2 ? ' y ' : ' en Unsplash.')); });
   })();
 

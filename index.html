@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="build-id" content="v20261105-acentos">
+<meta name="build-id" content="v20261106-fotosportada">
 <script>
 // Los enlaces de la app (?club=, ?tiendaonline=, ?tallerpublico=, ?publico=, ?fichar=…) siguen funcionando:
 // cualquier dirección con parámetros va a la app. Y si se abre desde el icono de la pantalla de inicio, también.
@@ -444,19 +444,24 @@ footer img{height:38px;width:auto}
     mostrarDiapo(actual);
   }
   function reiniciar() { clearInterval(temporizador); if (!quieto && diapos.length > 1) temporizador = setInterval(function () { mostrarDiapo(actual + 1); }, 7000); }
-  function anadirDiapo(src, primera) {
+  // orden: posición en la lista elegida en la app (las fotos cargan a distinto ritmo, pero salen en su orden)
+  function anadirDiapo(src, primera, orden) {
     var im = new Image();
     im.onload = function () {
       var el = document.createElement('div'); el.className = 'diapo'; el.style.backgroundImage = 'url("' + src + '")';
       var caja = $('diapos');
-      if (primera) { caja.insertBefore(el, caja.firstChild); diapos.unshift({ el: el, src: src }); actual = -1; }
-      else { caja.appendChild(el); diapos.push({ el: el, src: src }); }
-      if (actual < 0 || primera) mostrarDiapo(0);
+      var o = typeof orden === 'number' ? orden : (primera ? -1 : 9999);
+      var d = { el: el, src: src, orden: o };
+      var k = 0; while (k < diapos.length && diapos[k].orden <= o) k++;
+      caja.insertBefore(el, diapos[k] ? diapos[k].el : null); diapos.splice(k, 0, d);
+      if (actual < 0 || k === 0) { actual = -1; mostrarDiapo(0); }
       pintarPuntos(); reiniciar();
     };
     im.src = src;
   }
-  FOTOS.portada.forEach(function (f) { anadirDiapo(urlFoto(f, anchoPortada), false); });
+  function quitarDiapos() { diapos.forEach(function (d) { d.el.remove(); }); diapos = []; actual = -1; pintarPuntos(); }
+  // Si en 1,5 s no han llegado los datos del club, se ponen las fotos de ejemplo
+  var esperaPortada = setTimeout(function () { if (!diapos.length) FOTOS.portada.forEach(function (f, i) { anadirDiapo(urlFoto(f, anchoPortada), false, 100 + i); }); }, 1500);
   (function () {
     var cf = $('clubFoto'); cf.src = urlFoto(FOTOS.club, Math.min(2000, Math.round(window.innerWidth * (window.innerWidth > 760 ? 0.6 : 1) * Math.min(2, window.devicePixelRatio || 1)))); cf.onerror = function () { cf.classList.add('oculto'); };
     var probar = function (f, alCargar) { var im = new Image(); im.onload = function () { alCargar(im.src); }; im.src = urlFoto(f, 1800); };
@@ -671,10 +676,23 @@ footer img{height:38px;width:auto}
   // ---------- fotos ----------
   function cargarFotos(db, w) {
     var col = db.collection('club').doc('datos').collection('taller_fotos');
-    if (w.tienePortada) col.doc('web_portada').get().then(function (d) {
-      var f = d.exists && d.data().foto;
-      if (f) anadirDiapo(f, true);
-    }).catch(function () {});
+    if (Array.isArray(w.portadas)) {
+      // fotos que van pasando, en el orden y con las que se han dejado visibles en la app
+      clearTimeout(esperaPortada); quitarDiapos();
+      var vis = w.portadas.filter(function (p) { return p && p.visible; });
+      if (!vis.length) vis = FOTOS.portada.map(function (f) { return { tipo: 'ejemplo', ref: f.id }; });
+      vis.forEach(function (p, i) {
+        if (p.tipo === 'ejemplo') anadirDiapo(urlFoto({ id: p.ref }, anchoPortada), false, i);
+        else if (p.doc) col.doc(p.doc).get().then(function (d) { var f = d.exists && d.data().foto; if (f) anadirDiapo(f, false, i); }).catch(function () {});
+      });
+    } else {
+      clearTimeout(esperaPortada);
+      if (!diapos.length) FOTOS.portada.forEach(function (f, i) { anadirDiapo(urlFoto(f, anchoPortada), false, 100 + i); });
+      if (w.tienePortada) col.doc('web_portada').get().then(function (d) {
+        var f = d.exists && d.data().foto;
+        if (f) anadirDiapo(f, true, -1);
+      }).catch(function () {});
+    }
     if (w.nGaleria) col.doc('web_galeria').get().then(function (d) {
       var fotos = (d.exists && d.data().fotos) || [];
       var g = $('fotosGaleria'); g.innerHTML = '';

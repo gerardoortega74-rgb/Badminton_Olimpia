@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261105-tensionexacta">
+<meta name="build-id" content="v20261106-fotosportada">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -247,6 +247,35 @@ body.tpub-on main#shellMain{max-width:none !important;margin:0 !important;paddin
 .tpf-select:focus{outline:none;border-color:var(--tn);box-shadow:0 0 0 3px rgba(11,45,91,.12);}
 .tpf-nota{color:#6B7A90;font-size:12.5px;}
 .tpf-oculto{display:none;}
+.web-port-rejilla{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;}
+.web-port{border:1px solid var(--line,#E2E6EC);border-radius:12px;overflow:hidden;background:#fff;}
+.web-port.oculta .web-port-img{filter:grayscale(.6) brightness(.85);}
+.web-port-img{position:relative;aspect-ratio:16/9;background:#20262b center/cover no-repeat;cursor:zoom-in;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;}
+.web-port-estado{position:absolute;left:8px;top:8px;background:rgba(0,0,0,.6);color:#fff;font-size:12px;font-weight:700;padding:3px 8px;border-radius:999px;}
+.web-port.oculta .web-port-estado{background:#B7791F;}
+.web-port-num{position:absolute;right:8px;top:8px;background:rgba(255,255,255,.9);color:#15191c;font-weight:800;font-size:12px;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;}
+.web-port-pie{padding:8px;display:flex;flex-direction:column;gap:6px;}
+.web-port-nom{font-size:13px;font-weight:700;}
+.web-port-acc{display:flex;flex-wrap:wrap;gap:4px;}
+.web-port-acc .btn{padding:5px 9px;}
+.pw-fondo{position:fixed;inset:0;z-index:10060;background:rgba(10,14,18,.8);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:20px 12px;}
+.pw-caja{background:#fff;border-radius:16px;padding:14px;max-width:1100px;width:100%;}
+.pw-cab{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-size:17px;}
+.pw-marcos{display:flex;gap:16px;align-items:flex-end;justify-content:center;flex-wrap:wrap;}
+.pw-marco{display:flex;flex-direction:column;align-items:center;gap:6px;}
+.pw-marco.pc{flex:1 1 560px;max-width:720px;}.pw-marco.pc .pw-pant{aspect-ratio:16/9;width:100%;}
+.pw-marco.movil .pw-pant{width:200px;aspect-ratio:9/19;}
+.pw-pant{position:relative;border-radius:10px;background:#15191c center/cover no-repeat;border:6px solid #15191c;overflow:hidden;color:#fff;font-family:'Big Shoulders Display',Archivo,system-ui,sans-serif;}
+.pw-barra{position:absolute;left:0;right:0;top:0;display:flex;justify-content:space-between;align-items:center;padding:6px 10px;font-size:12px;}
+.pw-barra span{background:#3dd6c3;color:#0b0d10;border-radius:999px;padding:2px 8px;font-family:Archivo,system-ui,sans-serif;font-weight:700;font-size:10px;}
+.pw-txt{position:absolute;left:7%;right:10%;bottom:12%;}
+.pw-txt small{display:block;font-family:Archivo,system-ui,sans-serif;font-weight:700;font-size:10px;margin-bottom:4px;}
+.pw-h1{font-weight:900;text-transform:uppercase;line-height:1.06;font-size:clamp(16px,3.6vw,40px);text-shadow:0 2px 18px rgba(0,0,0,.5);}
+.pw-marco.movil .pw-h1{font-size:22px;}
+.pw-btns{display:flex;gap:6px;margin-top:8px;}
+.pw-btns i{font-style:normal;font-family:Archivo,system-ui,sans-serif;font-weight:700;font-size:10px;background:#3dd6c3;color:#0b0d10;border-radius:999px;padding:4px 9px;}
+.pw-btns i.b{background:transparent;border:1.5px solid #fff;color:#fff;}
+.pw-etq{font-size:13px;font-weight:700;color:#33415A;}
 .tpf-kg-caja{position:relative;display:flex;align-items:center;}
 .tpf-kg{padding-right:44px !important;font-variant-numeric:tabular-nums;}
 .tpf-kg:disabled{opacity:.5;}
@@ -18586,12 +18615,12 @@ let fotosWebCache = null;
 let fotosWebPromesa = null;
 function cargarFotosWeb() {
   if (fotosWebPromesa) return fotosWebPromesa;
-  fotosWebCache = { portada: null, galeria: [], noticias: {}, noticiasExtra: {} };
+  fotosWebCache = { portadas: {}, galeria: [], noticias: {}, noticiasExtra: {} };
   if (!firebaseDisponible) return (fotosWebPromesa = Promise.resolve(fotosWebCache));
   const col = coleccionFotosTaller();
   const w = webCfg();
   fotosWebPromesa = Promise.all([
-    col.doc('web_portada').get().then(d => { if (d.exists) fotosWebCache.portada = d.data().foto || null; }).catch(() => {}),
+    Promise.all(portadasWeb().filter(p => p.tipo === 'propia').map(p => col.doc(p.doc).get().then(d => { if (d.exists && d.data().foto) fotosWebCache.portadas[p.id] = d.data().foto; }).catch(() => {}))),
     col.doc('web_galeria').get().then(d => { if (d.exists && Array.isArray(d.data().fotos)) fotosWebCache.galeria = d.data().fotos.slice(); }).catch(() => {}),
   ].concat(w.noticias.filter(n => n.tieneFoto).map(n => col.doc('web_noticia_' + n.id).get().then(d => { if (d.exists) fotosWebCache.noticias[n.id] = d.data().foto || null; }).catch(() => {})))
    .concat(w.noticias.filter(n => Array.isArray(n.extras) && n.extras.length).map(n => Promise.all(n.extras.map(k => col.doc('web_noticia_' + n.id + '_' + k).get().then(d => (d.exists && d.data().foto) ? { k, foto: d.data().foto } : null).catch(() => null))).then(l => { fotosWebCache.noticiasExtra[n.id] = l.filter(Boolean); }))))
@@ -19155,6 +19184,103 @@ function publicarReelInstagram(n, blob, alEstado) {
 }
 function descargarArchivo(blob, nombre) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nombre; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 8000); }
 
+// Fotos que van pasando en la portada de la web: lista ordenada con fotos propias (subidas desde aquí)
+// y las dos de ejemplo de Unsplash. Cada una se puede probar, ordenar, ocultar o quitar.
+const PORTADAS_EJEMPLO = [
+  { ref: '1626224583764-f87db24ac4ea', nombre: 'Foto de ejemplo 1 (salto)' },
+  { ref: '1722087642932-9b070e9a066e', nombre: 'Foto de ejemplo 2 (remate)' },
+];
+function portadasWeb() {
+  const w = webCfg();
+  if (!Array.isArray(w.portadas)) {
+    w.portadas = [];
+    if (w.tienePortada) w.portadas.push({ id: 'antigua', tipo: 'propia', doc: 'web_portada', visible: true });
+    PORTADAS_EJEMPLO.forEach((e, k) => w.portadas.push({ id: 'ej' + (k + 1), tipo: 'ejemplo', ref: e.ref, visible: true }));
+  }
+  return w.portadas;
+}
+function urlFotoEjemplo(ref, ancho) { return 'https://images.unsplash.com/photo-' + ref + '?auto=format&fit=crop&w=' + (ancho || 1600) + '&q=72'; }
+function fotoDePortada(p) { return p.tipo === 'ejemplo' ? urlFotoEjemplo(p.ref, 1600) : ((fotosWebCache && fotosWebCache.portadas && fotosWebCache.portadas[p.id]) || null); }
+// Vista previa: cómo queda la foto en la portada del ordenador y del móvil, con la frase y los botones encima
+function probarPortadaWeb(p) {
+  const w = webCfg();
+  const foto = fotoDePortada(p); if (!foto) return;
+  const frase = w.eslogan || 'El deporte de raqueta más rápido del mundo, en Torrelavega.';
+  const marco = (cls, txt) => el('div', { class: 'pw-marco ' + cls },
+    el('div', { class: 'pw-pant', style: 'background-image:linear-gradient(180deg,rgba(21,25,28,.15) 0%,rgba(21,25,28,.35) 45%,rgba(21,25,28,.92) 100%),linear-gradient(90deg,rgba(21,25,28,.7) 0%,rgba(21,25,28,0) 65%),url("' + foto + '")' },
+      el('div', { class: 'pw-barra' }, el('b', {}, 'Olimpia'), el('span', {}, 'Acceso')),
+      el('div', { class: 'pw-txt' }, el('small', {}, 'Club Bádminton Olimpia Torrelavega'), el('div', { class: 'pw-h1' }, frase),
+        el('div', { class: 'pw-btns' }, el('i', {}, 'Quiero apuntarme'), el('i', { class: 'b' }, 'Ver horarios')))),
+    el('div', { class: 'pw-etq' }, txt));
+  const fondo = el('div', { class: 'pw-fondo', onclick: e => { if (e.target === fondo) fondo.remove(); } },
+    el('div', { class: 'pw-caja' },
+      el('div', { class: 'pw-cab' }, el('b', {}, '👁️ Así queda en la portada'), el('button', { type: 'button', class: 'btn btn-ghost btn-sm', onclick: () => fondo.remove() }, 'Cerrar')),
+      el('div', { class: 'pw-marcos' }, marco('pc', '🖥️ Ordenador'), marco('movil', '📱 Móvil')),
+      el('div', { class: 'toolbar', style: 'justify-content:center;margin-top:12px;' },
+        el('button', { type: 'button', class: 'btn ' + (p.visible ? 'btn-ghost' : 'btn-gold') + ' btn-sm pw-poner', onclick: () => { p.visible = !p.visible; saveClubGlobal(); fondo.remove(); renderWebClub(); } }, p.visible ? '🙈 Ocultar de la web' : '✅ Poner en la web'))));
+  document.body.appendChild(fondo);
+}
+function bloquePortadasWeb() {
+  const w = webCfg(), lista = portadasWeb();
+  const guardar = () => saveClubGlobal();
+  const caja = el('div', { class: 'web-portadas', id: 'webPortadas' });
+  const nVisibles = lista.filter(p => p.visible).length;
+  caja.appendChild(el('div', { class: 'sub', style: 'margin:4px 0 10px;' },
+    'Fotos que van pasando en la portada (una cada 7 segundos). Las nuevas entran «En prueba»: pulsa 👁️ para ver cómo quedan y «Poner en la web» cuando te gusten. ' + (nVisibles ? 'Ahora se ven ' + nVisibles + '.' : 'Ahora no se ve ninguna: la web pondrá las de ejemplo.')));
+  const rejilla = el('div', { class: 'web-port-rejilla' });
+  lista.forEach((p, i) => {
+    const foto = fotoDePortada(p);
+    const mover = d => { const j = i + d; if (j < 0 || j >= lista.length) return; [lista[i], lista[j]] = [lista[j], lista[i]]; guardar(); renderWebClub(); };
+    rejilla.appendChild(el('div', { class: 'web-port' + (p.visible ? '' : ' oculta'), 'data-id': p.id },
+      el('div', { class: 'web-port-img', style: foto ? 'background-image:url("' + foto + '")' : '', onclick: () => probarPortadaWeb(p) }, foto ? null : el('span', {}, 'Cargando…'),
+        el('span', { class: 'web-port-estado' }, p.visible ? '✅ En la web' : '🧪 En prueba'), el('span', { class: 'web-port-num' }, String(i + 1))),
+      el('div', { class: 'web-port-pie' },
+        el('span', { class: 'web-port-nom' }, p.tipo === 'ejemplo' ? ((PORTADAS_EJEMPLO.find(e => e.ref === p.ref) || {}).nombre || 'Foto de ejemplo') : 'Foto propia'),
+        el('div', { class: 'web-port-acc' },
+          el('button', { type: 'button', class: 'btn btn-ghost btn-sm', title: 'Probar cómo queda', onclick: () => probarPortadaWeb(p) }, '👁️'),
+          el('button', { type: 'button', class: 'btn btn-ghost btn-sm', title: 'Antes', disabled: i === 0 ? 'disabled' : null, onclick: () => mover(-1) }, '◀'),
+          el('button', { type: 'button', class: 'btn btn-ghost btn-sm', title: 'Después', disabled: i === lista.length - 1 ? 'disabled' : null, onclick: () => mover(1) }, '▶'),
+          el('button', { type: 'button', class: 'btn btn-sm ' + (p.visible ? 'btn-ghost' : 'btn-gold') + ' web-port-ver', onclick: () => { p.visible = !p.visible; guardar(); renderWebClub(); } }, p.visible ? 'Ocultar' : 'Poner en la web'),
+          p.tipo === 'propia' ? el('button', { type: 'button', class: 'btn btn-ghost btn-sm web-port-quitar', title: 'Quitar la foto', onclick: () => {
+            if (!confirm('¿Quitar esta foto? Se borra del todo.')) return;
+            borrarFotoWebNube(p.doc).then(() => {
+              w.portadas = lista.filter(x => x !== p);
+              if (p.doc === 'web_portada') w.tienePortada = false;
+              if (fotosWebCache && fotosWebCache.portadas) delete fotosWebCache.portadas[p.id];
+              guardar(); renderWebClub();
+            });
+          } }, '🗑️') : null))));
+  });
+  caja.appendChild(rejilla);
+  const subir = el('button', { type: 'button', class: 'btn btn-gold btn-sm web-port-anadir', onclick: () => {
+    const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.multiple = true;
+    inp.onchange = () => {
+      const files = [...(inp.files || [])].slice(0, 8);
+      if (!files.length) return;
+      subir.disabled = true; subir.textContent = 'Subiendo ' + files.length + ' foto' + (files.length > 1 ? 's' : '') + '…';
+      Promise.all(files.map(file => comprimirFotoWeb(file, 1800, 0.8).then(foto => {
+        const id = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        const doc = 'web_portada_' + id;
+        return guardarFotoWebNube(doc, { foto }).then(() => {
+          if (!fotosWebCache) fotosWebCache = { portadas: {} };
+          if (!fotosWebCache.portadas) fotosWebCache.portadas = {};
+          fotosWebCache.portadas[id] = foto;
+          return { id, tipo: 'propia', doc, visible: false };
+        });
+      }))).then(nuevas => {
+        // las propias van delante de las de ejemplo
+        const k = lista.findIndex(x => x.tipo === 'ejemplo');
+        lista.splice(k < 0 ? lista.length : k, 0, ...nuevas);
+        w.portadas = lista; guardar(); renderWebClub();
+        const ultima = nuevas[nuevas.length - 1]; if (ultima) setTimeout(() => probarPortadaWeb(ultima), 50);
+      }).catch(e => { alert('No se pudo subir: ' + (e && e.message ? e.message : e)); renderWebClub(); });
+    };
+    inp.click();
+  } }, '＋ Añadir fotos');
+  caja.appendChild(el('div', { class: 'toolbar', style: 'margin-top:10px;' }, subir));
+  caja.appendChild(el('div', { class: 'sub', style: 'margin-top:6px;' }, 'Mejor fotos horizontales, con la parte importante a la derecha (a la izquierda va la frase).'));
+  return caja;
+}
 function renderWebClub() {
   const root = document.getElementById('webScreen');
   if (!root) return;
@@ -19181,15 +19307,8 @@ function renderWebClub() {
     el('h3', {}, 'Portada'),
     campo('Frase principal', w.eslogan, v => w.eslogan = v, { ph: 'El deporte de raqueta más rápido del mundo, en Torrelavega.' }),
     (() => {
-      const caja = el('div', { class: 'web-portada-caja', style: 'margin-top:8px;' }, el('div', { class: 'sub' }, 'Cargando foto…'));
-      cargarFotosWeb().then(f => {
-        caja.innerHTML = '';
-        if (f.portada) caja.appendChild(el('img', { src: f.portada, alt: 'Foto de portada', style: 'width:100%;max-width:520px;border-radius:10px;display:block;margin-bottom:8px;' }));
-        else caja.appendChild(el('div', { class: 'sub', style: 'margin-bottom:8px;' }, 'Sin foto propia: la portada pasa fotos de bádminton de stock. Una foto horizontal de vuestros partidos o del pabellón va la primera.'));
-        caja.appendChild(el('div', { class: 'toolbar' },
-          el('button', { class: 'btn btn-gold btn-sm web-subir-portada', type: 'button', onclick: () => elegirArchivoImagen(file => comprimirFotoWeb(file, 1800, 0.8).then(foto => guardarFotoWebNube('web_portada', { foto }).then(() => { f.portada = foto; w.tienePortada = true; guardar(); renderWebClub(); })).catch(e => alert(e.message))) }, f.portada ? 'Cambiar foto' : 'Subir foto de portada'),
-          f.portada ? el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => { if (!confirm('¿Quitar la foto de portada?')) return; borrarFotoWebNube('web_portada').then(() => { f.portada = null; w.tienePortada = false; guardar(); renderWebClub(); }); } }, 'Quitar') : null));
-      });
+      const caja = el('div', {}, el('div', { class: 'sub' }, 'Cargando fotos…'));
+      cargarFotosWeb().then(() => { caja.innerHTML = ''; caja.appendChild(bloquePortadasWeb()); });
       return caja;
     })(),
   ));

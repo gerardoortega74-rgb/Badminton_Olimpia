@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="build-id" content="v20261106-volanteplumas">
+<meta name="build-id" content="v20261106-visitas">
 <script>
 // Los enlaces de la app (?club=, ?tiendaonline=, ?tallerpublico=, ?publico=, ?fichar=…) siguen funcionando:
 // cualquier dirección con parámetros va a la app. Y si se abre desde el icono de la pantalla de inicio, también.
@@ -393,6 +393,7 @@ footer img{height:38px;width:auto}
     <span>© <span id="anio"></span> Club Bádminton Olimpia Torrelavega</span>
     <a href="app.html">Acceso a la app</a>
     <p class="creditos" id="creditos"></p>
+    <p class="creditos"><a href="#" id="linkCookies" hidden onclick="try{localStorage.removeItem('badmintonCookies')}catch(e){}location.reload();return false;">Preferencias de cookies</a></p>
   </div>
 </footer>
 
@@ -705,6 +706,87 @@ footer img{height:38px;width:auto}
     });
   }
 
+// ===== Visitas: contador propio, sin cookies (cada visita = un documento en «visitas») + Google Analytics opcional con permiso =====
+  var medirEstado = null;
+  function medirVisita(db, pagina) {
+    try {
+      if (medirEstado || !db) return;
+      var ua = navigator.userAgent || '';
+      if (/bot|crawl|spider|slurp|preview|lighthouse|headlesschrome\/(?!.*mobile)/i.test(ua) && !window.__SEED) return;
+      var interno = false;
+      try { interno = !!(localStorage.getItem('badmintonSesion') || localStorage.getItem('badmintonClubGlobal')); } catch (e) {}
+      var q = new URLSearchParams(location.search), origen = 'directo';
+      var ref = ''; try { ref = document.referrer ? new URL(document.referrer).hostname : ''; } catch (e) {}
+      if (q.get('utm_source')) origen = q.get('utm_source');
+      else if (q.get('qr')) origen = 'qr';
+      else if (ref && ref !== location.hostname) origen = /google\./.test(ref) ? 'google' : /instagram/.test(ref) ? 'instagram' : /facebook|fb\./.test(ref) ? 'facebook' : /whatsapp|wa\.me/.test(ref) ? 'whatsapp' : /tiktok/.test(ref) ? 'tiktok' : ref.replace(/^www\./, '');
+      var w = Math.min(screen.width || innerWidth, screen.height || innerHeight);
+      var disp = /iPad|Tablet/i.test(ua) || (w >= 700 && /Mobi|Android/i.test(ua)) ? 'tablet' : (/Mobi|Android|iPhone/i.test(ua) ? 'movil' : 'pc');
+      var ahora = new Date(), dos = function (n) { return (n < 10 ? '0' : '') + n; };
+      var dia = ahora.getFullYear() + '-' + dos(ahora.getMonth() + 1) + '-' + dos(ahora.getDate());
+      var id = 'v' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+      var ref2 = db.collection('visitas').doc(id);
+      var fv = (window.firebase && firebase.firestore && firebase.firestore.FieldValue) ? firebase.firestore.FieldValue.serverTimestamp() : Date.now();
+      medirEstado = { ref: ref2, secciones: [], clics: [], vis: 0, desde: document.visibilityState === 'visible' ? Date.now() : 0, t: null, listo: false };
+      ref2.set({ pagina: String(pagina).slice(0, 20), dia: dia, hora: ahora.getHours(), disp: disp, origen: String(origen).slice(0, 40), interno: interno, secciones: [], clics: [], segundos: 0, creado: fv })
+        .then(function () { medirEstado.listo = true; if (medirEstado.secciones.length || medirEstado.clics.length) medirGuardar(true); })
+        .catch(function () { medirEstado = { roto: true }; });
+      // secciones que se llegan a ver
+      if (window.IntersectionObserver) {
+        var io = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) medirSeccion(e.target.id); }); }, { threshold: 0.35 });
+        document.querySelectorAll('section[id]').forEach(function (s) { io.observe(s); });
+      }
+      // botones y enlaces que se pulsan (solo su nombre, nunca datos escritos)
+      document.addEventListener('click', function (ev) {
+        var a = ev.target && ev.target.closest ? ev.target.closest('a,button,[data-medir]') : null; if (!a) return;
+        var h = a.querySelector && a.querySelector('h1,h2,h3,h4,strong,b'); var n = a.getAttribute('data-medir') || a.getAttribute('aria-label') || ((h && h.textContent) || a.textContent || '').replace(/\s+/g, ' ').trim();
+        if (!n) return; medirEvento(n);
+      }, true);
+      document.addEventListener('visibilitychange', function () {
+        if (!medirEstado || medirEstado.roto) return;
+        if (document.visibilityState === 'hidden') { if (medirEstado.desde) { medirEstado.vis += Date.now() - medirEstado.desde; medirEstado.desde = 0; } medirGuardar(true); }
+        else medirEstado.desde = Date.now();
+      });
+      addEventListener('pagehide', function () { medirGuardar(true); });
+      setInterval(function () { medirGuardar(false); }, 30000);
+    } catch (e) {}
+  }
+  function medirSeccion(s) { if (!medirEstado || medirEstado.roto || !s) return; if (medirEstado.secciones.indexOf(s) < 0 && medirEstado.secciones.length < 15) { medirEstado.secciones.push(String(s).slice(0, 20)); medirGuardar(false); } }
+  function medirEvento(n) { if (!medirEstado || medirEstado.roto || !n) return; n = String(n).slice(0, 30); if (medirEstado.clics.indexOf(n) < 0 && medirEstado.clics.length < 25) { medirEstado.clics.push(n); medirGuardar(false); } }
+  function medirGuardar(ya) {
+    var m = medirEstado; if (!m || m.roto || !m.listo) return;
+    clearTimeout(m.t);
+    var hacer = function () {
+      var seg = m.vis + (m.desde ? Date.now() - m.desde : 0);
+      m.ref.update({ secciones: m.secciones.slice(), clics: m.clics.slice(), segundos: Math.min(7200, Math.round(seg / 1000)) }).catch(function () {});
+    };
+    if (ya) hacer(); else m.t = setTimeout(hacer, 4000);
+  }
+  // --- Google Analytics: solo si se ha puesto el código en la app y el visitante acepta ---
+  function analyticsConPermiso(gaId) {
+    try {
+      if (!gaId || !/^G-[A-Z0-9]{4,15}$/.test(gaId) || document.getElementById('avisoCookies')) return;
+      var dec = null; try { dec = localStorage.getItem('badmintonCookies'); } catch (e) {}
+      var cargar = function () {
+        if (window.__gaCargado) return; window.__gaCargado = true;
+        var s = document.createElement('script'); s.async = true; s.src = 'https://www.googletagmanager.com/gtag/js?id=' + gaId; document.head.appendChild(s);
+        window.dataLayer = window.dataLayer || []; window.gtag = function () { dataLayer.push(arguments); };
+        gtag('js', new Date()); gtag('config', gaId, { anonymize_ip: true });
+      };
+      if (dec === 'si') { cargar(); return; }
+      if (dec === 'no') return;
+      var c = document.createElement('div'); c.id = 'avisoCookies'; c.setAttribute('role', 'dialog'); c.setAttribute('aria-label', 'Aviso de cookies');
+      c.style.cssText = 'position:fixed;left:12px;right:12px;bottom:12px;z-index:9998;max-width:560px;margin:0 auto;background:#15191c;color:#fff;border-radius:14px;padding:14px 16px;box-shadow:0 10px 30px rgba(0,0,0,.35);font:14px/1.45 Archivo,system-ui,sans-serif;display:flex;flex-wrap:wrap;gap:10px;align-items:center';
+      c.innerHTML = '<span style="flex:1 1 260px">Usamos cookies de Google Analytics para saber cuántas personas visitan la web. ¿Nos dejas?</span>'
+        + '<button type="button" data-medir="Cookies: rechazar" style="font:inherit;font-weight:700;border:1.5px solid #fff;background:transparent;color:#fff;border-radius:999px;padding:8px 14px;cursor:pointer">Rechazar</button>'
+        + '<button type="button" data-medir="Cookies: aceptar" style="font:inherit;font-weight:700;border:0;background:#3dd6c3;color:#0b0d10;border-radius:999px;padding:8px 16px;cursor:pointer">Aceptar</button>';
+      var bs = c.querySelectorAll('button');
+      bs[0].onclick = function () { try { localStorage.setItem('badmintonCookies', 'no'); } catch (e) {} c.remove(); };
+      bs[1].onclick = function () { try { localStorage.setItem('badmintonCookies', 'si'); } catch (e) {} c.remove(); cargar(); };
+      document.body.appendChild(c);
+    } catch (e) {}
+  }
+
   // ---------- datos ----------
   pintar(null);
   try {
@@ -713,9 +795,12 @@ footer img{height:38px;width:auto}
       storageBucket: 'badminton-olimpia.firebasestorage.app', messagingSenderId: '494835736183', appId: '1:494835736183:web:b64890641ecf6891803072'
     });
     var db = firebase.firestore();
+    medirVisita(db, 'web');
     db.collection('publico').doc('datos').get().then(function (d) {
       if (!d.exists) return;
       var pub = desenvolver(d.data());
+      analyticsConPermiso(pub && pub.web && pub.web.gaId);
+      if (pub && pub.web && pub.web.gaId) { var lc = document.getElementById('linkCookies'); if (lc) lc.hidden = false; }
       window.__webDatos = pub;
       pintar(pub);
       cargarFotos(db, (pub && pub.web) || {});

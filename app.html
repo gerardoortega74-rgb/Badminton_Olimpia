@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261107-sinagotados">
+<meta name="build-id" content="v20261107-cajadia">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -247,6 +247,16 @@ body.tpub-on main#shellMain{max-width:none !important;margin:0 !important;paddin
 .tpf-select:focus{outline:none;border-color:var(--tn);box-shadow:0 0 0 3px rgba(11,45,91,.12);}
 .tpf-nota{color:#6B7A90;font-size:12.5px;}
 .tpf-oculto{display:none;}
+.im-caja-lista{display:flex;flex-direction:column;border:1px solid #E2E6EC;border-radius:12px;overflow:hidden;}
+.im-caja-fila{display:grid;grid-template-columns:58px 1fr auto auto;gap:10px;align-items:center;padding:8px 12px;border-top:1px solid #EEF1F5;font-size:14px;}
+.im-caja-fila:first-child{border-top:0;}
+.im-caja-h{color:#6B7A90;font-variant-numeric:tabular-nums;}
+.im-caja-t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.im-caja-f{font-size:12.5px;color:#6B7A90;white-space:nowrap;}
+.im-caja-res{margin-top:8px;display:flex;flex-direction:column;gap:6px;}.im-caja-res small{color:#6B7A90;}
+.im-caja-dif{font-weight:800;font-size:16px;padding:8px 12px;border-radius:10px;}
+.im-caja-dif.ok{background:#E8F7EE;color:#146C3A;}.im-caja-dif.sobra{background:#EEF4FF;color:#1E40AF;}.im-caja-dif.falta{background:#FFF1F2;color:#A3111F;}
+@media (max-width:520px){.im-caja-fila{grid-template-columns:44px 1fr auto;}.im-caja-f{display:none;}}
 .im-sin-precios .im-precio-campo{display:none;}
 .vis-tarjs{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:12px;}
 .vis-tarj{background:#F4F7FB;border:1px solid #E2E6EC;border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;}
@@ -12764,9 +12774,131 @@ function viewContabilidadTaller() {
   const nPend = pedidosPendientesDeCobro().length;
   wrap.appendChild(el('div', { class: 'tab-pills', role: 'tablist' },
     el('button', { class: 'btn' + (subTabContab === 'movimientos' ? ' on' : ''), onclick: () => { subTabContab = 'movimientos'; render(); } }, 'Ingresos y gastos'),
+    el('button', { class: 'btn' + (subTabContab === 'caja' ? ' on' : ''), id: 'imTabCaja', onclick: () => { subTabContab = 'caja'; render(); } }, '📅 Caja del día'),
     el('button', { class: 'btn' + (subTabContab === 'pendientes' ? ' on' : ''), onclick: () => { subTabContab = 'pendientes'; render(); } }, 'Pendientes de cobro (' + nPend + ')'),
   ));
-  wrap.appendChild(subTabContab === 'pendientes' ? viewPendientesCobro() : viewMovimientosTaller());
+  wrap.appendChild(subTabContab === 'pendientes' ? viewPendientesCobro() : subTabContab === 'caja' ? viewCajaDia() : viewMovimientosTaller());
+  return wrap;
+}
+// ===== 📅 Caja del día: lo cobrado en un día, por forma de pago y por tipo, con arqueo del efectivo =====
+let cajaDia = null;
+function diaLocal(ts) { const d = new Date(ts); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function formaNorm(f) { const t = String(f || '').toLowerCase(); return /efect/.test(t) ? 'efectivo' : /tarj/.test(t) ? 'tarjeta' : /bizum/.test(t) ? 'bizum' : /transf/.test(t) ? 'transferencia' : 'otro'; }
+const NOMBRE_FORMA = { efectivo: '💶 Efectivo', tarjeta: '💳 Tarjeta', bizum: '📱 Bizum', transferencia: '🏦 Transferencia', otro: '❔ Sin indicar' };
+function datosCajaDia(dia) {
+  const ventaPorMov = {}; (state.ventasTienda || []).forEach(v => { if (v.movimientoId) ventaPorMov[v.movimientoId] = v; });
+  const filas = [];
+  (state.contabilidad.movimientos || []).forEach(m => {
+    const v = ventaPorMov[m.id];
+    if (v) { if (!v.anulada && diaLocal(v.fecha) === dia) filas.push({ clase: 'tienda', tipo: 'ingreso', importe: m.importe || 0, forma: formaNorm(v.pago), hora: v.fecha, txt: 'Ticket ' + tpvNumTxt(v), venta: v }); return; }
+    if ((m.fecha || '') === dia) filas.push({ clase: 'manual', tipo: m.tipo, importe: m.importe || 0, forma: 'otro', hora: null, txt: (m.categoria ? m.categoria + ' · ' : '') + (m.concepto || '') });
+  });
+  state.pedidos.filter(p => p.pagado).forEach(p => {
+    const ts = p.fechaPago || p.fechaEntrega || p.horaFin || p.horaLlegada;
+    if (!ts || diaLocal(ts) !== dia) return;
+    const cli = clienteDe(p.clienteId);
+    filas.push({ clase: 'encordado', tipo: 'ingreso', importe: p.precio || 0, forma: formaNorm(p.formaPago), hora: ts, txt: (p.marcaModelo || 'Raqueta') + (cli ? ' · ' + cli.nombre : '') });
+  });
+  const ing = filas.filter(f => f.tipo === 'ingreso'), gas = filas.filter(f => f.tipo === 'gasto');
+  const sum = a => Math.round(a.reduce((s, f) => s + (f.importe || 0), 0) * 100) / 100;
+  const porForma = {}; ing.forEach(f => { porForma[f.forma] = (porForma[f.forma] || 0) + (f.importe || 0); });
+  const articulos = {}; ing.filter(f => f.venta).forEach(f => (f.venta.lineas || []).forEach(l => { const k = l.nombre || '—'; articulos[k] = articulos[k] || { n: 0, e: 0 }; articulos[k].n += l.cantidad || 0; articulos[k].e += (l.cantidad || 0) * (l.precio || 0); }));
+  const enDia = (ts) => ts && diaLocal(ts) === dia;
+  return {
+    filas, ingresos: sum(ing), gastos: sum(gas), porForma,
+    enc: { n: ing.filter(f => f.clase === 'encordado').length, e: sum(ing.filter(f => f.clase === 'encordado')) },
+    tienda: { n: ing.filter(f => f.clase === 'tienda').length, e: sum(ing.filter(f => f.clase === 'tienda')) },
+    otros: { n: ing.filter(f => f.clase === 'manual').length, e: sum(ing.filter(f => f.clase === 'manual')) },
+    articulos: Object.entries(articulos).sort((a, b) => b[1].e - a[1].e),
+    recibidas: state.pedidos.filter(p => enDia(p.horaLlegada)).length,
+    encordadas: state.pedidos.filter(p => enDia(p.horaFin)).length,
+    entregadas: state.pedidos.filter(p => enDia(p.fechaEntrega)).length,
+  };
+}
+function textoCajaDia(dia, d, arqueo) {
+  const [y, m, dd] = dia.split('-');
+  const L = ['🧾 CAJA DEL DÍA ' + dd + '/' + m + '/' + y + ' · ' + ((state.config && state.config.nombreTaller) || 'IDERMAY CANTABRIA'), '',
+    'TOTAL COBRADO: ' + euros(d.ingresos)];
+  Object.keys(NOMBRE_FORMA).forEach(k => { if (d.porForma[k]) L.push('  ' + NOMBRE_FORMA[k].replace(/^\S+\s/, '') + ': ' + euros(d.porForma[k])); });
+  L.push('', 'Encordados: ' + d.enc.n + ' · ' + euros(d.enc.e), 'Tienda: ' + d.tienda.n + ' ticket(s) · ' + euros(d.tienda.e));
+  if (d.otros.n) L.push('Otros ingresos: ' + euros(d.otros.e));
+  if (d.gastos) L.push('Gastos: −' + euros(d.gastos));
+  L.push('Neto del día: ' + euros(d.ingresos - d.gastos), '', 'Raquetas recibidas ' + d.recibidas + ' · encordadas ' + d.encordadas + ' · entregadas ' + d.entregadas);
+  if (arqueo && arqueo.contado !== null) L.push('', 'Arqueo de efectivo: esperado ' + euros(arqueo.esperado) + ' · contado ' + euros(arqueo.contado) + ' · diferencia ' + (arqueo.dif >= 0 ? '+' : '') + euros(arqueo.dif));
+  return L.join('\n');
+}
+function viewCajaDia() {
+  const wrap = document.createDocumentFragment();
+  if (!cajaDia) cajaDia = diaLocal(Date.now());
+  const dia = cajaDia, d = datosCajaDia(dia);
+  if (!state.contabilidad.cierres) state.contabilidad.cierres = {};
+  const cierre = state.contabilidad.cierres[dia] || {};
+  const panel = el('div', { class: 'panel', id: 'imCajaDia' }, el('h2', {}, '📅 Caja del día'),
+    el('div', { class: 'sub' }, 'Lo cobrado en el día elegido (raquetas, tienda y lo apuntado a mano), por forma de pago, con el arqueo del efectivo.'));
+  const mover = n => { const t = new Date(dia + 'T12:00:00'); t.setDate(t.getDate() + n); cajaDia = diaLocal(t.getTime()); render(); };
+  const inDia = el('input', { type: 'date', value: dia, id: 'imCajaFecha', max: diaLocal(Date.now()), style: 'width:auto;max-width:180px;' });
+  inDia.onchange = () => { if (inDia.value) { cajaDia = inDia.value; render(); } };
+  const esHoy = dia === diaLocal(Date.now());
+  panel.appendChild(el('div', { class: 'toolbar', style: 'align-items:center;margin:0 0 12px;' },
+    el('button', { type: 'button', class: 'btn btn-ghost btn-sm', id: 'imCajaAnt', onclick: () => mover(-1) }, '◀ Anterior'), inDia,
+    el('button', { type: 'button', class: 'btn btn-ghost btn-sm', disabled: esHoy ? 'disabled' : null, onclick: () => mover(1) }, 'Siguiente ▶'),
+    esHoy ? null : el('button', { type: 'button', class: 'btn btn-ghost btn-sm', onclick: () => { cajaDia = diaLocal(Date.now()); render(); } }, 'Hoy')));
+  panel.appendChild(el('div', { class: 'stat-cards' },
+    statCardTaller(euros(d.ingresos), 'Cobrado'),
+    ...['efectivo', 'tarjeta', 'bizum'].map(k => statCardTaller(euros(d.porForma[k] || 0), NOMBRE_FORMA[k])),
+    ...['transferencia', 'otro'].filter(k => d.porForma[k]).map(k => statCardTaller(euros(d.porForma[k]), NOMBRE_FORMA[k]))));
+  panel.appendChild(el('div', { class: 'im-mov-desglose' },
+    el('span', {}, '🏸 Encordados ', el('b', {}, d.enc.n + ' · ' + euros(d.enc.e))),
+    el('span', {}, '🛍️ Tienda ', el('b', {}, d.tienda.n + ' ticket' + (d.tienda.n === 1 ? '' : 's') + ' · ' + euros(d.tienda.e))),
+    d.otros.n ? el('span', {}, '➕ Otros ', el('b', {}, euros(d.otros.e))) : null,
+    d.gastos ? el('span', {}, '➖ Gastos ', el('b', {}, euros(d.gastos))) : null,
+    el('span', {}, '= Neto ', el('b', { id: 'imCajaNeto' }, euros(d.ingresos - d.gastos)))));
+  panel.appendChild(el('div', { class: 'sub', style: 'margin:6px 0 12px;' }, '🏸 Raquetas: ' + d.recibidas + ' recibidas · ' + d.encordadas + ' encordadas · ' + d.entregadas + ' entregadas'));
+  // Arqueo del efectivo
+  const inFondo = el('input', { type: 'number', step: '0.01', min: '0', id: 'imCajaFondo', value: cierre.fondo != null ? cierre.fondo : '', placeholder: '0,00' });
+  const inContado = el('input', { type: 'number', step: '0.01', min: '0', id: 'imCajaContado', value: cierre.contado != null ? cierre.contado : '', placeholder: 'Lo que hay en la caja' });
+  const res = el('div', { class: 'im-caja-res', id: 'imCajaRes' });
+  const calc = () => {
+    const fondo = parseFloat(inFondo.value) || 0, cont = inContado.value === '' ? null : parseFloat(inContado.value);
+    const esperado = Math.round((fondo + (d.porForma.efectivo || 0)) * 100) / 100;
+    res.innerHTML = '';
+    res.appendChild(el('div', {}, 'Efectivo esperado en caja: ', el('b', {}, euros(esperado)), el('small', {}, ' (fondo ' + euros(fondo) + ' + cobrado en efectivo ' + euros(d.porForma.efectivo || 0) + ')')));
+    if (cont !== null && isFinite(cont)) {
+      const dif = Math.round((cont - esperado) * 100) / 100;
+      res.appendChild(el('div', { class: 'im-caja-dif ' + (Math.abs(dif) < 0.005 ? 'ok' : dif > 0 ? 'sobra' : 'falta') }, Math.abs(dif) < 0.005 ? '✅ La caja cuadra' : (dif > 0 ? '⬆️ Sobran ' : '⬇️ Faltan ') + euros(Math.abs(dif))));
+    }
+    return { fondo, contado: cont !== null && isFinite(cont) ? cont : null, esperado, dif: cont !== null && isFinite(cont) ? Math.round((cont - esperado) * 100) / 100 : 0 };
+  };
+  const guardar = () => { const a = calc(); state.contabilidad.cierres[dia] = { fondo: a.fondo, contado: a.contado, ts: Date.now() }; saveLocal(); };
+  inFondo.addEventListener('input', calc); inContado.addEventListener('input', calc);
+  inFondo.addEventListener('change', guardar); inContado.addEventListener('change', guardar);
+  panel.appendChild(el('details', { class: 'im-plegable', open: 'open', style: 'margin:0 0 12px;' }, el('summary', {}, '💶 Arqueo del efectivo'),
+    el('div', { class: 'im-plegable-cuerpo' }, el('div', { class: 'im-dos' }, field('Fondo de caja al empezar (€)', inFondo), field('Efectivo contado al cerrar (€)', inContado)), res)));
+  calc();
+  // Movimientos del día
+  const lista = el('div', { class: 'im-caja-lista' });
+  if (!d.filas.length) lista.appendChild(el('div', { class: 'empty-state' }, 'No hay cobros ni gastos este día.'));
+  d.filas.slice().sort((a, b) => (a.hora || 0) - (b.hora || 0)).forEach(f => lista.appendChild(el('div', { class: 'im-caja-fila' },
+    el('span', { class: 'im-caja-h' }, f.hora ? fmtHora(f.hora) : '—'),
+    el('span', { class: 'im-caja-t' }, (f.clase === 'encordado' ? '🏸 ' : f.clase === 'tienda' ? '🛍️ ' : f.tipo === 'gasto' ? '➖ ' : '➕ ') + f.txt),
+    el('span', { class: 'im-caja-f' }, f.tipo === 'gasto' ? 'Gasto' : NOMBRE_FORMA[f.forma]),
+    el('b', {}, (f.tipo === 'gasto' ? '−' : '+') + euros(f.importe)))));
+  panel.appendChild(el('div', { class: 'vis-tit' }, 'Movimientos del día (' + d.filas.length + ')'));
+  panel.appendChild(lista);
+  if (d.articulos.length) {
+    panel.appendChild(el('div', { class: 'vis-tit', style: 'margin-top:14px;' }, 'Artículos vendidos'));
+    panel.appendChild(el('div', { class: 'im-caja-lista' }, ...d.articulos.map(([n, x]) => el('div', { class: 'im-caja-fila' }, el('span', { class: 'im-caja-h' }, x.n + ' ×'), el('span', { class: 'im-caja-t' }, n), el('span', { class: 'im-caja-f' }), el('b', {}, euros(x.e))))));
+  }
+  // Compartir / imprimir
+  panel.appendChild(el('div', { class: 'toolbar', style: 'margin-top:14px;' },
+    el('button', { type: 'button', class: 'btn btn-gold btn-sm', id: 'imCajaWa', onclick: () => { const t = textoCajaDia(dia, d, calc()); window.open('https://wa.me/?text=' + encodeURIComponent(t), '_blank', 'noopener'); } }, '💬 Enviar por WhatsApp'),
+    el('button', { type: 'button', class: 'btn btn-ghost btn-sm', id: 'imCajaImprimir', onclick: () => {
+      const t = textoCajaDia(dia, d, calc());
+      const w = window.open('', '_blank'); if (!w) return;
+      w.document.write('<!doctype html><meta charset="utf-8"><title>Caja ' + dia + '</title><pre style="font:15px/1.5 ui-monospace,Menlo,Consolas,monospace;padding:24px;white-space:pre-wrap">' + t.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]) + '</pre><script>print()<\/script>');
+      w.document.close();
+    } }, '🖨️ Imprimir cierre')));
+  wrap.appendChild(panel);
   return wrap;
 }
 function viewPendientesCobro() {

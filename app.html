@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261106-visitas">
+<meta name="build-id" content="v20261107-sinprecios">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -247,6 +247,7 @@ body.tpub-on main#shellMain{max-width:none !important;margin:0 !important;paddin
 .tpf-select:focus{outline:none;border-color:var(--tn);box-shadow:0 0 0 3px rgba(11,45,91,.12);}
 .tpf-nota{color:#6B7A90;font-size:12.5px;}
 .tpf-oculto{display:none;}
+.im-sin-precios .im-precio-campo{display:none;}
 .vis-tarjs{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:12px;}
 .vis-tarj{background:#F4F7FB;border:1px solid #E2E6EC;border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;}
 .vis-tarj b{font-size:24px;line-height:1.1;}.vis-tarj span{font-size:12.5px;color:#6B7A90;}
@@ -10727,8 +10728,12 @@ function abrirEnviarEnlaceSeguimiento(p) {
 let clientePreseleccionadoId = null;
 function viewNuevoPedido() {
   const wrap = document.createDocumentFragment();
-  const panel = el('div', { class: 'panel' },
-    el('h2', {}, 'Nuevo pedido'),
+  // Precios ocultos por defecto: si le das el móvil al cliente para que rellene, no ve precios ni stock.
+  let sinPrecios = true; try { sinPrecios = localStorage.getItem('imOcultarPrecios') !== '0'; } catch (e) {}
+  const datoPrecio = (c) => sinPrecios ? '' : ' (' + euros(c.precio) + ', stock: ' + c.stock + ' ' + (c.unidad || 'unidades') + ')';
+  const btnPrecios = el('button', { type: 'button', class: 'btn btn-ghost btn-sm im-btn-precios', id: 'imBtnPrecios' });
+  const panel = el('div', { class: 'panel' + (sinPrecios ? ' im-sin-precios' : '') },
+    el('div', { style: 'display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;' }, el('h2', { style: 'margin:0;' }, 'Nuevo pedido'), btnPrecios),
     el('div', { class: 'sub' }, 'Si el cliente trae varias raquetas, añádelas una a una sin volver a buscarlo.'),
   );
   panel.appendChild(bloqueEnviarFormRaqueta());
@@ -10855,7 +10860,7 @@ function viewNuevoPedido() {
     cordajeSelect.appendChild(el('option', { value: '' }, '— Elegir cordaje —'));
     const hayFiltro = nivel !== 'todos' || estilo !== 'todos' || (molestia && molestia !== 'ninguna');
     opcionesCordajeOrdenadas(nivel || 'todos', estilo || 'todos', molestia).forEach(({ c, rec }) => {
-      cordajeSelect.appendChild(el('option', { value: c.id }, (rec && hayFiltro ? '⭐ ' : '') + c.nombre + ' (' + euros(c.precio) + ', stock: ' + c.stock + ' ' + (c.unidad || 'unidades') + ')'));
+      cordajeSelect.appendChild(el('option', { value: c.id }, (rec && hayFiltro ? '⭐ ' : '') + c.nombre + datoPrecio(c)));
     });
   }
   repintarCordajeSelect('todos', 'todos', 'ninguna');
@@ -10884,7 +10889,7 @@ function viewNuevoPedido() {
     cordajeHSelect.innerHTML = '';
     cordajeHSelect.appendChild(el('option', { value: '' }, '— Elegir cordaje horizontal —'));
     state.articulos.filter(a => a.esCordaje).forEach(c => {
-      cordajeHSelect.appendChild(el('option', { value: c.id }, c.nombre + ' (' + euros(c.precio) + ', stock: ' + c.stock + ' ' + (c.unidad || 'unidades') + ')'));
+      cordajeHSelect.appendChild(el('option', { value: c.id }, c.nombre + datoPrecio(c)));
     });
   }
   repintarCordajeHSelect();
@@ -10948,26 +10953,39 @@ function viewNuevoPedido() {
   pasoCordaje.appendChild(avisoTensionMaxDiv);
   pasoCordaje.appendChild(recomendador);
   const pasoCobro = paso(4, 'Precio y cobro');
-  pasoCobro.appendChild(el('div', { class: 'im-dos' }, field('Precio del encordado (€)', precioInput), field('Pago', pagoSelect)));
+  pasoCobro.appendChild(el('div', { class: 'im-dos' }, el('div', { class: 'im-precio-campo' }, field('Precio del encordado (€)', precioInput)), field('Pago', pagoSelect)));
 
   // ---------- Otros artículos en el mismo pedido (camisetas, grips, llaveros...) ----------
   const articulosAdicionalesLista = [];
   const otrosArticulosDisponibles = state.articulos.filter(a => !a.esCordaje);
-  const otrosArticulosSelect = el('select', {},
-    [el('option', { value: '' }, '— Elegir artículo —')].concat(
-      otrosArticulosDisponibles.map(a => el('option', { value: a.id }, a.nombre + ' (' + euros(a.precio) + ', stock: ' + a.stock + ' ' + (a.unidad || 'unidades') + ')'))));
+  const otrosArticulosSelect = el('select', {});
+  function repintarOtrosArticulosSelect() {
+    const v = otrosArticulosSelect.value; otrosArticulosSelect.innerHTML = '';
+    [el('option', { value: '' }, '— Elegir artículo —')].concat(otrosArticulosDisponibles.map(a => el('option', { value: a.id }, a.nombre + datoPrecio(a)))).forEach(o => otrosArticulosSelect.appendChild(o));
+    otrosArticulosSelect.value = v;
+  }
+  repintarOtrosArticulosSelect();
   const otrosArticulosCantidad = el('input', { type: 'number', min: '1', step: '1', value: '1', style: 'max-width:90px;' });
   const otrosArticulosListaDiv = el('div', { style: 'margin-top:8px;' });
   const totalPedidoDiv = el('div', { class: 'im-total' });
   function subtotalArticulosAdicionales() { return articulosAdicionalesLista.reduce((s, i) => s + i.cantidad * i.precioUnitario, 0); }
   function actualizarTotalPedido() {
-    totalPedidoDiv.innerHTML = ''; totalPedidoDiv.append('Total del pedido', el('b', {}, euros((parseFloat(precioInput.value) || 0) + subtotalArticulosAdicionales())));
+    totalPedidoDiv.innerHTML = ''; totalPedidoDiv.append('Total del pedido', el('b', { id: 'imTotalPedido' }, sinPrecios ? '•••' : euros((parseFloat(precioInput.value) || 0) + subtotalArticulosAdicionales())));
   }
+  function pintarBtnPrecios() { btnPrecios.textContent = sinPrecios ? '👁️ Ver precios' : '🙈 Ocultar precios'; btnPrecios.title = sinPrecios ? 'Ahora están ocultos para que el cliente no los vea' : 'Ocúltalos si le das el móvil al cliente'; }
+  btnPrecios.onclick = () => {
+    sinPrecios = !sinPrecios; try { localStorage.setItem('imOcultarPrecios', sinPrecios ? '1' : '0'); } catch (e) {}
+    panel.classList.toggle('im-sin-precios', sinPrecios); pintarBtnPrecios();
+    const v1 = cordajeSelect.value, v2 = cordajeHSelect.value;
+    repintarCordajeSelect(nivelJugadorSelect.value, estiloJuegoSelect.value, molestiaSelect.value); cordajeSelect.value = v1;
+    repintarCordajeHSelect(); cordajeHSelect.value = v2; repintarOtrosArticulosSelect(); repintarOtrosArticulos();
+  };
+  pintarBtnPrecios();
   function repintarOtrosArticulos() {
     otrosArticulosListaDiv.innerHTML = '';
     articulosAdicionalesLista.forEach((item, idx) => {
       otrosArticulosListaDiv.appendChild(el('div', { class: 'row', style: 'align-items:center;gap:8px;margin-bottom:4px;' },
-        el('span', { style: 'flex:1;' }, item.cantidad + ' × ' + item.nombre + ' = ' + euros(item.cantidad * item.precioUnitario)),
+        el('span', { style: 'flex:1;' }, item.cantidad + ' × ' + item.nombre + (sinPrecios ? '' : ' = ' + euros(item.cantidad * item.precioUnitario))),
         el('button', { class: 'btn btn-danger btn-sm', onclick: () => { articulosAdicionalesLista.splice(idx, 1); repintarOtrosArticulos(); } }, 'Quitar'),
       ));
     });

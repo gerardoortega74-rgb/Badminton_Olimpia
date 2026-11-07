@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261107-carruselplano">
+<meta name="build-id" content="v20261107-editarprecio">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -9394,6 +9394,7 @@ function construirPanelPorRecoger() {
       el('div', { class: 'im-acc' },
         el('button', { class: 'btn btn-primary', onclick: () => abrirEntregaPedido(p) }, 'Entregar'),
         el('button', { class: 'btn btn-ghost', onclick: () => abrirAvisoWhatsapp(p) }, 'Avisar por WhatsApp'),
+        el('button', { class: 'btn btn-ghost im-editar-lista', onclick: () => abrirEditarPedido(p) }, '✏️ Editar precio'),
         menuMasOpciones([
           el('button', { class: 'btn btn-ghost btn-sm im-deshacer', onclick: () => {
             const n = cli ? cli.nombre : 'este cliente';
@@ -10553,7 +10554,7 @@ function abrirEditarPedido(p) {
   inV.addEventListener('input', campoRq.repintar); inH.addEventListener('input', campoRq.repintar);
   const selCor = el('select', {}, opcCordaje(p.cordajeId)); selCor.value = p.cordajeId || '';
   const selCorH = el('select', {}, [el('option', { value: '' }, 'Igual que el vertical')].concat(cordajes.map(c => el('option', { value: c.id }, c.nombre + ' (stock: ' + (c.stock || 0) + ')')))); selCorH.value = p.cordajeIdH || '';
-  const inPrecio = el('input', { type: 'number', step: '0.5', min: '0', value: p.precio || 0 });
+  const inPrecio = el('input', { type: 'number', step: '0.01', min: '0', value: p.precio || 0, id: 'imEdPrecio' });
   const chkPre = el('input', { type: 'checkbox', style: 'width:auto;', checked: p.pretensado ? 'checked' : null });
   const selPago = selectEl([{ value: 'alRecoger', label: 'Paga al recoger' }, { value: 'adelantado', label: 'Ya ha pagado por adelantado' }, { value: 'sinPagar', label: 'Recoge sin pagar (pagará más adelante)' }], p.pagado ? 'adelantado' : (p.pagoPrevisto || 'alRecoger'), () => {});
   const inNotas = el('textarea', { rows: '2' }, p.notas || '');

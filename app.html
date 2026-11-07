@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261107-editarprecio">
+<meta name="build-id" content="v20261107-sinagotados">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -13970,7 +13970,7 @@ function renderVistaPublicaTaller() {
 
   // Acciones
   const acciones = el('section', { class: 'tpb-acciones' });
-  if ((taller.articulos || []).some(a => a.ventaOnline)) acciones.appendChild(el('a', { class: 'tpb-btn rojo', href: location.origin + location.pathname + '?tiendaonline=1' }, '🛒 Ver la tienda online'));
+  if ((taller.articulos || []).some(a => a.ventaOnline && (Number(a.stock) || 0) > 0)) acciones.appendChild(el('a', { class: 'tpb-btn rojo', href: location.origin + location.pathname + '?tiendaonline=1' }, '🛒 Ver la tienda online'));
   if (tel) acciones.appendChild(el('a', { class: 'tpb-btn claro', href: 'https://wa.me/' + tel + '?text=' + encodeURIComponent('Hola, tengo una pregunta sobre mi raqueta' + (pedido && pedido.marcaModelo ? ' (' + pedido.marcaModelo + ')' : '') + '.'), target: '_blank', rel: 'noopener' }, '💬 ¿Alguna duda? Escríbenos'));
   if (acciones.children.length) cuerpo.appendChild(acciones);
   if (cfg.tarjetaVisitaFoto) cuerpo.appendChild(el('section', { class: 'tpb-card tpb-tarjeta' }, el('img', { src: cfg.tarjetaVisitaFoto, alt: 'Tarjeta de ' + nombreTaller })));
@@ -15124,7 +15124,8 @@ function renderTiendaOnline() {
   const enlaceWa = (texto) => 'https://wa.me/' + tel + '?text=' + encodeURIComponent(texto);
   // Los cordajes no se venden en la tienda online (son para encordar en el taller)
   const esCordajeTienda = (a) => !!a.esCordaje || /cordaje/i.test(String(a.tipo || ''));
-  const articulos = (taller.articulos || []).filter(a => a.ventaOnline && !esCordajeTienda(a) && !a.colorInactivo);
+  // los agotados no se enseñan en la tienda (vuelven a salir solos cuando hay stock)
+  const articulos = (taller.articulos || []).filter(a => a.ventaOnline && !esCordajeTienda(a) && !a.colorInactivo && (Number(a.stock) || 0) > 0);
   // Tienda en oscuro (con ?claro=1 se ve la versión clara)
   const oscuro = (() => { try { return new URLSearchParams(location.search).get('claro') !== '1'; } catch (e) { return true; } })();
   root.classList.toggle('ap-oscuro', oscuro); document.body.classList.toggle('tienda-oscura', oscuro);

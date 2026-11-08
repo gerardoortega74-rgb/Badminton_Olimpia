@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261108-focoreel">
+<meta name="build-id" content="v20261108-reeligfb">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -19395,21 +19395,51 @@ function fotosDeNoticia(n) {
 function publicarReelInstagram(n, blob, alEstado) {
   const r = redesCfg(), tk = tokenMeta();
   if (!r.instagramId || !tk) return Promise.reject(new Error('Instagram no está conectado.'));
-  return metaLlamar(r.instagramId + '/media', { media_type: 'REELS', upload_type: 'resumable', caption: textoRedes(n), share_to_feed: 'true', access_token: tk }, 'POST').then(c => {
-    if (alEstado) alEstado('Subiendo el vídeo a Instagram…');
-    const destino = c.uri || ('https://rupload.facebook.com/ig-api-upload/' + (r.versionApi || 'v21.0') + '/' + c.id);
-    return fetch(destino, { method: 'POST', headers: { Authorization: 'OAuth ' + tk, offset: '0', file_size: String(blob.size) }, body: blob })
-      .then(x => x.json().catch(() => ({})).then(j => { if (!x.ok || j.error || j.success === false) throw new Error((j.error && j.error.message) || j.debug_info && j.debug_info.message || 'Instagram no aceptó el vídeo.'); return c.id; }));
-  }).then(id => {
-    if (alEstado) alEstado('Instagram está procesando el vídeo (puede tardar 1–2 minutos)…');
-    const mirar = (k) => metaLlamar(id, { fields: 'status_code,status', access_token: tk }).then(s => {
+  const espera = () => new Promise(ok => setTimeout(ok, window.__reelEsperaMs || 6000));
+  const decirE = t => { if (alEstado) alEstado(t); };
+  // Esperar a que Instagram procese el vídeo y publicarlo
+  const terminar = id => {
+    decirE('Instagram está procesando el vídeo (puede tardar 1–2 minutos)…');
+    const mirar = k => metaLlamar(id, { fields: 'status_code,status', access_token: tk }).then(s => {
       if (s.status_code === 'FINISHED') return id;
       if (s.status_code === 'ERROR' || s.status_code === 'EXPIRED') throw new Error('Instagram no pudo procesar el vídeo' + (s.status ? ': ' + s.status : '.'));
       if (k >= 40) throw new Error('Instagram sigue procesando el vídeo. Revisa Instagram en unos minutos.');
-      return new Promise(ok => setTimeout(ok, window.__reelEsperaMs || 6000)).then(() => mirar(k + 1));
+      return espera().then(() => mirar(k + 1));
     });
-    return mirar(0);
-  }).then(id => metaLlamar(r.instagramId + '/media_publish', { creation_id: id, access_token: tk }, 'POST')).then(p => ({ mediaId: p.id }));
+    return mirar(0).then(() => metaLlamar(r.instagramId + '/media_publish', { creation_id: id, access_token: tk }, 'POST')).then(p => ({ mediaId: p.id }));
+  };
+  // Camino 1: subida directa a Instagram (rupload). Algunos navegadores la bloquean («Failed to fetch»).
+  const directo = () => metaLlamar(r.instagramId + '/media', { media_type: 'REELS', upload_type: 'resumable', caption: textoRedes(n), share_to_feed: 'true', access_token: tk }, 'POST').then(c => {
+    decirE('Subiendo el vídeo a Instagram…');
+    const destino = c.uri || ('https://rupload.facebook.com/ig-api-upload/' + (r.versionApi || 'v21.0') + '/' + c.id);
+    return fetch(destino, { method: 'POST', headers: { Authorization: 'OAuth ' + tk, offset: '0', file_size: String(blob.size) }, body: blob })
+      .then(x => x.json().catch(() => ({})).then(j => { if (!x.ok || j.error || j.success === false) throw new Error((j.error && j.error.message) || j.debug_info && j.debug_info.message || 'Instagram no aceptó el vídeo.'); return c.id; }));
+  });
+  // Camino 2: el vídeo se sube a la página de Facebook SIN publicar y Instagram lo coge de ahí
+  const porFacebook = () => {
+    if (!r.paginaId) return Promise.reject(new Error('Falta la página de Facebook para subir el vídeo.'));
+    decirE('Subiendo el vídeo (vía Facebook, sin publicarlo allí)…');
+    const subir = host => { const fd = new FormData(); fd.append('source', blob, 'reel-olimpia.mp4'); fd.append('published', 'false'); fd.append('no_story', 'true'); fd.append('access_token', tk);
+      return fetch(host + r.paginaId + '/videos', { method: 'POST', body: fd }).then(x => x.json().catch(() => ({})).then(j => { if (!x.ok || j.error || !j.id) throw new Error((j.error && j.error.message) || 'Facebook no aceptó el vídeo.'); return j.id; })); };
+    let vid;
+    return subir('https://graph-video.facebook.com/').catch(e => e instanceof TypeError ? subir(META_API) : Promise.reject(e)).then(v => {
+      vid = v; decirE('Facebook está preparando el vídeo…');
+      const fuente = k => metaLlamar(vid, { fields: 'source,status', access_token: tk }).then(x => {
+        const st = x.status && x.status.video_status;
+        if (x.source && (!st || st === 'ready')) return x.source;
+        if (st === 'error') throw new Error('Facebook no pudo procesar el vídeo.');
+        if (k >= 40) throw new Error('Facebook tarda demasiado en preparar el vídeo. Prueba en unos minutos.');
+        return espera().then(() => fuente(k + 1));
+      });
+      return fuente(0);
+    }).then(url => metaLlamar(r.instagramId + '/media', { media_type: 'REELS', video_url: url, caption: textoRedes(n), share_to_feed: 'true', access_token: tk }, 'POST'))
+      .then(c => terminar(c.id))
+      .then(res => { metaLlamar(vid, { access_token: tk }, 'DELETE').catch(() => {}); return res; });
+  };
+  return directo().then(terminar, e => {
+    if (!(e instanceof TypeError)) throw e; // error real de Meta: no reintentar
+    return porFacebook();
+  });
 }
 function descargarArchivo(blob, nombre) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nombre; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 8000); }
 

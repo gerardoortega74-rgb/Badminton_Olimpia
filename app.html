@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261108-reeligreint">
+<meta name="build-id" content="v20261108-reig">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -18919,6 +18919,22 @@ function publicarEnFacebook(n, blob) {
     });
   });
 }
+// Facebook: cambiar el texto de una publicación ya hecha (la foto no se puede cambiar)
+function actualizarEnFacebook(n) {
+  const tk = tokenMeta(), fb = n.redes && n.redes.fb;
+  if (!tk) return Promise.reject(new Error('Facebook no está conectado en este dispositivo.'));
+  if (!fb || !fb.postId) return Promise.reject(new Error('Esta noticia no está publicada en Facebook.'));
+  const fd = new FormData(); fd.append('message', textoRedes(n)); fd.append('access_token', tk);
+  return metaLlamar(fb.postId, {}, 'POST', fd).then(j => { if (j && j.success === false) throw new Error('Facebook no aceptó el cambio.'); return j; });
+}
+// Instagram: borrar la publicación hecha desde aquí
+function borrarDeInstagram(n) {
+  const tk = tokenMeta(), ig = n.redes && n.redes.ig;
+  if (!tk) return Promise.reject(new Error('Instagram no está conectado en este dispositivo.'));
+  if (!ig || !ig.mediaId) return Promise.reject(new Error('Esta noticia no está publicada en Instagram.'));
+  return metaLlamar(ig.mediaId, { access_token: tk }, 'DELETE').then(j => { if (j && j.success === false) throw new Error('Instagram no la borró.'); return j; })
+    .catch(e => /does not exist|no existe|Unsupported delete request.*(not exist|missing)/i.test(e.message) ? {} : Promise.reject(e));
+}
 function publicarEnInstagram(n, imagenUrl) {
   const r = redesCfg(), tk = tokenMeta();
   if (!r.instagramId) return Promise.reject(new Error('Instagram no está vinculado a la página de Facebook.'));
@@ -19733,6 +19749,27 @@ function renderWebClub() {
       const rd = n.redes || {};
       const publicada = rd.fb || rd.ig || rd.tiktok;
       fotoCaja.appendChild(el('button', { class: 'btn ' + (publicada ? 'btn-ghost' : 'btn-primary') + ' btn-sm web-redes', type: 'button', onclick: () => abrirPublicarRedes(n, () => renderWebClub()) }, '📣 Publicar en redes…'));
+      if (rd.fb && rd.fb.postId) {
+        const btnAct = el('button', { class: 'btn btn-ghost btn-sm web-redes-act', type: 'button', title: 'Cambia el texto de la publicación de Facebook por el de ahora', onclick: () => {
+          btnAct.disabled = true; btnAct.textContent = 'Actualizando…';
+          actualizarEnFacebook(n).then(() => {
+            n.redes.fb.actualizado = Date.now(); guardar();
+            btnAct.textContent = '✅ Facebook actualizado'; setTimeout(() => { btnAct.textContent = '🔄 Actualizar en Facebook'; btnAct.disabled = false; }, 4000);
+          }).catch(e => { alert('No se pudo actualizar en Facebook: ' + e.message); btnAct.textContent = '🔄 Actualizar en Facebook'; btnAct.disabled = false; });
+        } }, '🔄 Actualizar en Facebook');
+        fotoCaja.appendChild(btnAct);
+      }
+      if (rd.ig && rd.ig.mediaId) {
+        const btnRe = el('button', { class: 'btn btn-ghost btn-sm web-redes-reig', type: 'button', title: 'Borra la publicación de Instagram y la vuelve a publicar con el texto y las fotos de ahora', onclick: () => {
+          if (!confirm('¿Borrar la publicación de Instagram y volver a publicarla con lo que tiene ahora la noticia?')) return;
+          btnRe.disabled = true; btnRe.textContent = 'Borrando de Instagram…';
+          borrarDeInstagram(n).then(() => {
+            delete n.redes.ig; guardar(); renderWebClub();
+            abrirPublicarRedes(n, () => renderWebClub());
+          }).catch(e => { alert('No se pudo borrar de Instagram: ' + e.message + '\n\nBórrala a mano en Instagram (··· → Eliminar) y luego pulsa «Publicar en redes».'); btnRe.textContent = '♻️ Volver a publicar en Instagram'; btnRe.disabled = false; });
+        } }, '♻️ Volver a publicar en Instagram');
+        fotoCaja.appendChild(btnRe);
+      }
       if (publicada) fotoCaja.appendChild(el('span', { class: 'sub web-redes-estado', style: 'font-size:12px;' },
         [rd.fb ? 'Facebook ✓' : '', rd.ig ? 'Instagram ✓' : '', rd.tiktok ? 'TikTok ✓' : ''].filter(Boolean).join(' · ')));
       fotoCaja.appendChild(el('button', { class: 'btn btn-danger btn-sm', type: 'button', onclick: () => {

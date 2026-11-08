@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261108-reeligfb">
+<meta name="build-id" content="v20261108-reeligreint">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -19432,9 +19432,17 @@ function publicarReelInstagram(n, blob, alEstado) {
         return espera().then(() => fuente(k + 1));
       });
       return fuente(0);
-    }).then(url => metaLlamar(r.instagramId + '/media', { media_type: 'REELS', video_url: url, caption: textoRedes(n), share_to_feed: 'true', access_token: tk }, 'POST'))
-      .then(c => terminar(c.id))
-      .then(res => { metaLlamar(vid, { access_token: tk }, 'DELETE').catch(() => {}); return res; });
+    }).then(url => {
+      // Meta a veces falla al procesar (error 2207076) y a la siguiente funciona: se reintenta hasta 3 veces
+      const intento = k => metaLlamar(r.instagramId + '/media', { media_type: 'REELS', video_url: url, caption: textoRedes(n), share_to_feed: 'true', access_token: tk }, 'POST')
+        .then(c => terminar(c.id))
+        .catch(e => {
+          if (k >= 2 || !/no pudo procesar/.test(e.message)) throw e;
+          decirE('Instagram falló al procesar el vídeo; lo intento otra vez (' + (k + 2) + ' de 3)…');
+          return new Promise(ok => setTimeout(ok, window.__reelReintentoMs || 20000)).then(() => intento(k + 1));
+        });
+      return intento(0);
+    }).then(res => { metaLlamar(vid, { access_token: tk }, 'DELETE').catch(() => {}); return res; }, e => { if (vid) metaLlamar(vid, { access_token: tk }, 'DELETE').catch(() => {}); throw e; });
   };
   return directo().then(terminar, e => {
     if (!(e instanceof TypeError)) throw e; // error real de Meta: no reintentar

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="build-id" content="v20261108-avisonoticia2">
+<meta name="build-id" content="v20261108-galeria40">
 <script>
 // Los enlaces de la app (?club=, ?tiendaonline=, ?tallerpublico=, ?publico=, ?fichar=…) siguen funcionando:
 // cualquier dirección con parámetros va a la app. Y si se abre desde el icono de la pantalla de inicio, también.
@@ -712,8 +712,10 @@ footer img{height:38px;width:auto}
         if (f) anadirDiapo(f, true, -1);
       }).catch(function () {});
     }
-    if (w.nGaleria) col.doc('web_galeria').get().then(function (d) {
-      var fotos = (d.exists && d.data().fotos) || [];
+    if (w.nGaleria) Promise.all(Array.apply(null, { length: Math.max(1, Number(w.galeriaPartes) || 1) }).map(function (_, k) {
+      return col.doc(k ? 'web_galeria_' + k : 'web_galeria').get().then(function (d) { return (d.exists && d.data().fotos) || []; }).catch(function () { return []; });
+    })).then(function (partes) {
+      var fotos = [].concat.apply([], partes);
       var g = $('fotosGaleria'); g.innerHTML = '';
       fotos.forEach(function (f) { g.appendChild(el('img', { src: f, alt: 'Foto del club' })); });
       $('galeria').classList.toggle('oculto', !fotos.length);

@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261108-reig">
+<meta name="build-id" content="v20261108-galeria40">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -18780,6 +18780,14 @@ function datosWebPublicos() {
   });
 }
 function urlWebClub() { return location.origin + location.pathname.replace(/[^/]*$/, ''); }
+// Copia de una foto (data URL) con el tamaño de la galería de la web; siempre da el mismo resultado para la misma foto
+const cacheFotoGaleria = new Map();
+function fotoParaGaleria(src) {
+  if (cacheFotoGaleria.has(src)) return cacheFotoGaleria.get(src);
+  const p = fetch(src).then(r => r.blob()).then(b => comprimirFotoWeb(b, 1000, 0.72));
+  cacheFotoGaleria.set(src, p); p.catch(() => cacheFotoGaleria.delete(src));
+  return p;
+}
 function comprimirFotoWeb(file, max, calidad) {
   return new Promise((ok, mal) => {
     const fr = new FileReader();
@@ -18810,7 +18818,8 @@ function cargarFotosWeb() {
   const w = webCfg();
   fotosWebPromesa = Promise.all([
     Promise.all(portadasWeb().filter(p => p.tipo === 'propia').map(p => col.doc(p.doc).get().then(d => { if (d.exists && d.data().foto) fotosWebCache.portadas[p.id] = d.data().foto; }).catch(() => {}))),
-    col.doc('web_galeria').get().then(d => { if (d.exists && Array.isArray(d.data().fotos)) fotosWebCache.galeria = d.data().fotos.slice(); }).catch(() => {}),
+    Promise.all(Array.from({ length: Math.max(1, Number(w.galeriaPartes) || 1) }, (_, k) => col.doc(k ? 'web_galeria_' + k : 'web_galeria').get().then(d => (d.exists && Array.isArray(d.data().fotos)) ? d.data().fotos : []).catch(() => [])))
+      .then(partes => { fotosWebCache.galeria = [].concat.apply([], partes); }),
   ].concat(w.noticias.filter(n => n.tieneFoto).map(n => col.doc('web_noticia_' + n.id).get().then(d => { if (d.exists) fotosWebCache.noticias[n.id] = d.data().foto || null; }).catch(() => {})))
    .concat(w.noticias.filter(n => Array.isArray(n.extras) && n.extras.length).map(n => Promise.all(n.extras.map(k => col.doc('web_noticia_' + n.id + '_' + k).get().then(d => (d.exists && d.data().foto) ? { k, foto: d.data().foto } : null).catch(() => null))).then(l => { fotosWebCache.noticiasExtra[n.id] = l.filter(Boolean); }))))
     .then(() => fotosWebCache);
@@ -18821,6 +18830,18 @@ function guardarFotoWebNube(docId, datos) {
   return coleccionFotosTaller().doc(docId).set(datos).catch(err => {
     marcarEstadoNube('⚠️ No se pudo guardar la foto de la web: ' + (err && err.message ? err.message : 'error'));
     throw err;
+  });
+}
+// Galería de la web: las fotos se reparten en varios documentos (cada uno con menos de ~880 KB)
+const MAX_GALERIA = 40;
+function guardarGaleriaWeb(fotos) {
+  const w = webCfg(), partes = [[]];
+  let tam = 0;
+  fotos.forEach(f => { const t = f.length + 8; if (partes[partes.length - 1].length && tam + t > 860000) { partes.push([]); tam = 0; } partes[partes.length - 1].push(f); tam += t; });
+  const antes = Math.max(1, Number(w.galeriaPartes) || 1);
+  return Promise.all(partes.map((l, k) => guardarFotoWebNube(k ? 'web_galeria_' + k : 'web_galeria', { fotos: l }))).then(() => {
+    for (let k = partes.length; k < antes; k++) borrarFotoWebNube('web_galeria_' + k);
+    w.galeriaPartes = partes.length; w.nGaleria = fotos.length;
   });
 }
 function borrarFotoWebNube(docId) { if (!firebaseDisponible) return Promise.resolve(); return coleccionFotosTaller().doc(docId).delete().catch(() => {}); }
@@ -19716,7 +19737,26 @@ function renderWebClub() {
     const fotoCaja = el('div', { class: 'toolbar' });
     cargarFotosWeb().then(f => {
       const ft = f.noticias[n.id];
-      if (ft) fotoCaja.appendChild(el('img', { src: ft, alt: '', style: 'height:64px;border-radius:6px;' }));
+      // botón en cada foto para guardarla también en «Fotos del club» (galería de la web)
+      const btnGal = src => {
+        const b = el('button', { class: 'btn btn-ghost btn-sm web-a-galeria', type: 'button', title: 'Poner también en «En la pista» (fotos del club en la web)', style: 'position:absolute;left:2px;bottom:2px;padding:0 6px;min-height:0;line-height:20px;font-size:12px;white-space:nowrap;background:rgba(255,255,255,.92);' }, '🖼 ＋');
+        const marcar = () => { b.textContent = '🖼 ✓'; b.style.setProperty('background', '#3dd6c3', 'important'); b.title = 'Ya está en «Fotos del club». Pulsa para quitarla'; b.dataset.en = '1'; };
+        fotoParaGaleria(src).then(c => { if (f.galeria.includes(c)) marcar(); }).catch(() => {});
+        b.onclick = () => {
+          b.disabled = true;
+          fotoParaGaleria(src).then(c => {
+            const i = f.galeria.indexOf(c);
+            if (i >= 0) f.galeria.splice(i, 1);
+            else {
+              if (f.galeria.length >= MAX_GALERIA) throw new Error('La galería ya tiene ' + MAX_GALERIA + ' fotos. Quita alguna en «Fotos del club».');
+              f.galeria.push(c);
+            }
+            return guardarGaleriaWeb(f.galeria).then(() => { guardar(); renderWebClub(); });
+          }).catch(e => { alert(e.message); b.disabled = false; });
+        };
+        return b;
+      };
+      if (ft) fotoCaja.appendChild(el('div', { style: 'position:relative;' }, el('img', { src: ft, alt: '', style: 'height:64px;border-radius:6px;display:block;' }), btnGal(ft)));
       fotoCaja.appendChild(el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => elegirArchivoImagen(file => comprimirFotoWeb(file, 1400, 0.78).then(foto => guardarFotoWebNube('web_noticia_' + n.id, { foto }).then(() => { f.noticias[n.id] = foto; n.tieneFoto = true; guardar(); renderWebClub(); })).catch(e => alert(e.message))) }, ft ? 'Cambiar foto' : 'Añadir foto'));
       if (ft) fotoCaja.appendChild(el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => borrarFotoWebNube('web_noticia_' + n.id).then(() => { delete f.noticias[n.id]; n.tieneFoto = false; guardar(); renderWebClub(); }) }, 'Quitar foto'));
       // más fotos (para el reel de Instagram)
@@ -19725,7 +19765,7 @@ function renderWebClub() {
       if (ft) {
         const tira = el('div', { class: 'web-extras', style: 'display:flex;flex-wrap:wrap;gap:6px;align-items:center;width:100%;' });
         extras.forEach(x => tira.appendChild(el('div', { style: 'position:relative;' },
-          el('img', { src: x.foto, alt: '', style: 'height:56px;width:56px;object-fit:cover;border-radius:6px;display:block;' }),
+          el('img', { src: x.foto, alt: '', style: 'height:56px;width:56px;object-fit:cover;border-radius:6px;display:block;' }), btnGal(x.foto),
           el('button', { class: 'btn btn-danger btn-sm', type: 'button', title: 'Quitar', style: 'position:absolute;top:-6px;right:-6px;padding:0 6px;min-height:0;line-height:18px;', onclick: () => {
             borrarFotoWebNube('web_noticia_' + n.id + '_' + x.k).then(() => { f.noticiasExtra[n.id] = extras.filter(y => y !== x); n.extras = (n.extras || []).filter(k => k !== x.k); guardar(); renderWebClub(); });
           } }, '✕'))));
@@ -19785,16 +19825,15 @@ function renderWebClub() {
   root.appendChild(panelRedesSociales(() => renderWebClub()));
 
   // Galería
-  const pg = el('div', { class: 'panel' }, el('h3', {}, 'Fotos del club'), el('div', { class: 'sub', style: 'margin-bottom:8px;' }, 'Hasta 8 fotos para la galería de la web.'));
+  const pg = el('div', { class: 'panel' }, el('h3', {}, 'Fotos del club'), el('div', { class: 'sub', style: 'margin-bottom:8px;' }, 'Salen en la sección «En la pista» de la web (hasta ' + MAX_GALERIA + ' fotos). También puedes añadir las de las noticias con el botón 🖼 ＋ de cada foto.'));
   const gal = el('div', { style: 'display:flex;flex-wrap:wrap;gap:8px;' });
   pg.appendChild(gal);
   cargarFotosWeb().then(f => {
-    const guardarGal = () => guardarFotoWebNube('web_galeria', { fotos: f.galeria }).then(() => { w.nGaleria = f.galeria.length; guardar(); renderWebClub(); });
+    const guardarGal = () => guardarGaleriaWeb(f.galeria).then(() => { guardar(); renderWebClub(); });
     f.galeria.forEach((ft, i) => gal.appendChild(el('div', { style: 'position:relative;' },
       el('img', { src: ft, alt: '', style: 'width:120px;height:90px;object-fit:cover;border-radius:8px;display:block;' }),
       el('button', { class: 'btn btn-danger btn-sm', type: 'button', style: 'position:absolute;top:4px;right:4px;padding:2px 8px;', title: 'Quitar', onclick: () => { f.galeria.splice(i, 1); guardarGal(); } }, '✕'))));
-    if (f.galeria.length < 8) gal.appendChild(el('button', { class: 'btn btn-ghost web-subir-galeria', type: 'button', style: 'width:120px;height:90px;', onclick: () => elegirArchivoImagen(file => comprimirFotoWeb(file, 1000, 0.72).then(foto => {
-      if (JSON.stringify(f.galeria.concat([foto])).length > 880000) { alert('No caben más fotos en la galería. Quita alguna antes.'); return; }
+    if (f.galeria.length < MAX_GALERIA) gal.appendChild(el('button', { class: 'btn btn-ghost web-subir-galeria', type: 'button', style: 'width:120px;height:90px;', onclick: () => elegirArchivoImagen(file => comprimirFotoWeb(file, 1000, 0.72).then(foto => {
       f.galeria.push(foto); return guardarGal();
     }).catch(e => alert(e.message))) }, '+ Foto'));
   });

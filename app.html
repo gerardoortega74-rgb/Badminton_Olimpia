@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261107-cajadia">
+<meta name="build-id" content="v20261108-focoreel">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -18986,7 +18986,7 @@ function abrirPublicarRedes(n, alTerminar) {
   // Reel (si la noticia tiene 2 fotos o más)
   const reelZona = el('div', { class: 'rd-reel' });
   caja.appendChild(reelZona);
-  const reelEstado = { fotos: [], eleccion: { id: sugerirMusica(n) }, blob: null, chk: null };
+  const reelEstado = { fotos: [], eleccion: { id: sugerirMusica(n) }, blob: null, chk: null, focos: FOCOS_REEL[n.id] || (FOCOS_REEL[n.id] = []) };
   const pintarReel = () => {
     reelZona.innerHTML = '';
     if (reelEstado.fotos.length < 2) return;
@@ -19005,6 +19005,7 @@ function abrirPublicarRedes(n, alTerminar) {
       reelEstado.eleccion = { id: m.id }; reelEstado.blob = null; pintarReel();
     } }, m.nombre)));
     reelZona.appendChild(chips);
+    reelZona.appendChild(bloqueFocosReel(reelEstado, () => { reelEstado.blob = null; btnCrear.textContent = '🎬 Ver el reel'; }));
     const actual = MUSICAS_REEL.find(m => m.id === reelEstado.eleccion.id);
     reelZona.appendChild(el('div', { class: 'sub', style: 'font-size:12px;margin-top:4px;' }, (actual ? actual.desc : '') + (reelEstado.eleccion.archivo ? ' · ' + reelEstado.eleccion.archivo.name : '')));
     const zonaVideo = el('div', { style: 'margin-top:8px;' });
@@ -19017,7 +19018,7 @@ function abrirPublicarRedes(n, alTerminar) {
     const btnCrear = el('button', { type: 'button', class: 'btn btn-gold btn-sm rd-crear-reel', onclick: () => crearYVer().catch(() => {}) }, reelEstado.blob ? '↻ Volver a crear' : '🎬 Ver el reel');
     const crearYVer = () => {
       btnCrear.disabled = true; pararMusica(); progreso.textContent = 'Creando el reel… 0 %';
-      return crearReel(n, reelEstado.fotos, reelEstado.eleccion, p => { progreso.textContent = 'Creando el reel… ' + Math.round(p * 100) + ' %'; }).then(r => {
+      return crearReel(n, reelEstado.fotos, reelEstado.eleccion, p => { progreso.textContent = 'Creando el reel… ' + Math.round(p * 100) + ' %'; }, reelEstado.focos).then(r => {
         reelEstado.blob = r.blob;
         zonaVideo.innerHTML = '';
         zonaVideo.appendChild(el('video', { src: URL.createObjectURL(r.blob), controls: 'controls', playsinline: 'playsinline', class: 'rd-video', style: 'width:100%;max-width:240px;border-radius:10px;display:block;background:#000;aspect-ratio:9/16;' }));
@@ -19142,6 +19143,42 @@ function cargarScript(src) {
     const s = document.createElement('script'); s.src = src; s.dataset.src = src; s.onload = () => ok(); s.onerror = () => mal(new Error('No se pudo cargar ' + src)); document.head.appendChild(s);
   });
 }
+const FOCOS_REEL = {};
+// Recuadro 9:16 que se ve en el reel; tocando la foto se mueve el centro.
+function bloqueFocosReel(est, alCambiar) {
+  const caja = el('div', { class: 'rd-focos' });
+  caja.appendChild(el('div', { class: 'sub', style: 'margin:10px 0 4px;' }, '🎯 Toca en cada foto a quién quieres que enfoque el reel. El recuadro es lo que se verá.'));
+  const fila = el('div', { style: 'display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;' });
+  est.fotos.slice(0, REEL.maxFotos).forEach((src, i) => {
+    const marco = el('div', { class: 'rd-foco-marco', style: 'position:absolute;border:3px solid #3dd6c3;box-shadow:0 0 0 999px rgba(0,0,0,.45);border-radius:4px;pointer-events:none;' });
+    const punto = el('div', { style: 'position:absolute;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;background:#3dd6c3;border:2px solid #fff;pointer-events:none;' });
+    const img = el('img', { src: src, alt: 'Foto ' + (i + 1), draggable: 'false', style: 'display:block;height:150px;width:auto;max-width:none;user-select:none;' });
+    const caj = el('div', { class: 'rd-foco', 'data-i': i, style: 'position:relative;flex:0 0 auto;overflow:hidden;border-radius:8px;cursor:crosshair;touch-action:none;background:#000;' }, img, marco, punto);
+    const pintar = () => {
+      const iw = img.naturalWidth, ih = img.naturalHeight; if (!iw || !ih) return;
+      const f = est.focos[i] || { x: 0.5, y: 0.5 };
+      const zoom = 1.1, s = Math.max(REEL.ancho / iw, REEL.alto / ih) * zoom;
+      const fw = Math.min(1, REEL.ancho / (iw * s)), fh = Math.min(1, REEL.alto / (ih * s));
+      const x0 = Math.min(1 - fw, Math.max(0, f.x - fw / 2)), y0 = Math.min(1 - fh, Math.max(0, f.y - fh / 2));
+      Object.assign(marco.style, { left: x0 * 100 + '%', top: y0 * 100 + '%', width: fw * 100 + '%', height: fh * 100 + '%' });
+      Object.assign(punto.style, { left: f.x * 100 + '%', top: f.y * 100 + '%' });
+    };
+    const mover = e => {
+      const r = img.getBoundingClientRect(); if (!r.width) return;
+      est.focos[i] = { x: Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), y: Math.min(1, Math.max(0, (e.clientY - r.top) / r.height)) };
+      pintar();
+    };
+    let arrastrando = false;
+    caj.addEventListener('pointerdown', e => { arrastrando = true; try { caj.setPointerCapture(e.pointerId); } catch (x) {} mover(e); e.preventDefault(); });
+    caj.addEventListener('pointermove', e => { if (arrastrando) mover(e); });
+    const soltar = () => { if (arrastrando) { arrastrando = false; alCambiar(); } };
+    caj.addEventListener('pointerup', soltar); caj.addEventListener('pointercancel', soltar);
+    img.onload = pintar; if (img.complete) setTimeout(pintar, 0);
+    fila.appendChild(caj);
+  });
+  caja.appendChild(fila);
+  return caja;
+}
 function duracionReel(nFotos) { return Math.min(nFotos, REEL.maxFotos) * REEL.porFoto + REEL.final; }
 
 // ---------- música sintetizada ----------
@@ -19231,7 +19268,9 @@ function dibujarFotoReel(ctx, im, t, dur, k) {
   const s = Math.max(W / im.width, H / im.height) * zoom;
   const w = im.width * s, h = im.height * s;
   const dx = (k % 3 - 1) * 40 * (p - 0.5);
-  ctx.drawImage(im, (W - w) / 2 + dx, (H - h) / 2, w, h);
+  const f = im.focoReel || { x: 0.5, y: 0.5 };
+  const lim = (v, min) => Math.min(0, Math.max(min, v));
+  ctx.drawImage(im, lim(W / 2 - f.x * w + dx, W - w), lim(H / 2 - f.y * h, H - h), w, h);
 }
 function dibujarFotogramaReel(ctx, fotos, logo, n, t, total) {
   const W = REEL.ancho, H = REEL.alto, pf = REEL.porFoto;
@@ -19283,7 +19322,7 @@ function codecsReelDisponibles() {
     return p.then(a => ({ video: v, audio: a ? ac : null }));
   });
 }
-function crearReel(n, fotosSrc, eleccion, alProgreso) {
+function crearReel(n, fotosSrc, eleccion, alProgreso, focos) {
   const fotosOk = fotosSrc.slice(0, REEL.maxFotos);
   const dur = duracionReel(fotosOk.length), totalFrames = Math.round(dur * REEL.fps);
   let codecs;
@@ -19293,6 +19332,7 @@ function crearReel(n, fotosSrc, eleccion, alProgreso) {
     codecs = c;
     return Promise.all([cargarScript('mp4-muxer.js'), Promise.all(fotosOk.map(cargarImagen)), cargarImagen('logo_olimpia.svg').catch(() => null), bufferMusica(eleccion, dur)]);
   }).then(([, imgs, logo, musica]) => {
+    imgs.forEach((im, i) => { if (im && focos && focos[i]) im.focoReel = focos[i]; });
     const M = window.Mp4Muxer;
     const conAudio = !!(musica && codecs.audio);
     const muxer = new M.Muxer({

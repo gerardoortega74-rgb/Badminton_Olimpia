@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="build-id" content="v20261108-fotonoticia">
+<meta name="build-id" content="v20261108-avisonoticia2">
 <script>
 // Los enlaces de la app (?club=, ?tiendaonline=, ?tallerpublico=, ?publico=, ?fichar=…) siguen funcionando:
 // cualquier dirección con parámetros va a la app. Y si se abre desde el icono de la pantalla de inicio, también.
@@ -83,15 +83,23 @@ h1,h2,h3{font-family:var(--disp);font-weight:900;line-height:1.02;margin:0;lette
 }
 
 /* ---------- portada: fotos reales a toda pantalla ---------- */
-.portada{position:relative;min-height:100svh;color:#fff;background:var(--noche);overflow:hidden;display:flex;align-items:flex-end}
+.portada{position:relative;min-height:100svh;padding-top:92px;box-sizing:border-box;color:#fff;background:var(--noche);overflow:hidden;display:flex;align-items:flex-end}
 .diapo{position:absolute;inset:0;background-size:cover;background-position:center 35%;opacity:0;transition:opacity 1.6s ease;transform:scale(1.02)}
 .diapo.activa{opacity:1;animation:acercar 9s ease-out forwards}
 @keyframes acercar{from{transform:scale(1.02)}to{transform:scale(1.1)}}
 @media (prefers-reduced-motion:reduce){.diapo{transition:none}.diapo.activa{animation:none}}
 .portada-sombra{position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,13,15,.55) 0%,rgba(10,13,15,0) 26%,rgba(10,13,15,.1) 50%,rgba(10,13,15,.88) 100%),linear-gradient(90deg,rgba(10,13,15,.55) 0%,rgba(10,13,15,0) 65%)}
 .portada-txt{position:relative;padding:0 0 clamp(36px,7vh,80px)}
+.aviso-noticia{display:inline-flex;align-items:center;gap:10px;max-width:100%;margin:0 0 18px;padding:6px 14px 6px 6px;border-radius:999px;background:rgba(21,25,28,.72);border:1px solid rgba(61,214,195,.55);color:#fff;text-decoration:none;font-size:15px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);transition:background .2s}
+.aviso-noticia:hover{background:rgba(21,25,28,.9)}
+.aviso-noticia b{flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;background:var(--turq);color:var(--noche);font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:5px 10px;border-radius:999px}
+.aviso-noticia b::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--noche);animation:latido2 1.6s infinite}
+@keyframes latido2{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.aviso-noticia b::before{animation:none}}
+.aviso-noticia span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.aviso-noticia i{font-style:normal;flex:0 0 auto;opacity:.8}
 .portada-club{font-weight:500;font-size:clamp(15px,1.6vw,18px);margin:0 0 14px;opacity:.92}
-.portada h1{font-size:clamp(54px,9vw,132px);max-width:13ch;text-transform:uppercase;line-height:1.06;text-shadow:0 2px 30px rgba(0,0,0,.35)}
+.portada h1{font-size:clamp(54px,min(9vw,13vh),132px);max-width:13ch;text-transform:uppercase;line-height:1.06;text-shadow:0 2px 30px rgba(0,0,0,.35)}
 .portada-acciones{display:flex;flex-wrap:wrap;gap:12px;margin-top:30px}
 .puntos{position:absolute;right:max(var(--g),calc((100% - var(--ancho))/2));bottom:clamp(36px,7vh,80px);display:flex;gap:8px;z-index:2}
 .puntos button{width:34px;height:4px;border:0;border-radius:2px;background:rgba(255,255,255,.4);padding:0;cursor:pointer}
@@ -285,6 +293,7 @@ footer img{height:38px;width:auto}
   <div id="diapos" aria-hidden="true"></div>
   <div class="portada-sombra"></div>
   <div class="portada-txt envoltura">
+    <a class="aviso-noticia oculto" id="avisoNoticia" href="#noticias" data-medir="Aviso noticia nueva"><b>Nueva noticia</b><span id="avisoNoticiaTit"></span><i aria-hidden="true">→</i></a>
     <p class="portada-club">Club Bádminton Olimpia Torrelavega</p>
     <h1 id="eslogan">El deporte de raqueta más rápido, en Torrelavega</h1>
     <div class="portada-acciones">
@@ -617,6 +626,14 @@ footer img{height:38px;width:auto}
       ln.appendChild(art);
     });
     ln.classList.toggle('oculto', !noticias.length);
+    // aviso en la portada si la última noticia es de los últimos 15 días
+    var av = $('avisoNoticia'), ult = noticias[0];
+    var dias = ult && ult.fecha ? (Date.now() - new Date(String(ult.fecha).slice(0, 10) + 'T00:00:00').getTime()) / 864e5 : 99;
+    if (av) {
+      var mostrar = !!ult && dias <= 15 && dias > -2;
+      av.classList.toggle('oculto', !mostrar);
+      if (mostrar) { $('avisoNoticiaTit').textContent = ult.titulo || 'Ver noticias'; av.setAttribute('aria-label', 'Nueva noticia: ' + (ult.titulo || '')); }
+    }
 
     // torneo en marcha
     var ed = $('enDirecto'); ed.innerHTML = '';

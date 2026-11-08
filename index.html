@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="build-id" content="v20261106-visitas">
+<meta name="build-id" content="v20261108-fotonoticia">
 <script>
 // Los enlaces de la app (?club=, ?tiendaonline=, ?tallerpublico=, ?publico=, ?fichar=…) siguen funcionando:
 // cualquier dirección con parámetros va a la app. Y si se abre desde el icono de la pantalla de inicio, también.
@@ -165,9 +165,9 @@ section.bloque{padding:clamp(64px,10vw,120px) 0}
 @media (prefers-reduced-motion:reduce){.punto{animation:none}}
 .noticias{display:grid;grid-template-columns:repeat(12,1fr);gap:32px 24px;margin-bottom:64px}
 .noticia{grid-column:span 4}
-.noticia:first-child{grid-column:span 12;display:grid;grid-template-columns:1.4fr 1fr;gap:32px;align-items:end}
-.noticia img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:4px;background:#d8dddb}
-.noticia:first-child img{aspect-ratio:16/10}
+.noticia:first-child{grid-column:span 12;display:grid;grid-template-columns:1.4fr 1fr;gap:32px;align-items:start}
+.noticia img{width:100%;aspect-ratio:4/3;object-fit:contain;border-radius:4px;background:#15191c}
+.noticia:first-child img{aspect-ratio:auto;height:auto;max-height:78vh}
 .noticia time{display:block;font-size:14px;color:var(--suave);margin:12px 0 4px}
 .noticia h3{font-size:32px;text-transform:uppercase}
 .noticia:first-child h3{font-size:clamp(40px,5vw,64px)}

@@ -3,13 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="build-id" content="v20261109-circuito">
+<meta name="build-id" content="v20261109-enlaceinsta">
 <script>
 // Los enlaces de la app (?club=, ?tiendaonline=, ?tallerpublico=, ?publico=, ?fichar=…) siguen funcionando:
 // cualquier dirección con parámetros va a la app. Y si se abre desde el icono de la pantalla de inicio, también.
+// Instagram, Facebook, WhatsApp o Google añaden ?fbclid=, ?igsh=, ?utm_…: esos no cuentan (se abre la web normal con su vídeo).
+function paramsDeLaApp() {
+  var q = new URLSearchParams(location.search || ''), quedan = [];
+  q.forEach(function (v, k) { if (!/^(fbclid|gclid|gbraid|wbraid|igsh|igshid|mibextid|si|ref|ref_src|_ga|mc_cid|mc_eid|utm_.*)$/i.test(k)) quedan.push(k); });
+  return quedan.length > 0;
+}
 (function () {
   var s = location.search || '';
-  if (s.length > 1) { location.replace('app.html' + s + location.hash); return; }
+  if (s.length > 1 && paramsDeLaApp()) { location.replace('app.html' + s + location.hash); return; }
   var standalone = false;
   try { standalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true; } catch (e) {}
   if (standalone) location.replace('app.html');
@@ -255,7 +261,7 @@ footer img{height:38px;width:auto}
   var visto = false, quieto = false;
   try { visto = sessionStorage.getItem('introClubVisto') === '1'; } catch (e) {}
   try { quieto = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
-  if (visto || quieto || (location.search || '').length > 1) { ov.remove(); return; }
+  if (visto || quieto || paramsDeLaApp()) { ov.remove(); return; }
   try { sessionStorage.setItem('introClubVisto', '1'); } catch (e) {}
   var v = ov.querySelector('.ic-video'), f = ov.querySelector('.ic-fondo'), terminado = false;
   v.src = f.src = 'intro_club.mp4?v=2';

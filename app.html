@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261108-galeria40">
+<meta name="build-id" content="v20261109-circuito">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -1389,6 +1389,27 @@ body.im-taller #tallerScreen .stat-card .lab{color:var(--im-muted);text-transfor
 @media (min-width:641px){ body.im-taller table.im-tabla-art{display:table;background:none;white-space:normal;} }
 body.im-taller #tallerScreen thead th,body.im-taller #tallerScreen thead tr{background:#F4F7FB;}
 body.im-taller #tallerScreen td{border-bottom-color:#E6EBF2;}
+/* Circuito: página pública */
+html body button.btn.cir-cat.cir-cat-on,html.dg body.ol-club button.btn.cir-cat.cir-cat-on{background:var(--ol-volante,#3DD6C4) !important;border-color:var(--ol-volante,#3DD6C4) !important;color:#16201E !important;}
+.cir-hero{background:var(--ol-pista,#313A3F);color:#fff;border-radius:16px;padding:28px 22px;margin:0 0 14px;}
+.cir-hero h1{font-size:clamp(30px,6vw,52px);line-height:1.04;margin:6px 0 10px;color:#fff;}
+.cir-hero p{margin:0 0 14px;max-width:62ch;opacity:.9;line-height:1.5;}
+.cir-kicker{color:var(--ol-volante,#3DD6C4);font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:12px;}
+.cir-hero-btns{display:flex;flex-wrap:wrap;gap:8px;}
+.cir-hero .btn-ghost{color:#fff;border-color:rgba(255,255,255,.5);background:transparent;}
+.cir-cal{display:grid;gap:8px;}
+.cir-jor{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:10px 12px;border:1px solid var(--ol-borde,#E2E3E3);border-radius:12px;}
+.cir-jor-n{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font-weight:800;background:var(--ol-borde,#E2E3E3);}
+.cir-ok .cir-jor-n{background:var(--ol-volante,#3DD6C4);color:#16201E;}
+.cir-dir .cir-jor-n{background:#E5484D;color:#fff;}
+.cir-actual{border-color:var(--ol-volante,#3DD6C4);box-shadow:0 0 0 2px rgba(61,214,196,.25);}
+.cir-jor-acc{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;}
+.cir-chip{display:inline-block;padding:3px 10px;border-radius:999px;background:var(--ol-fondo,#F4F5F5);border:1px solid var(--ol-borde,#E2E3E3);font-size:13px;white-space:nowrap;}
+.cir-tabla table{width:100%;border-collapse:collapse;display:table;background:none;white-space:normal;}
+.cir-tabla th,.cir-tabla td{padding:7px 8px;border-bottom:1px solid var(--ol-borde,#E2E3E3);white-space:nowrap;}
+.cir-tabla td:nth-child(2){white-space:normal;min-width:140px;}
+.cir-top1 td{background:rgba(61,214,196,.12);}
+@media (max-width:560px){.cir-jor{grid-template-columns:auto 1fr;}.cir-jor-acc{grid-column:1/-1;justify-content:flex-start;}.cir-hero{padding:22px 16px;}}
 /* ===== CLUB OLIMPIA: verde de pista, amarillo de volante de nailon y líneas de pista ===== */
 body.ol-club{
   --ol-pista:#0F5C46; --ol-pista-osc:#0A3F31; --ol-pista-2:#16775C; --ol-volante:#F2C230; --ol-volante-osc:#D9A800;
@@ -3372,6 +3393,7 @@ function render() {
     else if (activeTab === 'inscripciones') main.appendChild(viewInscripciones());
     else if (activeTab === 'stats') main.appendChild(viewStats());
     else if (activeTab === 'historial') main.appendChild(viewHistorial());
+    else if (activeTab === 'circuito') { guardarEstadoActivoEnLista(); main.appendChild(viewCircuitoTorneo(render)); }
   } catch (err) {
     console.error('Error al pintar el torneo:', err);
     const main = document.getElementById('torneoMainArea');
@@ -3403,6 +3425,7 @@ function renderTabsNav() {
     ['partidos', '🔢 Partidos'],
     ['stats', '📊 Estadísticas'],
     ['historial', '📚 Historial'],
+    ['circuito', '🏆 Circuito'],
   ];
   tabs.forEach(([id, label]) => {
     const b = el('button', {
@@ -5192,7 +5215,50 @@ function mount() {
   asegurarTorneoActivo();
   render();
 }
-return { irATab: (t) => { activeTab = t; render(); }, podiosDeEstado, render, mount, getState, setState, getHistorial, setHistorial, trayectoriaDeJugador, computeStandings, getTorneoActivoId: () => torneoActivoId, setTorneoActivoId: (id) => { torneoActivoId = id; } };
+// ===== CIRCUITO: puntos de una jornada (un torneo) por categoría y jugador =====
+// Por ronda alcanzada en el cuadro. Sin cuadro, por puesto en la liga. Solo cuentan las categorías terminadas.
+const RONDAS_CIRCUITO = ['campeon', 'finalista', 'semis', 'cuartos', 'octavos', 'participar'];
+function puntosJornada(st, pts) {
+  const res = {};
+  if (!st || !st.categories) return res;
+  st.categories.filter(c => c.enabled && (c.players || []).length).forEach(cat => {
+    const etapa = {};
+    cat.players.forEach(p => { etapa[p.id] = 'participar'; });
+    let completa = false;
+    const rounds = cat.knockout && cat.knockout.rounds && cat.knockout.rounds.filter(r => r && r.length);
+    if (rounds && rounds.length) {
+      const fin = rounds[rounds.length - 1][0];
+      completa = !!(fin && fin.winner);
+      rounds.forEach((r, i) => r.forEach(m => {
+        if (!m || !m.winner || m.p1 === 'BYE' || m.p2 === 'BYE' || !m.p1 || !m.p2) return;
+        const perd = m.winner === m.p1 ? m.p2 : m.p1;
+        etapa[perd] = RONDAS_CIRCUITO[Math.min(5, rounds.length - 1 - i + 1)];
+      }));
+      if (completa) etapa[fin.winner] = 'campeon';
+    } else if (cat.groups && cat.groups.length) {
+      const deGrupo = (cat.matches || []).filter(m => typeof m.groupIndex === 'number');
+      completa = deGrupo.length > 0 && deGrupo.every(m => m.winner || m.p1 === 'BYE' || m.p2 === 'BYE');
+      if (cat.groups.length === 1) {
+        const filas = computeStandings(cat, 0);
+        filas.forEach((f, i) => { etapa[f.id] = i === 0 ? 'campeon' : i === 1 ? 'finalista' : i < 4 ? 'semis' : i < 8 ? 'cuartos' : i < 16 ? 'octavos' : 'participar'; });
+      } else cat.groups.forEach((g, gi) => { const f = computeStandings(cat, gi)[0]; if (f) etapa[f.id] = 'semis'; });
+    }
+    if (!completa) { res[cat.id] = { nombre: cat.name, completa: false, jugadores: {} }; return; }
+    const jug = {};
+    Object.keys(etapa).forEach(id => {
+      if (id === 'BYE') return;
+      const e = etapa[id], p = Number(pts && pts[e] != null ? pts[e] : 0) || 0;
+      playerName(cat, id).split(' / ').map(s => s.trim()).filter(s => s && s !== '—').forEach(n => {
+        const k = claveJugadorCircuito(n);
+        if (!jug[k] || jug[k].puntos < p) jug[k] = { nombre: n, puntos: p, ronda: e };
+      });
+    });
+    res[cat.id] = { nombre: cat.name, completa: true, jugadores: jug };
+  });
+  return res;
+}
+function categoriasDeEstado(st) { return (st && st.categories ? st.categories : []).filter(c => c.enabled && (c.players || []).length).map(c => ({ id: c.id, nombre: c.name })); }
+return { irATab: (t) => { activeTab = t; render(); }, podiosDeEstado, puntosJornada, categoriasDeEstado, render, mount, getState, setState, getHistorial, setHistorial, trayectoriaDeJugador, computeStandings, getTorneoActivoId: () => torneoActivoId, setTorneoActivoId: (id) => { torneoActivoId = id; } };
 })();
 </script>
 <script>
@@ -16032,6 +16098,8 @@ function renderVistaPublica() {
   document.body.classList.add('ol-club');
   document.body.classList.remove('im-taller', 'dg-panel');
 
+  const circuitoUrl = new URLSearchParams(location.search).get('circuito');
+  if (circuitoUrl) { renderVistaCircuito(root, circuitoUrl); return; }
   const vista = obtenerEstadoParaVistaPublica();
   if (new URLSearchParams(location.search).get('inscribir') === '1') { renderFormularioInscripcion(root, vista); return; }
   if (vista.cerrado) {
@@ -18719,6 +18787,253 @@ function torneoEstaEnDirecto(st) {
   }
   return reales.some(m => m.winner || m.inicioReal);
 }
+// ===== CIRCUITOS (varias jornadas con clasificación general) =====
+// La configuración vive en clubGlobal.circuitos; cada jornada se enlaza a un torneo del programa.
+const PUNTOS_CIRCUITO = { campeon: 100, finalista: 80, semis: 60, cuartos: 40, octavos: 25, participar: 10 };
+const NOMBRES_RONDA_CIRCUITO = { campeon: 'Campeón', finalista: 'Finalista', semis: 'Semifinal', cuartos: 'Cuartos', octavos: 'Octavos', participar: 'Participación' };
+function claveJugadorCircuito(n) { return String(n || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); }
+function circuitosCfg() { if (!Array.isArray(clubGlobal.circuitos)) clubGlobal.circuitos = []; return clubGlobal.circuitos; }
+function nuevoCircuito() {
+  return { id: 'cir_' + Date.now().toString(36), nombre: 'Circuito ' + (clubGlobal.nombre || 'del club'), temporada: '', sede: '', descripcion: '', cuotas: '', premios: '', normativa: '', streamingUrl: '', inscripcionUrl: '', publicado: true,
+    puntos: Object.assign({}, PUNTOS_CIRCUITO), jornadas: [] };
+}
+function estadoDeTorneoCircuito(tid) {
+  const h = TorneoApp.getHistorial().find(t => t.id === tid);
+  if (!h) return null;
+  return { entrada: h, st: tid === TorneoApp.getTorneoActivoId() ? TorneoApp.getState() : h.snapshot };
+}
+// Clasificación general: suma los puntos de todas las jornadas, por categoría (Individual Masculino Categoría A, etc.)
+function rankingCircuito(c) {
+  const cats = {}, orden = [];
+  (c.jornadas || []).forEach(j => {
+    const e = j.torneoId ? estadoDeTorneoCircuito(j.torneoId) : null;
+    if (!e || !e.st) return;
+    categoriasDeTorneo(e.st).forEach(x => { if (!cats[x.id]) { cats[x.id] = { id: x.id, nombre: x.nombre, jugadores: {} }; orden.push(x.id); } });
+    const pj = TorneoApp.puntosJornada(e.st, c.puntos || PUNTOS_CIRCUITO);
+    Object.keys(pj).forEach(cid => {
+      if (!cats[cid]) { cats[cid] = { id: cid, nombre: pj[cid].nombre, jugadores: {} }; orden.push(cid); }
+      Object.keys(pj[cid].jugadores).forEach(k => {
+        const x = pj[cid].jugadores[k], fila = cats[cid].jugadores[k] || (cats[cid].jugadores[k] = { nombre: x.nombre, total: 0, jornadas: {}, formas: {} });
+        // se muestra la forma del nombre que más se repite (si alguien lo escribe con otra tilde, cuenta igual)
+        fila.formas[x.nombre] = (fila.formas[x.nombre] || 0) + 1;
+        fila.nombre = Object.keys(fila.formas).sort((a, b) => fila.formas[b] - fila.formas[a])[0];
+        fila.total += x.puntos; fila.jornadas[j.id] = { p: x.puntos, r: x.ronda };
+      });
+    });
+  });
+  return orden.map(cid => {
+    const cat = cats[cid];
+    const mejor = f => Math.max(0, ...Object.values(f.jornadas).map(x => x.p));
+    const filas = Object.values(cat.jugadores).sort((a, b) => b.total - a.total || mejor(b) - mejor(a) || Object.keys(b.jornadas).length - Object.keys(a.jornadas).length || a.nombre.localeCompare(b.nombre, 'es'));
+    let pos = 0, prev = null;
+    filas.forEach((f, i) => { if (prev === null || f.total !== prev) pos = i + 1; prev = f.total; f.pos = pos; });
+    return { id: cat.id, nombre: cat.nombre, filas };
+  });
+}
+function categoriasDeTorneo(st) { try { return TorneoApp.categoriasDeEstado(st); } catch (e) { return []; } }
+function estadoJornadaCircuito(j) {
+  const e = j.torneoId ? estadoDeTorneoCircuito(j.torneoId) : null;
+  if (e && e.entrada.estado === 'finalizado') return 'jugada';
+  if (e && e.st && e.entrada.id === TorneoApp.getTorneoActivoId() && torneoEstaEnDirecto(e.st)) return 'directo';
+  if (e && e.st) { const pj = TorneoApp.puntosJornada(e.st, PUNTOS_CIRCUITO); if (Object.values(pj).some(x => x.completa)) return 'jugada'; }
+  const f = fechaJornadaCircuito(j);
+  if (f && f < hoyLocalISO()) return e ? 'jugada' : 'pasada';
+  return 'proxima';
+}
+function fechaJornadaCircuito(j) {
+  if (j.fecha) return j.fecha;
+  const e = j.torneoId ? estadoDeTorneoCircuito(j.torneoId) : null;
+  return e ? String(e.entrada.fechaInicio || (e.st && e.st.meta && e.st.meta.date) || '').slice(0, 10) : '';
+}
+function hoyLocalISO() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function circuitosPublicos() {
+  return circuitosCfg().filter(c => c.publicado !== false).map(c => ({
+    id: c.id, nombre: c.nombre, temporada: c.temporada, sede: c.sede, descripcion: c.descripcion, cuotas: c.cuotas, premios: c.premios, normativa: c.normativa,
+    streamingUrl: c.streamingUrl, inscripcionUrl: c.inscripcionUrl, puntos: c.puntos,
+    jornadas: (c.jornadas || []).map((j, i) => {
+      const e = j.torneoId ? estadoDeTorneoCircuito(j.torneoId) : null;
+      return { id: j.id, nombre: j.nombre || ('Jornada ' + (i + 1)), fecha: fechaJornadaCircuito(j), sede: j.sede || '', galeriaUrl: j.galeriaUrl || '', estado: estadoJornadaCircuito(j),
+        torneoId: e && e.entrada.estado !== 'finalizado' ? e.entrada.id : '' };
+    }),
+    categorias: (() => { const v = {}, l = []; (c.jornadas || []).forEach(j => { const e = j.torneoId ? estadoDeTorneoCircuito(j.torneoId) : null; if (e && e.st) categoriasDeTorneo(e.st).forEach(x => { if (!v[x.id]) { v[x.id] = 1; l.push(x.nombre); } }); }); return l; })(),
+    ranking: rankingCircuito(c).map(r => ({ id: r.id, nombre: r.nombre, filas: r.filas.map(f => ({ pos: f.pos, nombre: f.nombre, total: f.total, jornadas: f.jornadas })) })),
+  }));
+}
+function enlaceCircuito(id) { return location.origin + location.pathname + '?publico=1&circuito=' + encodeURIComponent(id); }
+function fechaCircuito(f) {
+  if (!f) return 'Fecha por confirmar';
+  const d = new Date(f + 'T12:00:00'); if (isNaN(d)) return f;
+  const t = d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+// Tabla de la clasificación (la misma en la app y en la página pública)
+function tablaRankingCircuito(cat, jornadas) {
+  if (!cat || !cat.filas.length) return el('div', { class: 'sub' }, 'Todavía no hay puntos en esta categoría. Se suman cuando termina su cuadro en cada jornada.');
+  const head = el('tr', {}, el('th', {}, '#'), el('th', {}, 'Jugador'), ...jornadas.map((j, i) => el('th', { title: j.nombre || '', style: 'text-align:center;' }, 'J' + (i + 1))), el('th', { style: 'text-align:right;' }, 'Total'));
+  const body = el('tbody');
+  cat.filas.forEach(f => body.appendChild(el('tr', { class: f.pos <= 3 ? 'cir-top' + f.pos : '' },
+    el('td', { style: 'font-weight:700;' }, f.pos <= 3 ? ['🥇', '🥈', '🥉'][f.pos - 1] : String(f.pos)),
+    el('td', {}, f.nombre),
+    ...jornadas.map(j => { const x = f.jornadas[j.id]; return el('td', { style: 'text-align:center;', title: x ? NOMBRES_RONDA_CIRCUITO[x.r] : 'No jugó' }, x ? String(x.p) : '–'); }),
+    el('td', { style: 'text-align:right;font-weight:800;' }, String(f.total)))));
+  return el('div', { class: 'cir-tabla', style: 'overflow-x:auto;' }, el('table', {}, el('thead', {}, head), body));
+}
+function viewCircuitoTorneo(repintar) {
+  const wrap = el('div');
+  const lista = circuitosCfg();
+  const guardar = () => { saveClubGlobal(); };
+  let sel = window.__circuitoSel && lista.find(c => c.id === window.__circuitoSel) ? window.__circuitoSel : (lista[0] && lista[0].id);
+  const intro = el('div', { class: 'panel' }, el('h2', {}, '🏆 Circuito de varias jornadas'),
+    el('div', { class: 'sub' }, 'Une varios torneos (jornadas) en un circuito con clasificación general. Cada jornada es un torneo normal del programa; cuando termina el cuadro de una categoría, sus puntos se suman solos a la clasificación.'),
+    el('div', { class: 'toolbar', style: 'flex-wrap:wrap;gap:8px;' },
+      lista.length > 1 ? el('select', { class: 'cir-sel', onchange: e => { window.__circuitoSel = e.target.value; repintar(); } }, ...lista.map(c => { const o = el('option', { value: c.id }, c.nombre || 'Circuito'); if (c.id === sel) o.selected = true; return o; })) : null,
+      el('button', { class: 'btn btn-gold cir-nuevo', type: 'button', onclick: () => { const c = nuevoCircuito(); lista.push(c); window.__circuitoSel = c.id; guardar(); repintar(); } }, lista.length ? '➕ Otro circuito' : '➕ Crear circuito')));
+  wrap.appendChild(intro);
+  const c = lista.find(x => x.id === sel);
+  if (!c) return wrap;
+  if (!c.puntos) c.puntos = Object.assign({}, PUNTOS_CIRCUITO);
+  if (!Array.isArray(c.jornadas)) c.jornadas = [];
+  const inp = (etq, k, op) => {
+    op = op || {};
+    const n = op.area ? el('textarea', { rows: op.rows || 3, placeholder: op.ph || '', class: 'cir-' + k }) : el('input', { type: op.type || 'text', placeholder: op.ph || '', class: 'cir-' + k });
+    n.value = c[k] || '';
+    n.addEventListener('change', () => { c[k] = n.value.trim(); guardar(); if (op.repinta) repintar(); });
+    return el('div', { class: 'field', style: op.full ? 'grid-column:1/-1;' : '' }, el('label', {}, etq), n);
+  };
+  const datos = el('div', { class: 'panel' }, el('h2', {}, 'Datos del circuito'),
+    el('div', { style: 'display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0 14px;' },
+      inp('Nombre', 'nombre', { ph: 'Ej: Circuito Olimpia Open', repinta: true }), inp('Temporada', 'temporada', { ph: '2026/27' }), inp('Sede', 'sede', { ph: 'Pabellón…' }),
+      inp('Presentación (qué es el circuito)', 'descripcion', { area: true, full: true, ph: 'Circuito abierto para todos los niveles, sin licencia federativa…' }),
+      inp('Cuotas y forma de pago', 'cuotas', { area: true, ph: '1 modalidad: 14 €\n2 modalidades: 20 €\nBizum al …' }),
+      inp('Premios', 'premios', { area: true, ph: 'Trofeo a los 3 primeros de cada jornada y de la general…' }),
+      inp('Normativa', 'normativa', { area: true, full: true, rows: 4 }),
+      inp('Enlace del directo (YouTube…)', 'streamingUrl', { type: 'url', ph: 'https://youtube.com/…' }),
+      inp('Enlace de inscripción propio (opcional)', 'inscripcionUrl', { type: 'url', ph: 'Si lo dejas vacío se usa la inscripción del torneo de la próxima jornada' })));
+  const pub = el('label', { style: 'display:flex;gap:8px;align-items:center;margin-top:8px;' }, el('input', { type: 'checkbox', class: 'cir-publicado' }), 'Página pública visible (y aviso en la web del club)');
+  pub.firstChild.checked = c.publicado !== false;
+  pub.firstChild.addEventListener('change', e => { c.publicado = e.target.checked; guardar(); });
+  datos.appendChild(pub);
+  wrap.appendChild(datos);
+  // Puntos
+  const ptsP = el('div', { class: 'panel' }, el('h2', {}, 'Puntos por jornada'), el('div', { class: 'sub' }, 'Puntos según la ronda a la que llega cada jugador. En dobles, cada jugador de la pareja suma los puntos. Sin cuadro (liga), cuenta el puesto final.'));
+  const filaP = el('div', { style: 'display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;' });
+  RONDAS_CIRCUITO_LISTA.forEach(r => {
+    const n = el('input', { type: 'number', min: '0', step: '1', class: 'cir-pt-' + r, value: String(c.puntos[r] != null ? c.puntos[r] : PUNTOS_CIRCUITO[r]) });
+    n.addEventListener('change', () => { c.puntos[r] = Math.max(0, Number(n.value) || 0); guardar(); repintar(); });
+    filaP.appendChild(el('div', { class: 'field' }, el('label', {}, NOMBRES_RONDA_CIRCUITO[r]), n));
+  });
+  ptsP.appendChild(filaP);
+  wrap.appendChild(ptsP);
+  // Jornadas
+  const hist = TorneoApp.getHistorial().slice().reverse();
+  const jp = el('div', { class: 'panel' }, el('h2', {}, 'Jornadas'), el('div', { class: 'sub' }, 'Pon la fecha de cada jornada y, cuando crees su torneo, enlázalo aquí. Las jornadas sin torneo salen en el calendario como «próximamente».'));
+  c.jornadas.forEach((j, i) => {
+    const nom = el('input', { type: 'text', class: 'cir-j-nombre', value: j.nombre || ('Jornada ' + (i + 1)) });
+    nom.addEventListener('change', () => { j.nombre = nom.value.trim(); guardar(); });
+    const fe = el('input', { type: 'date', class: 'cir-j-fecha', value: fechaJornadaCircuito(j) });
+    fe.addEventListener('change', () => { j.fecha = fe.value; guardar(); });
+    const tor = el('select', { class: 'cir-j-torneo' }, el('option', { value: '' }, '— Sin torneo todavía —'), ...hist.map(t => { const o = el('option', { value: t.id }, (t.nombre || 'Torneo') + (t.fechaInicio ? ' · ' + fmtFechaCorta(t.fechaInicio) : '') + (t.estado === 'finalizado' ? ' (finalizado)' : t.id === TorneoApp.getTorneoActivoId() ? ' (actual)' : '')); if (t.id === j.torneoId) o.selected = true; return o; }));
+    tor.addEventListener('change', () => { j.torneoId = tor.value; guardar(); repintar(); });
+    const gal = el('input', { type: 'url', class: 'cir-j-galeria', placeholder: 'Enlace a las fotos (opcional)', value: j.galeriaUrl || '' });
+    gal.addEventListener('change', () => { j.galeriaUrl = gal.value.trim(); guardar(); });
+    const est = estadoJornadaCircuito(j);
+    jp.appendChild(el('div', { class: 'cir-jornada', style: 'border:1px solid var(--line,#ddd);border-radius:10px;padding:10px;margin:8px 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:6px 10px;align-items:end;' },
+      el('div', { class: 'field' }, el('label', {}, 'Nombre'), nom), el('div', { class: 'field' }, el('label', {}, 'Fecha'), fe),
+      el('div', { class: 'field' }, el('label', {}, 'Torneo de esta jornada'), tor), el('div', { class: 'field' }, el('label', {}, 'Fotos'), gal),
+      el('div', { style: 'display:flex;gap:6px;align-items:center;flex-wrap:wrap;' },
+        el('span', { class: 'sub' }, { jugada: '✅ Jugada', directo: '🔴 En directo', pasada: '⚠️ Sin torneo enlazado', proxima: '🗓 Próxima' }[est]),
+        el('button', { class: 'btn btn-ghost btn-sm', type: 'button', disabled: i === 0 ? 'disabled' : null, onclick: () => { c.jornadas.splice(i - 1, 0, c.jornadas.splice(i, 1)[0]); guardar(); repintar(); } }, '▲'),
+        el('button', { class: 'btn btn-danger btn-sm cir-j-borrar', type: 'button', onclick: () => { if (confirm('¿Quitar esta jornada del circuito? El torneo no se borra.')) { c.jornadas.splice(i, 1); guardar(); repintar(); } } }, 'Quitar'))));
+  });
+  jp.appendChild(el('button', { class: 'btn btn-gold cir-j-anadir', type: 'button', onclick: () => {
+    const act = TorneoApp.getTorneoActivoId(), usado = c.jornadas.some(j => j.torneoId === act);
+    c.jornadas.push({ id: 'j_' + Date.now().toString(36), nombre: 'Jornada ' + (c.jornadas.length + 1), fecha: '', torneoId: !usado && act && !c.jornadas.length ? act : '', galeriaUrl: '' });
+    guardar(); repintar();
+  } }, '➕ Añadir jornada'));
+  wrap.appendChild(jp);
+  // Clasificación
+  const rk = rankingCircuito(c);
+  const rp = el('div', { class: 'panel' }, el('h2', {}, 'Clasificación general'));
+  if (!rk.length) rp.appendChild(el('div', { class: 'sub' }, 'Enlaza el torneo de alguna jornada para ver aquí la clasificación.'));
+  else {
+    let catSel = window.__circuitoCat && rk.find(r => r.id === window.__circuitoCat) ? window.__circuitoCat : rk[0].id;
+    const caja = el('div');
+    const chips = el('div', { style: 'display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;' });
+    const pintar = () => { caja.innerHTML = ''; caja.appendChild(tablaRankingCircuito(rk.find(r => r.id === catSel), c.jornadas)); [...chips.children].forEach(b => { const on = b.dataset.id === catSel; b.setAttribute('aria-pressed', on ? 'true' : 'false'); b.classList.toggle('cir-cat-on', on); }); };
+    rk.forEach(r => chips.appendChild(el('button', { class: 'btn btn-ghost btn-sm cir-cat', type: 'button', 'data-id': r.id, onclick: () => { catSel = window.__circuitoCat = r.id; pintar(); } }, r.nombre + ' (' + r.filas.length + ')')));
+    rp.appendChild(chips); rp.appendChild(caja); pintar();
+  }
+  wrap.appendChild(rp);
+  // Enlace público
+  const url = enlaceCircuito(c.id);
+  wrap.appendChild(el('div', { class: 'panel' }, el('h2', {}, 'Página pública del circuito'),
+    el('div', { class: 'sub' }, 'Con calendario, niveles, inscripción, cuotas, clasificación, directo y fotos. Se actualiza sola.'),
+    el('div', { class: 'toolbar', style: 'flex-wrap:wrap;gap:8px;' },
+      el('button', { class: 'btn btn-gold', type: 'button', onclick: () => window.open(url, '_blank') }, '👁️ Ver la página'),
+      el('button', { class: 'btn btn-ghost cir-copiar', type: 'button', onclick: e => { const b = e.currentTarget; (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(() => { b.textContent = '✅ Copiado'; }, () => prompt('Copia el enlace:', url)); } }, '🔗 Copiar enlace'),
+      el('a', { class: 'btn btn-ghost', href: 'https://wa.me/?text=' + encodeURIComponent((c.nombre || 'Circuito') + ' — calendario y clasificación: ' + url), target: '_blank', rel: 'noopener' }, '📲 WhatsApp'),
+      el('button', { class: 'btn btn-danger cir-borrar', type: 'button', onclick: () => { if (!confirm('¿Borrar el circuito «' + (c.nombre || '') + '»? Los torneos no se borran.')) return; lista.splice(lista.indexOf(c), 1); window.__circuitoSel = null; guardar(); repintar(); } }, '🗑️ Borrar circuito'))));
+  return wrap;
+}
+const RONDAS_CIRCUITO_LISTA = ['campeon', 'finalista', 'semis', 'cuartos', 'octavos', 'participar'];
+function fmtFechaCorta(f) { const p = String(f || '').slice(0, 10).split('-'); return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : f; }
+// Página pública del circuito (?publico=1&circuito=ID)
+function renderVistaCircuito(root, id) {
+  const c = (window.circuitosPublicados || []).find(x => x.id === id);
+  document.title = c ? c.nombre : 'Circuito';
+  if (!c) { root.appendChild(el('div', { class: 'panel', style: 'max-width:640px;margin:30px auto;text-align:center;' }, el('h2', {}, (window.circuitosPublicados ? '🔒 Circuito no disponible' : '⏳ Cargando…')), el('div', { class: 'sub' }, window.circuitosPublicados ? 'Este enlace no corresponde a ningún circuito publicado.' : 'Un momento, se están cargando los datos.'))); return; }
+  const caja = el('div', { class: 'cir-pub', style: 'max-width:980px;margin:0 auto;padding:12px 14px 40px;' });
+  const sec = (tit, ...hijos) => el('section', { class: 'panel cir-sec' }, el('h2', {}, tit), ...hijos);
+  const texto = t => el('div', { style: 'white-space:pre-wrap;line-height:1.5;' }, t);
+  caja.appendChild(el('header', { class: 'cir-hero' },
+    el('div', { class: 'cir-kicker' }, (clubGlobal.nombre || 'Club') + (c.temporada ? ' · Temporada ' + c.temporada : '')),
+    el('h1', {}, c.nombre || 'Circuito'),
+    c.descripcion ? el('p', {}, c.descripcion) : null,
+    el('div', { class: 'cir-hero-btns' },
+      el('a', { class: 'btn btn-gold', href: '#cirClasificacion' }, '🏆 Clasificación'),
+      el('a', { class: 'btn btn-ghost', href: '#cirCalendario' }, '🗓 Calendario'),
+      c.streamingUrl ? el('a', { class: 'btn btn-ghost', href: c.streamingUrl, target: '_blank', rel: 'noopener' }, '📺 Directo') : null)));
+  // Calendario
+  const prox = c.jornadas.find(j => j.estado === 'directo') || c.jornadas.find(j => j.estado === 'proxima');
+  const cal = el('div', { class: 'cir-cal' });
+  c.jornadas.forEach((j, i) => {
+    const chip = { jugada: ['✅ Jugada', 'cir-ok'], directo: ['🔴 En directo', 'cir-dir'], pasada: ['Jugada', 'cir-ok'], proxima: [j === prox ? '⏭ Próxima' : 'Próximamente', 'cir-prox'] }[j.estado] || ['', ''];
+    cal.appendChild(el('div', { class: 'cir-jor ' + chip[1] + (j === prox ? ' cir-actual' : '') },
+      el('div', { class: 'cir-jor-n' }, 'J' + (i + 1)),
+      el('div', { class: 'cir-jor-txt' }, el('b', {}, j.nombre), el('div', { class: 'sub' }, fechaCircuito(j.fecha) + ((j.sede || c.sede) ? ' · ' + (j.sede || c.sede) : ''))),
+      el('div', { class: 'cir-jor-acc' }, el('span', { class: 'cir-chip' }, chip[0]),
+        j.estado === 'directo' && j.torneoId ? el('a', { class: 'btn btn-gold btn-sm', href: '?publico=1&torneo=' + encodeURIComponent(j.torneoId) }, 'Ver en directo') : null,
+        j.galeriaUrl ? el('a', { class: 'btn btn-ghost btn-sm', href: j.galeriaUrl, target: '_blank', rel: 'noopener' }, '📷 Fotos') : null)));
+  });
+  caja.appendChild(el('div', { id: 'cirCalendario' }, sec('🗓 Calendario', c.jornadas.length ? cal : el('div', { class: 'sub' }, 'Calendario próximamente.'))));
+  // Inscripción
+  const urlIns = c.inscripcionUrl || (prox && prox.torneoId ? '?publico=1&torneo=' + encodeURIComponent(prox.torneoId) + '&inscribir=1' : '');
+  if (urlIns || c.cuotas) caja.appendChild(sec('📝 Inscripción',
+    prox ? el('div', { class: 'sub', style: 'margin-bottom:8px;' }, 'Próxima jornada: ' + prox.nombre + ' — ' + fechaCircuito(prox.fecha)) : null,
+    c.cuotas ? texto(c.cuotas) : null,
+    urlIns ? el('a', { class: 'btn btn-gold cir-inscribirse', href: urlIns, style: 'margin-top:10px;display:inline-block;' }, 'Inscribirme') : el('div', { class: 'sub', style: 'margin-top:8px;' }, 'La inscripción se abrirá unos días antes de la jornada.')));
+  // Niveles y modalidades
+  if (c.categorias && c.categorias.length) caja.appendChild(sec('🏸 Niveles y modalidades', el('div', { style: 'display:flex;flex-wrap:wrap;gap:6px;' }, ...c.categorias.map(n => el('span', { class: 'cir-chip' }, n)))));
+  // Clasificación
+  const rp = sec('🏆 Clasificación general');
+  rp.id = 'cirClasificacion';
+  const jugadas = c.jornadas.filter(j => j.estado === 'jugada' || j.estado === 'directo' || j.estado === 'pasada');
+  if (!c.ranking.length) rp.appendChild(el('div', { class: 'sub' }, 'La clasificación aparecerá cuando termine la primera jornada.'));
+  else {
+    let catSel = c.ranking[0].id;
+    const chips = el('div', { style: 'display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;' }), tab = el('div');
+    const pintar = () => { tab.innerHTML = ''; tab.appendChild(tablaRankingCircuito(c.ranking.find(r => r.id === catSel), jugadas.length ? jugadas : c.jornadas)); [...chips.children].forEach(b => { const on = b.dataset.id === catSel; b.setAttribute('aria-pressed', on ? 'true' : 'false'); b.classList.toggle('cir-cat-on', on); }); };
+    c.ranking.forEach(r => chips.appendChild(el('button', { class: 'btn btn-ghost btn-sm cir-cat', type: 'button', 'data-id': r.id, onclick: () => { catSel = r.id; pintar(); } }, r.nombre)));
+    rp.appendChild(chips); rp.appendChild(tab); pintar();
+    const p = c.puntos || PUNTOS_CIRCUITO;
+    rp.appendChild(el('div', { class: 'sub', style: 'margin-top:10px;' }, 'Puntos por jornada: ' + RONDAS_CIRCUITO_LISTA.map(r => NOMBRES_RONDA_CIRCUITO[r] + ' ' + (p[r] || 0)).join(' · ') + '. En dobles puntúa cada jugador.'));
+  }
+  caja.appendChild(rp);
+  if (c.premios) caja.appendChild(sec('🎖 Premios', texto(c.premios)));
+  if (c.normativa) caja.appendChild(sec('📄 Normativa', texto(c.normativa)));
+  if (c.streamingUrl) caja.appendChild(sec('📺 Directo', el('div', { class: 'sub', style: 'margin-bottom:8px;' }, 'Sigue las jornadas en directo.'), el('a', { class: 'btn btn-gold', href: c.streamingUrl, target: '_blank', rel: 'noopener' }, 'Ver el directo')));
+  root.appendChild(caja);
+}
 function estadoPublicoParaNube() {
   const t = TallerApp.getState() || {};
   const cfg = t.config || {};
@@ -18752,6 +19067,7 @@ function estadoPublicoParaNube() {
       : h)),
     torneoActivoId: TorneoApp.getTorneoActivoId(),
     torneoEnDirecto: !activoFinalizado && torneoEstaEnDirecto(TorneoApp.getState()),
+    circuitos: (() => { try { return circuitosPublicos(); } catch (e) { console.warn('circuitos', e); return []; } })(),
     taller,
     web: datosWebPublicos(),
     actualizadoEn: Date.now(),
@@ -20395,6 +20711,7 @@ function aplicarDatosDeNube(dataOriginal) {
   saveJugadoresExternos();
   if (data.torneo) TorneoApp.setState(data.torneo);
   if (data.torneosHistorial) TorneoApp.setHistorial(data.torneosHistorial);
+  if (Array.isArray(data.circuitos)) window.circuitosPublicados = data.circuitos;
   if (data.torneoActivoId) TorneoApp.setTorneoActivoId(data.torneoActivoId);
   if (data.planificacion) PlanApp.setState(data.planificacion);
   if (data.pagos) PagosApp.setState(data.pagos);

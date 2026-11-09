@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="build-id" content="v20261108-galeria40">
+<meta name="build-id" content="v20261109-circuito">
 <script>
 // Los enlaces de la app (?club=, ?tiendaonline=, ?tallerpublico=, ?publico=, ?fichar=…) siguen funcionando:
 // cualquier dirección con parámetros va a la app. Y si se abre desde el icono de la pantalla de inicio, también.
@@ -166,6 +166,11 @@ section.bloque{padding:clamp(64px,10vw,120px) 0}
 @media (max-width:760px){.ins-rejilla{grid-template-columns:1fr}.marcador .eur{font-size:42px}}
 
 /* noticias y torneos */
+.circuito-web{display:flex;flex-wrap:wrap;align-items:center;gap:10px 20px;border:2px solid var(--turq);padding:16px 20px;border-radius:8px;margin-bottom:24px}
+.circuito-web b{font-size:19px}
+.circuito-web span{color:#4c5a56}
+.circuito-web a{margin-left:auto;background:var(--turq);color:var(--noche);font-weight:700;padding:10px 16px;border-radius:999px;text-decoration:none;white-space:nowrap}
+@media (max-width:640px){.circuito-web a{margin-left:0}}
 .en-directo{display:flex;flex-wrap:wrap;align-items:center;gap:14px 20px;background:var(--noche);color:#fff;padding:16px 20px;border-radius:8px;margin-bottom:40px}
 .en-directo b{font-family:var(--disp);font-size:30px;line-height:1}
 .punto{width:12px;height:12px;border-radius:50%;background:#ff4d3d;box-shadow:0 0 0 0 rgba(255,77,61,.6);animation:latido 1.6s infinite}
@@ -343,6 +348,7 @@ footer img{height:38px;width:auto}
   <div class="envoltura">
     <div class="titulo"><h2>Noticias y torneos</h2></div>
     <div id="enDirecto"></div>
+    <div id="circuitos"></div>
     <div class="noticias" id="listaNoticias"></div>
     <div id="torneos"></div>
   </div>
@@ -647,6 +653,14 @@ footer img{height:38px;width:auto}
     } else {
       $('areaTorneo').classList.add('oculto'); $('areas').classList.add('sin-torneo');
     }
+    // circuitos (varias jornadas con clasificación)
+    var cz = $('circuitos'); cz.innerHTML = '';
+    (Array.isArray(pub && pub.circuitos) ? pub.circuitos : []).forEach(function (c) {
+      var j = (c.jornadas || []).filter(function (x) { return x.estado === 'directo'; })[0] || (c.jornadas || []).filter(function (x) { return x.estado === 'proxima'; })[0];
+      var txt = j ? (j.estado === 'directo' ? '🔴 ' + j.nombre + ' en directo' : 'Próxima: ' + j.nombre + (j.fecha ? ' · ' + fechaLarga(j.fecha) : '')) : 'Clasificación general';
+      cz.appendChild(el('div', { class: 'circuito-web' }, el('b', { text: '🏆 ' + (c.nombre || 'Circuito') }), el('span', { text: txt }),
+        el('a', { href: 'app.html?publico=1&circuito=' + encodeURIComponent(c.id), 'data-medir': 'Circuito', text: 'Calendario y clasificación →' })));
+    });
     // podios del último torneo
     var tz = $('torneos'); tz.innerHTML = '';
     var ordenados = finalizados.slice().sort(function (a, b) { return String(b.fechaFin || b.fechaInicio || '').localeCompare(String(a.fechaFin || a.fechaInicio || '')); });
@@ -667,7 +681,7 @@ footer img{height:38px;width:auto}
       var otros = ordenados.filter(function (t) { return t !== ult; }).slice(0, 6);
       if (otros.length) tz.appendChild(el('div', { class: 'otros-torneos' }, el('span', { text: 'Antes:' }), otros.map ? (function () { var f = document.createDocumentFragment(); otros.forEach(function (t) { f.appendChild(el('span', { text: (t.nombre || 'Torneo') + (t.fechaInicio ? ', ' + fechaLarga(t.fechaInicio) : '') })); }); return f; })() : null));
     }
-    var hay = noticias.length || ed.children.length || tz.children.length;
+    var hay = noticias.length || ed.children.length || tz.children.length || cz.children.length;
     $('noticias').classList.toggle('oculto', !hay);
     document.querySelectorAll('[data-sec="noticias"]').forEach(function (a) { a.classList.toggle('oculto', !hay); });
   }

@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261109-circuito">
+<meta name="build-id" content="v20261109-metros54">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -9345,16 +9345,18 @@ function tiempoMedioReal() {
   const total = terminados.reduce((sum, p) => sum + (p.horaFin - p.horaInicio), 0);
   return Math.round((total / terminados.length) / 60000);
 }
-function cantidadCordajePorDefecto(cor) {
+// 9 m es la raqueta entera; con dos cordajes (híbrido): 5 m las verticales y 4 m las horizontales
+const METROS_RAQUETA = 9, METROS_VERTICAL = 5, METROS_HORIZONTAL = 4;
+function cantidadCordajePorDefecto(cor, hibrido, horizontal) {
   if (!cor) return 1;
-  return cor.unidad === 'metros' ? 9 : 1;
+  return cor.unidad === 'metros' ? (hibrido ? (horizontal ? METROS_HORIZONTAL : METROS_VERTICAL) : METROS_RAQUETA) : 1;
 }
 function addPedido(datos) {
   const nuevo = {
     id: uid('ped'), clienteId: datos.clienteId, marcaModelo: datos.marcaModelo || '', cordajeId: datos.cordajeId || null,
-    cantidadCordaje: datos.cordajeId ? (datos.cantidadCordaje || cantidadCordajePorDefecto(cordajeDe(datos.cordajeId))) : null,
+    cantidadCordaje: datos.cordajeId ? (datos.cantidadCordaje || cantidadCordajePorDefecto(cordajeDe(datos.cordajeId), !!datos.cordajeIdH)) : null,
     cordajeIdH: datos.cordajeIdH || null,
-    cantidadCordajeH: datos.cordajeIdH ? (datos.cantidadCordajeH || cantidadCordajePorDefecto(cordajeDe(datos.cordajeIdH))) : null,
+    cantidadCordajeH: datos.cordajeIdH ? (datos.cantidadCordajeH || cantidadCordajePorDefecto(cordajeDe(datos.cordajeIdH), !!datos.cordajeId, true)) : null,
     articulosAdicionales: Array.isArray(datos.articulosAdicionales) ? datos.articulosAdicionales.map(i => ({ articuloId: i.articuloId, cantidad: i.cantidad, precioUnitario: i.precioUnitario, nombre: i.nombre })) : [],
     tensionVertical: datos.tensionVertical || null, tensionHorizontal: datos.tensionHorizontal || null, precio: datos.precio || 0, fotoAntes: datos.fotoAntes || null, fotoDespues: null,
     pretensado: !!datos.pretensado,
@@ -10562,9 +10564,21 @@ function cambiarCordajePedido(p, campo, nuevoId) {
   p[campo] = nuevoId;
   if (nuevoId) {
     const n = cordajeDe(nuevoId);
-    p[campoCant] = n ? cantidadCordajePorDefecto(n) : (p[campoCant] || 1);
+    const otro = campo === 'cordajeIdH' ? 'cordajeId' : 'cordajeIdH', otroCant = campo === 'cordajeIdH' ? 'cantidadCordaje' : 'cantidadCordajeH';
+    p[campoCant] = n ? cantidadCordajePorDefecto(n, !!p[otro], campo === 'cordajeIdH') : (p[campoCant] || 1);
     if (n) n.stock = Math.max(0, (n.stock || 0) - (p[campoCant] || 1));
-  } else p[campoCant] = null;
+    // al pasar a híbrido, el otro cordaje que tenía la raqueta entera pasa a la mitad (y devuelve lo que sobra al stock)
+    const o = p[otro] && cordajeDe(p[otro]);
+    const parte = otro === 'cordajeIdH' ? METROS_HORIZONTAL : METROS_VERTICAL;
+    if (o && o.unidad === 'metros' && Number(p[otroCant]) === METROS_RAQUETA && !viejoId) { o.stock = (o.stock || 0) + (METROS_RAQUETA - parte); p[otroCant] = parte; }
+  } else {
+    p[campoCant] = null;
+    // vuelve a un solo cordaje: el que queda pasa a la raqueta entera
+    const otro = campo === 'cordajeIdH' ? 'cordajeId' : 'cordajeIdH', otroCant = campo === 'cordajeIdH' ? 'cantidadCordaje' : 'cantidadCordajeH';
+    const o = p[otro] && cordajeDe(p[otro]);
+    const parte = otro === 'cordajeIdH' ? METROS_HORIZONTAL : METROS_VERTICAL;
+    if (o && o.unidad === 'metros' && Number(p[otroCant]) === parte) { o.stock = Math.max(0, (o.stock || 0) - (METROS_RAQUETA - parte)); p[otroCant] = METROS_RAQUETA; }
+  }
 }
 // Casilla de raqueta con la lista de raquetas: sugerencias al escribir, aviso de si está en la lista y botón para añadirla.
 function campoRaquetaConLista(valorInicial, tensiones) {
@@ -10995,10 +11009,18 @@ function viewNuevoPedido() {
     precioInput.value = base;
     if (typeof actualizarTotalPedido === 'function') actualizarTotalPedido();
   }
+  // si la cantidad sigue en el valor por defecto, se ajusta al cambiar entre uno y dos cordajes
+  const ajustarMetrosHibrido = () => {
+    const h = hibridoCheckbox.checked && !!cordajeHSelect.value;
+    const cor = cordajeDe(cordajeSelect.value), corH = cordajeDe(cordajeHSelect.value);
+    const esDef = v => [METROS_RAQUETA, METROS_VERTICAL, METROS_HORIZONTAL].includes(parseFloat(v));
+    if (cor && cor.unidad === 'metros' && esDef(cantidadCordajeInput.value)) cantidadCordajeInput.value = cantidadCordajePorDefecto(cor, h);
+    if (h && corH && corH.unidad === 'metros' && esDef(cantidadCordajeHInput.value)) cantidadCordajeHInput.value = cantidadCordajePorDefecto(corH, !!cor, true);
+  };
   cordajeSelect.addEventListener('change', () => {
     const cor = cordajeDe(cordajeSelect.value);
     if (cor) {
-      cantidadCordajeInput.value = cantidadCordajePorDefecto(cor);
+      cantidadCordajeInput.value = cantidadCordajePorDefecto(cor, hibridoCheckbox.checked && !!cordajeHSelect.value);
       cantidadCordajeInput.setAttribute('placeholder', cor.unidad || 'unidades');
       cantidadCordajeDiv.style.display = 'block';
     } else {
@@ -11009,12 +11031,13 @@ function viewNuevoPedido() {
   cordajeHSelect.addEventListener('change', () => {
     const corH = cordajeDe(cordajeHSelect.value);
     if (corH) {
-      cantidadCordajeHInput.value = cantidadCordajePorDefecto(corH);
+      cantidadCordajeHInput.value = cantidadCordajePorDefecto(corH, !!cordajeSelect.value, true);
       cantidadCordajeHInput.setAttribute('placeholder', corH.unidad || 'unidades');
       cantidadCordajeHDiv.style.display = 'block';
     } else {
       cantidadCordajeHDiv.style.display = 'none';
     }
+    ajustarMetrosHibrido();
     actualizarPrecioCordajes();
   });
   const fotoInput = el('input', { type: 'file', accept: 'image/*', capture: 'environment' });
@@ -11127,9 +11150,9 @@ function viewNuevoPedido() {
       tensionVertical: tensionVInput.value ? parseFloat(tensionVInput.value) : null,
       tensionHorizontal: tensionHInput.value ? parseFloat(tensionHInput.value) : (tensionVInput.value ? parseFloat(tensionVInput.value) : null),
       precio: (parseFloat(precioInput.value) || 0) + subtotalArticulosAdicionales(),
-      cantidadCordaje: cordajeSelect.value ? (parseFloat(cantidadCordajeInput.value) || cantidadCordajePorDefecto(cordajeDe(cordajeSelect.value))) : null,
+      cantidadCordaje: cordajeSelect.value ? (parseFloat(cantidadCordajeInput.value) || cantidadCordajePorDefecto(cordajeDe(cordajeSelect.value), hibridoCheckbox.checked && !!cordajeHSelect.value)) : null,
       cordajeIdH: hibridoCheckbox.checked ? (cordajeHSelect.value || null) : null,
-      cantidadCordajeH: (hibridoCheckbox.checked && cordajeHSelect.value) ? (parseFloat(cantidadCordajeHInput.value) || cantidadCordajePorDefecto(cordajeDe(cordajeHSelect.value))) : null,
+      cantidadCordajeH: (hibridoCheckbox.checked && cordajeHSelect.value) ? (parseFloat(cantidadCordajeHInput.value) || cantidadCordajePorDefecto(cordajeDe(cordajeHSelect.value), !!cordajeSelect.value, true)) : null,
       pretensado: pretensadoCheckbox.checked,
       articulosAdicionales: articulosAdicionalesLista,
       pagado: pagoSelect.value === 'adelantado',
@@ -13176,7 +13199,7 @@ function pedidoDesdeCorreo(d) {
   clientePreseleccionadoId = id; activeTab = 'nuevo'; saveLocal();
 }
 function movimientoDesdeCorreo(d) { addMovimientoTaller(d); activeTab = 'contabilidad'; saveLocal(); }
-return { render, mount, getState, setState, saveLocal, irATab, irAAlmacen: (sub) => { subTabCatalogo = sub; irA('catalogo'); }, pdfPendientesDeCobro, tituloTab, pedidoDesdeCorreo, movimientoDesdeCorreo };
+return { render, mount, getState, setState, saveLocal, irATab, addPedido, irAAlmacen: (sub) => { subTabCatalogo = sub; irA('catalogo'); }, pdfPendientesDeCobro, tituloTab, pedidoDesdeCorreo, movimientoDesdeCorreo };
 })();
 
 </script>

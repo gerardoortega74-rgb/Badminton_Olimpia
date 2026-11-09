@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="build-id" content="v20261109-enlaceinsta">
+<meta name="build-id" content="v20261109-tiktok">
 <script>
 // Los enlaces de la app (?club=, ?tiendaonline=, ?tallerpublico=, ?publico=, ?fichar=…) siguen funcionando:
 // cualquier dirección con parámetros va a la app. Y si se abre desde el icono de la pantalla de inicio, también.
@@ -535,6 +535,7 @@ footer img{height:38px;width:auto}
       var redes = [];
       if (w.instagram) redes.push('https://instagram.com/' + w.instagram);
       if (w.facebook) redes.push(/^https?:/.test(w.facebook) ? w.facebook : 'https://' + w.facebook);
+      if (w.tiktok) redes.push('https://www.tiktok.com/@' + w.tiktok);
       if (redes.length) d.sameAs = redes;
       if (w.quienesSomos) { d.description = w.quienesSomos.slice(0, 300); var md = document.querySelector('meta[name="description"]'); if (md) md.setAttribute('content', w.quienesSomos.replace(/\s+/g, ' ').slice(0, 158)); }
       n.textContent = JSON.stringify(d);
@@ -699,7 +700,8 @@ footer img{height:38px;width:auto}
     if (w.telefono) fila('tel:' + soloDigitos(w.telefono), 'Teléfono', w.telefono);
     if (w.email) fila('mailto:' + w.email, 'Correo', w.email);
     if (w.instagram) fila('https://instagram.com/' + encodeURIComponent(w.instagram), 'Instagram', '@' + w.instagram, true);
-    if (w.facebook) fila(/^https?:/.test(w.facebook) ? w.facebook : 'https://' + w.facebook, 'Facebook', w.facebook.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, ''), true);
+    if (w.facebook) fila(/^https?:/.test(w.facebook) ? w.facebook : 'https://' + w.facebook, 'Facebook', w.facebook.replace(/^https?:\/\/(www\.)?/, '').replace(/[?#].*$/, '').replace(/\/$/, ''), true);
+    if (w.tiktok) fila('https://www.tiktok.com/@' + encodeURIComponent(w.tiktok), 'TikTok', '@' + w.tiktok, true);
     if (w.pabellon || w.direccion) fila(w.direccion ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(w.direccion) : null, 'Dónde entrenamos', [w.pabellon, w.direccion].filter(Boolean).join(', '), true);
     if (!v.children.length) v.appendChild(el('div', null, el('span', { text: 'Torrelavega, Cantabria' }), el('b', { text: 'Pregunta en el pabellón o escríbenos por redes' })));
     var mapa = $('mapa');

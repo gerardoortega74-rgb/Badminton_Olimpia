@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261109-editaraplazada">
+<meta name="build-id" content="v20261109-tiktok">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -20060,6 +20060,7 @@ function renderWebClub() {
     campo('Correo', w.email, v => w.email = v),
     campo('Instagram', w.instagram, v => w.instagram = v.replace(/^@/, ''), { ph: 'usuario sin @' }),
     campo('Facebook (enlace)', w.facebook, v => w.facebook = v, { ph: 'https://facebook.com/…' }),
+    campo('TikTok', w.tiktok, v => w.tiktok = v.trim().replace(/^https?:\/\/(www\.)?tiktok\.com\/@?/i, '').replace(/^@/, '').replace(/[/?#].*$/, ''), { ph: 'usuario sin @ (o pega el enlace de tu perfil)' }),
   ));
 
   // Noticias

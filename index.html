@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="build-id" content="v20261109-tiktok">
+<meta name="build-id" content="v20261109-enlacetiktok">
 <script>
 // Los enlaces de la app (?club=, ?tiendaonline=, ?tallerpublico=, ?publico=, ?fichar=…) siguen funcionando:
 // cualquier dirección con parámetros va a la app. Y si se abre desde el icono de la pantalla de inicio, también.
 // Instagram, Facebook, WhatsApp o Google añaden ?fbclid=, ?igsh=, ?utm_…: esos no cuentan (se abre la web normal con su vídeo).
 function paramsDeLaApp() {
   var q = new URLSearchParams(location.search || ''), quedan = [];
-  q.forEach(function (v, k) { if (!/^(fbclid|gclid|gbraid|wbraid|igsh|igshid|mibextid|si|ref|ref_src|_ga|mc_cid|mc_eid|utm_.*)$/i.test(k)) quedan.push(k); });
+  q.forEach(function (v, k) { if (!/^(fbclid|gclid|gbraid|wbraid|ttclid|igsh|igshid|mibextid|si|ref|ref_src|mc_cid|mc_eid|utm_.*|_.*|tt_.*|is_from_webapp|sender_device|sender_web_id|share_.*|lang|locale|hl)$/i.test(k)) quedan.push(k); });
   return quedan.length > 0;
 }
 (function () {

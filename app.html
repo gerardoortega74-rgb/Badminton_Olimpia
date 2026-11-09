@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261109-metros54">
+<meta name="build-id" content="v20261109-editaraplazada">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -10536,7 +10536,9 @@ function viewCola() {
         el('div', { class: 'im-det' }, el('strong', {}, p.marcaModelo || 'Raqueta sin especificar'), ` · ${nombreCordajeDe(p)} · ${fmtTension(p)} · ${euros(p.precio)}`),
         el('div', { class: 'im-acc' },
           el('button', { class: 'btn btn-primary', onclick: () => { reanudarPedido(p); render(); } }, 'Volver a la cola hoy'),
+          el('button', { class: 'btn btn-ghost im-aplazada-editar', onclick: () => abrirEditarPedido(p) }, '✏️ Editar'),
           menuMasOpciones([
+            el('button', { class: 'btn btn-ghost btn-sm', onclick: () => abrirEnviarEnlaceSeguimiento(p) }, 'Enviar enlace de seguimiento'),
             el('button', { class: 'btn btn-ghost btn-sm im-aplazada-terminar', onclick: () => {
               const c = clienteDe(p.clienteId);
               if (!confirm('¿La raqueta de ' + (c ? c.nombre : 'este cliente') + ' (' + (p.marcaModelo || 'raqueta') + ') YA está encordada?\n\nPasará a «Listas para recoger».')) return;

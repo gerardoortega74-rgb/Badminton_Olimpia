@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261109-tiktok">
+<meta name="build-id" content="v20261110-enweb">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -3591,6 +3591,13 @@ function viewConfig() {
       onchange: (e) => { state.config.soloFederados = e.target.checked; render(); },
     }),
     el('span', {}, '🎫 Torneo solo para jugadores federados (si lo desmarcas, se busca entre todos, federados o no)'),
+  ));
+  general.appendChild(el('label', { class: 'torneo-enweb', style: 'display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:8px;text-transform:none;font-weight:700;' },
+    el('input', {
+      type: 'checkbox', style: 'width:auto;', checked: state.meta.enWeb ? 'checked' : null,
+      onchange: (e) => { state.meta.enWeb = e.target.checked; render(); },
+    }),
+    el('span', {}, '🌐 Mostrar este torneo en la web del club (aviso «en directo» y podios). Déjalo sin marcar en los torneos internos.'),
   ));
   general.appendChild(el('div', { class: 'toolbar', style: 'margin-top:12px;' },
     el('button', { class: 'btn btn-danger', onclick: () => eliminarTorneoDeLista(torneoActivoId) }, '🗑️ Borrar este torneo'),
@@ -18819,7 +18826,7 @@ const NOMBRES_RONDA_CIRCUITO = { campeon: 'Campeón', finalista: 'Finalista', se
 function claveJugadorCircuito(n) { return String(n || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); }
 function circuitosCfg() { if (!Array.isArray(clubGlobal.circuitos)) clubGlobal.circuitos = []; return clubGlobal.circuitos; }
 function nuevoCircuito() {
-  return { id: 'cir_' + Date.now().toString(36), nombre: 'Circuito ' + (clubGlobal.nombre || 'del club'), temporada: '', sede: '', descripcion: '', cuotas: '', premios: '', normativa: '', streamingUrl: '', inscripcionUrl: '', publicado: true,
+  return { id: 'cir_' + Date.now().toString(36), nombre: 'Circuito ' + (clubGlobal.nombre || 'del club'), temporada: '', sede: '', descripcion: '', cuotas: '', premios: '', normativa: '', streamingUrl: '', inscripcionUrl: '', enWeb: false,
     puntos: Object.assign({}, PUNTOS_CIRCUITO), jornadas: [] };
 }
 function estadoDeTorneoCircuito(tid) {
@@ -18872,7 +18879,7 @@ function fechaJornadaCircuito(j) {
 }
 function hoyLocalISO() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 function circuitosPublicos() {
-  return circuitosCfg().filter(c => c.publicado !== false).map(c => ({
+  return circuitosCfg().filter(c => c.enWeb === true).map(c => ({
     id: c.id, nombre: c.nombre, temporada: c.temporada, sede: c.sede, descripcion: c.descripcion, cuotas: c.cuotas, premios: c.premios, normativa: c.normativa,
     streamingUrl: c.streamingUrl, inscripcionUrl: c.inscripcionUrl, puntos: c.puntos,
     jornadas: (c.jornadas || []).map((j, i) => {
@@ -18934,9 +18941,9 @@ function viewCircuitoTorneo(repintar) {
       inp('Normativa', 'normativa', { area: true, full: true, rows: 4 }),
       inp('Enlace del directo (YouTube…)', 'streamingUrl', { type: 'url', ph: 'https://youtube.com/…' }),
       inp('Enlace de inscripción propio (opcional)', 'inscripcionUrl', { type: 'url', ph: 'Si lo dejas vacío se usa la inscripción del torneo de la próxima jornada' })));
-  const pub = el('label', { style: 'display:flex;gap:8px;align-items:center;margin-top:8px;' }, el('input', { type: 'checkbox', class: 'cir-publicado' }), 'Página pública visible (y aviso en la web del club)');
-  pub.firstChild.checked = c.publicado !== false;
-  pub.firstChild.addEventListener('change', e => { c.publicado = e.target.checked; guardar(); });
+  const pub = el('label', { style: 'display:flex;gap:8px;align-items:center;margin-top:8px;font-weight:700;' }, el('input', { type: 'checkbox', class: 'cir-publicado' }), '🌐 Publicar el circuito (página pública y aviso en la web del club). Sin marcar no sale en ningún sitio.');
+  pub.firstChild.checked = c.enWeb === true;
+  pub.firstChild.addEventListener('change', e => { c.enWeb = e.target.checked; guardar(); repintar(); });
   datos.appendChild(pub);
   wrap.appendChild(datos);
   // Puntos
@@ -19010,6 +19017,7 @@ function renderVistaCircuito(root, id) {
   const caja = el('div', { class: 'cir-pub', style: 'max-width:980px;margin:0 auto;padding:12px 14px 40px;' });
   const sec = (tit, ...hijos) => el('section', { class: 'panel cir-sec' }, el('h2', {}, tit), ...hijos);
   const texto = t => el('div', { style: 'white-space:pre-wrap;line-height:1.5;' }, t);
+  caja.appendChild(el('a', { class: 'btn btn-ghost btn-sm cir-volver', href: './', style: 'display:inline-block;margin:0 0 10px;' }, '← Volver a la web del club'));
   caja.appendChild(el('header', { class: 'cir-hero' },
     el('div', { class: 'cir-kicker' }, (clubGlobal.nombre || 'Club') + (c.temporada ? ' · Temporada ' + c.temporada : '')),
     el('h1', {}, c.nombre || 'Circuito'),
@@ -19057,6 +19065,7 @@ function renderVistaCircuito(root, id) {
   if (c.premios) caja.appendChild(sec('🎖 Premios', texto(c.premios)));
   if (c.normativa) caja.appendChild(sec('📄 Normativa', texto(c.normativa)));
   if (c.streamingUrl) caja.appendChild(sec('📺 Directo', el('div', { class: 'sub', style: 'margin-bottom:8px;' }, 'Sigue las jornadas en directo.'), el('a', { class: 'btn btn-gold', href: c.streamingUrl, target: '_blank', rel: 'noopener' }, 'Ver el directo')));
+  caja.appendChild(el('div', { style: 'text-align:center;margin-top:18px;' }, el('a', { class: 'btn btn-gold cir-volver', href: './' }, '← Volver a la web del club')));
   root.appendChild(caja);
 }
 function estadoPublicoParaNube() {
@@ -19088,10 +19097,12 @@ function estadoPublicoParaNube() {
     torneo: activoFinalizado ? null : sanearPublico(TorneoApp.getState()),
     torneosHistorial: sanearPublico(TorneoApp.getHistorial().map(h => h.estado === 'finalizado'
       ? { id: h.id, nombre: h.nombre, fechaInicio: h.fechaInicio, fechaFin: h.fechaFin, estado: 'finalizado', snapshot: null,
+          enWeb: !!(((h.id === TorneoApp.getTorneoActivoId() ? TorneoApp.getState() : h.snapshot) || {}).meta || {}).enWeb,
           podios: TorneoApp.podiosDeEstado(h.id === TorneoApp.getTorneoActivoId() ? TorneoApp.getState() : h.snapshot) }
       : h)),
     torneoActivoId: TorneoApp.getTorneoActivoId(),
     torneoEnDirecto: !activoFinalizado && torneoEstaEnDirecto(TorneoApp.getState()),
+    torneoActivoEnWeb: !!((TorneoApp.getState() || {}).meta || {}).enWeb,
     circuitos: (() => { try { return circuitosPublicos(); } catch (e) { console.warn('circuitos', e); return []; } })(),
     taller,
     web: datosWebPublicos(),

@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261114-ticketjunto">
+<meta name="build-id" content="v20261114-pendbonito">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -13071,7 +13071,7 @@ function viewPendientesCobro() {
   const total = pend.reduce((sum, p) => sum + (p.precio || 0), 0);
   const panel = el('div', { class: 'panel' },
     el('h2', {}, '💶 Pendientes de cobro'),
-    el('div', { class: 'sub' }, 'Raquetas ya reparadas que todavía no están pagadas (se las hayan llevado o no). Con «Enviar ticket» le mandas al cliente por WhatsApp el ticket con el precio y las formas de pago. Pulsa «Cobrado» cuando te paguen.'),
+    el('div', { class: 'sub' }, 'Raquetas ya reparadas que todavía no están pagadas (se las hayan llevado o no). Con «🧾 Ticket» le mandas al cliente por WhatsApp el ticket con el precio y las formas de pago. Pulsa «Cobrado» cuando te paguen.'),
   );
   if (!pend.length) {
     panel.appendChild(el('div', { class: 'empty-state' }, '¡No hay nada pendiente de cobro! 🎉'));
@@ -13097,15 +13097,18 @@ function viewPendientesCobro() {
     const sel = pend.filter(p => pendMarcadas.has(p.id));
     resumen.textContent = sel.length ? sel.length + (sel.length === 1 ? ' marcada · ' : ' marcadas · ') + euros(sel.reduce((t2, p) => t2 + (p.precio || 0), 0)) : 'Marca las raquetas que quieras juntar en un ticket';
     btnJunto.disabled = !sel.length;
+    btnJunto.classList.toggle('btn-gold', sel.length > 0); btnJunto.classList.toggle('btn-ghost', !sel.length);
+    btnJunto.style.opacity = sel.length ? '1' : '.55';
+    resumen.style.fontWeight = sel.length ? '800' : '500'; resumen.style.color = sel.length ? '' : '#6b7280';
   };
-  panel.appendChild(el('div', { class: 'row im-pend-barra', style: 'gap:12px;align-items:center;margin:0 0 10px;flex-wrap:wrap;' }, resumen, btnJunto));
+  panel.appendChild(el('div', { class: 'row im-pend-barra', style: 'gap:12px;align-items:center;justify-content:space-between;margin:4px 0 10px;padding:8px 12px;flex-wrap:wrap;background:rgba(15,31,77,.05);border-radius:10px;' }, resumen, btnJunto));
   const table = el('table', {}, el('thead', {}, el('tr', {},
     el('th', {}, ''), el('th', {}, 'Fecha'), el('th', {}, 'Cliente'), el('th', {}, 'Teléfono'), el('th', {}, 'Raqueta'), el('th', {}, 'Estado'), el('th', {}, 'Importe'), el('th', {}, ''))));
   const tbody = el('tbody');
   pend.forEach(p => {
     const cli = clienteDe(p.clienteId);
     tbody.appendChild(el('tr', {},
-      el('td', {}, el('input', { type: 'checkbox', class: 'im-pend-chk', 'aria-label': 'Marcar para el ticket', style: 'width:20px;height:20px;', checked: pendMarcadas.has(p.id) ? 'checked' : null,
+      el('td', { style: 'width:34px;vertical-align:middle;' }, el('input', { type: 'checkbox', class: 'im-pend-chk', 'aria-label': 'Marcar para el ticket', style: 'width:20px;height:20px;margin:0;', checked: pendMarcadas.has(p.id) ? 'checked' : null,
         onchange: (e) => { if (e.target.checked) pendMarcadas.add(p.id); else pendMarcadas.delete(p.id); pintarMarcadas(); } })),
       el('td', {}, fmtFechaTs(p.horaLlegada)),
       el('td', {}, cli ? cli.nombre : '(eliminado)'),
@@ -13113,9 +13116,9 @@ function viewPendientesCobro() {
       el('td', {}, p.marcaModelo || '—'),
       el('td', {}, p.estado === 'entregado' ? el('span', { class: 'chip chip-gold' }, 'Entregada ' + fmtFechaTs(p.fechaEntrega)) : el('span', { class: 'chip chip-muted' }, 'Sin recoger')),
       el('td', {}, euros(p.precio)),
-      el('td', {}, el('div', { style: 'display:flex;gap:6px;flex-wrap:wrap;' },
-        cli ? el('button', { class: 'btn btn-ghost btn-sm im-pend-ticket', title: 'Enviar al cliente el ticket con el precio y las formas de pago', onclick: () => abrirDeudaCliente(cli.id) }, '🧾 Enviar ticket') : null,
-        el('button', { class: 'btn btn-primary btn-sm', onclick: () => abrirCobroPedido(p) }, '✓ Cobrado'))),
+      el('td', { style: 'white-space:nowrap;text-align:right;' }, el('div', { style: 'display:inline-flex;gap:6px;flex-wrap:nowrap;align-items:center;' },
+        cli ? el('button', { class: 'btn btn-ghost btn-sm im-pend-ticket', style: 'white-space:nowrap;', title: 'Enviar al cliente el ticket con el precio y las formas de pago', onclick: () => abrirDeudaCliente(cli.id) }, '🧾 Ticket') : null,
+        el('button', { class: 'btn btn-primary btn-sm', style: 'white-space:nowrap;', onclick: () => abrirCobroPedido(p) }, '✓ Cobrado'))),
     ));
   });
   table.appendChild(tbody);

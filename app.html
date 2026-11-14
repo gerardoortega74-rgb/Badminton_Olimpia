@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261110-enweb">
+<meta name="build-id" content="v20261114-qrraqueta">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -10440,7 +10440,54 @@ function bloqueEnviarFormRaqueta() {
       el('div', { class: 'toolbar', style: 'margin:10px 0 0;' },
         el('button', { class: 'btn btn-gold btn-sm', onclick: enviar }, '💬 Enviar por WhatsApp'),
         el('button', { class: 'btn btn-ghost btn-sm', onclick: (e) => copiar(e.currentTarget) }, '🔗 Copiar enlace'),
+        el('button', { class: 'btn btn-ghost btn-sm im-qr-form', type: 'button', onclick: abrirQRFormRaqueta }, '🔳 Código QR'),
         el('a', { class: 'btn btn-ghost btn-sm', href: enlaceFormRaqueta(), target: '_blank', rel: 'noopener', style: 'text-decoration:none;' }, '📱 Abrir aquí'))));
+}
+// Código QR del formulario: el cliente lo escanea con la cámara (en el móvil de la tienda o en un cartel impreso)
+function lienzoQR(texto, lado) {
+  return cargarScript('qrcode.js?v=1').then(() => {
+    const q = window.qrcode(0, 'M'); q.addData(texto); q.make();
+    const n = q.getModuleCount(), borde = 4, celda = Math.max(1, Math.floor(lado / (n + borde * 2))), tam = celda * (n + borde * 2);
+    const c = document.createElement('canvas'); c.width = c.height = tam;
+    const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, tam, tam); x.fillStyle = '#000';
+    for (let f = 0; f < n; f++) for (let k = 0; k < n; k++) if (q.isDark(f, k)) x.fillRect((k + borde) * celda, (f + borde) * celda, celda, celda);
+    return c;
+  });
+}
+function abrirQRFormRaqueta() {
+  const root = document.getElementById('tallerModalRoot'); if (!root) return;
+  const url = enlaceFormRaqueta(), nombre = (state.config && state.config.nombreTaller) || 'IDERMAY CANTABRIA';
+  const caja = el('div', { class: 'im-qr-caja', style: 'text-align:center;min-height:120px;' }, el('div', { class: 'sub' }, 'Generando el código…'));
+  const acciones = el('div', { class: 'row', style: 'margin-top:14px;flex-wrap:wrap;gap:8px;' }, el('button', { class: 'btn btn-ghost', onclick: () => { root.innerHTML = ''; } }, 'Cerrar'));
+  root.innerHTML = '';
+  root.appendChild(el('div', { class: 'modal-bg', onclick: (e) => { if (e.target.classList.contains('modal-bg')) root.innerHTML = ''; } },
+    el('div', { class: 'modal' }, el('h3', {}, '🔳 QR para dejar la raqueta'),
+      el('div', { class: 'sub', style: 'margin-bottom:10px;' }, 'El cliente lo escanea con la cámara de su móvil y rellena él sus datos, el cordaje y la tensión. Enséñaselo aquí o imprime el cartel para el mostrador.'),
+      caja, acciones)));
+  lienzoQR(url, 1024).then(c => {
+    const png = c.toDataURL('image/png');
+    caja.innerHTML = '';
+    caja.appendChild(el('img', { class: 'im-qr-img', src: png, alt: 'Código QR del formulario de raqueta', style: 'width:min(280px,72vw);height:auto;border-radius:10px;border:1px solid #ddd;background:#fff;' }));
+    caja.appendChild(el('div', { class: 'sub', style: 'margin-top:6px;word-break:break-all;font-size:12px;' }, url));
+    const imprimir = () => {
+      const w = window.open('', '_blank'); if (!w) { alert('El navegador ha bloqueado la ventana. Permite las ventanas emergentes para imprimir el cartel.'); return; }
+      const logo = state.config && state.config.logoTaller;
+      const esc = t => String(t).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+      w.document.write('<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Cartel QR · ' + esc(nombre) + '</title><style>' +
+        '@page{size:A4;margin:14mm}*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#111;text-align:center;margin:0}' +
+        '.logo{height:90px;margin:6px auto 4px;display:block}.tienda{font-size:20px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin:6px 0 18px}' +
+        'h1{font-size:44px;line-height:1.08;margin:0 0 10px}.sub{font-size:21px;margin:0 0 18px;color:#333}' +
+        '.qr{width:112mm;height:112mm;display:block;margin:0 auto 16px;border:3px solid #111;border-radius:14px;padding:3mm}' +
+        'ol{display:inline-block;text-align:left;font-size:20px;line-height:1.5;margin:0 0 14px;padding-left:28px}.url{font-size:13px;color:#555;word-break:break-all}' +
+        '</style></head><body>' + (logo ? '<img class="logo" src="' + logo + '" alt="">' : '') +
+        '<div class="tienda">' + esc(nombre) + '</div><h1>¿Dejas tu raqueta<br>para encordar?</h1><p class="sub">Escanea el código con la cámara del móvil</p>' +
+        '<img class="qr" src="' + png + '" alt="Código QR"><ol><li>Pon tu nombre y tu teléfono</li><li>Elige el cordaje, el color y la tensión</li><li>Pulsa «Enviar» y entrega la raqueta</li></ol>' +
+        '<div class="url">' + esc(url) + '</div><script>onload=function(){setTimeout(function(){print()},300)}<\/script></body></html>');
+      w.document.close();
+    };
+    acciones.insertBefore(el('a', { class: 'btn btn-ghost im-qr-descargar', href: png, download: 'qr-raqueta.png', style: 'text-decoration:none;' }, '⬇ Descargar QR'), acciones.firstChild);
+    acciones.insertBefore(el('button', { class: 'btn btn-gold im-qr-imprimir', type: 'button', onclick: imprimir }, '🖨️ Imprimir cartel'), acciones.firstChild);
+  }).catch(e => { caja.innerHTML = ''; caja.appendChild(el('div', { class: 'sub' }, 'No se pudo generar el código: ' + e.message + '. Comprueba la conexión y vuelve a probar.')); });
 }
 function viewCola() {
   const wrap = document.createDocumentFragment();

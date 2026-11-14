@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261114-qrraqueta">
+<meta name="build-id" content="v20261114-ticketpend">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -9864,6 +9864,13 @@ async function enviarImagenPorWhatsapp(blob, nombreArchivo, numero, que) {
 }
 // ===== Ticket de las raquetas sin pagar de un cliente, como imagen para WhatsApp =====
 function pendientesDeCliente(clienteId) { return pedidosPendientesDeCobro().filter(p => p.clienteId === clienteId).sort((a, b) => (a.horaLlegada || 0) - (b.horaLlegada || 0)); }
+// Formas de pago que se ponen en el ticket (el Bizum y el enlace salen si están en Configuración)
+function formasDePagoTaller() {
+  const c = state.config || {}, l = ['Efectivo o tarjeta en la tienda'];
+  l.push(c.bizumTaller ? 'Bizum al ' + c.bizumTaller : 'Bizum');
+  if (c.enlacePago) l.push('Online: ' + c.enlacePago);
+  return l;
+}
 function imagenDeuda(cli, lista) {
   let em = { nombreComercial: state.config.nombreTaller || '' };
   try { if (typeof facEmisor === 'function') em = facEmisor(); } catch (e) { }
@@ -9875,7 +9882,8 @@ function imagenDeuda(cli, lista) {
   t(em.nombreComercial || em.razonSocial || 'IDERMAY CANTABRIA', { size: 32, bold: true, align: 'center' });
   if (em.telefono || state.config.telefonoTienda) t('Tel. ' + (em.telefono || state.config.telefonoTienda), { align: 'center', size: 20 });
   filas.push({ esp: 12 });
-  t('TICKET', { size: 30, bold: true, align: 'center' });
+  const todasEntregadas = lista.length > 0 && lista.every(p => p.estado === 'entregado');
+  t(todasEntregadas ? 'TICKET DE ENTREGA' : 'TICKET', { size: 30, bold: true, align: 'center' });
   t('Pendiente de pago', { size: 20, align: 'center', color: '#B3261E' });
   filas.push({ esp: 6 });
   dosCol('Cliente', cli ? cli.nombre : '', { size: 21 });
@@ -9885,14 +9893,16 @@ function imagenDeuda(cli, lista) {
     dosCol(p.marcaModelo || 'Raqueta', euros(p.precio || 0), { size: 22, bold: true });
     t('   ' + fch(p.horaFin || p.horaLlegada) + ' · ' + nombreCordajeDe(p), { size: 18, color: '#555' });
     t('   ' + fmtTension(p) + (p.estado === 'terminado' ? ' · por recoger' : ''), { size: 18, color: '#555' });
+    if (p.estado === 'entregado' && p.fechaEntrega) t('   Entregada el ' + fch(p.fechaEntrega), { size: 18, color: '#555' });
     filas.push({ esp: 6 });
   });
   filas.push({ raya: true });
   dosCol('TOTAL A PAGAR', euros(lista.reduce((s2, p) => s2 + (p.precio || 0), 0)), { size: 30, bold: true });
   dosCol('Raquetas', String(lista.length), { size: 21 });
   filas.push({ esp: 16 });
-  t('Puedes pagar en efectivo, tarjeta o Bizum.', { align: 'center', size: 19, color: '#444' });
-  if (state.config.enlacePago) t('Pago: ' + state.config.enlacePago, { align: 'center', size: 17, color: '#444' });
+  t('FORMAS DE PAGO', { align: 'center', size: 20, bold: true });
+  formasDePagoTaller().forEach(x => t(x, { align: 'center', size: x.length > 34 ? 16 : 19, color: '#333' }));
+  filas.push({ esp: 8 });
   t('¡Gracias!', { align: 'center', size: 20, color: '#444' });
   const cv = document.createElement('canvas'); const ctx = cv.getContext('2d');
   const ajusta = (txt, max, font) => { ctx.font = font; if (ctx.measureText(txt).width <= max) return txt; while (txt.length > 3 && ctx.measureText(txt + '…').width > max) txt = txt.slice(0, -1); return txt + '…'; };
@@ -9937,7 +9947,7 @@ function abrirDeudaCliente(clienteId) {
   const inTel = el('input', { type: 'tel', inputmode: 'tel', placeholder: 'Teléfono (o vacío para elegir el contacto)', value: cli && cli.telefono ? cli.telefono : '' });
   const aviso = el('div', { class: 'im-deuda-aviso', style: 'font-size:13px;margin-top:8px;' });
   const decir = (txt, ok) => { aviso.innerHTML = ''; if (txt) aviso.appendChild(el('div', { class: 'msg ' + (ok ? 'msg-ok' : 'msg-warn') }, txt)); };
-  const textoDeuda = () => 'Hola' + (cli ? ' ' + cli.nombre : '') + ', te paso el ticket de tus raquetas:\n' + lista().map(p => '- ' + fmtFechaTs(p.horaFin || p.horaLlegada) + ' ' + (p.marcaModelo || 'Raqueta') + ': ' + euros(p.precio || 0)).join('\n') + '\nTotal: ' + euros(lista().reduce((s2, p) => s2 + (p.precio || 0), 0)) + '. ¡Gracias!';
+  const textoDeuda = () => 'Hola' + (cli ? ' ' + cli.nombre : '') + ', te paso el ticket de tus raquetas:\n' + lista().map(p => '- ' + fmtFechaTs(p.horaFin || p.horaLlegada) + ' ' + (p.marcaModelo || 'Raqueta') + ': ' + euros(p.precio || 0)).join('\n') + '\nTotal: ' + euros(lista().reduce((s2, p) => s2 + (p.precio || 0), 0)) + '\nFormas de pago: ' + formasDePagoTaller().join(' · ') + '\n¡Gracias!';
   const btnEnviar = el('button', { type: 'button', class: 'btn tpv-wa im-deuda-enviar', onclick: async () => {
     if (!lista().length) { decir('Marca al menos una raqueta.', false); return; }
     if (cli && !cli.telefono && inTel.value.trim()) { cli.telefono = inTel.value.trim(); saveLocal(); }
@@ -12387,6 +12397,11 @@ function viewConfigTaller() {
     telefonoTiendaInput,
     el('button', { class: 'btn btn-gold btn-sm', onclick: () => { state.config.telefonoTienda = telefonoTiendaInput.value.trim(); render(); } }, '✓ Aceptar'),
   )));
+  const bizumInput = el('input', { type: 'tel', class: 'im-cfg-bizum', value: state.config.bizumTaller || '', placeholder: 'Ej: 600111222' });
+  panelConfig.appendChild(field('Teléfono para Bizum (sale en los tickets que envías)', el('div', { class: 'row', style: 'gap:8px;' },
+    bizumInput,
+    el('button', { class: 'btn btn-gold btn-sm im-cfg-bizum-ok', onclick: () => { state.config.bizumTaller = bizumInput.value.trim(); render(); } }, '✓ Aceptar'),
+  )));
   const enlacePagoInput = el('input', { type: 'text', value: state.config.enlacePago || '', placeholder: 'Ej: https://paypal.me/TuNombre' });
   panelConfig.appendChild(field('Enlace de pago (opcional, PayPal.me, Stripe, etc.)', el('div', { class: 'row', style: 'gap:8px;' },
     enlacePagoInput,
@@ -13052,7 +13067,7 @@ function viewPendientesCobro() {
   const total = pend.reduce((sum, p) => sum + (p.precio || 0), 0);
   const panel = el('div', { class: 'panel' },
     el('h2', {}, '💶 Pendientes de cobro'),
-    el('div', { class: 'sub' }, 'Raquetas ya reparadas que todavía no están pagadas (se las hayan llevado o no). Pulsa "Cobrado" cuando te paguen.'),
+    el('div', { class: 'sub' }, 'Raquetas ya reparadas que todavía no están pagadas (se las hayan llevado o no). Con «Enviar ticket» le mandas al cliente por WhatsApp el ticket con el precio y las formas de pago. Pulsa «Cobrado» cuando te paguen.'),
   );
   if (!pend.length) {
     panel.appendChild(el('div', { class: 'empty-state' }, '¡No hay nada pendiente de cobro! 🎉'));
@@ -13075,7 +13090,9 @@ function viewPendientesCobro() {
       el('td', {}, p.marcaModelo || '—'),
       el('td', {}, p.estado === 'entregado' ? el('span', { class: 'chip chip-gold' }, 'Entregada ' + fmtFechaTs(p.fechaEntrega)) : el('span', { class: 'chip chip-muted' }, 'Sin recoger')),
       el('td', {}, euros(p.precio)),
-      el('td', {}, el('button', { class: 'btn btn-primary btn-sm', onclick: () => abrirCobroPedido(p) }, '✓ Cobrado')),
+      el('td', {}, el('div', { style: 'display:flex;gap:6px;flex-wrap:wrap;' },
+        cli ? el('button', { class: 'btn btn-ghost btn-sm im-pend-ticket', title: 'Enviar al cliente el ticket con el precio y las formas de pago', onclick: () => abrirDeudaCliente(cli.id) }, '🧾 Enviar ticket') : null,
+        el('button', { class: 'btn btn-primary btn-sm', onclick: () => abrirCobroPedido(p) }, '✓ Cobrado'))),
     ));
   });
   table.appendChild(tbody);

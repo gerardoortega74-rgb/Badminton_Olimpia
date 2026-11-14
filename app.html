@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261114-articulosedit">
+<meta name="build-id" content="v20261114-gripcolores">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -9690,6 +9690,24 @@ function comprobarAvisos5min() {
 }
 if (typeof window !== 'undefined') setInterval(comprobarAvisos5min, 20000);
 
+// Opciones del desplegable de artículos: por orden alfabético y con los colores de cada artículo juntos
+function opcionesArticulosExtra(extra) {
+  const col = (a, b) => String(a).localeCompare(String(b), 'es', { sensitivity: 'base', numeric: true });
+  const arts = state.articulos.filter(a => !a.esCordaje && !a.colorInactivo);
+  const grupos = {}, bloques = [];
+  arts.forEach(a => {
+    if (a.grupoId) { let g = grupos[a.grupoId]; if (!g) { g = grupos[a.grupoId] = { nombre: a.grupoNombre || a.nombre, hijos: [] }; bloques.push(g); } g.hijos.push(a); }
+    else bloques.push({ nombre: a.nombre, art: a });
+  });
+  bloques.sort((x, y) => col(x.nombre, y.nombre));
+  const out = [];
+  bloques.forEach(b => {
+    if (b.art) { out.push(el('option', { value: b.art.id }, b.art.nombre + extra(b.art))); return; }
+    b.hijos.sort((x, y) => col(x.color || x.nombre, y.color || y.nombre));
+    out.push(el('optgroup', { label: b.nombre + ' (' + b.hijos.length + (b.hijos.length === 1 ? ' color)' : ' colores)') }, b.hijos.map(h => el('option', { value: h.id }, b.nombre + ' · ' + (h.color || 'Sin color') + extra(h)))));
+  });
+  return out;
+}
 function menuMasOpciones(botones) {
   const lista = botones.filter(Boolean);
   if (!lista.length) return null;
@@ -10804,8 +10822,7 @@ function abrirEditarPedido(p) {
     ads.forEach((it, idx) => adsCaja.appendChild(el('div', { class: 'im-ed-ad', style: 'display:flex;gap:8px;align-items:center;justify-content:space-between;padding:4px 0;' },
       el('span', {}, it.cantidad + ' × ' + (it.nombre || 'Artículo') + ' · ' + euros(it.cantidad * it.precioUnitario)),
       el('button', { type: 'button', class: 'btn btn-danger btn-sm im-ed-ad-quitar', onclick: () => { const a = sumaAds(ads); ads.splice(idx, 1); ajustarPrecioAds(a); pintarAds(); } }, 'Quitar'))));
-    const disponibles = state.articulos.filter(a => !a.esCordaje && a.activo !== false);
-    const sel = el('select', { class: 'im-ed-ad-sel' }, [el('option', { value: '' }, '— Elige un artículo —')].concat(disponibles.map(a => el('option', { value: a.id }, a.nombre + ' · ' + euros(a.precio || 0) + ' (stock: ' + (a.stock || 0) + ')'))));
+    const sel = el('select', { class: 'im-ed-ad-sel' }, [el('option', { value: '' }, '— Elige un artículo —')].concat(opcionesArticulosExtra(a => ' · ' + euros(a.precio || 0) + ' (stock: ' + (a.stock || 0) + ')')));
     const cant = el('input', { type: 'number', min: '1', step: '1', value: '1', class: 'im-ed-ad-cant', style: 'width:70px;' });
     adsCaja.appendChild(el('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px;' }, el('div', { style: 'flex:1;min-width:180px;' }, sel), cant,
       el('button', { type: 'button', class: 'btn btn-gold btn-sm im-ed-ad-anadir', onclick: () => {
@@ -11270,7 +11287,7 @@ function viewNuevoPedido() {
   const otrosArticulosSelect = el('select', {});
   function repintarOtrosArticulosSelect() {
     const v = otrosArticulosSelect.value; otrosArticulosSelect.innerHTML = '';
-    [el('option', { value: '' }, '— Elegir artículo —')].concat(otrosArticulosDisponibles.map(a => el('option', { value: a.id }, a.nombre + datoPrecio(a)))).forEach(o => otrosArticulosSelect.appendChild(o));
+    [el('option', { value: '' }, '— Elegir artículo —')].concat(opcionesArticulosExtra(datoPrecio)).forEach(o => otrosArticulosSelect.appendChild(o));
     otrosArticulosSelect.value = v;
   }
   repintarOtrosArticulosSelect();

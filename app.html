@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261114-ticketpend">
+<meta name="build-id" content="v20261114-recibida">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -9475,6 +9475,7 @@ function construirPanelPorRecoger() {
       el('div', { class: 'im-num', 'aria-hidden': 'true' }, '✓'),
       el('div', { class: 'im-cli' }, cli ? cli.nombre : '(cliente eliminado)', chipPago(p)),
       el('div', { class: 'im-det' }, el('strong', {}, p.marcaModelo || 'Raqueta sin especificar'), ` · ${euros(p.precio)} · lista ${dias > 0 ? 'hace ' + dias + (dias === 1 ? ' día' : ' días') : 'hoy'}`),
+      el('div', { class: 'im-det im-recibida' }, '📥 Me la dejó el ', el('strong', {}, fmtFechaTs(p.horaLlegada) + ' a las ' + fmtHora(p.horaLlegada)), ' · ' + nombreCordajeDe(p) + ' · ' + fmtTension(p)),
       p.fotoDespues ? el('img', { class: 'im-foto im-foto-lista', src: p.fotoDespues, alt: 'Foto de la raqueta terminada' }) : null,
       el('div', { class: 'im-acc' },
         el('button', { class: 'btn btn-primary', onclick: () => abrirEntregaPedido(p) }, 'Entregar'),

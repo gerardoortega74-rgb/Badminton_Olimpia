@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261114-recibida">
+<meta name="build-id" content="v20261114-ticketjunto">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -9927,12 +9927,14 @@ function imagenDeuda(cli, lista) {
   });
   return new Promise((res, rej) => cv.toBlob(b => b ? res(b) : rej(new Error('sin imagen')), 'image/png'));
 }
-function abrirDeudaCliente(clienteId) {
+function abrirDeudaCliente(clienteId, soloIds) {
   const root = document.getElementById('tallerModalRoot');
   const cli = clienteDe(clienteId);
   const todas = pendientesDeCliente(clienteId);
   if (!root || !todas.length) { alert('Este cliente no tiene raquetas sin pagar.'); return; }
-  const marcadas = new Set(todas.map(p => p.id));
+  // soloIds: las que vienen ya marcadas desde «Pendientes de cobro» (el resto sale sin marcar)
+  const pre = soloIds && soloIds.length ? todas.filter(p => soloIds.includes(p.id)) : todas;
+  const marcadas = new Set((pre.length ? pre : todas).map(p => p.id));
   const lista = () => todas.filter(p => marcadas.has(p.id));
   const vista = el('img', { class: 'im-deuda-img', alt: 'Ticket', style: 'width:100%;max-width:300px;display:block;margin:8px auto;border-radius:6px;box-shadow:0 2px 10px rgba(0,0,0,.15);' });
   const totalEl = el('b');
@@ -9943,7 +9945,7 @@ function abrirDeudaCliente(clienteId) {
   };
   const filas = el('div', {});
   todas.forEach(p => filas.appendChild(el('label', { style: 'display:flex;gap:8px;align-items:center;text-transform:none;margin:4px 0;cursor:pointer;' },
-    el('input', { type: 'checkbox', style: 'width:auto;', checked: 'checked', onchange: (e) => { if (e.target.checked) marcadas.add(p.id); else marcadas.delete(p.id); pintar(); } }),
+    el('input', { type: 'checkbox', style: 'width:auto;', checked: marcadas.has(p.id) ? 'checked' : null, onchange: (e) => { if (e.target.checked) marcadas.add(p.id); else marcadas.delete(p.id); pintar(); } }),
     el('span', { style: 'flex:1;' }, fmtFechaTs(p.horaFin || p.horaLlegada) + ' · ' + (p.marcaModelo || 'Raqueta')), el('b', {}, euros(p.precio || 0)))));
   const inTel = el('input', { type: 'tel', inputmode: 'tel', placeholder: 'Teléfono (o vacío para elegir el contacto)', value: cli && cli.telefono ? cli.telefono : '' });
   const aviso = el('div', { class: 'im-deuda-aviso', style: 'font-size:13px;margin-top:8px;' });
@@ -13062,6 +13064,7 @@ function viewCajaDia() {
   wrap.appendChild(panel);
   return wrap;
 }
+let pendMarcadas = new Set();
 function viewPendientesCobro() {
   const wrap = document.createDocumentFragment();
   const pend = pedidosPendientesDeCobro();
@@ -13079,12 +13082,31 @@ function viewPendientesCobro() {
     el('div', { class: 'sub', style: 'font-weight:700;' }, `${pend.length} raqueta(s) · Total pendiente: ${euros(total)}`),
     el('button', { class: 'btn btn-gold btn-sm', onclick: () => abrirPdfPendientes() }, '📄 Listado en PDF'),
   ));
+  // Marcar varias raquetas y sacar UN ticket con el total de lo marcado
+  pendMarcadas = new Set([...pendMarcadas].filter(id => pend.some(p => p.id === id)));
+  const resumen = el('b', { class: 'im-pend-resumen' });
+  const btnJunto = el('button', { class: 'btn btn-gold btn-sm im-pend-junto', type: 'button', onclick: () => {
+    const sel = pend.filter(p => pendMarcadas.has(p.id));
+    if (!sel.length) return;
+    const clientes = [...new Set(sel.map(p => p.clienteId))];
+    if (clientes.length > 1) { alert('Has marcado raquetas de ' + clientes.length + ' clientes distintos.\n\nUn ticket es para un solo cliente: marca solo las raquetas de uno.'); return; }
+    if (!clienteDe(clientes[0])) { alert('Ese cliente ya no existe.'); return; }
+    abrirDeudaCliente(clientes[0], sel.map(p => p.id));
+  } }, '🧾 Un ticket con las marcadas');
+  const pintarMarcadas = () => {
+    const sel = pend.filter(p => pendMarcadas.has(p.id));
+    resumen.textContent = sel.length ? sel.length + (sel.length === 1 ? ' marcada · ' : ' marcadas · ') + euros(sel.reduce((t2, p) => t2 + (p.precio || 0), 0)) : 'Marca las raquetas que quieras juntar en un ticket';
+    btnJunto.disabled = !sel.length;
+  };
+  panel.appendChild(el('div', { class: 'row im-pend-barra', style: 'gap:12px;align-items:center;margin:0 0 10px;flex-wrap:wrap;' }, resumen, btnJunto));
   const table = el('table', {}, el('thead', {}, el('tr', {},
-    el('th', {}, 'Fecha'), el('th', {}, 'Cliente'), el('th', {}, 'Teléfono'), el('th', {}, 'Raqueta'), el('th', {}, 'Estado'), el('th', {}, 'Importe'), el('th', {}, ''))));
+    el('th', {}, ''), el('th', {}, 'Fecha'), el('th', {}, 'Cliente'), el('th', {}, 'Teléfono'), el('th', {}, 'Raqueta'), el('th', {}, 'Estado'), el('th', {}, 'Importe'), el('th', {}, ''))));
   const tbody = el('tbody');
   pend.forEach(p => {
     const cli = clienteDe(p.clienteId);
     tbody.appendChild(el('tr', {},
+      el('td', {}, el('input', { type: 'checkbox', class: 'im-pend-chk', 'aria-label': 'Marcar para el ticket', style: 'width:20px;height:20px;', checked: pendMarcadas.has(p.id) ? 'checked' : null,
+        onchange: (e) => { if (e.target.checked) pendMarcadas.add(p.id); else pendMarcadas.delete(p.id); pintarMarcadas(); } })),
       el('td', {}, fmtFechaTs(p.horaLlegada)),
       el('td', {}, cli ? cli.nombre : '(eliminado)'),
       el('td', {}, cli && cli.telefono ? cli.telefono : '—'),
@@ -13098,6 +13120,7 @@ function viewPendientesCobro() {
   });
   table.appendChild(tbody);
   panel.appendChild(table);
+  pintarMarcadas();
   wrap.appendChild(panel);
   return wrap;
 }

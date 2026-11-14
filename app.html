@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261114-garantia">
+<meta name="build-id" content="v20261114-fotoeditar">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -10793,6 +10793,24 @@ function abrirEditarPedido(p) {
   const chkPre = el('input', { type: 'checkbox', style: 'width:auto;', checked: p.pretensado ? 'checked' : null });
   const selPago = selectEl([{ value: 'alRecoger', label: 'Paga al recoger' }, { value: 'adelantado', label: 'Ya ha pagado por adelantado' }, { value: 'sinPagar', label: 'Recoge sin pagar (pagará más adelante)' }, { value: 'garantia', label: '🛡️ Garantía (no se cobra)' }], p.garantia ? 'garantia' : p.pagado ? 'adelantado' : (p.pagoPrevisto || 'alRecoger'), () => {});
   const inNotas = el('textarea', { rows: '2' }, p.notas || '');
+  // Foto de la raqueta (cómo llegó): hacerla con la cámara, elegirla de la galería o pegarla
+  let fotoNueva = p.fotoAntes || null;
+  const fotoCaja = el('div', { class: 'im-ed-foto' });
+  const inCam = el('input', { type: 'file', accept: 'image/*', capture: 'environment', style: 'display:none;' });
+  const inGal = el('input', { type: 'file', accept: 'image/*', style: 'display:none;', class: 'im-ed-foto-file' });
+  const ponerFoto = (file) => { if (!file) return; comprimirImagen(file, 1100, 0.65).then(d => { fotoNueva = d; pintarFoto(); }).catch(() => alert('No se pudo leer la foto.')); };
+  inCam.addEventListener('change', () => ponerFoto(inCam.files[0])); inGal.addEventListener('change', () => ponerFoto(inGal.files[0]));
+  const pintarFoto = () => {
+    fotoCaja.innerHTML = '';
+    if (fotoNueva) fotoCaja.appendChild(el('img', { class: 'im-ed-foto-img', src: fotoNueva, alt: 'Foto de la raqueta', style: 'display:block;max-width:100%;max-height:200px;border-radius:10px;margin-bottom:8px;' }));
+    fotoCaja.appendChild(el('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;' },
+      el('button', { type: 'button', class: 'btn btn-ghost btn-sm', onclick: () => inCam.click() }, '📷 Hacer foto'),
+      el('button', { type: 'button', class: 'btn btn-ghost btn-sm', onclick: () => inGal.click() }, fotoNueva ? '🖼️ Cambiar por otra' : '🖼️ Elegir foto'),
+      fotoNueva ? el('button', { type: 'button', class: 'btn btn-ghost btn-sm im-ed-foto-quitar', onclick: () => { fotoNueva = null; pintarFoto(); } }, '🗑️ Quitar foto') : null));
+    fotoCaja.appendChild(el('div', { class: 'sub', style: 'font-size:12px;margin-top:4px;' }, 'También puedes pegar una foto copiada con Ctrl+V.'));
+  };
+  pintarFoto();
+  const alPegarFoto = (e) => { const it = [...((e.clipboardData && e.clipboardData.items) || [])].find(x => x.type && x.type.indexOf('image/') === 0); if (it) { e.preventDefault(); ponerFoto(it.getAsFile()); } };
   const nombreCor = (id) => { const c = id ? cordajeDe(id) : null; return c ? c.nombre : 'sin cordaje'; };
   const tens = (v, h) => (v || '—') + '/' + (h || '—') + ' kg';
   const guardar = () => {
@@ -10816,6 +10834,7 @@ function abrirEditarPedido(p) {
     if (nuevo.pago === 'garantia') nuevo.precio = p.garantia ? 0 : nuevo.precio;
     if (nuevo.pago !== pagoAntes) cambios.push('Pago: ' + { alRecoger: 'al recoger', adelantado: 'ya pagado', sinPagar: 'pagará más adelante', garantia: 'GARANTÍA, no se cobra (precio 0 €)' }[nuevo.pago]);
     if (nuevo.notas !== (p.notas || '')) cambios.push('Notas cambiadas');
+    if (fotoNueva !== (p.fotoAntes || null)) cambios.push(fotoNueva ? (p.fotoAntes ? 'Foto cambiada' : 'Foto añadida') : 'Foto quitada');
     if (!cambios.length) { root.innerHTML = ''; return; }
     const avisoCli = cli && (nuevo.nombre !== (cli.nombre || '') || nuevo.tel !== (cli.telefono || '')) ? '\n\n(El nombre y el teléfono se cambian en la ficha del cliente, para todos sus pedidos.)' : '';
     if (!confirm('¿Guardar estos cambios?\n\n• ' + cambios.join('\n• ') + avisoCli)) return;
@@ -10824,6 +10843,7 @@ function abrirEditarPedido(p) {
     cambiarCordajePedido(p, 'cordajeId', nuevo.cor);
     cambiarCordajePedido(p, 'cordajeIdH', nuevo.corH);
     p.precio = nuevo.precio; p.pretensado = nuevo.pre; p.notas = nuevo.notas;
+    if (fotoNueva !== (p.fotoAntes || null)) { p.fotoAntes = fotoNueva; if (window.guardarFotosTallerEnNube) window.guardarFotosTallerEnNube(p.id, p.fotoAntes, p.fotoDespues); }
     if (nuevo.pago === 'garantia' && pagoAntes !== 'garantia') { ponerGarantia(p, true); root.innerHTML = ''; render(); return; }
     if (pagoAntes === 'garantia' && nuevo.pago !== 'garantia') ponerGarantia(p, false);
     if (nuevo.pago !== pagoAntes) {
@@ -10855,6 +10875,9 @@ function abrirEditarPedido(p) {
         field('Cordaje horizontal (si es distinto)', selCorH),
         el('label', { style: 'display:flex;gap:8px;align-items:center;margin:4px 0 8px;font-weight:600;' }, chkPre, 'Pretensado')),
       el('div', { class: 'im-editar-grupo' },
+        el('div', { class: 'im-editar-tit' }, 'Foto de la raqueta'),
+        fotoCaja, inCam, inGal),
+      el('div', { class: 'im-editar-grupo' },
         el('div', { class: 'im-editar-tit' }, 'Precio y pago'),
         el('div', { class: 'im-editar-2' }, field('Precio (€)', inPrecio), field('Pago', selPago)),
         field('Notas', inNotas)),
@@ -10863,6 +10886,7 @@ function abrirEditarPedido(p) {
         el('button', { class: 'btn btn-ghost', onclick: () => { root.innerHTML = ''; } }, 'Cancelar')),
     ),
   ));
+  root.querySelector('.im-editar').addEventListener('paste', alPegarFoto);
   inNombre.focus();
 }
 // Foto de la raqueta terminada, después de haberla marcado (por ejemplo, si se terminó desde «aplazadas»).

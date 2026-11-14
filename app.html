@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261114-pendbonito">
+<meta name="build-id" content="v20261114-cobrarvarias">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -9802,9 +9802,10 @@ function tpvCobrar() {
 }
 function tpvAnular(v) {
   if (v.anulada) return;
-  const ped = v.pedidoId ? state.pedidos.find(x => x.id === v.pedidoId) : null;
-  if (!confirm('¿Anular el ticket ' + tpvNumTxt(v) + ' de ' + euros(v.total) + '?\n\n' + (v.pedidoId ? 'La raqueta volverá a quedar pendiente de cobro.' : 'Se devuelve el stock de los artículos y se quita el ingreso de la contabilidad.'))) return;
-  if (ped) { ped.pagado = false; ped.fechaPago = null; ped.formaPago = null; }
+  const idsPed = (v.pedidoIds && v.pedidoIds.length) ? v.pedidoIds : (v.pedidoId ? [v.pedidoId] : []);
+  const peds = idsPed.map(id => state.pedidos.find(x => x.id === id)).filter(Boolean);
+  if (!confirm('¿Anular el ticket ' + tpvNumTxt(v) + ' de ' + euros(v.total) + '?\n\n' + (idsPed.length ? (idsPed.length > 1 ? 'Las ' + idsPed.length + ' raquetas volverán' : 'La raqueta volverá') + ' a quedar pendiente de cobro.' : 'Se devuelve el stock de los artículos y se quita el ingreso de la contabilidad.'))) return;
+  peds.forEach(ped => { ped.pagado = false; ped.fechaPago = null; ped.formaPago = null; });
   v.lineas.forEach(l => { const a = state.articulos.find(x => x.id === l.articuloId); if (a) a.stock = (Number(a.stock) || 0) + l.cantidad; });
   if (v.movimientoId) removeMovimientoTaller(v.movimientoId);
   v.anulada = true; v.fechaAnulacion = Date.now();
@@ -10308,7 +10309,7 @@ function tpvCajaRegistradora(v) {
   return caja;
 }
 // ===== Cobro de raquetas con ticket (misma numeración que la tienda) =====
-function ventaDePedido(p) { return (state.ventasTienda || []).find(v => v.pedidoId === p.id && !v.anulada) || null; }
+function ventaDePedido(p) { return (state.ventasTienda || []).find(v => (v.pedidoId === p.id || (v.pedidoIds || []).includes(p.id)) && !v.anulada) || null; }
 function registrarCobroPedido(p, pago, ts) {
   ts = ts || Date.now();
   p.pagado = true; p.fechaPago = ts; p.formaPago = pago;
@@ -10326,8 +10327,58 @@ function registrarCobroPedido(p, pago, ts) {
 }
 function anularCobroPedido(p) {
   const v = ventaDePedido(p);
-  if (v) { v.anulada = true; v.fechaAnulacion = Date.now(); }
+  if (v && (v.pedidoIds || []).length > 1) {
+    // ticket de varias raquetas: se quita solo esta y el ticket se queda con las demás
+    v.pedidoIds = v.pedidoIds.filter(id => id !== p.id);
+    v.lineas = v.lineas.filter(l => l.pedidoId !== p.id);
+    v.pedidoId = v.pedidoIds[0];
+    v.total = Math.round(v.lineas.reduce((t2, l) => t2 + (l.precio || 0) * (l.cantidad || 0), 0) * 100) / 100;
+  } else if (v) { v.anulada = true; v.fechaAnulacion = Date.now(); }
   p.pagado = false; p.fechaPago = null; p.formaPago = null;
+}
+// Cobrar varias raquetas del mismo cliente con UN solo ticket
+function lineasCobroPedido(p) {
+  let lineas;
+  try { lineas = facLineasDePedido(p).map(l => ({ articuloId: null, nombre: l.concepto, cantidad: l.cantidad, precio: l.precio, pedidoId: p.id })); } catch (e) { lineas = []; }
+  const suma = Math.round(lineas.reduce((t2, l) => t2 + (l.precio || 0) * (l.cantidad || 0), 0) * 100) / 100;
+  // el ticket tiene que cuadrar con el precio de la raqueta (que se puede editar a mano)
+  if (!lineas.length || Math.abs(suma - (p.precio || 0)) > 0.005) lineas = [{ articuloId: null, nombre: 'Encordado ' + (p.marcaModelo || 'raqueta'), cantidad: 1, precio: p.precio || 0, pedidoId: p.id }];
+  return lineas;
+}
+function registrarCobroVarios(peds, pago, ts) {
+  ts = ts || Date.now();
+  peds = peds.filter(p => !p.pagado);
+  if (!peds.length) return null;
+  if (peds.length === 1) return registrarCobroPedido(peds[0], pago, ts);
+  const cli = clienteDe(peds[0].clienteId);
+  let lineas = []; peds.forEach(p => { lineas = lineas.concat(lineasCobroPedido(p)); p.pagado = true; p.fechaPago = ts; p.formaPago = pago; });
+  const venta = { id: uid('vta'), numero: tpvSiguienteNumero(), fecha: ts, pago, tipo: 'encordado', pedidoId: peds[0].id, pedidoIds: peds.map(p => p.id), clienteId: cli ? cli.id : null, clienteNombre: cli ? cli.nombre : '',
+    lineas, total: Math.round(peds.reduce((t2, p) => t2 + (p.precio || 0), 0) * 100) / 100, anulada: false, movimientoId: null };
+  if (!Array.isArray(state.ventasTienda)) state.ventasTienda = [];
+  state.ventasTienda.push(venta);
+  return venta;
+}
+function abrirCobroVarios(peds) {
+  const root = document.getElementById('tallerModalRoot');
+  if (!root || !peds.length) return;
+  if (peds.length === 1) { abrirCobroPedido(peds[0]); return; }
+  const cli = clienteDe(peds[0].clienteId);
+  let pago = 'efectivo';
+  const botones = el('div', { class: 'tpv-pagos' });
+  const pintar = () => { botones.innerHTML = ''; Object.keys(TPV_PAGOS).forEach(k => botones.appendChild(el('button', { type: 'button', class: pago === k ? 'on' : '', 'aria-pressed': pago === k ? 'true' : 'false', onclick: () => { pago = k; pintar(); } }, TPV_PAGOS[k]))); };
+  pintar();
+  root.innerHTML = '';
+  root.appendChild(el('div', { class: 'modal-bg', onclick: (e) => { if (e.target.classList.contains('modal-bg')) root.innerHTML = ''; } },
+    el('div', { class: 'modal im-cobro im-cobro-varios' },
+      el('h3', {}, '💶 Cobrar ' + peds.length + ' raquetas'),
+      el('div', { class: 'sub', style: 'margin-bottom:8px;' }, (cli ? cli.nombre : '') + ' · un solo ticket con todo'),
+      el('div', {}, ...peds.map(p => el('div', { style: 'display:flex;justify-content:space-between;gap:10px;padding:3px 0;' }, el('span', {}, p.marcaModelo || 'Raqueta'), el('b', {}, euros(p.precio || 0))))),
+      el('div', { class: 'im-cobro-imp' }, euros(peds.reduce((t2, p) => t2 + (p.precio || 0), 0))),
+      el('div', { class: 'sub', style: 'margin:10px 0 4px;font-weight:700;' }, 'Forma de pago'),
+      botones,
+      el('div', { class: 'row', style: 'margin-top:16px;gap:8px;' },
+        el('button', { class: 'btn btn-primary im-cobro-varios-ok', onclick: () => { const v = registrarCobroVarios(peds, pago); pendMarcadas = new Set(); root.innerHTML = ''; render(); if (v) tpvAbrirTicket(v, true); } }, 'Cobrar y sacar ticket'),
+        el('button', { class: 'btn btn-ghost', onclick: () => { root.innerHTML = ''; } }, 'Cancelar')))));
 }
 // Ventana para cobrar una raqueta: elige forma de pago → genera el ticket.
 function abrirCobroPedido(p, titulo) {
@@ -13071,7 +13122,7 @@ function viewPendientesCobro() {
   const total = pend.reduce((sum, p) => sum + (p.precio || 0), 0);
   const panel = el('div', { class: 'panel' },
     el('h2', {}, '💶 Pendientes de cobro'),
-    el('div', { class: 'sub' }, 'Raquetas ya reparadas que todavía no están pagadas (se las hayan llevado o no). Con «🧾 Ticket» le mandas al cliente por WhatsApp el ticket con el precio y las formas de pago. Pulsa «Cobrado» cuando te paguen.'),
+    el('div', { class: 'sub' }, 'Raquetas ya reparadas que todavía no están pagadas (se las hayan llevado o no). «🧾 Ticket» manda al cliente lo que debe, con las formas de pago. «Cobrado» apunta el pago y saca el ticket pagado. Para varias raquetas del mismo cliente, márcalas y usa los botones de la barra.'),
   );
   if (!pend.length) {
     panel.appendChild(el('div', { class: 'empty-state' }, '¡No hay nada pendiente de cobro! 🎉'));
@@ -13085,23 +13136,29 @@ function viewPendientesCobro() {
   // Marcar varias raquetas y sacar UN ticket con el total de lo marcado
   pendMarcadas = new Set([...pendMarcadas].filter(id => pend.some(p => p.id === id)));
   const resumen = el('b', { class: 'im-pend-resumen' });
-  const btnJunto = el('button', { class: 'btn btn-gold btn-sm im-pend-junto', type: 'button', onclick: () => {
+  const btnJunto = el('button', { class: 'btn btn-ghost btn-sm im-pend-junto', type: 'button', title: 'Ticket con el total para enviárselo al cliente antes de que pague', onclick: () => {
     const sel = pend.filter(p => pendMarcadas.has(p.id));
     if (!sel.length) return;
     const clientes = [...new Set(sel.map(p => p.clienteId))];
     if (clientes.length > 1) { alert('Has marcado raquetas de ' + clientes.length + ' clientes distintos.\n\nUn ticket es para un solo cliente: marca solo las raquetas de uno.'); return; }
     if (!clienteDe(clientes[0])) { alert('Ese cliente ya no existe.'); return; }
     abrirDeudaCliente(clientes[0], sel.map(p => p.id));
-  } }, '🧾 Un ticket con las marcadas');
+  } }, '🧾 Ticket sin cobrar');
+  const unSoloCliente = () => {
+    const sel = pend.filter(p => pendMarcadas.has(p.id));
+    const clientes = [...new Set(sel.map(p => p.clienteId))];
+    if (clientes.length > 1) { alert('Has marcado raquetas de ' + clientes.length + ' clientes distintos.\n\nUn ticket es para un solo cliente: marca solo las raquetas de uno.'); return null; }
+    return sel;
+  };
+  const btnCobrar = el('button', { class: 'btn btn-primary btn-sm im-pend-cobrar', type: 'button', onclick: () => { const sel = unSoloCliente(); if (sel && sel.length) abrirCobroVarios(sel); } }, '💶 Cobrar las marcadas (ticket pagado)');
   const pintarMarcadas = () => {
     const sel = pend.filter(p => pendMarcadas.has(p.id));
     resumen.textContent = sel.length ? sel.length + (sel.length === 1 ? ' marcada · ' : ' marcadas · ') + euros(sel.reduce((t2, p) => t2 + (p.precio || 0), 0)) : 'Marca las raquetas que quieras juntar en un ticket';
-    btnJunto.disabled = !sel.length;
-    btnJunto.classList.toggle('btn-gold', sel.length > 0); btnJunto.classList.toggle('btn-ghost', !sel.length);
-    btnJunto.style.opacity = sel.length ? '1' : '.55';
+    btnJunto.disabled = !sel.length; btnCobrar.disabled = !sel.length;
+    btnJunto.style.opacity = btnCobrar.style.opacity = sel.length ? '1' : '.55';
     resumen.style.fontWeight = sel.length ? '800' : '500'; resumen.style.color = sel.length ? '' : '#6b7280';
   };
-  panel.appendChild(el('div', { class: 'row im-pend-barra', style: 'gap:12px;align-items:center;justify-content:space-between;margin:4px 0 10px;padding:8px 12px;flex-wrap:wrap;background:rgba(15,31,77,.05);border-radius:10px;' }, resumen, btnJunto));
+  panel.appendChild(el('div', { class: 'row im-pend-barra', style: 'gap:12px;align-items:center;justify-content:space-between;margin:4px 0 10px;padding:8px 12px;flex-wrap:wrap;background:rgba(15,31,77,.05);border-radius:10px;' }, resumen, el('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;' }, btnJunto, btnCobrar)));
   const table = el('table', {}, el('thead', {}, el('tr', {},
     el('th', {}, ''), el('th', {}, 'Fecha'), el('th', {}, 'Cliente'), el('th', {}, 'Teléfono'), el('th', {}, 'Raqueta'), el('th', {}, 'Estado'), el('th', {}, 'Importe'), el('th', {}, ''))));
   const tbody = el('tbody');

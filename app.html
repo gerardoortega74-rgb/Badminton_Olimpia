@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261114-cobrarvarias">
+<meta name="build-id" content="v20261114-garantia">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -9428,7 +9428,7 @@ function abrirEntregaPedido(p) {
   if (!root) { entregarPedido(p); render(); return; }
   const fechaInput = el('input', { type: 'date', value: hoyISO() });
   const opciones = p.pagado
-    ? [{ value: 'yaPagado', label: 'Ya estaba pagada' }]
+    ? [{ value: 'yaPagado', label: p.garantia ? '🛡️ Garantía: no se cobra' : 'Ya estaba pagada' }]
     : [{ value: 'pagaAhora', label: 'Me paga ahora (' + euros(p.precio) + ')' }, { value: 'sinPagar', label: 'Se la lleva sin pagar (queda pendiente de cobro)' }];
   const formaPagoSelect = selectEl(Object.keys(TPV_PAGOS).map(k => ({ value: k, label: TPV_PAGOS[k] })), 'efectivo', () => {});
   const campoForma = field('Forma de pago', formaPagoSelect);
@@ -9488,6 +9488,7 @@ function construirPanelPorRecoger() {
             volverACola(p); render();
           } }, '↩️ No está encordada: volver a la cola'),
           el('button', { class: 'btn btn-ghost btn-sm im-foto-despues', onclick: () => abrirFotoTerminada(p, false) }, p.fotoDespues ? '📷 Cambiar la foto' : '📷 Añadir foto'),
+          botonGarantia(p),
           el('button', { class: 'btn btn-ghost btn-sm', onclick: () => abrirInformeCoste(p) }, 'Informe de coste'),
           el('button', { class: 'btn btn-danger btn-sm', onclick: () => { if (confirm('¿Quitar este pedido? No se puede deshacer.')) { removePedido(p.id); render(); } } }, 'Quitar'),
         ]),
@@ -9694,7 +9695,29 @@ function menuMasOpciones(botones) {
   if (!lista.length) return null;
   return el('details', { class: 'im-mas' }, el('summary', {}, 'Más opciones'), el('div', { class: 'im-mas-menu' }, lista));
 }
+// Garantía: el encordado no se cobra. Queda con precio 0 y como «pagada» para que no salga en pendientes ni en la caja.
+function ponerGarantia(p, si) {
+  if (si) {
+    if (p.garantia) return;
+    if (p.pagado) anularCobroPedido(p); // si estaba cobrada, su ticket se anula
+    if ((p.precio || 0) > 0) p.precioSinGarantia = p.precio;
+    p.garantia = true; p.precio = 0; p.pagado = true; p.fechaPago = Date.now(); p.formaPago = null; p.pagoPrevisto = 'alRecoger';
+  } else {
+    if (!p.garantia) return;
+    p.garantia = false; p.pagado = false; p.fechaPago = null; p.formaPago = null;
+    if (!(p.precio > 0) && p.precioSinGarantia) p.precio = p.precioSinGarantia;
+    p.precioSinGarantia = null;
+  }
+}
+function botonGarantia(p) {
+  return el('button', { class: 'btn btn-ghost btn-sm im-garantia-btn', onclick: () => {
+    if (p.garantia) { if (!confirm('¿Quitar la garantía? La raqueta volverá a su precio (' + euros(p.precioSinGarantia || 0) + ') y quedará pendiente de cobro.')) return; ponerGarantia(p, false); }
+    else { if (!confirm('¿Marcar este encordado como GARANTÍA?\n\nNo se cobra: el precio pasa a 0 €' + (p.pagado ? ' y se anula el cobro que tenía apuntado' : '') + '. El cordaje sí se descuenta del almacén.')) return; ponerGarantia(p, true); }
+    render();
+  } }, p.garantia ? '🛡️ Quitar garantía' : '🛡️ Es garantía: no se cobra');
+}
 function chipPago(p) {
+  if (p.garantia) return el('span', { class: 'im-estado pagada im-garantia', style: 'background:#e7f0ff;color:#0b3d91;' }, '🛡️ Garantía · no se cobra');
   if (p.pagado) return el('span', { class: 'im-estado pagada' }, 'Pagada');
   if (p.pagoPrevisto === 'sinPagar') return el('span', { class: 'im-estado debe' }, 'Pagará más tarde');
   return el('span', { class: 'im-estado debe' }, 'Cobrar al recoger');
@@ -10326,6 +10349,7 @@ function registrarCobroPedido(p, pago, ts) {
   return venta;
 }
 function anularCobroPedido(p) {
+  if (p.garantia) { ponerGarantia(p, false); return; }
   const v = ventaDePedido(p);
   if (v && (v.pedidoIds || []).length > 1) {
     // ticket de varias raquetas: se quita solo esta y el ticket se queda con las demás
@@ -10622,6 +10646,7 @@ function viewCola() {
       !proceso && pendientesAntes ? el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { if (confirm('¿Poner la raqueta de ' + nombre + ' la primera de la cola?')) { if (ponerPrimeraEnCola(p)) render(); } } }, 'Poner la primera de la cola') : null,
       !proceso && !hayOtroEnProceso ? el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { empezarPedido(p); abrirTerminarPedido(p); } }, 'Marcar terminada directamente') : null,
       el('button', { class: 'btn btn-ghost btn-sm', onclick: () => abrirEnviarEnlaceSeguimiento(p) }, 'Enviar enlace de seguimiento'),
+      botonGarantia(p),
       el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { if (confirm('¿El cliente no puede esperar? Se pasará a "Aplazados" y no contará para la hora estimada de los demás, hasta que la reanudes otro día.')) { aplazarPedido(p); render(); } } }, 'Aplazar a otro día'),
       el('button', { class: 'btn btn-danger btn-sm', onclick: () => { if (confirm('¿Quitar este pedido de la cola?')) { removePedido(p.id); render(); } } }, 'Quitar de la cola'),
     ]));
@@ -10766,7 +10791,7 @@ function abrirEditarPedido(p) {
   const selCorH = el('select', {}, [el('option', { value: '' }, 'Igual que el vertical')].concat(cordajes.map(c => el('option', { value: c.id }, c.nombre + ' (stock: ' + (c.stock || 0) + ')')))); selCorH.value = p.cordajeIdH || '';
   const inPrecio = el('input', { type: 'number', step: '0.01', min: '0', value: p.precio || 0, id: 'imEdPrecio' });
   const chkPre = el('input', { type: 'checkbox', style: 'width:auto;', checked: p.pretensado ? 'checked' : null });
-  const selPago = selectEl([{ value: 'alRecoger', label: 'Paga al recoger' }, { value: 'adelantado', label: 'Ya ha pagado por adelantado' }, { value: 'sinPagar', label: 'Recoge sin pagar (pagará más adelante)' }], p.pagado ? 'adelantado' : (p.pagoPrevisto || 'alRecoger'), () => {});
+  const selPago = selectEl([{ value: 'alRecoger', label: 'Paga al recoger' }, { value: 'adelantado', label: 'Ya ha pagado por adelantado' }, { value: 'sinPagar', label: 'Recoge sin pagar (pagará más adelante)' }, { value: 'garantia', label: '🛡️ Garantía (no se cobra)' }], p.garantia ? 'garantia' : p.pagado ? 'adelantado' : (p.pagoPrevisto || 'alRecoger'), () => {});
   const inNotas = el('textarea', { rows: '2' }, p.notas || '');
   const nombreCor = (id) => { const c = id ? cordajeDe(id) : null; return c ? c.nombre : 'sin cordaje'; };
   const tens = (v, h) => (v || '—') + '/' + (h || '—') + ' kg';
@@ -10787,8 +10812,9 @@ function abrirEditarPedido(p) {
     if (nuevo.corH !== (p.cordajeIdH || null)) cambios.push('Cordaje horizontal: ' + (p.cordajeIdH ? nombreCor(p.cordajeIdH) : 'igual') + ' → ' + (nuevo.corH ? nombreCor(nuevo.corH) : 'igual'));
     if (Math.abs(nuevo.precio - (p.precio || 0)) > 0.001) cambios.push('Precio: ' + euros(p.precio) + ' → ' + euros(nuevo.precio));
     if (nuevo.pre !== !!p.pretensado) cambios.push('Pretensado: ' + (nuevo.pre ? 'sí' : 'no'));
-    const pagoAntes = p.pagado ? 'adelantado' : (p.pagoPrevisto || 'alRecoger');
-    if (nuevo.pago !== pagoAntes) cambios.push('Pago: ' + { alRecoger: 'al recoger', adelantado: 'ya pagado', sinPagar: 'pagará más adelante' }[nuevo.pago]);
+    const pagoAntes = p.garantia ? 'garantia' : p.pagado ? 'adelantado' : (p.pagoPrevisto || 'alRecoger');
+    if (nuevo.pago === 'garantia') nuevo.precio = p.garantia ? 0 : nuevo.precio;
+    if (nuevo.pago !== pagoAntes) cambios.push('Pago: ' + { alRecoger: 'al recoger', adelantado: 'ya pagado', sinPagar: 'pagará más adelante', garantia: 'GARANTÍA, no se cobra (precio 0 €)' }[nuevo.pago]);
     if (nuevo.notas !== (p.notas || '')) cambios.push('Notas cambiadas');
     if (!cambios.length) { root.innerHTML = ''; return; }
     const avisoCli = cli && (nuevo.nombre !== (cli.nombre || '') || nuevo.tel !== (cli.telefono || '')) ? '\n\n(El nombre y el teléfono se cambian en la ficha del cliente, para todos sus pedidos.)' : '';
@@ -10798,6 +10824,8 @@ function abrirEditarPedido(p) {
     cambiarCordajePedido(p, 'cordajeId', nuevo.cor);
     cambiarCordajePedido(p, 'cordajeIdH', nuevo.corH);
     p.precio = nuevo.precio; p.pretensado = nuevo.pre; p.notas = nuevo.notas;
+    if (nuevo.pago === 'garantia' && pagoAntes !== 'garantia') { ponerGarantia(p, true); root.innerHTML = ''; render(); return; }
+    if (pagoAntes === 'garantia' && nuevo.pago !== 'garantia') ponerGarantia(p, false);
     if (nuevo.pago !== pagoAntes) {
       p.pagoPrevisto = nuevo.pago;
       if (nuevo.pago === 'adelantado') { if (!p.pagado) { root.innerHTML = ''; render(); abrirCobroPedido(p, '💶 Cobro por adelantado'); return; } }
@@ -10919,7 +10947,7 @@ function enlaceTallerDe(p) { return window.enlacePublicoPedidoTaller ? window.en
 function abrirAvisoWhatsapp(p) {
   const cli = clienteDe(p.clienteId);
   if (!cli) return;
-  const mensaje = `Hola ${cli.nombre}, ya tengo lista tu raqueta (${p.marcaModelo || ''})${p.pretensado ? ', encordada con pretensado' : ''}. Importe: ${euros(p.precio)}. Puedes pasar a recogerla cuando quieras.\n\n${enlaceTallerDe(p)}`;
+  const mensaje = `Hola ${cli.nombre}, ya tengo lista tu raqueta (${p.marcaModelo || ''})${p.pretensado ? ', encordada con pretensado' : ''}. ${p.garantia ? 'Está en garantía: no tienes que pagar nada' : 'Importe: ' + euros(p.precio)}. Puedes pasar a recogerla cuando quieras.\n\n${enlaceTallerDe(p)}`;
   abrirModalWhatsapp('💬 Avisar por WhatsApp', cli, mensaje, p.fotoDespues);
 }
 function abrirAvisoEmpezado(p) {
@@ -11044,7 +11072,7 @@ function viewNuevoPedido() {
   tensionHInput.addEventListener('change', comprobarTensionMax);
   const cordajeSelect = el('select', {});
   const precioInput = el('input', { type: 'number', step: '0.5', min: '0', value: state.config.precioSinCordaje });
-  const pagoSelect = selectEl([{ value: 'alRecoger', label: 'Paga al recoger' }, { value: 'adelantado', label: 'Ya ha pagado por adelantado' }, { value: 'sinPagar', label: 'Recoge sin pagar (pagará más adelante)' }], 'alRecoger', () => {});
+  const pagoSelect = selectEl([{ value: 'alRecoger', label: 'Paga al recoger' }, { value: 'adelantado', label: 'Ya ha pagado por adelantado' }, { value: 'sinPagar', label: 'Recoge sin pagar (pagará más adelante)' }, { value: 'garantia', label: '🛡️ Garantía (no se cobra)' }], 'alRecoger', () => {});
   const MOLESTIAS_JUGADOR_TALLER = [
     { value: 'ninguna', label: 'Ninguna' },
     { value: 'codo', label: 'Codo de tenista' },
@@ -11276,14 +11304,15 @@ function viewNuevoPedido() {
       pretensado: pretensadoCheckbox.checked,
       articulosAdicionales: articulosAdicionalesLista,
       pagado: pagoSelect.value === 'adelantado',
-      pagoPrevisto: pagoSelect.value,
+      pagoPrevisto: pagoSelect.value === 'garantia' ? 'alRecoger' : pagoSelect.value,
       fotoAntes, notas: notasInput.value.trim(),
     });
+    if (pagoSelect.value === 'garantia') ponerGarantia(nuevo, true);
     if (window.guardarFotosTallerEnNube) window.guardarFotosTallerEnNube(nuevo.id, nuevo.fotoAntes, null);
     clientePreseleccionadoId = irACola ? null : clienteElegidoId;
     activeTab = irACola ? 'cola' : 'nuevo';
     render();
-    if (nuevo.pagado) abrirCobroPedido(nuevo, '💶 Cobro por adelantado');
+    if (nuevo.pagado && !nuevo.garantia) abrirCobroPedido(nuevo, '💶 Cobro por adelantado');
   }
 
   panel.appendChild(el('div', { class: 'im-barra-pedido' },
@@ -11395,7 +11424,7 @@ function viewClientes() {
               el('td', {}, nombreCordajeDe(p)),
               el('td', {}, fmtTension(p)),
               el('td', {}, euros(p.precio)),
-              el('td', {}, p.pagado ? el('span', { class: 'chip chip-gold' }, 'Pagado') : el('span', { class: 'chip chip-muted' }, 'Pendiente')),
+              el('td', {}, p.garantia ? el('span', { class: 'chip chip-muted' }, '🛡️ Garantía') : p.pagado ? el('span', { class: 'chip chip-gold' }, 'Pagado') : el('span', { class: 'chip chip-muted' }, 'Pendiente')),
               el('td', {}, p.estado === 'entregado' ? el('span', { class: 'chip chip-gold' }, 'Entregado') : p.estado === 'terminado' ? el('span', { class: 'chip chip-gold' }, 'Terminado') : (p.aplazado ? el('span', { class: 'chip chip-muted' }, 'Aplazado') : el('span', { class: 'chip chip-muted' }, 'En curso'))),
             ));
           });
@@ -12707,7 +12736,7 @@ function viewHistorial() {
     const v = typeof ventaDePedido === 'function' ? ventaDePedido(p) : null;
     const card = el('div', { class: 'im-raqueta im-hist-card', 'data-buscar': imNormal((cli ? cli.nombre : '') + ' ' + (p.marcaModelo || '') + ' ' + nombreCordajeDe(p)) },
       el('div', { class: 'im-hist-fecha' }, fmtFechaHora(p.horaLlegada) + (duracion ? ' · ' + duracion : '')),
-      el('div', { class: 'im-cli' }, cli ? cli.nombre : '(cliente eliminado)', p.pagado ? el('span', { class: 'im-estado pagada' }, 'Pagada' + (p.formaPago ? ' · ' + TPV_PAGOS[p.formaPago].replace(/^\S+\s/, '') : '')) : el('span', { class: 'im-estado debe' }, 'Pendiente de cobro'),
+      el('div', { class: 'im-cli' }, cli ? cli.nombre : '(cliente eliminado)', p.garantia ? chipPago(p) : p.pagado ? el('span', { class: 'im-estado pagada' }, 'Pagada' + (p.formaPago ? ' · ' + TPV_PAGOS[p.formaPago].replace(/^\S+\s/, '') : '')) : el('span', { class: 'im-estado debe' }, 'Pendiente de cobro'),
         p.estado === 'entregado' ? el('span', { class: 'im-estado' }, 'Entregada' + (p.fechaEntrega ? ' ' + fmtFechaTs(p.fechaEntrega) : '')) : el('span', { class: 'im-estado' }, 'Por recoger')),
       el('div', { class: 'im-det' }, el('strong', {}, p.marcaModelo || 'Raqueta sin especificar'), ' · ' + nombreCordajeDe(p) + (p.pretensado ? ' · pretensado' : '')),
       el('div', { class: 'im-det' }, fmtTension(p) + ' · ' + euros(p.precio)),
@@ -13007,7 +13036,7 @@ function datosCajaDia(dia) {
     if (v) { if (!v.anulada && diaLocal(v.fecha) === dia) filas.push({ clase: 'tienda', tipo: 'ingreso', importe: m.importe || 0, forma: formaNorm(v.pago), hora: v.fecha, txt: 'Ticket ' + tpvNumTxt(v), venta: v }); return; }
     if ((m.fecha || '') === dia) filas.push({ clase: 'manual', tipo: m.tipo, importe: m.importe || 0, forma: 'otro', hora: null, txt: (m.categoria ? m.categoria + ' · ' : '') + (m.concepto || '') });
   });
-  state.pedidos.filter(p => p.pagado).forEach(p => {
+  state.pedidos.filter(p => p.pagado && !p.garantia).forEach(p => {
     const ts = p.fechaPago || p.fechaEntrega || p.horaFin || p.horaLlegada;
     if (!ts || diaLocal(ts) !== dia) return;
     const cli = clienteDe(p.clienteId);

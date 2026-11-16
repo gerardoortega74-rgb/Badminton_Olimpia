@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261116-mejoras">
+<meta name="build-id" content="v20261116-archivo-torneos">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -2679,6 +2679,7 @@ function salirDeTorneoFinalizado() {
 function cambiarATorneo(id) {
   const entrada = torneosHistorial.find(t => t.id === id);
   if (!entrada || id === torneoActivoId) return;
+  if (entrada.archivado || !entrada.snapshot) { alert('Ese torneo todavía se está descargando de la nube. Espera unos segundos y vuelve a intentarlo.'); if (entrada.archivado && typeof traerTorneosArchivados === 'function') traerTorneosArchivados([id]); return; }
   verFinalizadoId = entrada.estado === 'finalizado' ? id : null;
   guardarEstadoActivoEnLista();
   state = normalizarCategorias(JSON.parse(JSON.stringify(entrada.snapshot)));
@@ -2715,9 +2716,11 @@ function eliminarTorneoDeLista(id) {
   const eraElActivo = id === torneoActivoId;
   torneosHistorial = torneosHistorial.filter(t => t.id !== id);
   saveHistorial();
+  if (typeof borrarArchivoTorneo === 'function') borrarArchivoTorneo(id);
+  const abribles = torneosHistorial.filter(t => t.snapshot && !t.archivado);
   if (eraElActivo) {
-    if (torneosHistorial.length) {
-      const otro = torneosHistorial[torneosHistorial.length - 1];
+    if (abribles.length) {
+      const otro = abribles[abribles.length - 1];
       state = JSON.parse(JSON.stringify(otro.snapshot));
       torneoActivoId = otro.id;
       saveTorneoActivoId();
@@ -18962,7 +18965,7 @@ function marcarEstadoNube(texto) {
   const ind = document.getElementById('nubeIndicador');
   if (ind) ind.textContent = texto;
 }
-function estadoCompletoParaNube() {
+function estadoCompletoParaNube(completo) {
   const pagosParaNube = JSON.parse(JSON.stringify(PagosApp.getState()));
   if (pagosParaNube.contabilidad && Array.isArray(pagosParaNube.contabilidad.movimientos)) {
     pagosParaNube.contabilidad.movimientos.forEach(m => {
@@ -18999,7 +19002,7 @@ function estadoCompletoParaNube() {
     jugadoresGlobal: jugadoresGlobal,
     jugadoresExternos: jugadoresExternos,
     torneo: TorneoApp.getState(),
-    torneosHistorial: TorneoApp.getHistorial(),
+    torneosHistorial: completo ? TorneoApp.getHistorial() : historialParaNube(),
     torneoActivoId: TorneoApp.getTorneoActivoId(),
     planificacion: PlanApp.getState(),
     pagos: pagosParaNube,
@@ -20583,6 +20586,8 @@ function subirCopiaPublica() {
   clearTimeout(publicoTimer);
   publicoTimer = setTimeout(() => {
     try {
+      // si falta por llegar algún torneo archivado, no se toca la web (saldría sin sus podios)
+      if (torneosSinCargar()) return;
       const payload = envolverArraysAnidados(JSON.parse(JSON.stringify(estadoPublicoParaNube())));
       if (JSON.stringify(payload).length > 900000) { console.warn('Copia pública demasiado grande'); return; }
       docPublico().set(payload).catch(err => console.warn('No se pudo actualizar la copia pública:', err));
@@ -20703,7 +20708,7 @@ function cargarClubPublico() {
   }).catch(() => {});
 }
 function cargarDatosClubCompletos() {
-  return prepararNube().then(() => docNube().get()).then(doc => {
+  return prepararNube().then(() => cargarArchivoTorneos()).then(() => docNube().get()).then(doc => {
     if (doc.exists) aplicarDatosDeNube(doc.data());
     marcarEstadoNube('☁️ Sincronizado');
     fijarBaseNube(doc.exists ? (doc.data()._rev || 0) : 0);
@@ -21027,7 +21032,12 @@ function espacioNube() {
   ];
   const total = JSON.stringify(d).length, suma = partes.reduce((a, x) => a + x[1], 0);
   partes.push(['Otros', Math.max(0, total - suma)]);
-  return { total, limite: LIMITE_NUBE, pct: total / LIMITE_NUBE, partes: partes.filter(x => x[1] > 0).sort((a, b) => b[1] - a[1]) };
+  const NOMBRES = { logo: 'Logo del club', noticias: 'Noticias (textos)', portadas: 'Fotos de portada', circuitos: 'Circuitos', tecnicos: 'Técnicos', correo: 'Correo', redes: 'Redes sociales' };
+  const club = d.club || {}, web = (club.web && typeof club.web === 'object') ? club.web : {};
+  const detalleClub = Object.keys(club).filter(k => k !== 'web').map(k => [NOMBRES[k] || k, tam(club[k])])
+    .concat(Object.keys(web).map(k => ['Web · ' + (NOMBRES[k] || k), tam(web[k])])).filter(x => x[1] >= 1024).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  const archivados = Object.keys(archivoTorneos).length, kbArchivo = Object.keys(archivoTorneos).reduce((a, k) => a + (archivoTorneos[k].kb || 0), 0);
+  return { detalleClub, archivados, kbArchivo, total, limite: LIMITE_NUBE, pct: total / LIMITE_NUBE, partes: partes.filter(x => x[1] > 0).sort((a, b) => b[1] - a[1]) };
 }
 function avisarEspacioNube() {
   try {
@@ -21039,6 +21049,92 @@ function avisarEspacioNube() {
     if (ind) { ind.title = 'Los datos ocupan el ' + Math.round(e.pct * 100) + ' % del espacio de la nube. Mira ⚙️ → Datos y copia de seguridad.'; ind.textContent = '⚠️ Nube al ' + Math.round(e.pct * 100) + ' %'; }
   } catch (err) {}
 }
+// ===== TORNEOS TERMINADOS, GUARDADOS APARTE =====
+// Un torneo terminado (y que no es el que está abierto) no cambia más: su contenido se guarda en un documento
+// propio (club/datos/torneos_archivo/<id>) y en el documento general solo queda la ficha con su «firma».
+// Solo se quita del documento general cuando la nube ha confirmado que el archivo está guardado y es idéntico.
+let archivoTorneos = {};
+let archivoTorneosEstado = '';
+const archivandoTorneo = {};
+function coleccionArchivoTorneos() { return docPrincipal().collection('torneos_archivo'); }
+function puedeArchivarTorneos() { return firebaseDisponible && !esOtroClub() && !esVistaPublica() && !(typeof esTrabajador === 'function' && esTrabajador()); }
+function firmaTexto(t) { let h = 5381; for (let i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0; return t.length + '.' + (h >>> 0).toString(36); }
+function torneoArchivable(h) { return !!h && h.estado === 'finalizado' && h.id !== TorneoApp.getTorneoActivoId(); }
+function leerDocArchivoTorneo(d) { try { const x = d.data() || {}; if (x.json) archivoTorneos[d.id] = { firma: x.firma, snapshot: JSON.parse(x.json), kb: Math.round(x.json.length / 1024) }; } catch (e) { console.warn('Archivo de torneo ilegible', d.id, e); } }
+function esErrorDePermiso(err) { return /permission/i.test(String((err && (err.code || err.message)) || '')); }
+function cargarArchivoTorneos() {
+  if (!puedeArchivarTorneos()) return Promise.resolve();
+  return coleccionArchivoTorneos().get().then(snap => { snap.forEach(leerDocArchivoTorneo); archivoTorneosEstado = 'ok'; })
+    .catch(err => { archivoTorneosEstado = esErrorDePermiso(err) ? 'sin-permiso' : 'error'; console.warn('No se pudo leer el archivo de torneos:', err); });
+}
+function historialParaNube() {
+  const lista = TorneoApp.getHistorial();
+  if (!puedeArchivarTorneos()) return lista;
+  return lista.map(h => {
+    if (!h) return h;
+    // pendiente de traer del archivo: se deja la ficha tal cual, sin tocar el archivo
+    if (h.archivado) return Object.assign({}, h, { snapshot: null });
+    const a = archivoTorneos[h.id];
+    if (torneoArchivable(h) && h.snapshot && a && a.firma === firmaTexto(JSON.stringify(h.snapshot))) return Object.assign({}, h, { snapshot: null, archivado: a.firma });
+    return h;
+  });
+}
+function guardarHistorialLocal() { try { localStorage.setItem('badmintonTorneosHistorial', JSON.stringify(TorneoApp.getHistorial())); } catch (e) {} }
+function reponerTorneosArchivados(lista) {
+  const enMemoria = new Map(TorneoApp.getHistorial().map(t => [t.id, t]));
+  const faltan = [];
+  const out = (lista || []).map(t => {
+    if (!t) return t;
+    if (t.snapshot) { delete t.archivado; return t; }
+    if (!t.archivado) return t;
+    const a = archivoTorneos[t.id], m = enMemoria.get(t.id);
+    if (a && a.firma === t.archivado) { t.snapshot = JSON.parse(JSON.stringify(a.snapshot)); delete t.archivado; return t; }
+    // todavía no tenemos esa versión: mientras llega se enseña la que haya, sin darla por buena
+    if (m && m.snapshot) t.snapshot = m.snapshot; else if (a) t.snapshot = JSON.parse(JSON.stringify(a.snapshot));
+    faltan.push(t.id);
+    return t;
+  });
+  if (faltan.length) setTimeout(() => traerTorneosArchivados(faltan), 0);
+  return out;
+}
+function traerTorneosArchivados(ids) {
+  if (!puedeArchivarTorneos()) return Promise.resolve();
+  const traidos = {};
+  return Promise.all(ids.map(id => coleccionArchivoTorneos().doc(id).get().then(d => { if (d.exists) { leerDocArchivoTorneo(d); traidos[id] = true; } }).catch(err => console.warn('No se pudo traer el torneo archivado', id, err)))).then(() => {
+    let cambio = false;
+    const lista = TorneoApp.getHistorial();
+    lista.forEach(t => {
+      if (!t || !t.archivado || !traidos[t.id] || !archivoTorneos[t.id]) return;
+      t.snapshot = JSON.parse(JSON.stringify(archivoTorneos[t.id].snapshot)); delete t.archivado; cambio = true;
+    });
+    if (cambio) { TorneoApp.setHistorial(lista); guardarHistorialLocal(); subirCopiaPublica(); if (sincronizacionInicialLista) programarSyncNube(); }
+  });
+}
+function archivarTorneos() {
+  if (!puedeArchivarTorneos() || !sincronizacionInicialLista || archivoTorneosEstado !== 'ok') return;
+  TorneoApp.getHistorial().forEach(h => {
+    if (!torneoArchivable(h) || !h.snapshot || h.archivado || archivandoTorneo[h.id]) return;
+    const json = JSON.stringify(h.snapshot), f = firmaTexto(json);
+    if (archivoTorneos[h.id] && archivoTorneos[h.id].firma === f) return;
+    if (json.length > 900000) return;
+    archivandoTorneo[h.id] = true;
+    coleccionArchivoTorneos().doc(h.id).set({ firma: f, json: json, nombre: h.nombre || '', guardado: Date.now() }).then(() => {
+      archivoTorneos[h.id] = { firma: f, snapshot: JSON.parse(json), kb: Math.round(json.length / 1024) };
+      delete archivandoTorneo[h.id];
+      programarSyncNube();
+    }).catch(err => {
+      delete archivandoTorneo[h.id];
+      if (esErrorDePermiso(err)) archivoTorneosEstado = 'sin-permiso';
+      console.warn('No se pudo archivar el torneo', h.id, err);
+    });
+  });
+}
+function borrarArchivoTorneo(id) {
+  delete archivoTorneos[id];
+  if (!puedeArchivarTorneos()) return;
+  coleccionArchivoTorneos().doc(id).delete().catch(err => console.warn('No se pudo borrar el archivo del torneo', id, err));
+}
+function torneosSinCargar() { return TorneoApp.getHistorial().some(t => t && t.archivado); }
 function coleccionCopias() { return docPrincipal().collection('copias'); }
 function hoyISO() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 function comprimirTexto(txt) {
@@ -21056,7 +21152,7 @@ function descomprimirTexto(c) {
 // Guarda una copia de todos los datos (sin fotos, que ya van aparte) en club/datos/copias/{id}
 function guardarCopiaNube(id, motivo) {
   if (!firebaseDisponible || esOtroClub()) return Promise.reject(new Error('La nube no está disponible.'));
-  const txt = JSON.stringify(datosComparablesNube(estadoCompletoParaNube()));
+  const txt = JSON.stringify(datosComparablesNube(estadoCompletoParaNube(true)));
   return comprimirTexto(txt).then(c => {
     if (c.datos.length > 1000000) throw new Error('Los datos pesan demasiado para la copia.');
     return coleccionCopias().doc(id).set({ creado: Date.now(), motivo: motivo || 'diaria', kb: Math.round(txt.length / 1024), fmt: c.fmt, datos: c.datos, version: (document.querySelector('meta[name="build-id"]') || {}).content || '' });
@@ -21108,8 +21204,13 @@ function panelEspacioYCopias() {
   if (e.pct >= AVISO_NUBE) caja.appendChild(el('div', { class: 'nube-aviso', style: 'color:' + color + ';font-weight:700;margin-bottom:6px;' },
     e.pct >= 0.9 ? '⚠️ Casi lleno. Si llega al 100 % la app dejará de guardar en la nube. Avisa para liberar espacio.' : '⚠️ Va quedando poco espacio. Conviene liberar lo que más ocupa.'));
   const det = el('details', {}, el('summary', { style: 'cursor:pointer;' }, 'Ver qué ocupa más'));
-  e.partes.forEach(x => det.appendChild(el('div', { style: 'display:flex;justify-content:space-between;gap:12px;padding:2px 0;' }, el('span', {}, x[0]), el('b', {}, Math.round(x[1] / 1024) + ' KB · ' + Math.round(x[1] / e.total * 100) + ' %'))));
+  e.partes.forEach(x => {
+    det.appendChild(el('div', { style: 'display:flex;justify-content:space-between;gap:12px;padding:2px 0;' }, el('span', {}, x[0]), el('b', { style: 'white-space:nowrap;' }, Math.round(x[1] / 1024) + ' KB · ' + Math.round(x[1] / e.total * 100) + ' %')));
+    if (x[0].indexOf('Página web') === 0) e.detalleClub.forEach(y => det.appendChild(el('div', { class: 'nube-sub', style: 'display:flex;justify-content:space-between;gap:12px;padding:1px 0 1px 16px;font-size:.9em;opacity:.8;' }, el('span', {}, '↳ ' + y[0]), el('span', {}, Math.round(y[1] / 1024) + ' KB'))));
+  });
   caja.appendChild(det);
+  if (archivoTorneosEstado === 'sin-permiso' && esAdmin()) caja.appendChild(el('div', { class: 'nube-archivo-falta', style: 'color:#C77700;font-weight:700;margin-top:8px;' }, '⚠️ Los torneos terminados se pueden guardar aparte para liberar espacio, pero falta una línea en las reglas de Firebase (te la indica Claude).'));
+  else if (e.archivados) caja.appendChild(el('div', { class: 'nube-archivo', style: 'margin-top:8px;' }, '🗄️ Torneos terminados guardados aparte: ' + e.archivados + ' (' + e.kbArchivo + ' KB que ya no ocupan aquí).'));
   if (!firebaseDisponible || esOtroClub() || !esAdmin()) return caja;
   caja.appendChild(el('h3', { style: 'margin:16px 0 4px;' }, '🛟 Copias automáticas'));
   caja.appendChild(el('div', { class: 'sub' }, 'Cada día que abres la app como administrador se guarda sola una copia de todos los datos en la nube. Se conservan las ' + MAX_COPIAS_NUBE + ' últimas. Las fotos no van en la copia: ya se guardan aparte.'));
@@ -21157,6 +21258,7 @@ function textoPermisoNube(u) {
 function subirNube() {
   nubeSyncTimer = null;
   if (subiendoNube) { nubeSyncTimer = setTimeout(subirNube, 400); return; }
+  archivarTorneos();
   const local = datosComparablesNube(estadoCompletoParaNube());
   if (baseNube && igualJSON(local, baseNube)) { aplicarRemotoPendiente(); return; }
   const tamanoAprox = JSON.stringify(local).length;
@@ -21265,7 +21367,7 @@ function aplicarDatosDeNube(dataOriginal) {
   saveJugadoresGlobal();
   saveJugadoresExternos();
   if (data.torneo) TorneoApp.setState(data.torneo);
-  if (data.torneosHistorial) TorneoApp.setHistorial(data.torneosHistorial);
+  if (data.torneosHistorial) TorneoApp.setHistorial(reponerTorneosArchivados(data.torneosHistorial));
   if (Array.isArray(data.circuitos)) window.circuitosPublicados = data.circuitos;
   if (data.torneoActivoId) TorneoApp.setTorneoActivoId(data.torneoActivoId);
   if (data.planificacion) PlanApp.setState(data.planificacion);
@@ -23560,7 +23662,7 @@ inicializarAuth();
 function arranqueLegado() {
   marcarEstadoNube('☁️ Conectando…');
   let refInicial = null;
-  prepararNube().then(() => { refInicial = esVistaPublica() ? docPublico() : docNube(); return refInicial.get(); }).then(doc => {
+  prepararNube().then(() => cargarArchivoTorneos()).then(() => { refInicial = esVistaPublica() ? docPublico() : docNube(); return refInicial.get(); }).then(doc => {
     // Mientras no exista la copia pública (justo tras publicar esta versión), las páginas públicas usan el documento general.
     if (esVistaPublica() && !doc.exists) return docNube().get().then(d2 => ({ doc: d2, ref: docNube() }));
     return { doc, ref: refInicial };

@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261116-archivo-torneos">
+<meta name="build-id" content="v20261116-logo-aparte">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -18267,7 +18267,7 @@ function clubForm(onSave, saveLabel) {
     const file = e.target.files[0];
     if (!file) return;
     redimensionarImagen(file, 300, (dataUrl) => {
-      clubGlobal.logo = dataUrl;
+      clubGlobal.logo = dataUrl; logoClubPendiente = null;
       preview.src = clubGlobal.logo;
       preview.style.display = '';
       dropZone.textContent = 'Cambiar logo…';
@@ -18277,7 +18277,7 @@ function clubForm(onSave, saveLabel) {
   logoRow.appendChild(dropZone);
   logoRow.appendChild(fileInput);
   if (clubGlobal.logo) {
-    logoRow.appendChild(el('button', { class: 'btn btn-danger btn-sm', onclick: () => { clubGlobal.logo = ''; preview.style.display = 'none'; dropZone.textContent = 'Toca para subir el logo del club (PNG o JPG)'; } }, 'Quitar'));
+    logoRow.appendChild(el('button', { class: 'btn btn-danger btn-sm', onclick: () => { clubGlobal.logo = ''; logoClubPendiente = null; preview.style.display = 'none'; dropZone.textContent = 'Toca para subir el logo del club (PNG o JPG)'; } }, 'Quitar'));
   }
   wrap.appendChild(logoRow);
 
@@ -18998,7 +18998,7 @@ function estadoCompletoParaNube(completo) {
     });
   }
   const datos = {
-    club: clubGlobal,
+    club: completo ? clubGlobal : clubParaNube(),
     jugadoresGlobal: jugadoresGlobal,
     jugadoresExternos: jugadoresExternos,
     torneo: TorneoApp.getState(),
@@ -20708,12 +20708,13 @@ function cargarClubPublico() {
   }).catch(() => {});
 }
 function cargarDatosClubCompletos() {
-  return prepararNube().then(() => cargarArchivoTorneos()).then(() => docNube().get()).then(doc => {
+  return prepararNube().then(() => Promise.all([cargarArchivoTorneos(), cargarLogoClubAparte()])).then(() => docNube().get()).then(doc => {
     if (doc.exists) aplicarDatosDeNube(doc.data());
     marcarEstadoNube('☁️ Sincronizado');
     fijarBaseNube(doc.exists ? (doc.data()._rev || 0) : 0);
     if (!doc.exists) baseNube = null;
     sincronizacionInicialLista = true;
+    setTimeout(tareasDeArchivo, 2500);
     iniciarEscuchaNube();
     if ((!doc.exists && clubGlobal.nombre) || (esOtroClub() && window.club2Renombrado)) programarSyncNube();
     if (doc.exists) subirCopiaPublica();
@@ -21037,7 +21038,8 @@ function espacioNube() {
   const detalleClub = Object.keys(club).filter(k => k !== 'web').map(k => [NOMBRES[k] || k, tam(club[k])])
     .concat(Object.keys(web).map(k => ['Web · ' + (NOMBRES[k] || k), tam(web[k])])).filter(x => x[1] >= 1024).sort((a, b) => b[1] - a[1]).slice(0, 8);
   const archivados = Object.keys(archivoTorneos).length, kbArchivo = Object.keys(archivoTorneos).reduce((a, k) => a + (archivoTorneos[k].kb || 0), 0);
-  return { detalleClub, archivados, kbArchivo, total, limite: LIMITE_NUBE, pct: total / LIMITE_NUBE, partes: partes.filter(x => x[1] > 0).sort((a, b) => b[1] - a[1]) };
+  const logoAparteKb = (clubParaNube().logoAparte && logoClubAparte) ? Math.round(logoClubAparte.foto.length / 1024) : 0;
+  return { logoAparteKb, detalleClub, archivados, kbArchivo, total, limite: LIMITE_NUBE, pct: total / LIMITE_NUBE, partes: partes.filter(x => x[1] > 0).sort((a, b) => b[1] - a[1]) };
 }
 function avisarEspacioNube() {
   try {
@@ -21134,7 +21136,52 @@ function borrarArchivoTorneo(id) {
   if (!puedeArchivarTorneos()) return;
   coleccionArchivoTorneos().doc(id).delete().catch(err => console.warn('No se pudo borrar el archivo del torneo', id, err));
 }
-function torneosSinCargar() { return TorneoApp.getHistorial().some(t => t && t.archivado); }
+function torneosSinCargar() { return !!logoClubPendiente || TorneoApp.getHistorial().some(t => t && t.archivado); }
+// ===== LOGO DEL CLUB, GUARDADO APARTE =====
+// Igual que los torneos terminados: el logo va en su propio documento (junto a las fotos del taller) y en el
+// documento general solo queda su «firma». Solo se quita de allí cuando la nube confirma que está guardado.
+let logoClubAparte = null, logoClubPendiente = null, logoClubEstado = '', guardandoLogoClub = false;
+function docLogoClub() { return coleccionFotosTaller().doc('_club_logo'); }
+function puedeLogoAparte() { return firebaseDisponible && !esOtroClub() && !esVistaPublica() && !(typeof esTrabajador === 'function' && esTrabajador()); }
+function cargarLogoClubAparte() {
+  if (!puedeLogoAparte()) return Promise.resolve();
+  return docLogoClub().get().then(d => {
+    const x = d.exists ? (d.data() || {}) : {};
+    logoClubAparte = x.foto ? { firma: x.firma || firmaTexto(x.foto), foto: x.foto } : null;
+    logoClubEstado = 'ok';
+    if (logoClubPendiente) {
+      if (logoClubAparte) clubGlobal.logo = logoClubAparte.foto;
+      logoClubPendiente = null;
+      try { localStorage.setItem('badmintonClubGlobal', JSON.stringify(clubGlobal)); } catch (e) {}
+      try { if (typeof renderShellHeader === 'function') renderShellHeader(); } catch (e) {}
+      subirCopiaPublica();
+    }
+  }).catch(err => { logoClubEstado = 'error'; console.warn('No se pudo leer el logo del club:', err); });
+}
+function clubParaNube() {
+  if (!puedeLogoAparte()) return clubGlobal;
+  if (logoClubPendiente) return Object.assign({}, clubGlobal, { logo: '', logoAparte: logoClubPendiente });
+  if (clubGlobal.logo && logoClubAparte && logoClubAparte.firma === firmaTexto(clubGlobal.logo)) return Object.assign({}, clubGlobal, { logo: '', logoAparte: logoClubAparte.firma });
+  return clubGlobal;
+}
+function reponerLogoClub(logoAnterior) {
+  const marca = clubGlobal.logoAparte; delete clubGlobal.logoAparte;
+  if (clubGlobal.logo || !marca) { logoClubPendiente = null; return; }
+  if (logoClubAparte && logoClubAparte.firma === marca) { clubGlobal.logo = logoClubAparte.foto; logoClubPendiente = null; return; }
+  clubGlobal.logo = logoAnterior || (logoClubAparte ? logoClubAparte.foto : '');
+  logoClubPendiente = marca;
+  setTimeout(cargarLogoClubAparte, 0);
+}
+function guardarLogoClubAparte() {
+  if (!puedeLogoAparte() || !sincronizacionInicialLista || logoClubEstado !== 'ok' || logoClubPendiente || guardandoLogoClub || !clubGlobal.logo) return;
+  const foto = clubGlobal.logo, f = firmaTexto(foto);
+  if (logoClubAparte && logoClubAparte.firma === f) return;
+  if (foto.length > 900000) return;
+  guardandoLogoClub = true;
+  docLogoClub().set({ foto: foto, firma: f }).then(() => { logoClubAparte = { firma: f, foto: foto }; guardandoLogoClub = false; programarSyncNube(); })
+    .catch(err => { guardandoLogoClub = false; console.warn('No se pudo guardar el logo del club aparte:', err); });
+}
+function tareasDeArchivo() { try { archivarTorneos(); guardarLogoClubAparte(); } catch (e) { console.warn('Archivo', e); } }
 function coleccionCopias() { return docPrincipal().collection('copias'); }
 function hoyISO() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 function comprimirTexto(txt) {
@@ -21210,7 +21257,8 @@ function panelEspacioYCopias() {
   });
   caja.appendChild(det);
   if (archivoTorneosEstado === 'sin-permiso' && esAdmin()) caja.appendChild(el('div', { class: 'nube-archivo-falta', style: 'color:#C77700;font-weight:700;margin-top:8px;' }, '⚠️ Los torneos terminados se pueden guardar aparte para liberar espacio, pero falta una línea en las reglas de Firebase (te la indica Claude).'));
-  else if (e.archivados) caja.appendChild(el('div', { class: 'nube-archivo', style: 'margin-top:8px;' }, '🗄️ Torneos terminados guardados aparte: ' + e.archivados + ' (' + e.kbArchivo + ' KB que ya no ocupan aquí).'));
+  if (e.logoAparteKb) caja.appendChild(el('div', { class: 'nube-logo-aparte', style: 'margin-top:8px;' }, '🖼️ Logo del club guardado aparte (' + e.logoAparteKb + ' KB que ya no ocupan aquí).'));
+  if (archivoTorneosEstado !== 'sin-permiso' && e.archivados) caja.appendChild(el('div', { class: 'nube-archivo', style: 'margin-top:8px;' }, '🗄️ Torneos terminados guardados aparte: ' + e.archivados + ' (' + e.kbArchivo + ' KB que ya no ocupan aquí).'));
   if (!firebaseDisponible || esOtroClub() || !esAdmin()) return caja;
   caja.appendChild(el('h3', { style: 'margin:16px 0 4px;' }, '🛟 Copias automáticas'));
   caja.appendChild(el('div', { class: 'sub' }, 'Cada día que abres la app como administrador se guarda sola una copia de todos los datos en la nube. Se conservan las ' + MAX_COPIAS_NUBE + ' últimas. Las fotos no van en la copia: ya se guardan aparte.'));
@@ -21258,7 +21306,7 @@ function textoPermisoNube(u) {
 function subirNube() {
   nubeSyncTimer = null;
   if (subiendoNube) { nubeSyncTimer = setTimeout(subirNube, 400); return; }
-  archivarTorneos();
+  tareasDeArchivo();
   const local = datosComparablesNube(estadoCompletoParaNube());
   if (baseNube && igualJSON(local, baseNube)) { aplicarRemotoPendiente(); return; }
   const tamanoAprox = JSON.stringify(local).length;
@@ -21359,7 +21407,9 @@ window.addEventListener('beforeunload', (e) => {
 function aplicarDatosDeNube(dataOriginal) {
   const data = desenvolverArraysAnidados(dataOriginal);
   if (!data) return;
+  const logoAnterior = (clubGlobal && clubGlobal.logo) || '';
   clubGlobal = Object.assign({ nombre: '', localidad: '', temporadaInicio: '', temporadaFin: '', logo: '', tecnicos: [] }, data.club || {});
+  reponerLogoClub(logoAnterior);
   if (esOtroClub() && (!clubGlobal.nombre || clubGlobal.nombre === 'Club nuevo')) { clubGlobal.nombre = CLUB2_NOMBRE; window.club2Renombrado = true; }
   jugadoresGlobal = data.jugadoresGlobal !== undefined ? data.jugadoresGlobal : jugadoresGlobal;
   jugadoresExternos = data.jugadoresExternos !== undefined ? data.jugadoresExternos : jugadoresExternos;
@@ -23662,7 +23712,7 @@ inicializarAuth();
 function arranqueLegado() {
   marcarEstadoNube('☁️ Conectando…');
   let refInicial = null;
-  prepararNube().then(() => cargarArchivoTorneos()).then(() => { refInicial = esVistaPublica() ? docPublico() : docNube(); return refInicial.get(); }).then(doc => {
+  prepararNube().then(() => Promise.all([cargarArchivoTorneos(), cargarLogoClubAparte()])).then(() => { refInicial = esVistaPublica() ? docPublico() : docNube(); return refInicial.get(); }).then(doc => {
     // Mientras no exista la copia pública (justo tras publicar esta versión), las páginas públicas usan el documento general.
     if (esVistaPublica() && !doc.exists) return docNube().get().then(d2 => ({ doc: d2, ref: docNube() }));
     return { doc, ref: refInicial };
@@ -23678,6 +23728,7 @@ function arranqueLegado() {
       if (!doc.exists) baseNube = null;
     }
     sincronizacionInicialLista = true;
+    if (!esVistaPublica()) setTimeout(tareasDeArchivo, 2500);
     if (!esVistaPublica()) iniciarEscuchaNube();
     if ((!doc.exists && clubGlobal.nombre) || (esOtroClub() && window.club2Renombrado)) programarSyncNube();
     if (!esVistaPublica() && doc.exists) subirCopiaPublica();

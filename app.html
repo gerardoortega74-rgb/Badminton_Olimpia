@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261116-circuito-pdf">
+<meta name="build-id" content="v20261116-bizum">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -9933,9 +9933,12 @@ async function enviarImagenPorWhatsapp(blob, nombreArchivo, numero, que) {
 // ===== Ticket de las raquetas sin pagar de un cliente, como imagen para WhatsApp =====
 function pendientesDeCliente(clienteId) { return pedidosPendientesDeCobro().filter(p => p.clienteId === clienteId).sort((a, b) => (a.horaLlegada || 0) - (b.horaLlegada || 0)); }
 // Formas de pago que se ponen en el ticket (el Bizum y el enlace salen si están en Configuración)
+// Teléfono de Bizum del taller mientras no se ponga otro en Configuración (si se deja vacío a propósito, no sale número)
+const BIZUM_TALLER_DEFECTO = '647 67 57 10';
 function formasDePagoTaller() {
   const c = state.config || {}, l = ['Efectivo o tarjeta en la tienda'];
-  l.push(c.bizumTaller ? 'Bizum al ' + c.bizumTaller : 'Bizum');
+  const biz = c.bizumTaller != null ? c.bizumTaller : BIZUM_TALLER_DEFECTO;
+  l.push(biz ? 'Bizum al ' + biz : 'Bizum');
   if (c.enlacePago) l.push('Online: ' + c.enlacePago);
   return l;
 }
@@ -12688,7 +12691,7 @@ function viewConfigTaller() {
     telefonoTiendaInput,
     el('button', { class: 'btn btn-gold btn-sm', onclick: () => { state.config.telefonoTienda = telefonoTiendaInput.value.trim(); render(); } }, '✓ Aceptar'),
   )));
-  const bizumInput = el('input', { type: 'tel', class: 'im-cfg-bizum', value: state.config.bizumTaller || '', placeholder: 'Ej: 600111222' });
+  const bizumInput = el('input', { type: 'tel', class: 'im-cfg-bizum', value: state.config.bizumTaller != null ? state.config.bizumTaller : BIZUM_TALLER_DEFECTO, placeholder: 'Ej: 600111222' });
   panelConfig.appendChild(field('Teléfono para Bizum (sale en los tickets que envías)', el('div', { class: 'row', style: 'gap:8px;' },
     bizumInput,
     el('button', { class: 'btn btn-gold btn-sm im-cfg-bizum-ok', onclick: () => { state.config.bizumTaller = bizumInput.value.trim(); render(); } }, '✓ Aceptar'),

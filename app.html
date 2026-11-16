@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261114-gripcolores">
+<meta name="build-id" content="v20261116-copias">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -18225,6 +18225,7 @@ function renderClub() {
       el('button', { class: 'btn btn-gold btn-sm', onclick: () => document.getElementById('btnExport').click() }, '⬇ Exportar todo'),
       el('button', { class: 'btn btn-ghost btn-sm', onclick: () => document.getElementById('btnImport').click() }, '⬆ Importar todo'),
     ),
+    panelEspacioYCopias(),
   ));
 }
 
@@ -20878,6 +20879,140 @@ function fusionar3(b, l, r) {
   }
   return l;
 }
+// ===== ESPACIO EN LA NUBE Y COPIAS DE SEGURIDAD AUTOMÁTICAS =====
+const LIMITE_NUBE = 900000, AVISO_NUBE = 0.7, MAX_COPIAS_NUBE = 7;
+function espacioNube() {
+  const d = datosComparablesNube(estadoCompletoParaNube());
+  const tam = x => x === undefined ? 0 : JSON.stringify(x).length;
+  const t = d.taller || {}, pg = d.pagos || {};
+  const partes = [
+    ['Jugadores del club', tam(d.jugadoresGlobal) + tam(d.jugadoresExternos)],
+    ['Torneo actual', tam(d.torneo)],
+    ['Torneos anteriores (historial)', tam(d.torneosHistorial)],
+    ['Planificación de entrenos', tam(d.planificacion)],
+    ['Cuotas y contabilidad del club', tam(pg)],
+    ['Taller: raquetas (pedidos)', tam(t.pedidos)],
+    ['Taller: tickets y ventas', tam(t.ventasTienda)],
+    ['Taller: artículos y cordajes', tam(t.articulos)],
+    ['Taller: clientes y proveedores', tam(t.clientes) + tam(t.proveedores)],
+    ['Taller: facturas y contabilidad', tam(t.facturas) + tam(t.contabilidad)],
+    ['Página web, circuitos y datos del club', tam(d.club)],
+  ];
+  const total = JSON.stringify(d).length, suma = partes.reduce((a, x) => a + x[1], 0);
+  partes.push(['Otros', Math.max(0, total - suma)]);
+  return { total, limite: LIMITE_NUBE, pct: total / LIMITE_NUBE, partes: partes.filter(x => x[1] > 0).sort((a, b) => b[1] - a[1]) };
+}
+function avisarEspacioNube() {
+  try {
+    if (!esAdmin() || window.__avisoEspacioHecho) return;
+    const e = espacioNube();
+    if (e.pct < AVISO_NUBE) return;
+    window.__avisoEspacioHecho = true;
+    const ind = document.getElementById('nubeIndicador');
+    if (ind) { ind.title = 'Los datos ocupan el ' + Math.round(e.pct * 100) + ' % del espacio de la nube. Mira ⚙️ → Datos y copia de seguridad.'; ind.textContent = '⚠️ Nube al ' + Math.round(e.pct * 100) + ' %'; }
+  } catch (err) {}
+}
+function coleccionCopias() { return docPrincipal().collection('copias'); }
+function hoyISO() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function comprimirTexto(txt) {
+  if (typeof CompressionStream === 'undefined') return Promise.resolve({ fmt: 'json', datos: txt });
+  return new Response(new Blob([txt]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer().then(buf => {
+    const u = new Uint8Array(buf); let b = ''; for (let i = 0; i < u.length; i += 0x8000) b += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
+    return { fmt: 'gz64', datos: btoa(b) };
+  });
+}
+function descomprimirTexto(c) {
+  if (!c || c.fmt !== 'gz64') return Promise.resolve(c ? c.datos : '');
+  const bin = atob(c.datos), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+  return new Response(new Blob([u]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+}
+// Guarda una copia de todos los datos (sin fotos, que ya van aparte) en club/datos/copias/{id}
+function guardarCopiaNube(id, motivo) {
+  if (!firebaseDisponible || esOtroClub()) return Promise.reject(new Error('La nube no está disponible.'));
+  const txt = JSON.stringify(datosComparablesNube(estadoCompletoParaNube()));
+  return comprimirTexto(txt).then(c => {
+    if (c.datos.length > 1000000) throw new Error('Los datos pesan demasiado para la copia.');
+    return coleccionCopias().doc(id).set({ creado: Date.now(), motivo: motivo || 'diaria', kb: Math.round(txt.length / 1024), fmt: c.fmt, datos: c.datos, version: (document.querySelector('meta[name="build-id"]') || {}).content || '' });
+  });
+}
+function listarCopiasNube() {
+  return coleccionCopias().get().then(snap => { const l = []; snap.forEach(d => { const x = d.data(); l.push({ id: d.id, creado: x.creado, kb: x.kb, motivo: x.motivo }); }); return l.sort((a, b) => (b.creado || 0) - (a.creado || 0)); });
+}
+let copiaDiariaEnCurso = false;
+function copiaDiariaAutomatica() {
+  try {
+    if (copiaDiariaEnCurso || !firebaseDisponible || esOtroClub() || !esAdmin() || esVistaPublica()) return;
+    const hoy = hoyISO();
+    if (localStorage.getItem('badmintonCopiaDia') === hoy) return;
+    copiaDiariaEnCurso = true;
+    coleccionCopias().doc(hoy).get().then(d => d.exists ? null : guardarCopiaNube(hoy, 'diaria')).then(() => {
+      localStorage.setItem('badmintonCopiaDia', hoy); localStorage.removeItem('badmintonCopiaError');
+      return listarCopiasNube();
+    }).then(l => {
+      // se quedan las 7 diarias más recientes (las de «antes de restaurar» no se tocan)
+      l.filter(x => x.motivo === 'diaria').slice(MAX_COPIAS_NUBE).forEach(x => coleccionCopias().doc(x.id).delete().catch(() => {}));
+      l.filter(x => x.motivo === 'manual').slice(5).forEach(x => coleccionCopias().doc(x.id).delete().catch(() => {}));
+    }).catch(e => { try { localStorage.setItem('badmintonCopiaError', (e && (e.code || e.message)) || 'error'); } catch (x) {} console.warn('Copia diaria', e); })
+      .then(() => { copiaDiariaEnCurso = false; });
+  } catch (err) { copiaDiariaEnCurso = false; }
+}
+function restaurarCopiaNube(id) {
+  return coleccionCopias().doc(id).get().then(d => {
+    if (!d.exists) throw new Error('Esa copia ya no existe.');
+    const x = d.data();
+    return descomprimirTexto({ fmt: x.fmt, datos: x.datos });
+  }).then(txt => {
+    const datos = JSON.parse(txt);
+    // antes de tocar nada, se guarda cómo está ahora
+    return guardarCopiaNube('antes-de-restaurar', 'antes de restaurar').catch(() => {}).then(() => {
+      aplicarDatosDeNube(datos);
+      return (typeof cargarFotosTallerDeNube === 'function' ? cargarFotosTallerDeNube() : Promise.resolve()).catch(() => {});
+    }).then(() => { refrescarPantallaActual(); programarSyncNube(); });
+  });
+}
+function panelEspacioYCopias() {
+  const caja = el('div', { class: 'im-nube-panel' });
+  const e = espacioNube(), pct = Math.round(e.pct * 100);
+  const color = e.pct >= 0.9 ? '#B3261E' : e.pct >= AVISO_NUBE ? '#C77700' : '#1E8E5A';
+  caja.appendChild(el('h3', { style: 'margin:14px 0 4px;' }, '☁️ Espacio usado en la nube'));
+  caja.appendChild(el('div', { class: 'nube-uso', style: 'font-weight:800;' }, Math.round(e.total / 1024) + ' KB de ' + Math.round(e.limite / 1024) + ' KB (' + pct + ' %)'));
+  caja.appendChild(el('div', { style: 'height:14px;border-radius:99px;background:rgba(0,0,0,.1);overflow:hidden;margin:6px 0 8px;', role: 'img', 'aria-label': 'Espacio usado: ' + pct + ' %' },
+    el('div', { class: 'nube-barra', style: 'height:100%;width:' + Math.min(100, pct) + '%;background:' + color + ';' })));
+  if (e.pct >= AVISO_NUBE) caja.appendChild(el('div', { class: 'nube-aviso', style: 'color:' + color + ';font-weight:700;margin-bottom:6px;' },
+    e.pct >= 0.9 ? '⚠️ Casi lleno. Si llega al 100 % la app dejará de guardar en la nube. Avisa para liberar espacio.' : '⚠️ Va quedando poco espacio. Conviene liberar lo que más ocupa.'));
+  const det = el('details', {}, el('summary', { style: 'cursor:pointer;' }, 'Ver qué ocupa más'));
+  e.partes.forEach(x => det.appendChild(el('div', { style: 'display:flex;justify-content:space-between;gap:12px;padding:2px 0;' }, el('span', {}, x[0]), el('b', {}, Math.round(x[1] / 1024) + ' KB · ' + Math.round(x[1] / e.total * 100) + ' %'))));
+  caja.appendChild(det);
+  if (!firebaseDisponible || esOtroClub() || !esAdmin()) return caja;
+  caja.appendChild(el('h3', { style: 'margin:16px 0 4px;' }, '🛟 Copias automáticas'));
+  caja.appendChild(el('div', { class: 'sub' }, 'Cada día que abres la app como administrador se guarda sola una copia de todos los datos en la nube. Se conservan las ' + MAX_COPIAS_NUBE + ' últimas. Las fotos no van en la copia: ya se guardan aparte.'));
+  const lista = el('div', { class: 'nube-copias', style: 'margin-top:8px;' }, el('div', { class: 'sub' }, 'Cargando copias…'));
+  const pintar = () => listarCopiasNube().then(l => {
+    lista.innerHTML = '';
+    let errG = ''; try { errG = localStorage.getItem('badmintonCopiaError') || ''; } catch (x) {}
+    if (errG) lista.appendChild(el('div', { class: 'nube-copia-error', style: 'color:#B3261E;font-weight:700;margin-bottom:6px;' }, '⚠️ La última copia automática no se pudo guardar (' + errG + ').'));
+    if (!l.length) lista.appendChild(el('div', { class: 'sub' }, 'Todavía no hay ninguna copia.'));
+    l.forEach(c => lista.appendChild(el('div', { class: 'nube-copia', style: 'display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:6px 0;border-bottom:1px solid rgba(0,0,0,.08);' },
+      el('span', {}, new Date(c.creado).toLocaleString('es-ES', { dateStyle: 'full', timeStyle: 'short' }) + ' · ' + (c.kb || '?') + ' KB' + (c.motivo && c.motivo !== 'diaria' ? ' · ' + c.motivo : '')),
+      el('button', { class: 'btn btn-ghost btn-sm nube-restaurar', type: 'button', onclick: (ev) => {
+        if (!confirm('¿Restaurar los datos como estaban el ' + new Date(c.creado).toLocaleString('es-ES') + '?\n\nTodo lo que se haya hecho después de esa copia se perderá (raquetas, cobros, torneos…). Antes se guarda una copia de cómo está ahora, por si te arrepientes.')) return;
+        if (!confirm('Última confirmación: se van a sustituir TODOS los datos por los de esa copia. ¿Seguro?')) return;
+        const b = ev.currentTarget; b.disabled = true; b.textContent = 'Restaurando…';
+        restaurarCopiaNube(c.id).then(() => { alert('✅ Datos restaurados.'); renderClub(); }).catch(er => { alert('No se pudo restaurar: ' + er.message); b.disabled = false; b.textContent = 'Restaurar'; });
+      } }, 'Restaurar'))));
+  }).catch(er => {
+    lista.innerHTML = '';
+    const sinPermiso = er && (er.code === 'permission-denied' || /permission/i.test(er.message || ''));
+    lista.appendChild(el('div', { class: 'nube-copia-error', style: 'color:#B3261E;font-weight:700;' }, sinPermiso ? '⚠️ Falta dar permiso a las copias en las reglas de Firebase (te lo indica Claude).' : '⚠️ No se pudieron leer las copias: ' + (er.message || er)));
+  });
+  pintar();
+  caja.appendChild(lista);
+  caja.appendChild(el('button', { class: 'btn btn-ghost btn-sm nube-copia-ahora', type: 'button', style: 'margin-top:8px;', onclick: (ev) => {
+    const b = ev.currentTarget; b.disabled = true; b.textContent = 'Guardando…';
+    guardarCopiaNube('manual-' + Date.now().toString(36), 'manual').then(() => { try { localStorage.removeItem('badmintonCopiaError'); } catch (x) {} b.textContent = '✅ Copia guardada'; pintar(); }).catch(er => { alert('No se pudo guardar la copia: ' + (er.code || er.message)); b.textContent = '💾 Hacer una copia ahora'; }).then(() => { b.disabled = false; });
+  } }, '💾 Hacer una copia ahora'));
+  return caja;
+}
 function programarSyncNube() {
   if (!firebaseDisponible) return;
   if (esVistaPublica()) return;
@@ -20924,6 +21059,7 @@ function subirNube() {
     reintentoPermisoNube = false;
     marcarEstadoNube('☁️ Sincronizado');
     subirCopiaPublica();
+    avisarEspacioNube(); copiaDiariaAutomatica();
     // Por si hubo cambios mientras se subía
     if (!nubeSyncTimer) nubeSyncTimer = setTimeout(subirNube, 300);
   }).catch(err => {

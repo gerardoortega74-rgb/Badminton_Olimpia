@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261116-logo-aparte">
+<meta name="build-id" content="v20261116-publicas-ligeras">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -2206,15 +2206,27 @@ body.tdo-intro-on #tiendaOnlineScreen .tdo-hero .tdo-logo,body.tdo-intro-on #tie
 @keyframes tdoLineas{from{opacity:0;transform:scaleX(.2);}to{opacity:1;transform:none;}}
 @media (prefers-reduced-motion:reduce){.tdo-intro{display:none !important;}#tiendaOnlineScreen.tdo-entrada *{animation:none !important;}}
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
-if (window.pdfjsLib) { pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; }
+// Librerías pesadas (Excel, PDF y lector de texto en fotos). Las páginas públicas (torneo en directo, formulario de
+// raqueta, tienda, taller) no las usan y no las descargan; en la app se cargan en segundo plano, sin frenar el arranque.
+(function () {
+  var publica = false;
+  try { var q = new URLSearchParams(location.search); publica = ['publico', 'tallerpublico', 'tiendaonline', 'raqueta'].some(function (k) { return q.get(k) === '1'; }); } catch (e) {}
+  window.__libsPesadas = !publica;
+  if (publica) return;
+  function carga(src, alCargar) { var s = document.createElement('script'); s.src = src; s.async = true; if (alCargar) s.onload = alCargar; document.head.appendChild(s); }
+  carga('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+  carga('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js', function () { if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; });
+  carga('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js');
+})();
+// Espera (como mucho 10 s) a que una de esas librerías termine de descargarse.
+function esperarLibreria(nombre) {
+  return new Promise(function (ok) { var n = 0; (function mira() { if (window[nombre] || !window.__libsPesadas || n++ > 50) ok(!!window[nombre]); else setTimeout(mira, 200); })(); });
+}
 </script>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body>
 
@@ -8422,9 +8434,11 @@ let tipoReciboPendiente = 'gasto';
 let ocrWorkerPromise = null;
 
 function getOcrWorker() {
-  if (!window.Tesseract) return Promise.reject(new Error('El lector automático (OCR) no se ha podido cargar.'));
-  if (!ocrWorkerPromise) ocrWorkerPromise = Tesseract.createWorker('spa');
-  return ocrWorkerPromise;
+  return esperarLibreria('Tesseract').then(() => {
+    if (!window.Tesseract) throw new Error('El lector automático (OCR) no se ha podido cargar.');
+    if (!ocrWorkerPromise) ocrWorkerPromise = Tesseract.createWorker('spa');
+    return ocrWorkerPromise;
+  });
 }
 
 function comprimirImagen(file, maxWidth, calidad) {
@@ -8466,6 +8480,7 @@ function leerPDF(file) {
     reader.onerror = () => resolve({ texto: '', imagenDataUrl: null, paginasTotales: 0 });
     reader.onload = async () => {
       try {
+        await esperarLibreria('pdfjsLib');
         if (!window.pdfjsLib) { resolve({ texto: '', imagenDataUrl: null, paginasTotales: 0 }); return; }
         const typedArray = new Uint8Array(reader.result);
         const pdf = await pdfjsLib.getDocument({ data: typedArray }).promise;

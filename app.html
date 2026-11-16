@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261116-publicas-ligeras">
+<meta name="build-id" content="v20261116-circuito-pdf">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -1082,6 +1082,9 @@ header.app-header::before{display:none !important;}
 .rc{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#000;}
 .rc table{width:100%;border-collapse:collapse;display:table;white-space:normal;background:none;overflow:visible;font-size:inherit;max-width:none;}
 .rc td{border-bottom:none;vertical-align:top;}
+.cir-pdf table{width:100%;border-collapse:collapse;display:table;white-space:normal;background:none;overflow:visible;font-size:inherit;max-width:none;}
+.cir-pdf th{text-transform:none;color:#000;font-size:inherit;letter-spacing:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.cir-pdf td{border-bottom:1px solid #999;}
 .rc-cab td{border:1px solid #000;padding:6px;vertical-align:top;width:50%;line-height:1.5;}
 .rc-per{border:1px solid #000;border-top:0;padding:5px 6px;}
 .rc-t{margin-top:8px;}
@@ -1099,7 +1102,8 @@ header.app-header::before{display:none !important;}
   @page{size:A4;margin:12mm;}
   body:has(#nomReciboVelo) *{visibility:hidden !important;}
   body:has(#nomReciboVelo) #nomReciboVelo, body:has(#nomReciboVelo) #nomReciboVelo *{visibility:visible !important;}
-  #nomReciboVelo{position:absolute;inset:0;background:#fff;overflow:visible;}
+  body:has(#nomReciboVelo) > *:not(#nomReciboVelo){display:none !important;}
+  #nomReciboVelo{position:static;background:#fff;overflow:visible;}
   .rc-barra{display:none !important;}
   .rc-hoja{box-shadow:none;margin:0;max-width:none;padding:0;}
   .rc{font-size:10.5px;} .rc-cab td{display:table-cell;width:50%;}
@@ -19302,6 +19306,35 @@ function tablaRankingCircuito(cat, jornadas) {
     el('td', { style: 'text-align:right;font-weight:800;' }, String(f.total)))));
   return el('div', { class: 'cir-tabla', style: 'overflow-x:auto;' }, el('table', {}, el('thead', {}, head), body));
 }
+// Clasificación del circuito en una hoja para imprimir o guardar en PDF (todas las categorías, una tras otra)
+function htmlClasificacionCircuito(nombre, temporada, ranking, jornadas, puntos) {
+  const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+  const logo = clubGlobal && clubGlobal.logo ? '<img src="' + esc(clubGlobal.logo) + '" alt="" style="height:64px;width:auto;">' : '';
+  const hoy = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+  const th = 'border:1px solid #999;padding:4px 6px;background:#E6E6E6;font-weight:700;', td = 'border:1px solid #999;padding:4px 6px;';
+  const cats = (ranking || []).filter(r => r.filas && r.filas.length);
+  let h = '<div class="cir-pdf" style="font-family:Arial,Helvetica,sans-serif;color:#000;font-size:13px;">' +
+    '<div style="display:flex;align-items:center;gap:14px;border-bottom:3px solid #000;padding-bottom:10px;margin-bottom:6px;">' + logo +
+    '<div><div style="font-size:22px;font-weight:800;line-height:1.15;">' + esc(nombre || 'Circuito') + '</div>' +
+    '<div>Clasificación general' + (temporada ? ' · Temporada ' + esc(temporada) : '') + ' · ' + esc((clubGlobal && clubGlobal.nombre) || '') + '</div>' +
+    '<div style="color:#444;">A ' + esc(hoy) + '</div></div></div>' +
+    '<div style="color:#444;margin-bottom:10px;">' + jornadas.map((j, i) => 'J' + (i + 1) + ': ' + esc(j.nombre || ('Jornada ' + (i + 1))) + (j.fecha ? ' (' + esc(fmtFechaCorta(j.fecha)) + ')' : '')).join(' · ') + '</div>';
+  if (!cats.length) h += '<p>Todavía no hay puntos en ninguna categoría.</p>';
+  cats.forEach(cat => {
+    h += '<div style="break-inside:avoid-page;margin:0 0 16px;"><div style="font-size:16px;font-weight:800;margin:10px 0 4px;">' + esc(cat.nombre) + '</div>' +
+      '<table style="border-collapse:collapse;width:100%;"><thead><tr><th style="' + th + 'width:34px;">#</th><th style="' + th + 'text-align:left;">Jugador</th>' +
+      jornadas.map((j, i) => '<th style="' + th + 'width:40px;">J' + (i + 1) + '</th>').join('') + '<th style="' + th + 'width:54px;">Total</th></tr></thead><tbody>' +
+      cat.filas.map(f => '<tr><td style="' + td + 'text-align:center;font-weight:700;">' + f.pos + '</td><td style="' + td + (f.pos <= 3 ? 'font-weight:700;' : '') + '">' + esc(f.nombre) + '</td>' +
+        jornadas.map(j => { const x = f.jornadas[j.id]; return '<td style="' + td + 'text-align:center;">' + (x ? x.p : '–') + '</td>'; }).join('') +
+        '<td style="' + td + 'text-align:center;font-weight:800;">' + f.total + '</td></tr>').join('') + '</tbody></table></div>';
+  });
+  const p = puntos || PUNTOS_CIRCUITO;
+  h += '<div style="color:#444;font-size:11px;margin-top:8px;">Puntos por jornada: ' + RONDAS_CIRCUITO_LISTA.map(r => NOMBRES_RONDA_CIRCUITO[r] + ' ' + (p[r] || 0)).join(' · ') + '. En dobles puntúa cada jugador.</div></div>';
+  return h;
+}
+function botonPdfClasificacion(nombre, temporada, ranking, jornadas, puntos) {
+  return el('button', { class: 'btn btn-ghost btn-sm cir-pdf-btn', type: 'button', style: 'margin-top:10px;', onclick: () => nomVerDocumento('Clasificación · ' + (nombre || 'Circuito'), htmlClasificacionCircuito(nombre, temporada, ranking, jornadas, puntos)) }, '🖨 Imprimir / PDF de la clasificación');
+}
 function viewCircuitoTorneo(repintar) {
   const wrap = el('div');
   const lista = circuitosCfg();
@@ -19386,6 +19419,7 @@ function viewCircuitoTorneo(repintar) {
     const pintar = () => { caja.innerHTML = ''; caja.appendChild(tablaRankingCircuito(rk.find(r => r.id === catSel), c.jornadas)); [...chips.children].forEach(b => { const on = b.dataset.id === catSel; b.setAttribute('aria-pressed', on ? 'true' : 'false'); b.classList.toggle('cir-cat-on', on); }); };
     rk.forEach(r => chips.appendChild(el('button', { class: 'btn btn-ghost btn-sm cir-cat', type: 'button', 'data-id': r.id, onclick: () => { catSel = window.__circuitoCat = r.id; pintar(); } }, r.nombre + ' (' + r.filas.length + ')')));
     rp.appendChild(chips); rp.appendChild(caja); pintar();
+    rp.appendChild(botonPdfClasificacion(c.nombre, c.temporada, rk, c.jornadas, c.puntos));
   }
   wrap.appendChild(rp);
   // Enlace público
@@ -19450,6 +19484,7 @@ function renderVistaCircuito(root, id) {
     const pintar = () => { tab.innerHTML = ''; tab.appendChild(tablaRankingCircuito(c.ranking.find(r => r.id === catSel), jugadas.length ? jugadas : c.jornadas)); [...chips.children].forEach(b => { const on = b.dataset.id === catSel; b.setAttribute('aria-pressed', on ? 'true' : 'false'); b.classList.toggle('cir-cat-on', on); }); };
     c.ranking.forEach(r => chips.appendChild(el('button', { class: 'btn btn-ghost btn-sm cir-cat', type: 'button', 'data-id': r.id, onclick: () => { catSel = r.id; pintar(); } }, r.nombre)));
     rp.appendChild(chips); rp.appendChild(tab); pintar();
+    rp.appendChild(botonPdfClasificacion(c.nombre, c.temporada, c.ranking, jugadas.length ? jugadas : c.jornadas, c.puntos));
     const p = c.puntos || PUNTOS_CIRCUITO;
     rp.appendChild(el('div', { class: 'sub', style: 'margin-top:10px;' }, 'Puntos por jornada: ' + RONDAS_CIRCUITO_LISTA.map(r => NOMBRES_RONDA_CIRCUITO[r] + ' ' + (p[r] || 0)).join(' · ') + '. En dobles puntúa cada jugador.'));
   }

@@ -53,6 +53,7 @@ with sync_playwright() as p:
     ok(f[0]['pos']==1 and f[1]['pos']==1, f'{dev}: empate a puntos = mismo puesto')
     ok(tot.get('Hada Sol')==40 and tot.get('Ivet Nou')==40, f'{dev}: quien juega solo una jornada suma solo esa')
     pg.locator('.cir-cat').first.scroll_into_view_if_needed(); pg.screenshot(path=SP+f'cir_admin_{dev}.png')
+    pg.locator('.cir-pdf-btn').click(); pg.wait_for_timeout(500); ok(pg.locator('#nomReciboVelo table').count()>=1 and 'Clasificación general' in pg.inner_text('#nomReciboVelo'), f'{dev}: PDF de la clasificación desde la app'); pg.locator('#nomReciboVelo .rc-barra button',has_text='Cerrar').click()
     ok(pg.locator('.cir-tabla tbody tr').count()>=8, f'{dev}: tabla de clasificación en la app')
     ok(pg.evaluate("estadoPublicoParaNube().circuitos.length")==0, f'{dev}: sin marcar «Publicar» el circuito no sale')
     pg.locator('.cir-publicado').first.check(); pg.wait_for_timeout(400)

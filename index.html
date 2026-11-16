@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="build-id" content="v20261110-enweb">
+<meta name="build-id" content="v20261116-sw">
 <script>
 // Los enlaces de la app (?club=, ?tiendaonline=, ?tallerpublico=, ?publico=, ?fichar=…) siguen funcionando:
 // cualquier dirección con parámetros va a la app. Y si se abre desde el icono de la pantalla de inicio, también.
@@ -27,6 +27,8 @@ function paramsDeLaApp() {
 <meta name="robots" content="index,follow">
 <script type="application/ld+json" id="datosEstructurados">{"@context": "https://schema.org", "@type": "SportsClub", "@id": "https://badmintonolimpia.es/#club", "name": "Club Bádminton Olimpia Torrelavega", "alternateName": "Bádminton Olimpia", "url": "https://badmintonolimpia.es/", "logo": "https://badmintonolimpia.es/icono-512.png", "image": "https://badmintonolimpia.es/icono-512.png", "sport": "Bádminton", "description": "Club de bádminton en Torrelavega (Cantabria): escuela para niños y adultos, entrenamientos por niveles y torneos.", "address": {"@type": "PostalAddress", "addressLocality": "Torrelavega", "addressRegion": "Cantabria", "addressCountry": "ES"}, "areaServed": "Torrelavega"}</script>
 <meta name="theme-color" content="#15191c">
+<script>if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });</script>
+
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta property="og:type" content="website">

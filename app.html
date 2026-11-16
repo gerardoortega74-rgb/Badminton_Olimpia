@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261116-copias">
+<meta name="build-id" content="v20261116-mejoras">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -526,6 +526,9 @@ body.im-taller .tpv-lupa:active{transform:scale(.92);}
 <meta name="apple-mobile-web-app-title" content="Bádminton">
 <meta name="application-name" content="Bádminton">
 <meta name="theme-color" content="#1B2125">
+<link rel="manifest" href="manifest.webmanifest">
+<script>if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });</script>
+
 <style>
 :root{
   --court:#1B4A6B; --court-dark:#0F2E44; --line:#F7F5F0; --gold:#E8B924; --gold-dark:#C9971A;
@@ -10595,6 +10598,88 @@ function abrirQRFormRaqueta() {
     acciones.insertBefore(el('button', { class: 'btn btn-gold im-qr-imprimir', type: 'button', onclick: imprimir }, '🖨️ Imprimir cartel'), acciones.firstChild);
   }).catch(e => { caja.innerHTML = ''; caja.appendChild(el('div', { class: 'sub' }, 'No se pudo generar el código: ' + e.message + '. Comprueba la conexión y vuelve a probar.')); });
 }
+// ===== AVISOS DEL TALLER: stock bajo, raquetas sin recoger y sin pagar =====
+function avisosTaller() {
+  const c = state.config || {}, dias = Number(c.diasRecordatorio) || 7, ahora = Date.now(), DIA = 86400000;
+  const minM = c.stockMinMetros != null ? Number(c.stockMinMetros) : 18, minU = c.stockMinUnidades != null ? Number(c.stockMinUnidades) : 1;
+  const usados = new Set();
+  state.pedidos.forEach(p => { if (ahora - (p.horaLlegada || 0) < 120 * DIA) { if (p.cordajeId) usados.add(p.cordajeId); if (p.cordajeIdH) usados.add(p.cordajeIdH); (p.articulosAdicionales || []).forEach(i => usados.add(i.articuloId)); } });
+  (state.ventasTienda || []).forEach(v => { if (!v.anulada && ahora - (v.fecha || 0) < 120 * DIA) (v.lineas || []).forEach(l => { if (l.articuloId) usados.add(l.articuloId); }); });
+  const stockBajo = state.articulos.filter(a => {
+    if (a.colorInactivo) return false;
+    const st = Number(a.stock) || 0, min = a.unidad === 'metros' ? minM : minU;
+    return st > 0 ? st <= min : usados.has(a.id); // a cero solo avisa de lo que se ha usado o vendido hace poco
+  }).sort((x, y) => (Number(x.stock) || 0) - (Number(y.stock) || 0));
+  const sinRecoger = state.pedidos.filter(p => p.estado === 'terminado' && ahora - (p.horaFin || p.horaLlegada || ahora) >= dias * DIA);
+  const sinPagar = state.pedidos.filter(p => p.estado === 'entregado' && !p.pagado && ahora - (p.fechaEntrega || p.horaFin || ahora) >= dias * DIA);
+  return { dias, stockBajo, sinRecoger, sinPagar };
+}
+function panelAvisosTaller() {
+  const a = avisosTaller(), n = a.stockBajo.length + a.sinRecoger.length + a.sinPagar.length;
+  if (!n) return null;
+  const DIA = 86400000, hace = ts => Math.max(1, Math.floor((Date.now() - ts) / DIA)) + ' días';
+  const det = el('details', { class: 'im-avisos', style: 'margin:0 0 12px;border:2px solid #C77700;border-radius:12px;padding:8px 12px;background:rgba(199,119,0,.07);' },
+    el('summary', { style: 'cursor:pointer;font-weight:800;' }, '🔔 ' + n + (n === 1 ? ' aviso' : ' avisos') + ': ' +
+      [a.sinRecoger.length ? a.sinRecoger.length + ' sin recoger' : '', a.sinPagar.length ? a.sinPagar.length + ' sin pagar' : '', a.stockBajo.length ? a.stockBajo.length + ' con poco stock' : ''].filter(Boolean).join(' · ')));
+  const fila = (txt, btn) => el('div', { class: 'im-aviso', style: 'display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:5px 0;border-top:1px solid rgba(0,0,0,.08);' }, el('span', {}, txt), btn || null);
+  if (a.sinRecoger.length) det.appendChild(el('div', { style: 'font-weight:700;margin-top:8px;' }, '📦 Listas hace más de ' + a.dias + ' días y sin recoger'));
+  a.sinRecoger.forEach(p => { const cli = clienteDe(p.clienteId);
+    det.appendChild(fila((cli ? cli.nombre : 'Cliente') + ' · ' + (p.marcaModelo || 'Raqueta') + ' · lista hace ' + hace(p.horaFin || p.horaLlegada),
+      cli && cli.telefono ? el('button', { class: 'btn btn-ghost btn-sm im-aviso-recordar', onclick: () => abrirModalWhatsapp('Recordar que está lista', cli,
+        'Hola ' + (cli.nombre || '').split(' ')[0] + ', te recuerdo que tu raqueta' + (p.marcaModelo ? ' ' + p.marcaModelo : '') + ' está lista para recoger desde el ' + fmtFechaTs(p.horaFin || p.horaLlegada) + '. ' + (p.garantia || p.pagado ? '' : 'Importe: ' + euros(p.precio || 0) + '. ') + 'Puedes pasar cuando quieras. ¡Gracias!') }, '💬 Recordar') : null)); });
+  if (a.sinPagar.length) det.appendChild(el('div', { style: 'font-weight:700;margin-top:8px;' }, '💶 Entregadas hace más de ' + a.dias + ' días y sin pagar'));
+  a.sinPagar.forEach(p => { const cli = clienteDe(p.clienteId);
+    det.appendChild(fila((cli ? cli.nombre : 'Cliente') + ' · ' + (p.marcaModelo || 'Raqueta') + ' · ' + euros(p.precio || 0) + ' · entregada hace ' + hace(p.fechaEntrega || p.horaFin),
+      cli ? el('button', { class: 'btn btn-ghost btn-sm im-aviso-ticket', onclick: () => abrirDeudaCliente(cli.id) }, '🧾 Enviar ticket') : null)); });
+  if (a.stockBajo.length) det.appendChild(el('div', { style: 'font-weight:700;margin-top:8px;' }, '📉 Poco stock'));
+  a.stockBajo.slice(0, 25).forEach(x => det.appendChild(fila(x.nombre + ' · quedan ' + (Number(x.stock) || 0) + ' ' + (x.unidad === 'metros' ? 'm' : 'uds.'))));
+  if (a.stockBajo.length > 25) det.appendChild(fila('… y ' + (a.stockBajo.length - 25) + ' más'));
+  det.appendChild(el('div', { class: 'sub', style: 'font-size:12px;margin-top:8px;' }, 'Los días y el stock mínimo se cambian en ⚙️ Configuración → Avisos.'));
+  return det;
+}
+// ===== ESTADÍSTICAS DEL TALLER =====
+function estadisticasTaller() {
+  const hechos = state.pedidos.filter(p => p.estado === 'terminado' || p.estado === 'entregado');
+  const meses = [], hoy = new Date();
+  for (let i = 11; i >= 0; i--) { const d = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1); meses.push({ k: d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'), n: 0, eur: 0, etq: d.toLocaleDateString('es-ES', { month: 'short' }).replace('.', '') + ' ' + String(d.getFullYear()).slice(2) }); }
+  const idx = {}; meses.forEach(m => { idx[m.k] = m; });
+  const cord = {}, clis = {}; let sumaT = 0, nT = 0;
+  hechos.forEach(p => {
+    const d = new Date(p.horaFin || p.horaLlegada), m = idx[d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0')];
+    if (m) { m.n++; if (!p.garantia) m.eur += p.precio || 0; }
+    const nc = nombreCordajeDe(p); if (nc && nc !== '—') cord[nc] = (cord[nc] || 0) + 1;
+    clis[p.clienteId] = (clis[p.clienteId] || 0) + 1;
+    const t = parseFloat(p.tensionVertical); if (t > 0) { sumaT += t; nT++; }
+  });
+  (state.ventasTienda || []).forEach(v => { if (v.anulada || v.tipo === 'encordado' || v.pedidoId) return; const d = new Date(v.fecha), m = idx[d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0')]; if (m) m.tienda = (m.tienda || 0) + (v.total || 0); });
+  const top = o => Object.keys(o).map(k => [k, o[k]]).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const nCli = Object.keys(clis).length, repiten = Object.values(clis).filter(x => x > 1).length;
+  return { total: hechos.length, meses, cordajes: top(cord), clientes: top(clis).map(x => [(clienteDe(x[0]) || {}).nombre || 'Cliente', x[1]]), tensionMedia: nT ? sumaT / nT : 0, nCli, repiten, garantias: hechos.filter(p => p.garantia).length };
+}
+function panelEstadisticasTaller() {
+  const e = estadisticasTaller();
+  const det = el('details', { class: 'panel im-stats' }, el('summary', { style: 'cursor:pointer;font-weight:800;font-size:18px;' }, '📊 Estadísticas del taller'));
+  const maxN = Math.max(1, ...e.meses.map(m => m.n)), maxE = Math.max(1, ...e.meses.map(m => m.eur + (m.tienda || 0)));
+  const dato = (v, t) => el('div', { class: 'im-dato' }, el('b', {}, v), el('span', {}, t));
+  det.appendChild(el('div', { class: 'im-resumen', style: 'margin-top:10px;' },
+    dato(String(e.total), 'raquetas encordadas'), dato(String(e.meses[11].n), 'este mes'),
+    dato(e.tensionMedia ? e.tensionMedia.toFixed(1).replace('.', ',') + ' kg' : '—', 'tensión media'),
+    dato(e.nCli ? Math.round(e.repiten / e.nCli * 100) + ' %' : '—', 'clientes que repiten')));
+  const barras = (tit, val, max, fmt) => {
+    const c = el('div', { style: 'margin-top:14px;' }, el('div', { style: 'font-weight:700;margin-bottom:4px;' }, tit));
+    e.meses.forEach(m => c.appendChild(el('div', { class: 'im-stat-fila', style: 'display:grid;grid-template-columns:58px 1fr 84px;gap:8px;align-items:center;font-size:13px;padding:1px 0;' },
+      el('span', {}, m.etq), el('div', { style: 'height:12px;border-radius:99px;background:rgba(0,0,0,.08);overflow:hidden;' }, el('div', { style: 'height:100%;width:' + (val(m) / max * 100) + '%;background:var(--im-navy,#12235f);' })),
+      el('b', { style: 'text-align:right;' }, fmt(val(m))))));
+    return c;
+  };
+  det.appendChild(barras('Raquetas por mes', m => m.n, maxN, v => String(v)));
+  det.appendChild(barras('Ingresos por mes (encordados + tienda)', m => m.eur + (m.tienda || 0), maxE, v => euros(v)));
+  const lista = (tit, l, suf) => { const c = el('div', { style: 'margin-top:14px;' }, el('div', { style: 'font-weight:700;margin-bottom:4px;' }, tit)); if (!l.length) c.appendChild(el('div', { class: 'sub' }, 'Sin datos todavía.')); l.forEach((x, i) => c.appendChild(el('div', { style: 'display:flex;justify-content:space-between;gap:10px;padding:2px 0;' }, el('span', {}, (i + 1) + '. ' + x[0]), el('b', {}, x[1] + suf)))); return c; };
+  det.appendChild(lista('Cordajes más usados', e.cordajes, ' raquetas'));
+  det.appendChild(lista('Clientes que más encuerdan', e.clientes, ' raquetas'));
+  if (e.garantias) det.appendChild(el('div', { class: 'sub', style: 'margin-top:10px;' }, '🛡️ ' + e.garantias + ' encordado(s) en garantía (no suman ingresos).'));
+  return det;
+}
 function viewCola() {
   const wrap = document.createDocumentFragment();
   const cola = pedidosEnCola();
@@ -10606,6 +10691,7 @@ function viewCola() {
   );
   escucharSolicitudesRaqueta();
   { const ps = panelSolicitudesRaqueta(); if (ps) panel.appendChild(ps); }
+  { const pa = panelAvisosTaller(); if (pa) panel.appendChild(pa); }
   panel.appendChild(el('div', { class: 'im-resumen' },
     el('div', { class: 'im-dato' }, el('b', {}, String(cola.length)), el('span', {}, cola.length === 1 ? 'raqueta en cola' : 'raquetas en cola')),
     el('div', { class: 'im-dato' }, el('b', {}, ultima ? fmtHora(ultima) : '—'), el('span', {}, 'todas listas hacia')),
@@ -11074,11 +11160,33 @@ function viewNuevoPedido() {
   }
   buscadorInput.addEventListener('input', pintarBusqueda);
   const clienteChipDiv = el('div', {});
-  function marcarCliente(nombre) { clienteChipDiv.className = nombre ? 'im-cliente-ok' : 'im-cliente-no'; clienteChipDiv.textContent = nombre ? '✓ ' + nombre : 'Busca por nombre o teléfono, o créalo nuevo.'; }
+  // «Como la última vez»: las últimas raquetas de ese cliente, para repetir cordaje y tensión con un toque
+  const repetirDiv = el('div', { class: 'im-repetir' });
+  function pintarRepetir() {
+    repetirDiv.innerHTML = '';
+    if (!clienteElegidoId) return;
+    const vistos = new Set(), ult = [];
+    state.pedidos.filter(p => p.clienteId === clienteElegidoId && (p.cordajeId || p.tensionVertical)).sort((a, b) => (b.horaLlegada || 0) - (a.horaLlegada || 0)).forEach(p => {
+      const k = (p.marcaModelo || '').toLowerCase().trim(); if (vistos.has(k) || ult.length >= 3) return; vistos.add(k); ult.push(p); });
+    if (!ult.length) return;
+    repetirDiv.appendChild(el('div', { class: 'sub', style: 'margin:8px 0 4px;font-weight:700;' }, '🔁 Como la última vez'));
+    ult.forEach(p => repetirDiv.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-sm im-repetir-btn', style: 'display:block;width:100%;text-align:left;margin:4px 0;white-space:normal;', onclick: () => {
+      marcaTextInput.value = p.marcaModelo || ''; try { comprobarTensionMax(); } catch (e) {}
+      tensionVInput.value = p.tensionVertical != null ? p.tensionVertical : ''; tensionHInput.value = p.tensionHorizontal != null ? p.tensionHorizontal : '';
+      const pon = (sel, id) => { if (id && [...sel.options].some(o => o.value === id)) { sel.value = id; sel.dispatchEvent(new Event('change')); return true; } return false; };
+      const okV = pon(cordajeSelect, p.cordajeId);
+      if (p.cordajeIdH && p.cordajeIdH !== p.cordajeId) { hibridoCheckbox.checked = true; hibridoCheckbox.dispatchEvent(new Event('change')); pon(cordajeHSelect, p.cordajeIdH); }
+      pretensadoCheckbox.checked = !!p.pretensado;
+      [tensionVInput, tensionHInput].forEach(i => i.dispatchEvent(new Event('input')));
+      if (p.cordajeId && !okV) alert('El cordaje de la última vez (' + nombreCordajeDe(p) + ') ya no está disponible. Elige otro.');
+    } }, (p.marcaModelo || 'Raqueta') + ' · ' + nombreCordajeDe(p) + ' · ' + fmtTension(p) + ' · ' + fmtFechaTs(p.horaLlegada))));
+  }
+  function marcarCliente(nombre) { clienteChipDiv.className = nombre ? 'im-cliente-ok' : 'im-cliente-no'; clienteChipDiv.textContent = nombre ? '✓ ' + nombre : 'Busca por nombre o teléfono, o créalo nuevo.'; pintarRepetir(); }
   marcarCliente(clientePre ? clientePre.nombre + (clientePre.telefono ? ' · ' + clientePre.telefono : '') : '');
   pasoCliente.appendChild(field('Buscar cliente', buscadorInput));
   pasoCliente.appendChild(resultadosDiv);
   pasoCliente.appendChild(clienteChipDiv);
+  pasoCliente.appendChild(repetirDiv);
   const telNuevoInput = el('input', { type: 'tel', inputmode: 'tel', placeholder: 'Ej: 600 123 456', autocomplete: 'off', value: clientePre ? (clientePre.telefono || '') : '' });
   pasoCliente.appendChild(el('div', { class: 'im-cliente-nuevo' },
     field('Teléfono', telNuevoInput),
@@ -12563,6 +12671,15 @@ function viewConfigTaller() {
     bizumInput,
     el('button', { class: 'btn btn-gold btn-sm im-cfg-bizum-ok', onclick: () => { state.config.bizumTaller = bizumInput.value.trim(); render(); } }, '✓ Aceptar'),
   )));
+  { // Avisos de la cola: días para recordar y stock mínimo
+    const num = (k, def, cls) => { const i = el('input', { type: 'number', min: '0', step: '1', class: cls, value: String(state.config[k] != null ? state.config[k] : def), style: 'max-width:110px;' }); i.addEventListener('change', () => { state.config[k] = Math.max(0, Number(i.value) || 0); saveLocal(); }); return i; };
+    panelConfig.appendChild(el('div', { class: 'im-cfg-avisos', style: 'margin:10px 0;padding:10px 12px;border:1px solid rgba(0,0,0,.12);border-radius:10px;' },
+      el('div', { style: 'font-weight:800;margin-bottom:4px;' }, '🔔 Avisos de la cola de trabajo'),
+      el('div', { class: 'grid' },
+        field('Avisar si lleva estos días sin recoger o sin pagar', num('diasRecordatorio', 7, 'im-cfg-dias')),
+        field('Poco stock de cordaje: quedan estos metros o menos', num('stockMinMetros', 18, 'im-cfg-minm')),
+        field('Poco stock de artículos: quedan estas unidades o menos', num('stockMinUnidades', 1, 'im-cfg-minu')))));
+  }
   const enlacePagoInput = el('input', { type: 'text', value: state.config.enlacePago || '', placeholder: 'Ej: https://paypal.me/TuNombre' });
   panelConfig.appendChild(field('Enlace de pago (opcional, PayPal.me, Stripe, etc.)', el('div', { class: 'row', style: 'gap:8px;' },
     enlacePagoInput,
@@ -12803,6 +12920,7 @@ function viewHistorial() {
     wrap.appendChild(panel);
     return wrap;
   }
+  wrap.appendChild(panelEstadisticasTaller());
   // Buscador (cliente, raqueta o cordaje) y tarjetas: se leen bien en el móvil
   const buscador = el('input', { type: 'search', placeholder: 'Buscar por cliente, raqueta o cordaje…', value: histBusqueda, 'aria-label': 'Buscar en el historial' });
   panel.appendChild(el('div', { class: 'tpv-buscar', style: 'margin:10px 0;' }, buscador));
@@ -19468,7 +19586,15 @@ const CLAVE_TOKEN_META = 'badmintonTokenMeta';
 function fechaCortaRedes(ts) { const d = new Date(ts); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear(); }
 function redesCfg() { const w = webCfg(); if (!w.redes || typeof w.redes !== 'object') w.redes = {}; return w.redes; }
 function tokenMeta() { try { return localStorage.getItem(CLAVE_TOKEN_META) || ''; } catch (e) { return ''; } }
-function guardarTokenMeta(t) { try { if (t) localStorage.setItem(CLAVE_TOKEN_META, t); else localStorage.removeItem(CLAVE_TOKEN_META); } catch (e) {} }
+function guardarTokenMeta(t) { try { if (t) { localStorage.setItem(CLAVE_TOKEN_META, t); localStorage.setItem(CLAVE_TOKEN_META + 'Fecha', String(Date.now())); } else { localStorage.removeItem(CLAVE_TOKEN_META); localStorage.removeItem(CLAVE_TOKEN_META + 'Fecha'); } } catch (e) {} }
+// El token ampliado de Meta dura unos 60 días: se avisa una semana antes
+function diasTokenMeta() { try { const f = Number(localStorage.getItem(CLAVE_TOKEN_META + 'Fecha')); return f && tokenMeta() ? Math.ceil((f + 60 * 86400000 - Date.now()) / 86400000) : null; } catch (e) { return null; } }
+function avisoTokenMeta() {
+  const d = diasTokenMeta(); if (d === null) return null;
+  const pronto = d <= 7;
+  return el('div', { class: 'rd-caduca' + (pronto ? ' rd-caduca-pronto' : ''), style: 'margin:6px 0;font-size:13px;' + (pronto ? 'color:#B3261E;font-weight:800;' : '') },
+    d <= 0 ? '⚠️ La conexión con Facebook e Instagram ha caducado: genera un token nuevo y vuelve a conectar.' : pronto ? '⚠️ La conexión caduca en ' + d + (d === 1 ? ' día' : ' días') + ': genera un token nuevo en Meta y vuelve a conectar.' : 'La conexión caduca en unos ' + d + ' días (el token de Meta dura 60).');
+}
 function metaLlamar(ruta, params, metodo, cuerpo) {
   const qs = new URLSearchParams(Object.assign({}, params || {}));
   const url = META_API + ruta + (qs.toString() ? '?' + qs.toString() : '');
@@ -19724,6 +19850,7 @@ function panelRedesSociales(volver) {
   const p = el('div', { class: 'panel rd-config' }, el('h3', {}, '📣 Redes sociales'));
   if (r.paginaId && tk) {
     p.appendChild(el('div', { class: 'msg msg-ok' }, '✅ Conectado en este dispositivo a la página «' + (r.paginaNombre || r.paginaId) + '»' + (r.instagramId ? ' e Instagram @' + (r.instagramUsuario || '') : ' (sin Instagram profesional vinculado)') + '.'));
+    { const av = avisoTokenMeta(); if (av) p.appendChild(av); }
     p.appendChild(el('div', { class: 'toolbar', style: 'margin-top:8px;' },
       el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => { guardarTokenMeta(''); volver(); } }, 'Desconectar este dispositivo')));
   } else if (r.paginaId) {

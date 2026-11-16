@@ -1,0 +1,26 @@
+_t=open('/home/claude/test/tform2.py').read(); exec(_t[:_t.index("with sync_playwright() as p:")])
+import time
+with sync_playwright() as p:
+  b=p.chromium.launch()
+  for vw,vh,mov,dev in ((390,844,True,'mov'),(1366,860,False,'pc')):
+    sd=seed(); T=sd['club/datos']['taller']; now=int(time.time()*1000)
+    T['pedidos'][0].update({'estado':'entregado','pagado':False,'precio':14,'horaFin':now-86400000,'fechaEntrega':now-3600000,'marcaModelo':'Yonex Astrox 2'})
+    T['config']['bizumTaller']='600111222'
+    pg,errs=pagina(b,vw,vh,mov,sd,admin=True)
+    pg.goto('https://test.local/app.html'); pg.wait_for_timeout(3000)
+    pg.evaluate("document.querySelectorAll('button').forEach(b=>{if(b.textContent.trim()==='Saltar')b.click()})"); pg.wait_for_timeout(500)
+    pg.evaluate("showSection('taller'); TallerApp.irATab('contabilidad')"); pg.wait_for_timeout(700)
+    pg.locator('button', has_text='Pendientes de cobro').first.click(); pg.wait_for_timeout(600)
+    bt=pg.locator('.im-pend-ticket'); ok(bt.count()>=1, f'{dev}: botón «Enviar ticket» en Pendientes de cobro ({bt.count()})')
+    sw=pg.evaluate("document.documentElement.scrollWidth"); ok(sw<=vw+1, f'{dev}: la tabla no descuadra la pantalla ({sw})')
+    pg.screenshot(path=SP+f'pend_{dev}.png')
+    bt.first.scroll_into_view_if_needed(); bt.first.click(); pg.wait_for_timeout(1200)
+    img=pg.locator('.im-deuda-img'); ok(img.count()==1 and (img.get_attribute('src') or '').startswith('blob:'), f'{dev}: se genera la imagen del ticket')
+    d=pg.evaluate("(async()=>{const i=document.querySelector('.im-deuda-img');const r=await fetch(i.src);const b=await r.blob();return await new Promise(ok=>{const f=new FileReader();f.onload=()=>ok(f.result);f.readAsDataURL(b)})})()")
+    open(SP+f'ticket_{dev}.png','wb').write(base64.b64decode(d.split(',')[1]))
+    pg.locator('.tpv-wa-texto').click(); pg.wait_for_timeout(300)
+    u=pg.evaluate("decodeURIComponent(window.__abierto||'')"); print(dev,u[:400].replace('\n',' | '))
+    ok('14,00' in u and 'Formas de pago' in u and 'Bizum al 600111222' in u and 'Efectivo o tarjeta' in u, f'{dev}: el mensaje lleva precio y formas de pago con el Bizum')
+    ok(not [e for e in errs if 'hasPending' not in e], f'{dev}: sin errores {errs}'); pg.close()
+  b.close()
+print('TOTAL',sum(R),'/',len(R))

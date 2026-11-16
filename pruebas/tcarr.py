@@ -1,0 +1,32 @@
+_t=open('/home/claude/test/traqcolor.py').read(); exec(_t[:_t.index('with sync_playwright() as p:\n  b=')])
+def vis(pg): return pg.evaluate("(()=>{const p=document.querySelector('.tpf-carr-pista');return Math.round(p.scrollLeft/p.clientWidth)})()")
+def punto(pg): return pg.evaluate("[...document.querySelectorAll('.tpf-carr-punto')].findIndex(b=>b.classList.contains('on'))")
+with sync_playwright() as p:
+  b=p.chromium.launch()
+  for vw,vh,mov,dev in ((390,844,True,'mov'),(1366,860,False,'pc')):
+    pg,errs=pagina(b,vw,vh,mov,seed())
+    pg.goto('https://test.local/app.html?raqueta=1'); pg.wait_for_timeout(2500)
+    ok(pg.locator('.tpf-carr-foto').count()==2, f'{dev}: las dos fotos en el carrusel')
+    ok(vis(pg)==0 and punto(pg)==0, f'{dev}: empieza en la Nanoflare')
+    pg.locator('.tpf-opc', has_text='TOPO').click(); pg.locator('.tpf-color[data-color="Azul"]').click(); pg.wait_for_timeout(600)
+    ok(vis(pg)==1 and punto(pg)==1, f'{dev}: con azul pasa sola a la de fondo blanco')
+    pg.locator('.tpf-color[data-color="Rojo"]').click(); pg.wait_for_timeout(600)
+    ok(vis(pg)==0, f'{dev}: con rojo vuelve a la Nanoflare')
+    box=pg.locator('.tpf-carr-pista').bounding_box()
+    pg.locator('#frmRaquetaDibujo').scroll_into_view_if_needed(); box=pg.locator('.tpf-carr-pista').bounding_box()
+    if mov:
+      # deslizar con el dedo: simulamos con scroll nativo
+      pg.evaluate("document.querySelector('.tpf-carr-pista').scrollBy({left:300})"); pg.wait_for_timeout(900)
+    else:
+      pg.mouse.move(box['x']+box['width']*0.8,box['y']+box['height']/2); pg.mouse.down(); pg.mouse.move(box['x']+box['width']*0.2,box['y']+box['height']/2,steps=8); pg.mouse.up(); pg.wait_for_timeout(900)
+    ok(vis(pg)==1 and punto(pg)==1, f'{dev}: arrastrando se ve la otra')
+    ok(pg.evaluate("[...document.querySelectorAll('.tpf-carr-foto')][1].querySelectorAll('line[stroke=\"#D62C2C\"]').length")>0, f'{dev}: la otra también tiene las cuerdas rojas')
+    pg.locator('#frmRaquetaDibujo').screenshot(path=SP+f'carr_{dev}.png')
+    pg.locator('.tpf-color[data-color="Rosa"]').click(); pg.wait_for_timeout(600)
+    ok(vis(pg)==1, f'{dev}: al cambiar de color se queda en la que eligió')
+    pg.locator('.tpf-carr-punto').first.click(); pg.wait_for_timeout(800)
+    ok(vis(pg)==0 and punto(pg)==0, f'{dev}: tocando el punto cambia')
+    ok(pg.evaluate("document.documentElement.scrollWidth<=innerWidth+1"), f'{dev}: sin desbordar')
+    ok(not [e for e in errs if 'hasPending' not in e], f'{dev}: sin errores {errs}'); pg.close()
+  b.close()
+print(sum(R),'/',len(R))

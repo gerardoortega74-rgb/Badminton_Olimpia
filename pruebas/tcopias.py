@@ -1,0 +1,43 @@
+_t=open('/home/claude/test/tform2.py').read(); exec(_t[:_t.index("with sync_playwright() as p:")])
+import datetime
+with sync_playwright() as p:
+  b=p.chromium.launch()
+  for vw,vh,mov,dev in ((390,844,True,'mov'),(1366,700,False,'pc')):
+    sd=json.loads(json.dumps(seed()))
+    for i in range(9): sd['club/datos/copias/2026-10-%02d'%(i+1)]={'creado':1790000000000+i*86400000,'motivo':'diaria','kb':5,'fmt':'json','datos':'{}'}
+    pg,errs=pagina(b,vw,vh,mov,sd,admin=True); dl=[]; pg.on('dialog',lambda d:(dl.append(d.message),d.accept()))
+    pg.goto('https://test.local/app.html'); pg.wait_for_timeout(3000)
+    pg.evaluate("document.querySelectorAll('button').forEach(b=>{if(b.textContent.trim()==='Saltar')b.click()})"); pg.wait_for_timeout(500)
+    e=pg.evaluate("espacioNube()"); ok(e['total']>1000 and abs(sum(x[1] for x in e['partes'])-e['total'])<5 and e['pct']<0.7, f'{dev}: mide el espacio ({e["total"]} bytes, {len(e["partes"])} apartados)')
+    # provocar un guardado -> copia diaria
+    n0=pg.evaluate("TallerApp.getState().clientes[0].nombre")
+    pg.evaluate("(()=>{TallerApp.getState().clientes[0].nombre='Cliente Cambiado';TallerApp.saveLocal();programarSyncNube()})()"); pg.wait_for_timeout(3500)
+    hoy=datetime.date.today().isoformat()
+    ks=pg.evaluate("Object.keys(window.__STORE).filter(k=>k.includes('/copias/')).sort()"); print(dev,ks)
+    c=pg.evaluate("(h)=>window.__STORE['club/datos/copias/'+h]",hoy)
+    ok(c and c['motivo']=='diaria' and c['fmt']=='gz64' and len(c['datos'])>200, f'{dev}: se crea sola la copia de hoy, comprimida ({c and len(c["datos"])} car.)')
+    ok(len([k for k in ks if 'manual' not in k and 'antes' not in k])==7, f'{dev}: se quedan solo las 7 últimas ({len(ks)})')
+    # cambiar otra vez y restaurar la copia de hoy
+    pg.evaluate("(()=>{TallerApp.getState().clientes[0].nombre='ESTROPEADO';TallerApp.saveLocal();programarSyncNube()})()"); pg.wait_for_timeout(1500)
+    pg.evaluate("goToClubGestion('datos')"); pg.wait_for_timeout(800)
+    ok(pg.locator('.nube-uso').count()==1 and 'KB de 879 KB' in pg.inner_text('.nube-uso'), f'{dev}: panel de espacio en Configuración ({pg.inner_text(".nube-uso") if pg.locator(".nube-uso").count() else "-"})')
+    pg.wait_for_timeout(600); ok(pg.locator('.nube-copia').count()==7, f'{dev}: lista de copias ({pg.locator(".nube-copia").count()})')
+    pg.locator('.im-nube-panel').scroll_into_view_if_needed(); pg.screenshot(path=SP+f'copias_{dev}.png')
+    sw=pg.evaluate("document.documentElement.scrollWidth"); ok(sw<=vw+1, f'{dev}: sin descuadre ({sw})')
+    pg.locator('.nube-copia').first.locator('.nube-restaurar').click(); pg.wait_for_timeout(2500)
+    nom=pg.evaluate("TallerApp.getState().clientes[0].nombre"); ok(nom=='Cliente Cambiado', f'{dev}: restaurar devuelve los datos de la copia ({nom})')
+    ok(pg.evaluate("!!window.__STORE['club/datos/copias/antes-de-restaurar']"), f'{dev}: antes de restaurar guarda cómo estaba')
+    pg.wait_for_timeout(1500); ok(pg.evaluate("JSON.stringify(window.__STORE['club/datos']).includes('Cliente Cambiado')"), f'{dev}: lo restaurado se sube a la nube')
+    ok(any('restaurados' in x for x in dl), f'{dev}: confirma al terminar')
+    ok(not [e for e in errs if 'hasPending' not in e], f'{dev}: sin errores {errs}'); pg.close()
+    # sin permiso en reglas
+    pg,errs=pagina(b,vw,vh,mov,json.loads(json.dumps(seed())),admin=True)
+    pg.add_init_script("window.__DENY=['/copias']")
+    pg.goto('https://test.local/app.html'); pg.wait_for_timeout(3000)
+    pg.evaluate("document.querySelectorAll('button').forEach(b=>{if(b.textContent.trim()==='Saltar')b.click()})")
+    pg.evaluate("(()=>{TallerApp.getState().clientes[0].nombre='X';TallerApp.saveLocal();programarSyncNube()})()"); pg.wait_for_timeout(2500)
+    pg.evaluate("goToClubGestion('datos')"); pg.wait_for_timeout(1200)
+    ok(pg.locator('.nube-copia-error').count()>=1 and pg.evaluate("JSON.stringify(window.__STORE['club/datos']).includes('\"X\"')"), f'{dev}: sin permiso avisa y la app sigue guardando normal')
+    ok(not [e for e in errs if 'hasPending' not in e], f'{dev}: sin errores (sin permiso) {errs}'); pg.close()
+  b.close()
+print('TOTAL',sum(R),'/',len(R))

@@ -1,0 +1,14 @@
+{
+  "name": "Bádminton Olimpia · Gestión",
+  "short_name": "Olimpia",
+  "start_url": "app.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#1B2125",
+  "theme_color": "#1B2125",
+  "lang": "es",
+  "icons": [
+    { "src": "icono-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icono-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

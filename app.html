@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261116-bizum">
+<meta name="build-id" content="v20261119-extras-visibles">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -1261,6 +1261,7 @@ body.im-taller .im-raqueta .im-num{grid-row:span 3;font-family:var(--im-cond);fo
 body.im-taller .im-raqueta .im-cli{font-weight:800;font-size:17px;color:var(--im-ink);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 body.im-taller .im-raqueta .im-det{font-size:14px;color:var(--im-muted);line-height:1.45;}
 body.im-taller .im-raqueta .im-det strong{color:var(--im-ink);font-weight:600;}
+body.im-taller .im-raqueta .im-extras{grid-column:-2 / -1;}
 body.im-taller .im-raqueta .im-acc{grid-column:2;display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px;}
 body.im-taller .im-raqueta .im-acc .btn{min-height:42px;}
 body.im-taller .im-raqueta .im-espera{font-size:13px;color:var(--im-wait);font-weight:600;}
@@ -9501,6 +9502,7 @@ function construirPanelPorRecoger() {
       el('div', { class: 'im-cli' }, cli ? cli.nombre : '(cliente eliminado)', chipPago(p)),
       el('div', { class: 'im-det' }, el('strong', {}, p.marcaModelo || 'Raqueta sin especificar'), ` · ${euros(p.precio)} · lista ${dias > 0 ? 'hace ' + dias + (dias === 1 ? ' día' : ' días') : 'hoy'}`),
       el('div', { class: 'im-det im-recibida' }, '📥 Me la dejó el ', el('strong', {}, fmtFechaTs(p.horaLlegada) + ' a las ' + fmtHora(p.horaLlegada)), ' · ' + nombreCordajeDe(p) + ' · ' + fmtTension(p)),
+      lineaExtras(p),
       p.fotoDespues ? el('img', { class: 'im-foto im-foto-lista', src: p.fotoDespues, alt: 'Foto de la raqueta terminada' }) : null,
       el('div', { class: 'im-acc' },
         el('button', { class: 'btn btn-primary', onclick: () => abrirEntregaPedido(p) }, 'Entregar'),
@@ -9533,6 +9535,9 @@ function nombreCordajeDe(p) {
   if (corH) return 'V: ' + (cor ? cor.nombre : 'sin especificar') + ' · H: ' + corH.nombre;
   return cor ? cor.nombre : 'sin cordaje';
 }
+// Artículos que se han añadido al pedido además del encordado (grip, etc.)
+function textoExtras(p) { return ((p && p.articulosAdicionales) || []).filter(i => i && i.cantidad > 0).map(i => i.cantidad + ' × ' + (i.nombre || 'Artículo')).join(', '); }
+function lineaExtras(p) { const t = textoExtras(p); return t ? el('div', { class: 'im-det im-extras' }, '➕ ', el('strong', {}, t)) : null; }
 function pedidosDeCliente(clienteId) { return state.pedidos.filter(p => p.clienteId === clienteId).sort((a, b) => b.horaLlegada - a.horaLlegada); }
 
 function calcularInformeCoste(p) {
@@ -9964,6 +9969,7 @@ function imagenDeuda(cli, lista) {
     dosCol(p.marcaModelo || 'Raqueta', euros(p.precio || 0), { size: 22, bold: true });
     t('   ' + fch(p.horaFin || p.horaLlegada) + ' · ' + nombreCordajeDe(p), { size: 18, color: '#555' });
     t('   ' + fmtTension(p) + (p.estado === 'terminado' ? ' · por recoger' : ''), { size: 18, color: '#555' });
+    ((p.articulosAdicionales) || []).filter(i => i && i.cantidad > 0).forEach(i => t('   + ' + i.cantidad + ' × ' + (i.nombre || 'Artículo'), { size: 18, color: '#555' }));
     if (p.estado === 'entregado' && p.fechaEntrega) t('   Entregada el ' + fch(p.fechaEntrega), { size: 18, color: '#555' });
     filas.push({ esp: 6 });
   });
@@ -10020,7 +10026,7 @@ function abrirDeudaCliente(clienteId, soloIds) {
   const inTel = el('input', { type: 'tel', inputmode: 'tel', placeholder: 'Teléfono (o vacío para elegir el contacto)', value: cli && cli.telefono ? cli.telefono : '' });
   const aviso = el('div', { class: 'im-deuda-aviso', style: 'font-size:13px;margin-top:8px;' });
   const decir = (txt, ok) => { aviso.innerHTML = ''; if (txt) aviso.appendChild(el('div', { class: 'msg ' + (ok ? 'msg-ok' : 'msg-warn') }, txt)); };
-  const textoDeuda = () => 'Hola' + (cli ? ' ' + cli.nombre : '') + ', te paso el ticket de tus raquetas:\n' + lista().map(p => '- ' + fmtFechaTs(p.horaFin || p.horaLlegada) + ' ' + (p.marcaModelo || 'Raqueta') + ': ' + euros(p.precio || 0)).join('\n') + '\nTotal: ' + euros(lista().reduce((s2, p) => s2 + (p.precio || 0), 0)) + '\nFormas de pago: ' + formasDePagoTaller().join(' · ') + '\n¡Gracias!';
+  const textoDeuda = () => 'Hola' + (cli ? ' ' + cli.nombre : '') + ', te paso el ticket de tus raquetas:\n' + lista().map(p => '- ' + fmtFechaTs(p.horaFin || p.horaLlegada) + ' ' + (p.marcaModelo || 'Raqueta') + (textoExtras(p) ? ' + ' + textoExtras(p) : '') + ': ' + euros(p.precio || 0)).join('\n') + '\nTotal: ' + euros(lista().reduce((s2, p) => s2 + (p.precio || 0), 0)) + '\nFormas de pago: ' + formasDePagoTaller().join(' · ') + '\n¡Gracias!';
   const btnEnviar = el('button', { type: 'button', class: 'btn tpv-wa im-deuda-enviar', onclick: async () => {
     if (!lista().length) { decir('Marca al menos una raqueta.', false); return; }
     if (cli && !cli.telefono && inTel.value.trim()) { cli.telefono = inTel.value.trim(); saveLocal(); }
@@ -10755,6 +10761,7 @@ function viewCola() {
     if (proceso) card.appendChild(el('div', { class: 'im-etiqueta' }, 'Encordando ahora · desde las ' + fmtHora(p.horaInicio)));
     card.appendChild(el('div', { class: 'im-cli' }, nombre, chipPago(p)));
     card.appendChild(el('div', { class: 'im-det' }, el('strong', {}, p.marcaModelo || 'Raqueta sin especificar'), ' · ' + nombreCordajeDe(p) + (p.pretensado ? ' · pretensado' : '')));
+    if (textoExtras(p)) card.appendChild(lineaExtras(p));
     if (proceso) {
       card.appendChild(el('div', { class: 'im-cifras' },
         el('div', {}, el('b', {}, fmtTension(p).replace(' (V/H)', '').replace(' kg', '')), 'tensión (kg)'),
@@ -10806,6 +10813,7 @@ function viewCola() {
         el('div', { class: 'im-num', 'aria-hidden': 'true' }, '·'),
         el('div', { class: 'im-cli' }, cli ? cli.nombre : '(cliente eliminado)', chipPago(p)),
         el('div', { class: 'im-det' }, el('strong', {}, p.marcaModelo || 'Raqueta sin especificar'), ` · ${nombreCordajeDe(p)} · ${fmtTension(p)} · ${euros(p.precio)}`),
+        lineaExtras(p),
         el('div', { class: 'im-acc' },
           el('button', { class: 'btn btn-primary', onclick: () => { reanudarPedido(p); render(); } }, 'Volver a la cola hoy'),
           el('button', { class: 'btn btn-ghost im-aplazada-editar', onclick: () => abrirEditarPedido(p) }, '✏️ Editar'),
@@ -11136,7 +11144,7 @@ function enlaceTallerDe(p) { return window.enlacePublicoPedidoTaller ? window.en
 function abrirAvisoWhatsapp(p) {
   const cli = clienteDe(p.clienteId);
   if (!cli) return;
-  const mensaje = `Hola ${cli.nombre}, ya tengo lista tu raqueta (${p.marcaModelo || ''})${p.pretensado ? ', encordada con pretensado' : ''}. ${p.garantia ? 'Está en garantía: no tienes que pagar nada' : 'Importe: ' + euros(p.precio)}. Puedes pasar a recogerla cuando quieras.\n\n${enlaceTallerDe(p)}`;
+  const mensaje = `Hola ${cli.nombre}, ya tengo lista tu raqueta (${p.marcaModelo || ''})${p.pretensado ? ', encordada con pretensado' : ''}. ${textoExtras(p) ? 'Incluye también: ' + textoExtras(p) + '. ' : ''}${p.garantia ? 'Está en garantía: no tienes que pagar nada' : 'Importe: ' + euros(p.precio)}. Puedes pasar a recogerla cuando quieras.\n\n${enlaceTallerDe(p)}`;
   abrirModalWhatsapp('💬 Avisar por WhatsApp', cli, mensaje, p.fotoDespues);
 }
 function abrirAvisoEmpezado(p) {
@@ -12961,6 +12969,7 @@ function viewHistorial() {
         p.estado === 'entregado' ? el('span', { class: 'im-estado' }, 'Entregada' + (p.fechaEntrega ? ' ' + fmtFechaTs(p.fechaEntrega) : '')) : el('span', { class: 'im-estado' }, 'Por recoger')),
       el('div', { class: 'im-det' }, el('strong', {}, p.marcaModelo || 'Raqueta sin especificar'), ' · ' + nombreCordajeDe(p) + (p.pretensado ? ' · pretensado' : '')),
       el('div', { class: 'im-det' }, fmtTension(p) + ' · ' + euros(p.precio)),
+      lineaExtras(p),
       p.fotoDespues ? el('img', { class: 'im-foto', src: p.fotoDespues, alt: 'Foto de la raqueta terminada', style: 'cursor:pointer;width:64px;height:64px;object-fit:cover;', onclick: () => abrirFotoGrandePublica(p.fotoDespues) }) : null,
       el('div', { class: 'im-acc' },
         el('button', { class: 'btn btn-ghost', onclick: () => abrirEditarPedido(p) }, '✏️ Editar'),
@@ -13420,7 +13429,7 @@ function viewPendientesCobro() {
       el('td', {}, fmtFechaTs(p.horaLlegada)),
       el('td', {}, cli ? cli.nombre : '(eliminado)'),
       el('td', {}, cli && cli.telefono ? cli.telefono : '—'),
-      el('td', {}, p.marcaModelo || '—'),
+      el('td', {}, p.marcaModelo || '—', textoExtras(p) ? el('div', { class: 'im-extras', style: 'font-size:.85em;opacity:.8;' }, '➕ ' + textoExtras(p)) : null),
       el('td', {}, p.estado === 'entregado' ? el('span', { class: 'chip chip-gold' }, 'Entregada ' + fmtFechaTs(p.fechaEntrega)) : el('span', { class: 'chip chip-muted' }, 'Sin recoger')),
       el('td', {}, euros(p.precio)),
       el('td', { style: 'white-space:nowrap;text-align:right;' }, el('div', { style: 'display:inline-flex;gap:6px;flex-wrap:nowrap;align-items:center;' },
@@ -14588,7 +14597,8 @@ function renderVistaPublicaTaller() {
       filaDet(cordajeH ? 'Cordaje vertical' : 'Cordaje', cordaje ? cordaje.nombre : 'El que trajiste'),
       cordajeH ? filaDet('Cordaje horizontal', cordajeH.nombre) : null,
       filaDet('Tensión', (pedido.tensionVertical || pedido.tensionHorizontal) ? (pedido.tensionVertical || '—') + ' / ' + (pedido.tensionHorizontal || '—') + ' kg' : ''),
-      pedido.pretensado ? filaDet('Pretensado', 'Sí') : null));
+      pedido.pretensado ? filaDet('Pretensado', 'Sí') : null,
+      (pedido.articulosAdicionales || []).filter(i => i && i.cantidad > 0).length ? filaDet('También lleva', pedido.articulosAdicionales.filter(i => i && i.cantidad > 0).map(i => i.cantidad + ' × ' + (i.nombre || 'Artículo')).join(', ')) : null));
 
     if (pedido.fotoDespues) {
       cuerpo.appendChild(el('section', { class: 'tpb-card tpb-foto' }, el('h3', {}, 'Así ha quedado'),
@@ -19511,6 +19521,7 @@ function estadoPublicoParaNube() {
       id: p.id, estado: p.estado, marcaModelo: p.marcaModelo, clienteId: p.clienteId, cordajeId: p.cordajeId, cordajeIdH: p.cordajeIdH,
       tensionVertical: p.tensionVertical, tensionHorizontal: p.tensionHorizontal, horaLlegada: p.horaLlegada, horaInicio: p.horaInicio || null, horaFin: p.horaFin || null, pretensado: !!p.pretensado, ordenCola: (typeof p.ordenCola === 'number') ? p.ordenCola : null, fechaEntrega: p.fechaEntrega,
       precio: p.precio, pagado: p.pagado, aplazado: p.aplazado, tieneFotoDespues: !!p.fotoDespues, fotoAntes: null, fotoDespues: null,
+      articulosAdicionales: (p.articulosAdicionales || []).filter(i => i && i.cantidad > 0).map(i => ({ cantidad: i.cantidad, nombre: i.nombre || 'Artículo' })),
     })),
     clientes: (t.clientes || []).map(c => ({ id: c.id, nombre: c.nombre })),
     articulos: (t.articulos || []).map(a => {

@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261122-aviso-encordador">
+<meta name="build-id" content="v20261122-fondo-oscuro">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -9051,7 +9051,7 @@ function juntarComoColores(ids) {
         el('button', { class: 'btn btn-ghost', onclick: cerrar }, 'Cancelar')))));
 }
 
-// ---- Fotos de artículos: al subirlas se les quita el fondo claro y se guardan transparentes ----
+// ---- Fotos de artículos: al subirlas se les quita el fondo (claro u oscuro, el que tenga la foto) y se guardan transparentes ----
 function leerImagen(fileODataUrl) {
   return new Promise((resolve, reject) => {
     const cargar = (src) => { const img = new Image(); img.onload = () => resolve(img); img.onerror = () => reject(new Error('No se pudo leer la imagen')); img.src = src; };
@@ -9070,12 +9070,13 @@ async function fotoArticuloSinFondo(fileODataUrl) {
   const blanco = document.createElement('canvas'); blanco.width = w; blanco.height = h; const g2 = blanco.getContext('2d');
   g2.fillStyle = '#FFFFFF'; g2.fillRect(0, 0, w, h); g2.drawImage(img, 0, 0, w, h);
   const original = blanco.toDataURL('image/jpeg', 0.8);
-  const sinFondo = typeof tdoRecortarFondo === 'function' ? await tdoRecortarFondo(original, 'subida:' + Date.now() + Math.random(), { max: MAX, calidad: 0.82 }) : original;
+  let tipo = 'claro';
+  const sinFondo = typeof tdoRecortarFondo === 'function' ? await tdoRecortarFondo(original, 'subida:' + Date.now() + Math.random(), { max: MAX, calidad: 0.82, oscuro: 'auto', alDetectar: (t) => { tipo = t; } }) : original;
   if (!sinFondo || sinFondo === original) return { final: original, original, sinFondo: null };
-  return { final: sinFondo, original, sinFondo };
+  return { final: sinFondo, original, sinFondo, tipo };
 }
 // Ventana con el antes y el después; resuelve con la foto elegida (o null si se cancela)
-function elegirFotoSinFondo(original, sinFondo) {
+function elegirFotoSinFondo(original, sinFondo, tipo) {
   return new Promise((resolve) => {
     const root = document.getElementById('tallerModalRoot'); if (!root) { resolve(sinFondo); return; }
     const cuadros = 'background-color:#fff;background-image:linear-gradient(45deg,#e6e6e6 25%,transparent 25%,transparent 75%,#e6e6e6 75%),linear-gradient(45deg,#e6e6e6 25%,transparent 25%,transparent 75%,#e6e6e6 75%);background-size:16px 16px;background-position:0 0,8px 8px;';
@@ -9088,7 +9089,7 @@ function elegirFotoSinFondo(original, sinFondo) {
     root.appendChild(el('div', { class: 'modal-bg', onclick: (e) => { if (e.target.classList.contains('modal-bg')) cerrar(null); } },
       el('div', { class: 'modal', style: 'max-width:640px;' },
         el('h3', {}, '✂️ Foto sin fondo'),
-        el('div', { class: 'sub', style: 'margin-bottom:10px;' }, 'He quitado el fondo claro de la foto. Mira cómo queda (los cuadros grises son la parte transparente) y elige cuál guardar.'),
+        el('div', { class: 'sub', style: 'margin-bottom:10px;' }, 'He quitado el fondo ' + (tipo === 'oscuro' ? 'oscuro' : 'claro') + ' de la foto. Mira cómo queda (los cuadros grises son la parte transparente) y elige cuál guardar.'),
         el('div', { style: 'display:flex;gap:10px;flex-wrap:wrap;' }, caja('Original', original, 'blanco'), caja('Sin fondo', sinFondo), caja('Sin fondo, en la tienda', sinFondo, 'oscuro')),
         el('div', { class: 'row', style: 'gap:8px;margin-top:14px;flex-wrap:wrap;' },
           el('button', { class: 'btn btn-gold', onclick: () => cerrar(sinFondo) }, '✓ Usar sin fondo'),
@@ -9099,8 +9100,8 @@ function elegirFotoSinFondo(original, sinFondo) {
 async function procesarFotoNueva(origen) {
   const r = await fotoArticuloSinFondo(origen);
   let elegida = r.final;
-  if (r.sinFondo) { elegida = await elegirFotoSinFondo(r.original, r.sinFondo); if (!elegida) return null; }
-  else if (typeof origen === 'string' && !r.yaSinFondo) { alert('No he encontrado un fondo claro y liso que quitar en esta foto. Se queda como está.'); return null; }
+  if (r.sinFondo) { elegida = await elegirFotoSinFondo(r.original, r.sinFondo, r.tipo); if (!elegida) return null; }
+  else if (typeof origen === 'string' && !r.yaSinFondo) { alert('No he encontrado un fondo liso (claro u oscuro) que quitar en esta foto. Se queda como está.'); return null; }
   return elegida;
 }
 const MAX_FOTOS_EXTRA = 6;
@@ -15508,7 +15509,17 @@ function tdoRecortarFondo(src, clave, op) {
         const M = op.max || 420, k = Math.min(1, M / Math.max(im.width, im.height)), w = Math.max(1, Math.round(im.width * k)), h = Math.max(1, Math.round(im.height * k));
         const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const g = cv.getContext('2d'); g.drawImage(im, 0, 0, w, h);
         const dat = g.getImageData(0, 0, w, h), px = dat.data;
-        const fondo = (i) => { const r = px[i], gg = px[i + 1], b = px[i + 2], a = px[i + 3]; if (a < 30) return true; const mx = Math.max(r, gg, b), mn = Math.min(r, gg, b); return mn >= 222 && mx - mn <= 26; };
+        // op.oscuro: 'auto' mira el borde de la foto y, si es casi todo oscuro, quita el fondo oscuro en vez del claro
+        let oscuro = op.oscuro === true;
+        if (op.oscuro === 'auto') {
+          let nb = 0, nOsc = 0, nCla = 0;
+          const mira = (p) => { const i = p * 4, mx = Math.max(px[i], px[i + 1], px[i + 2]), mn = Math.min(px[i], px[i + 1], px[i + 2]); nb++; if (mx <= 62 && mx - mn <= 40) nOsc++; else if (mn >= 222 && mx - mn <= 26) nCla++; };
+          for (let x = 0; x < w; x++) { mira(x); mira((h - 1) * w + x); }
+          for (let y = 0; y < h; y++) { mira(y * w); mira(y * w + w - 1); }
+          oscuro = nOsc > nb * 0.6 && nOsc > nCla;
+        }
+        if (op.alDetectar) op.alDetectar(oscuro ? 'oscuro' : 'claro');
+        const fondo = (i) => { const r = px[i], gg = px[i + 1], b = px[i + 2], a = px[i + 3]; if (a < 30) return true; const mx = Math.max(r, gg, b), mn = Math.min(r, gg, b); return oscuro ? (mx <= 62 && mx - mn <= 40) : (mn >= 222 && mx - mn <= 26); };
         const visto = new Uint8Array(w * h), cola = new Int32Array(w * h); let cab = 0, fin = 0;
         const meter = (p) => { if (!visto[p] && fondo(p * 4)) { visto[p] = 1; cola[fin++] = p; } };
         for (let x = 0; x < w; x++) { meter(x); meter((h - 1) * w + x); }
@@ -15528,7 +15539,7 @@ function tdoRecortarFondo(src, clave, op) {
               if (x > 0) ve(p - 1); if (x < w - 1) ve(p + 1); if (y > 0) ve(p - w); if (y < h - 1) ve(p + w);
             }
             const media = suma / n, desv = Math.sqrt(Math.max(0, suma2 / n - media * media));
-            if (n >= 25 && media >= 247 && desv <= 3.5) comp.forEach(q => { visto[q] = 1; });
+            if (n >= 25 && (oscuro ? media <= 12 : media >= 247) && desv <= 3.5) comp.forEach(q => { visto[q] = 1; });
           } }
         let quitados = 0;
         for (let p = 0; p < w * h; p++) if (visto[p]) { px[p * 4 + 3] = 0; quitados++; }
@@ -15536,7 +15547,7 @@ function tdoRecortarFondo(src, clave, op) {
         for (let p = 0; p < w * h; p++) {
           if (visto[p]) continue; const x = p % w, y = (p - x) / w;
           const junto = (x > 0 && visto[p - 1]) || (x < w - 1 && visto[p + 1]) || (y > 0 && visto[p - w]) || (y < h - 1 && visto[p + w]);
-          if (junto) { const i = p * 4, l = (px[i] + px[i + 1] + px[i + 2]) / 3; px[i + 3] = Math.min(px[i + 3], l > 200 ? 110 : 210); }
+          if (junto) { const i = p * 4, l = (px[i] + px[i + 1] + px[i + 2]) / 3; px[i + 3] = Math.min(px[i + 3], (oscuro ? l < 85 : l > 200) ? 110 : 210); }
         }
         if (quitados < w * h * 0.02) return res(src);   // la foto no tenía fondo blanco: se deja tal cual
         g.putImageData(dat, 0, 0); res(exportarTransparente(cv, op.calidad));

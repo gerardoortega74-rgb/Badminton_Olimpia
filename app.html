@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261122-fondo-oscuro">
+<meta name="build-id" content="v20261122-garantias-contadas">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -10770,7 +10770,7 @@ function estadisticasTaller() {
   const cord = {}, clis = {}; let sumaT = 0, nT = 0;
   hechos.forEach(p => {
     const d = new Date(p.horaFin || p.horaLlegada), m = idx[d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0')];
-    if (m) { m.n++; if (!p.garantia) m.eur += p.precio || 0; }
+    if (m) { m.n++; if (p.garantia) m.gar = (m.gar || 0) + 1; else m.eur += p.precio || 0; }
     const nc = nombreCordajeDe(p); if (nc && nc !== '—') cord[nc] = (cord[nc] || 0) + 1;
     clis[p.clienteId] = (clis[p.clienteId] || 0) + 1;
     const t = parseFloat(p.tensionVertical); if (t > 0) { sumaT += t; nT++; }
@@ -10787,21 +10787,22 @@ function panelEstadisticasTaller() {
   const dato = (v, t) => el('div', { class: 'im-dato' }, el('b', {}, v), el('span', {}, t));
   det.appendChild(el('div', { class: 'im-resumen', style: 'margin-top:10px;' },
     dato(String(e.total), 'raquetas encordadas'), dato(String(e.meses[11].n), 'este mes'),
+    e.garantias ? dato('🛡️ ' + e.garantias, 'en garantía (sin cobrar)') : null,
     dato(e.tensionMedia ? e.tensionMedia.toFixed(1).replace('.', ',') + ' kg' : '—', 'tensión media'),
     dato(e.nCli ? Math.round(e.repiten / e.nCli * 100) + ' %' : '—', 'clientes que repiten')));
   const barras = (tit, val, max, fmt) => {
     const c = el('div', { style: 'margin-top:14px;' }, el('div', { style: 'font-weight:700;margin-bottom:4px;' }, tit));
     e.meses.forEach(m => c.appendChild(el('div', { class: 'im-stat-fila', style: 'display:grid;grid-template-columns:58px 1fr 84px;gap:8px;align-items:center;font-size:13px;padding:1px 0;' },
       el('span', {}, m.etq), el('div', { style: 'height:12px;border-radius:99px;background:rgba(0,0,0,.08);overflow:hidden;' }, el('div', { style: 'height:100%;width:' + (val(m) / max * 100) + '%;background:var(--im-navy,#12235f);' })),
-      el('b', { style: 'text-align:right;' }, fmt(val(m))))));
+      el('b', { style: 'text-align:right;white-space:nowrap;' }, fmt(val(m), m)))));
     return c;
   };
-  det.appendChild(barras('Raquetas por mes', m => m.n, maxN, v => String(v)));
+  det.appendChild(barras('Raquetas por mes (🛡️ = de ellas, en garantía)', m => m.n, maxN, (v, m) => String(v) + (m.gar ? ' · ' + m.gar + ' 🛡️' : '')));
   det.appendChild(barras('Ingresos por mes (encordados + tienda)', m => m.eur + (m.tienda || 0), maxE, v => euros(v)));
   const lista = (tit, l, suf) => { const c = el('div', { style: 'margin-top:14px;' }, el('div', { style: 'font-weight:700;margin-bottom:4px;' }, tit)); if (!l.length) c.appendChild(el('div', { class: 'sub' }, 'Sin datos todavía.')); l.forEach((x, i) => c.appendChild(el('div', { style: 'display:flex;justify-content:space-between;gap:10px;padding:2px 0;' }, el('span', {}, (i + 1) + '. ' + x[0]), el('b', {}, x[1] + suf)))); return c; };
   det.appendChild(lista('Cordajes más usados', e.cordajes, ' raquetas'));
   det.appendChild(lista('Clientes que más encuerdan', e.clientes, ' raquetas'));
-  if (e.garantias) det.appendChild(el('div', { class: 'sub', style: 'margin-top:10px;' }, '🛡️ ' + e.garantias + ' encordado(s) en garantía (no suman ingresos).'));
+  if (e.garantias) det.appendChild(el('div', { class: 'sub im-stats-gar', style: 'margin-top:10px;' }, '🛡️ ' + e.garantias + ' de las ' + e.total + ' raquetas son de garantía: cuentan como encordadas pero no suman ingresos.'));
   return det;
 }
 function viewCola() {
@@ -13045,7 +13046,7 @@ function viewHistorial() {
   const pendienteDeCobro = pendientes.reduce((s, p) => s + (p.precio || 0), 0);
   const panel = el('div', { class: 'panel' },
     el('h2', {}, '📚 Historial de encordados'),
-    el('div', { class: 'sub' }, `${terminados.length} raqueta(s) · Total facturado: ${euros(total)}${pendienteDeCobro > 0 ? ' · Pendiente de cobro: ' + euros(pendienteDeCobro) : ' · Todo cobrado'}`),
+    el('div', { class: 'sub im-hist-resumen' }, `${terminados.length} raqueta(s)${terminados.some(p => p.garantia) ? ' (' + terminados.filter(p => p.garantia).length + ' en garantía 🛡️)' : ''} · Total facturado: ${euros(total)}${pendienteDeCobro > 0 ? ' · Pendiente de cobro: ' + euros(pendienteDeCobro) : ' · Todo cobrado'}`),
   );
   if (!terminados.length) {
     panel.appendChild(el('div', { class: 'empty-state' }, 'Todavía no has terminado ninguna raqueta.'));

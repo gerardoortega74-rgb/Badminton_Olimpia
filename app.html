@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
 <meta charset="UTF-8">
 <!-- build-id = versión de la app que se ve en la cabecera. Cámbialo en CADA publicación: vAAAAMMDD-nombre -->
-<meta name="build-id" content="v20261119-extras-visibles">
+<meta name="build-id" content="v20261122-aviso-encordador">
 <script>
 // Club activo: ?club=c2 abre el segundo club con SUS datos (en este dispositivo y en la nube van aparte de Olimpia).
 (function(){try{var c=new URLSearchParams(location.search).get('club')||'';if(!/^[a-z0-9]{1,12}$/.test(c))c='';window.CLUB_CTX=c;if(!c)return;
@@ -9935,6 +9935,98 @@ async function enviarImagenPorWhatsapp(blob, nombreArchivo, numero, que) {
     ? '✅ Imagen copiada. En el chat de WhatsApp pulsa Ctrl+V (o clic derecho → Pegar) y luego Enviar.'
     : '✅ Imagen descargada (' + nombreArchivo + '). En el chat de WhatsApp pulsa el clip 📎 y elígela, o arrástrala al chat.';
 }
+// ===== Ficha de un encordado nuevo, como imagen para mandársela al encordador por WhatsApp =====
+function datosFichaEncordado(p) {
+  const cli = clienteDe(p.clienteId), cor = cordajeDe(p.cordajeId), corH = p.cordajeIdH ? cordajeDe(p.cordajeIdH) : null;
+  const v = p.tensionVertical, h = p.tensionHorizontal, kg = n => String(n).replace('.', ',') + ' kg';
+  const filas = [];
+  if (corH) { filas.push(['Verticales', cor ? cor.nombre : 'Sin especificar']); filas.push(['Horizontales', corH.nombre]); }
+  else filas.push(['Cordaje', cor ? cor.nombre : 'Lo trae el cliente / sin elegir']);
+  filas.push(['Tensión', !v && !h ? 'Sin indicar' : (v && h && v !== h) ? 'Verticales ' + kg(v) + ' · Horizontales ' + kg(h) : kg(v || h)]);
+  if (p.pretensado) filas.push(['Pretensado', 'Sí']);
+  if (textoExtras(p)) filas.push(['También', textoExtras(p)]);
+  if (cli) filas.push(['Cliente', cli.nombre]);
+  if (p.notas) filas.push(['Notas', p.notas]);
+  filas.push(['Entrada', fmtFechaTs(p.horaLlegada) + ' · ' + fmtHora(p.horaLlegada)]);
+  return { raqueta: p.marcaModelo || 'Raqueta sin especificar', filas };
+}
+function textoFichaEncordado(p) {
+  const d = datosFichaEncordado(p);
+  return '🏸 Nuevo encordado\nRaqueta: ' + d.raqueta + '\n' + d.filas.map(f => f[0] + ': ' + f[1]).join('\n');
+}
+function imagenFichaEncordado(p) {
+  const d = datosFichaEncordado(p);
+  const W = 900, pad = 44, sans = 'Arial, Helvetica, sans-serif', anchoEtq = 240;
+  const cargar = src => new Promise(ok => { if (!src) return ok(null); const i = new Image(); i.onload = () => ok(i); i.onerror = () => ok(null); i.src = src; });
+  return cargar(p.fotoAntes).then(foto => {
+    const med = document.createElement('canvas').getContext('2d');
+    const partir = (txt, font, ancho) => {
+      med.font = font; const out = []; let lin = '';
+      String(txt).split(/\s+/).forEach(w => { const pr = lin ? lin + ' ' + w : w; if (med.measureText(pr).width > ancho && lin) { out.push(lin); lin = w; } else lin = pr; });
+      if (lin) out.push(lin); return out.length ? out : [''];
+    };
+    const fTit = 'bold 54px ' + sans, fVal = 'bold 34px ' + sans, fEtq = '26px ' + sans;
+    const titulo = partir(d.raqueta, fTit, W - pad * 2).slice(0, 3);
+    const filas = d.filas.map(f => ({ etq: f[0], lineas: partir(f[1], fVal, W - pad * 2 - anchoEtq).slice(0, 5) }));
+    const altoFoto = foto ? Math.min(900, Math.round(foto.height * (W - pad * 2) / foto.width)) : 0;
+    const anchoFoto = foto ? Math.round(foto.width * altoFoto / foto.height) : 0;
+    const altoCab = 112;
+    let H = altoCab + 36 + titulo.length * 64 + 22 + filas.reduce((a, f) => a + f.lineas.length * 44 + 22, 0) + (foto ? altoFoto + 30 : 70) + 34;
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const ctx = cv.getContext('2d'); ctx.textBaseline = 'top';
+    ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#0B2545'; ctx.fillRect(0, 0, W, altoCab);
+    ctx.fillStyle = '#E0162B'; ctx.fillRect(0, altoCab, W, 8);
+    ctx.fillStyle = '#FFFFFF'; ctx.font = 'bold 46px ' + sans; ctx.textAlign = 'left'; ctx.fillText('NUEVO ENCORDADO', pad, 22);
+    ctx.font = '24px ' + sans; ctx.fillStyle = '#C9D5E6'; ctx.fillText((state.config.nombreTaller || 'IDERMAY CANTABRIA'), pad, 74);
+    let y = altoCab + 36;
+    ctx.fillStyle = '#0B2545'; ctx.font = fTit; titulo.forEach(l => { ctx.fillText(l, pad, y); y += 64; });
+    y += 22;
+    filas.forEach(f => {
+      ctx.strokeStyle = '#D5DCE6'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(pad, y - 10); ctx.lineTo(W - pad, y - 10); ctx.stroke();
+      ctx.font = fEtq; ctx.fillStyle = '#5B6B82'; ctx.fillText(f.etq.toUpperCase(), pad, y + 6);
+      ctx.font = fVal; ctx.fillStyle = '#111827'; f.lineas.forEach(l => { ctx.fillText(l, pad + anchoEtq, y); y += 44; });
+      y += 22;
+    });
+    if (foto) { ctx.drawImage(foto, Math.round((W - anchoFoto) / 2), y, anchoFoto, altoFoto); y += altoFoto + 30; }
+    else { ctx.font = 'italic 26px ' + sans; ctx.fillStyle = '#8A97A8'; ctx.textAlign = 'center'; ctx.fillText('Sin foto de la raqueta', W / 2, y + 10); ctx.textAlign = 'left'; }
+    return new Promise((res, rej) => cv.toBlob(b => b ? res(b) : rej(new Error('sin imagen')), 'image/png'));
+  });
+}
+// alCerrar: lo que toque hacer después (otra ventana pendiente), para no pisar una con otra
+function abrirAvisoEncordador(p, alCerrar) {
+  const root = document.getElementById('tallerModalRoot');
+  if (!root || !p) { if (alCerrar) alCerrar(); return; }
+  const cerrar = () => { root.innerHTML = ''; if (alCerrar) setTimeout(alCerrar, 60); };
+  const vista = el('img', { class: 'im-enc-img', alt: 'Ficha del encordado', style: 'width:100%;max-width:340px;display:block;margin:8px auto;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,.18);' });
+  imagenFichaEncordado(p).then(b => { vista.src = URL.createObjectURL(b); }).catch(() => {});
+  const inTel = el('input', { type: 'tel', inputmode: 'tel', class: 'im-enc-tel', placeholder: 'Teléfono del encordador (o vacío para elegir el contacto)', value: state.config.telefonoEncordador || '' });
+  const aviso = el('div', { class: 'im-enc-aviso', style: 'font-size:13px;margin-top:8px;' });
+  const decir = (txt, ok) => { aviso.innerHTML = ''; if (txt) aviso.appendChild(el('div', { class: 'msg ' + (ok ? 'msg-ok' : 'msg-warn') }, txt)); };
+  const recordarTel = () => { const t = inTel.value.trim(); if (t && t !== (state.config.telefonoEncordador || '')) { state.config.telefonoEncordador = t; saveLocal(); } };
+  const btn = el('button', { type: 'button', class: 'btn tpv-wa im-enc-enviar', onclick: async () => {
+    recordarTel(); btn.disabled = true;
+    try { const r = await enviarImagenPorWhatsapp(await imagenFichaEncordado(p), 'encordado-' + String(p.marcaModelo || 'raqueta').replace(/[^\wáéíóúñÁÉÍÓÚÑ]+/g, '-').slice(0, 40) + '.png', telefonoParaWhatsapp(inTel.value), 'la ficha'); if (r) decir(r, true); p.avisadoEncordador = Date.now(); saveLocal(); }
+    catch (e) { decir('No se pudo preparar la imagen: ' + (e && e.message ? e.message : 'error'), false); }
+    finally { btn.disabled = false; }
+  } }, '💬 Enviar por WhatsApp');
+  root.innerHTML = '';
+  root.appendChild(el('div', { class: 'modal-bg', onclick: (e) => { if (e.target.classList.contains('modal-bg')) cerrar(); } },
+    el('div', { class: 'modal im-enc', style: 'max-height:90vh;overflow-y:auto;' },
+      el('button', { type: 'button', class: 'tpv-cerrar-x', 'aria-label': 'Cerrar', onclick: cerrar }, '✕'),
+      el('h3', {}, '📲 Avisar al encordador'),
+      el('div', { class: 'sub' }, 'Se envía esta ficha como imagen: raqueta, cordaje, tensión y la foto.'),
+      vista,
+      el('div', { class: 'tpv-wa-caja' }, el('div', { class: 'tpv-wa-fila' }, inTel, btn),
+        el('a', { href: '#', class: 'tpv-wa-texto im-enc-texto', style: 'font-size:12px;display:inline-block;margin-top:6px;', onclick: (e) => { e.preventDefault(); recordarTel(); window.open('https://wa.me/' + (telefonoParaWhatsapp(inTel.value) || '') + '?text=' + encodeURIComponent(textoFichaEncordado(p)), '_blank', 'noopener'); } }, 'Enviar solo el texto (sin foto)'),
+        aviso),
+      el('div', { style: 'text-align:right;margin-top:10px;' }, el('button', { type: 'button', class: 'btn btn-ghost btn-sm im-enc-cerrar', onclick: cerrar }, alCerrar ? 'Ahora no' : 'Cerrar')))));
+}
+// Tras crear un pedido: si hay teléfono de encordador en Configuración, se ofrece avisarle; después sigue lo que tocara.
+function avisarEncordadorSiToca(p, despues) {
+  if (state.config.telefonoEncordador && state.config.avisarEncordador !== false) abrirAvisoEncordador(p, despues || (() => {}));
+  else if (despues) despues();
+}
 // ===== Ticket de las raquetas sin pagar de un cliente, como imagen para WhatsApp =====
 function pendientesDeCliente(clienteId) { return pedidosPendientesDeCobro().filter(p => p.clienteId === clienteId).sort((a, b) => (a.horaLlegada || 0) - (b.horaLlegada || 0)); }
 // Formas de pago que se ponen en el ticket (el Bizum y el enlace salen si están en Configuración)
@@ -10525,7 +10617,7 @@ function aceptarSolicitudRaqueta(sol) {
   solicitudesRaq = solicitudesRaq.filter(x => x._id !== sol._id);
   firebaseDb.collection('solicitudes_raqueta').doc(sol._id).delete().catch(e => console.warn('No se pudo borrar la solicitud:', e));
   render();
-  if (typeof abrirEnviarEnlaceSeguimiento === 'function' && cli.telefono) setTimeout(() => abrirEnviarEnlaceSeguimiento(nuevo), 60);
+  setTimeout(() => avisarEncordadorSiToca(nuevo, () => { if (typeof abrirEnviarEnlaceSeguimiento === 'function' && cli.telefono) abrirEnviarEnlaceSeguimiento(nuevo); }), 60);
 }
 function descartarSolicitudRaqueta(sol) {
   if (!confirm('¿Descartar la raqueta enviada por ' + [sol.nombre, sol.apellidos].join(' ').trim() + '? Se borran sus datos.')) return;
@@ -10782,6 +10874,7 @@ function viewCola() {
       !proceso && pendientesAntes ? el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { if (confirm('¿Poner la raqueta de ' + nombre + ' la primera de la cola?')) { if (ponerPrimeraEnCola(p)) render(); } } }, 'Poner la primera de la cola') : null,
       !proceso && !hayOtroEnProceso ? el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { empezarPedido(p); abrirTerminarPedido(p); } }, 'Marcar terminada directamente') : null,
       el('button', { class: 'btn btn-ghost btn-sm', onclick: () => abrirEnviarEnlaceSeguimiento(p) }, 'Enviar enlace de seguimiento'),
+      el('button', { class: 'btn btn-ghost btn-sm im-enc-abrir', onclick: () => abrirAvisoEncordador(p) }, '📲 Avisar al encordador'),
       botonGarantia(p),
       el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { if (confirm('¿El cliente no puede esperar? Se pasará a "Aplazados" y no contará para la hora estimada de los demás, hasta que la reanudes otro día.')) { aplazarPedido(p); render(); } } }, 'Aplazar a otro día'),
       el('button', { class: 'btn btn-danger btn-sm', onclick: () => { if (confirm('¿Quitar este pedido de la cola?')) { removePedido(p.id); render(); } } }, 'Quitar de la cola'),
@@ -11531,7 +11624,7 @@ function viewNuevoPedido() {
     clientePreseleccionadoId = irACola ? null : clienteElegidoId;
     activeTab = irACola ? 'cola' : 'nuevo';
     render();
-    if (nuevo.pagado && !nuevo.garantia) abrirCobroPedido(nuevo, '💶 Cobro por adelantado');
+    avisarEncordadorSiToca(nuevo, () => { if (nuevo.pagado && !nuevo.garantia) abrirCobroPedido(nuevo, '💶 Cobro por adelantado'); });
   }
 
   panel.appendChild(el('div', { class: 'im-barra-pedido' },
@@ -12703,6 +12796,11 @@ function viewConfigTaller() {
   panelConfig.appendChild(field('Teléfono para Bizum (sale en los tickets que envías)', el('div', { class: 'row', style: 'gap:8px;' },
     bizumInput,
     el('button', { class: 'btn btn-gold btn-sm im-cfg-bizum-ok', onclick: () => { state.config.bizumTaller = bizumInput.value.trim(); render(); } }, '✓ Aceptar'),
+  )));
+  const encInput = el('input', { type: 'tel', class: 'im-cfg-encordador', value: state.config.telefonoEncordador || '', placeholder: 'Ej: 600111222' });
+  panelConfig.appendChild(field('Teléfono del encordador (al guardar una raqueta nueva se ofrece mandarle la ficha por WhatsApp; vacío = no preguntar)', el('div', { class: 'row', style: 'gap:8px;' },
+    encInput,
+    el('button', { class: 'btn btn-gold btn-sm im-cfg-encordador-ok', onclick: () => { state.config.telefonoEncordador = encInput.value.trim(); render(); } }, '✓ Aceptar'),
   )));
   { // Avisos de la cola: días para recordar y stock mínimo
     const num = (k, def, cls) => { const i = el('input', { type: 'number', min: '0', step: '1', class: cls, value: String(state.config[k] != null ? state.config[k] : def), style: 'max-width:110px;' }); i.addEventListener('change', () => { state.config[k] = Math.max(0, Number(i.value) || 0); saveLocal(); }); return i; };
